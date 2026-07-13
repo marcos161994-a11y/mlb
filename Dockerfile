@@ -17,6 +17,7 @@ COPY *.py ./
 COPY *.json ./
 COPY *.pkl ./
 COPY *.html ./
+COPY *.txt ./
 
 # Exponer puerto
 EXPOSE 8000
