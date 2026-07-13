@@ -1,0 +1,104 @@
+================================================================================
+ QUANTUM MLB — GUÍA GUARDADA (Experimento 200 días)
+ Carpeta: c:\Users\Admin\Desktop\APUESTA
+================================================================================
+
+ARRANCAR EL PANEL
+-----------------
+1. Doble clic en: iniciar.bat
+2. NO cierres la ventana negra.
+3. Abre en el navegador: http://localhost:8000
+   (si falla, prueba: http://127.0.0.1:8000)
+
+ERROR "Servidor apagado" o ERR_CONNECTION_REFUSED (-102)
+------------------------------------------------------
+= El servidor no está corriendo en el puerto 8000.
+
+Solución:
+  a) Ejecuta iniciar.bat y deja la ventana abierta.
+  b) Si dice "puerto 8000 en uso", en PowerShell:
+
+     Get-NetTCPConnection -LocalPort 8000 -State Listen | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }
+     cd c:\Users\Admin\Desktop\APUESTA
+     .\iniciar.bat
+
+TU EXPERIMENTO (guardado en memoria_auditoria.json)
+---------------------------------------------------
+  - Capital inicial: $100
+  - Duración: 200 días (aprendizaje continuo)
+  - Máximo: 10 apuestas por día
+  - Gestión de bankroll: 1-3% dinámico según confianza
+
+ESTRATEGIA ACTUAL (basada en principios profesionales)
+------------------------------------------------------
+  - Prioridad: UNDERDOGS con valor (cuotas ≥ +150)
+  - Edge mínimo: +5% vs BetMGM
+  - Modelo: pitchers + wOBA + racha + récord + bullpen fatiga
+  - Bankroll dinámico: 1-3% según edge y confianza
+  - Bloqueo: 1 HORA ANTES de cada juego (hora Puerto Rico)
+  - Parleys: Recomendaciones en vivo (actualización cada minuto)
+
+PRINCIPIOS INTEGRADOS DEL ARTÍCULO
+-----------------------------------
+  1. PITCHER ABRIDOR = Variable más importante
+     - Análisis profundo de matchups pitcher vs lineup
+     - Consideración de rendimiento reciente vs histórico
+     - Ajuste por park factor del estadio
+
+  2. GESTIÓN DE BANKROLL DINÁMICA
+     - 1-3% del capital según confianza (edge)
+     - Protección contra rachas negativas
+     - Sin persecución de pérdidas
+
+  3. UNDERDOGS CON VALOR
+     - Los underdogs ganan ~40% de los partidos
+     - Con cuotas generosas (+150 o más) pueden ser rentables
+     - Prioridad automática a underdogs con edge positivo
+
+  4. ANÁLISIS DE BULLPEN
+     - Fatiga del bullpen afecta entradas finales
+     - Penalización por bullpen agotado
+     - Consideración de cerradores en mala racha
+
+  5. ESPECIALIZACIÓN VERSUS DIVERSIFICACIÓN
+     - Análisis profundo de matchups específicos
+     - Park factors por estadio
+     - Aprendizaje continuo durante 200 días
+
+EN EL PANEL
+-----------
+  - Borde VERDE = apostar
+  - Gris = no apostar
+  - 🎯 Ver Parleys Recomendados = parleys en vivo (actualiza cada minuto)
+  - Botón: "Forzar bloqueos pendientes ahora"
+
+LÍNEAS BETMGM
+-------------
+  - API key en: odds_api_key.txt
+  - Plan gratis: the-odds-api.com
+  - Actualización: Cada minuto para datos en vivo
+
+ARCHIVOS IMPORTANTES
+--------------------
+  servidor_mlb.py        → motor principal
+  modelo_mlb.py          → predicciones y valor (con bullpen fatiga)
+  lineas_betmgm.py       → cuotas BetMGM (cache 1 minuto)
+  parleys_betmgm.py      → sistema de parleys en vivo
+  memoria_auditoria.json → banca y apuestas (NO borrar)
+  config_experimento.json → reglas del experimento
+  reporte_dia_*.txt      → historial por día
+
+SI APAGAS LA PC
+---------------
+  No se pierde nada. Al volver: iniciar.bat + http://localhost:8000
+
+CONFIGURACIÓN AVANZADA (config_experimento.json)
+-------------------------------------------------
+  - max_apuestas_dia: 10 (máximo de apuestas por día)
+  - gestion_bankroll_dinamica: true (ajuste automático de stake)
+  - preferir_underdogs: true (prioridad a underdogs con valor)
+  - analizar_bullpen: true (considera fatiga de bullpen)
+  - min_stake_pct: 1.0 (mínimo 1% del bankroll)
+  - max_stake_pct: 3.0 (máximo 3% del bankroll)
+
+================================================================================

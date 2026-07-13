@@ -1,0 +1,704 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Quantum MLB — Experimento 5 Días</title>
+    <style>
+        :root {
+            --bg: #050a0f;
+            --panel: #101a26;
+            --card: #111b27;
+            --border: #1e2f44;
+            --cyan: #00f2ff;
+            --gold: #ffbc00;
+            --green: #00ff88;
+            --red: #ff4466;
+            --muted: #8899aa;
+        }
+        * { box-sizing: border-box; }
+        body {
+            background: var(--bg);
+            color: var(--cyan);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            padding: 16px;
+            line-height: 1.4;
+        }
+        .header {
+            background: var(--panel);
+            border: 2px solid var(--cyan);
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .banca-valor {
+            font-size: 2.8rem;
+            font-weight: bold;
+            text-shadow: 0 0 12px var(--cyan);
+        }
+        .badge {
+            display: inline-block;
+            background: rgba(255, 188, 0, 0.15);
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            margin-top: 8px;
+        }
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .stat-box {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+        }
+        .stat-box .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; }
+        .stat-box .val { font-size: 1.4rem; font-weight: bold; margin-top: 4px; }
+        .stat-box .val.pos { color: var(--green); }
+        .stat-box .val.neg { color: var(--red); }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            background: rgba(0, 242, 255, 0.12);
+            border: 1px solid var(--cyan);
+            color: var(--cyan);
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+        }
+        button:hover { background: rgba(0, 242, 255, 0.25); }
+        button.warn { border-color: var(--red); color: var(--red); }
+        .historial {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 14px;
+            margin-bottom: 20px;
+        }
+        .historial h3 { margin: 0 0 10px; font-size: 0.9rem; }
+        .dia-fila {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+        .grid-juegos {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+        }
+        .card {
+            background: var(--card);
+            border-radius: 12px;
+            padding: 14px;
+            border: 1px solid var(--border);
+        }
+        .card.ganada { border-color: var(--green); }
+        .card.perdida { border-color: var(--red); }
+        .card.apostable { border: 2px solid var(--green); box-shadow: 0 0 12px rgba(0,255,136,0.15); }
+        .card.no-apostable { opacity: 0.55; }
+        .tag-apostar { background: rgba(0,255,136,0.2); color: var(--green); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+        .tag-skip { background: rgba(136,153,170,0.2); color: #8899aa; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; }
+        .estado { color: var(--gold); font-size: 0.75rem; font-weight: bold; }
+        .estado-apuesta { font-size: 0.7rem; margin-top: 4px; }
+        .estado-apuesta.ganada { color: var(--green); }
+        .estado-apuesta.perdida { color: var(--red); }
+        .estado-apuesta.pendiente { color: var(--gold); }
+        .pick-box {
+            background: rgba(0, 242, 255, 0.08);
+            border: 1px dashed var(--cyan);
+            padding: 10px;
+            margin-top: 10px;
+            text-align: center;
+            border-radius: 8px;
+        }
+        .aviso {
+            background: rgba(255, 188, 0, 0.1);
+            border: 1px solid var(--gold);
+            color: var(--gold);
+            padding: 12px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            font-size: 0.85rem;
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--panel);
+            border: 1px solid var(--cyan);
+            padding: 12px 18px;
+            border-radius: 8px;
+            display: none;
+            z-index: 99;
+        }
+        .team-logo {
+            width: 24px;
+            height: 24px;
+            margin-right: 8px;
+            object-fit: contain;
+        }
+    </style>
+</head>
+<body>
+
+<div class="header">
+    <h1>QUANTUM MLB — EXPERIMENTO 5 DÍAS</h1>
+    <div class="banca-valor" id="capital-display">$100.00</div>
+    <p id="dia-actual">DÍA 1 DE 5</p>
+    <p id="banca-detalle" style="font-size:0.9rem;color:#8899aa;margin-top:6px;">
+        Disponible: $100.00 · En juego hoy: $0.00 · $5 por partido
+    </p>
+    <span class="badge" id="modo-badge">SIMULACIÓN · Líneas BetMGM</span>
+    <div id="stats-modelo" style="margin-top:12px;padding:8px;background:rgba(0,242,255,0.1);border-radius:8px;border:1px solid rgba(0,242,255,0.3);">
+        <span style="font-size:0.8rem;color:var(--muted);">🎯 Rendimiento del Modelo:</span>
+        <span id="stats-modelo-content" style="font-size:0.85rem;color:var(--cyan);margin-left:8px;">Cargando...</span>
+    </div>
+    <p id="lineas-status" style="font-size:0.75rem;margin-top:6px;color:#ffbc00;"></p>
+    <p id="proximo-bloqueo" style="font-size:0.8rem;color:var(--muted);margin-top:8px;"></p>
+</div>
+
+<div class="aviso" id="aviso-real">
+    <strong>Estrategia:</strong> <strong>1 hora antes</strong> de cada juego se evalúa todo
+    (pitchers, stats, BetMGM) y se apuesta $5 solo con <strong>valor</strong> (borde verde).
+    Máximo <strong>5 apuestas/día</strong>. Hora Puerto Rico.
+</div>
+<p id="favorables-hoy" style="text-align:center;color:var(--green);font-size:0.9rem;margin:-8px 0 16px;"></p>
+
+<div class="stats-row">
+    <div class="stat-box"><div class="label">P/L Hoy</div><div class="val" id="pl-hoy">$0.00</div></div>
+    <div class="stat-box"><div class="label">Ganadas Hoy</div><div class="val" id="ganadas-hoy">0</div></div>
+    <div class="stat-box"><div class="label">Pendientes</div><div class="val" id="pendientes-hoy">0</div></div>
+    <div class="stat-box"><div class="label">ROI Total</div><div class="val" id="roi-total">0%</div></div>
+    <div class="stat-box"><div class="label">Exposición Hoy</div><div class="val" id="exposicion-hoy">$0</div></div>
+</div>
+
+<div class="controls">
+    <button onclick="bloquearHoy()">Forzar bloqueos pendientes ahora</button>
+    <button onclick="liquidar()">Actualizar resultados</button>
+    <button onclick="toggleParleys()">🎯 Parleys (Click para expandir)</button>
+    <button class="warn" onclick="reiniciar()">Reiniciar experimento</button>
+</div>
+
+<div class="historial" id="parleys-section" style="display:none;">
+    <h3>🎯 RECOMENDACIONES DE PARLEYS BETMGM</h3>
+    <div id="parleys-content"></div>
+</div>
+
+<div class="historial" id="historial-dias">
+    <h3>Historial por día (banca acumulada)</h3>
+    <div id="lista-historial"><p style="color:var(--muted)">Sin días registrados aún.</p></div>
+</div>
+
+<div class="historial" id="historial-predicciones">
+    <h3 onclick="togglePredicciones()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+        <span>🎯 Historial de Predicciones (Aciertos/Fallos)</span>
+        <span id="predicciones-toggle" style="font-size:1.2rem;">▼</span>
+    </h3>
+    <div id="lista-predicciones" style="display:none;"><p style="color:var(--muted)">Sin predicciones registradas aún.</p></div>
+</div>
+
+<div id="contenedor-juegos" class="grid-juegos">
+    <p style="color:var(--muted)">Conectando con el motor...</p>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// Si abres el .html con doble clic (file://), apunta al servidor local
+const API = (!window.location.origin || window.location.protocol === 'file:')
+    ? 'http://localhost:8000'
+    : window.location.origin;
+
+function toast(msg) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.display = 'block';
+    setTimeout(() => t.style.display = 'none', 4000);
+}
+
+function togglePredicciones() {
+    const lista = document.getElementById('lista-predicciones');
+    const toggle = document.getElementById('predicciones-toggle');
+    if (lista.style.display === 'none') {
+        lista.style.display = 'block';
+        toggle.textContent = '▲';
+    } else {
+        lista.style.display = 'none';
+        toggle.textContent = '▼';
+    }
+}
+
+function toggleDia(diaId) {
+    const contenido = document.getElementById(diaId);
+    if (contenido.style.display === 'none') {
+        contenido.style.display = 'block';
+    } else {
+        contenido.style.display = 'none';
+    }
+}
+
+function togglePredDia(diaNum) {
+    const contenido = document.getElementById(`pred-content-${diaNum}`);
+    const toggle = document.getElementById(`pred-toggle-${diaNum}`);
+    if (contenido.style.display === 'none') {
+        contenido.style.display = 'block';
+        toggle.textContent = '▲';
+    } else {
+        contenido.style.display = 'none';
+        toggle.textContent = '▼';
+    }
+}
+
+function fmtMoney(n) {
+    const s = n >= 0 ? '+' : '';
+    return s + '$' + Math.abs(n).toFixed(2);
+}
+
+function fmtAmer(a) {
+    if (a == null) return '—';
+    return a > 0 ? '+' + a : String(a);
+}
+
+async function cargarEstado() {
+    const contenedor = document.getElementById('contenedor-juegos');
+    try {
+        const stateRes = await fetch(API + '/api/state', { cache: 'no-store' });
+        if (!stateRes.ok) throw new Error('Servidor respondió ' + stateRes.status);
+        const state = await stateRes.json();
+        pintarEstado(state);
+        pintarJuegos(state.games || []);
+    } catch (e) {
+        contenedor.innerHTML =
+            '<p style="color:#ff4466"><b>Servidor apagado.</b><br>' +
+            '1) Doble clic en <b>iniciar.bat</b><br>' +
+            '2) Abre <b>http://localhost:8000</b> (no el archivo HTML)<br>' +
+            '<small>' + (e.message || e) + '</small></p>';
+    }
+}
+
+function pintarEstado(data) {
+    const m = data.memoria;
+    const dia = data.dia_hoy;
+    const res = dia?.resumen || { profit_dia: 0, ganadas: 0, pendientes: 0, jugadas: 0, capital_arriesgado: 0 };
+
+    const b = data.banca || {};
+    document.getElementById('capital-display').textContent = '$' + m.capital.toFixed(2);
+    document.getElementById('banca-detalle').textContent =
+        `Disponible: $${(b.disponible ?? m.capital).toFixed(2)} · ` +
+        `En juego hoy: $${(b.en_juego_hoy || 0).toFixed(2)} · $${m.stake_por_juego} por partido`;
+    
+    // Mostrar estadísticas del modelo
+    const stats = data.stats_modelo || { total_predicciones: 0, aciertos: 0, fallos: 0, win_rate: 0 };
+    const statsContent = document.getElementById('stats-modelo-content');
+    if (stats.total_predicciones > 0) {
+        statsContent.textContent = 
+            `${stats.total_predicciones} predicciones · ${stats.aciertos} aciertos · ${stats.fallos} fallos · ${stats.win_rate}% win rate`;
+    } else {
+        statsContent.textContent = 'Sin datos suficientes';
+    }
+    
+    document.getElementById('dia-actual').textContent =
+        m.experimento_activo
+            ? `DÍA ${m.dia_actual} DE ${m.dias_totales}`
+            : 'EXPERIMENTO FINALIZADO';
+
+    const plEl = document.getElementById('pl-hoy');
+    plEl.textContent = fmtMoney(res.profit_dia || 0);
+    plEl.className = 'val ' + ((res.profit_dia || 0) >= 0 ? 'pos' : 'neg');
+
+    document.getElementById('ganadas-hoy').textContent = res.ganadas || 0;
+    document.getElementById('pendientes-hoy').textContent = res.pendientes || 0;
+    document.getElementById('exposicion-hoy').textContent = '$' + (res.capital_arriesgado || 0).toFixed(0);
+
+    const roi = ((m.capital - m.capital_inicial) / m.capital_inicial * 100);
+    const roiEl = document.getElementById('roi-total');
+    roiEl.textContent = (roi >= 0 ? '+' : '') + roi.toFixed(2) + '%';
+    roiEl.className = 'val ' + (roi >= 0 ? 'pos' : 'neg');
+
+    const mins = data.minutos_antes_juego || 60;
+    document.getElementById('proximo-bloqueo').textContent =
+        `Bloqueo automático: ${mins} min antes de cada juego (evalúa pick + BetMGM)`;
+
+    const ls = document.getElementById('lineas-status');
+    const lin = data.lineas || {};
+    const estr = data.estrategia || {};
+    if (lin.ok) {
+        ls.style.color = '#00ff88';
+        ls.textContent = '✓ BetMGM · ' + (lin.mensaje || '');
+    } else {
+        ls.style.color = '#ffbc00';
+        ls.textContent = '⚠ ' + (lin.mensaje || 'Sin líneas BetMGM');
+    }
+    const fav = data.favorables_hoy ?? 0;
+    const maxP = estr.max_apuestas_dia || 5;
+    document.getElementById('favorables-hoy').textContent =
+        `Hoy: ${fav} pick(s) favorable(s) de máximo ${maxP} (edge ≥ +${estr.min_edge_pct || 5}%)`;
+
+    const lista = document.getElementById('lista-historial');
+    if (!m.dias.length) {
+        lista.innerHTML = '<p style="color:var(--muted)">Pulsa "Bloquear apuestas de hoy" o espera las 8:00 AM.</p>';
+        return;
+    }
+    let html = '';
+    let bancaCorr = m.capital_inicial;
+    for (const d of m.dias) {
+        const r = d.resumen || {};
+        const pl = r.profit_dia || 0;
+        
+        // Calcular ganadas y perdidas incluyendo predicciones
+        let ganadas = r.ganadas || 0;
+        let perdidas = r.perdidas || 0;
+        
+        // Agregar predicciones liquidadas al conteo
+        if (d.predicciones) {
+            const aciertos = d.predicciones.filter(p => p.resultado === 'acierto').length;
+            const fallos = d.predicciones.filter(p => p.resultado === 'fallo').length;
+            ganadas += aciertos;
+            perdidas += fallos;
+        }
+        
+        bancaCorr += pl;
+        const diaId = `dia-${d.dia}`;
+        html += `<div class="dia-fila" style="cursor:pointer;" onclick="toggleDia('${diaId}')">
+            <span>Día ${d.dia} (${d.fecha}) — ${ganadas} aciertos / ${perdidas} fallos <span style="font-size:0.8rem;margin-left:8px;">▼</span></span>
+            <span style="color:${pl>=0?'var(--green)':'var(--red)'}">${fmtMoney(pl)} → Banca $${bancaCorr.toFixed(2)}</span>
+        </div>`;
+        html += `<div id="${diaId}" style="display:none;padding:8px 0 12px 10px;">`;
+        if (d.apuestas?.length) {
+            const ok = d.apuestas.filter(a => a.estado === 'ganada');
+            const bad = d.apuestas.filter(a => a.estado === 'perdida');
+            if (ok.length) {
+                html += '<div style="font-size:0.75rem;color:var(--green);padding:6px 0 6px 10px"><b>Aciertos</b><br>';
+                ok.forEach(a => html += `✓ ${a.pick} ${fmtMoney(a.profit)}<br>`);
+                html += '</div>';
+            }
+            if (bad.length) {
+                html += '<div style="font-size:0.75rem;color:#8899aa;padding:0 0 12px 10px"><b>Fallos</b> (' + bad.length + ')</div>';
+            }
+        } else {
+            html += '<div style="font-size:0.75rem;color:var(--muted);padding:6px 0;">Sin apuestas este día</div>';
+        }
+        html += '</div>';
+    }
+    lista.innerHTML = html;
+    
+    // Cargar y mostrar predicciones
+    pintarPredicciones(m);
+}
+
+function pintarPredicciones(memoria) {
+    const lista = document.getElementById('lista-predicciones');
+    if (!memoria.dias || memoria.dias.length === 0) {
+        lista.innerHTML = '<p style="color:var(--muted)">Sin predicciones registradas aún.</p>';
+        return;
+    }
+    
+    let html = '';
+    let totalAciertos = 0;
+    let totalFallos = 0;
+    
+    for (const d of memoria.dias) {
+        // Combinar apuestas y predicciones
+        const todasPredicciones = [];
+        
+        // Agregar apuestas (son predicciones que se apostaron)
+        if (d.apuestas) {
+            d.apuestas.forEach(a => {
+                todasPredicciones.push({
+                    pick: a.pick,
+                    odds: a.odds,
+                    probPick: a.probPick,
+                    estado: a.estado,
+                    resultado: a.estado === 'ganada' ? 'acierto' : (a.estado === 'perdida' ? 'fallo' : null),
+                    marcador_final: a.marcador_final,
+                    es_apuesta: true
+                });
+            });
+        }
+        
+        // Agregar predicciones no apostadas
+        if (d.predicciones) {
+            d.predicciones.forEach(p => {
+                todasPredicciones.push({
+                    pick: p.pick,
+                    odds: p.odds,
+                    probPick: p.probPick,
+                    estado: p.estado,
+                    resultado: p.resultado,
+                    marcador_final: p.marcador_final,
+                    es_apuesta: false
+                });
+            });
+        }
+        
+        if (todasPredicciones.length === 0) continue;
+        
+        html += `<div style="margin-bottom:16px;padding:12px;background:var(--panel);border-radius:8px;border:1px solid var(--border);">
+            <div style="font-weight:bold;color:var(--cyan);margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;" onclick="togglePredDia('${d.dia}')">
+                <span>Día ${d.dia} (${d.fecha})</span>
+                <span id="pred-toggle-${d.dia}" style="font-size:1rem;">▼</span>
+            </div>`;
+        
+        html += `<div id="pred-content-${d.dia}" style="display:none;padding:8px 0 12px 10px;">`;
+        
+        const aciertos = todasPredicciones.filter(p => p.resultado === 'acierto');
+        const fallos = todasPredicciones.filter(p => p.resultado === 'fallo');
+        const pendientes = todasPredicciones.filter(p => p.resultado === null);
+        
+        totalAciertos += aciertos.length;
+        totalFallos += fallos.length;
+        
+        if (aciertos.length > 0) {
+            html += `<div style="font-size:0.8rem;color:var(--green);margin-bottom:6px;">
+                <b>✓ Aciertos (${aciertos.length}):</b><br>`;
+            aciertos.forEach(p => {
+                const badge = p.es_apuesta ? '💰' : '🎯';
+                html += `${badge} ${p.pick} @ ${p.odds.toFixed(2)} (${p.probPick?.toFixed(1)}%) - ${p.marcador_final || 'Pendiente'}<br>`;
+            });
+            html += `</div>`;
+        }
+        
+        if (fallos.length > 0) {
+            html += `<div style="font-size:0.8rem;color:var(--red);margin-bottom:6px;">
+                <b>✗ Fallos (${fallos.length}):</b><br>`;
+            fallos.forEach(p => {
+                const badge = p.es_apuesta ? '💰' : '🎯';
+                html += `${badge} ${p.pick} @ ${p.odds.toFixed(2)} (${p.probPick?.toFixed(1)}%) - ${p.marcador_final || 'Pendiente'}<br>`;
+            });
+            html += `</div>`;
+        }
+        
+        if (pendientes.length > 0) {
+            html += `<div style="font-size:0.8rem;color:var(--muted);">
+                <b>⏳ Pendientes (${pendientes.length}):</b><br>`;
+            pendientes.forEach(p => {
+                const badge = p.es_apuesta ? '💰' : '🎯';
+                html += `${badge} ${p.pick} @ ${p.odds.toFixed(2)} (${p.probPick?.toFixed(1)}%)<br>`;
+            });
+            html += `</div>`;
+        }
+        
+        html += `</div></div>`;
+    }
+    
+    // Resumen total
+    const total = totalAciertos + totalFallos;
+    const winRate = total > 0 ? ((totalAciertos / total) * 100).toFixed(1) : 0;
+    
+    html = `<div style="margin-bottom:12px;padding:10px;background:rgba(0,242,255,0.1);border-radius:8px;border:1px solid rgba(0,242,255,0.3);">
+        <b>📊 Resumen Total:</b> ${total} predicciones · ${totalAciertos} aciertos · ${totalFallos} fallos · ${winRate}% win rate
+    </div>` + html;
+    
+    lista.innerHTML = html || '<p style="color:var(--muted)">Sin predicciones registradas aún.</p>';
+}
+
+function pintarJuegos(juegos) {
+    const c = document.getElementById('contenedor-juegos');
+    if (!juegos.length) {
+        c.innerHTML = '<p style="color:var(--muted)">No hay juegos MLB hoy.</p>';
+        return;
+    }
+    const orden = [...juegos].sort((a, b) => (b.apostable ? 1 : 0) - (a.apostable ? 1 : 0));
+    c.innerHTML = orden.map(j => {
+        let cls = j.estado_apuesta === 'ganada' ? 'ganada' : (j.estado_apuesta === 'perdida' ? 'perdida' : '');
+        cls += j.apostable ? ' apostable' : ' no-apostable';
+        const tag = j.apostable
+            ? `<span class="tag-apostar">APOSTAR +${(j.edge||0).toFixed(1)}%</span>`
+            : `<span class="tag-skip">NO APOSTAR</span>`;
+        let apuestaTxt = j.motivo_apuesta || 'Espera evaluación 1h antes';
+        if (j.estado_apuesta === 'sin_bloquear' && j.hora_bloqueo_txt) {
+            apuestaTxt = `Auto-bloqueo ~${j.hora_bloqueo_txt} (juego ${j.hora_inicio_txt})`;
+        }
+        if (j.estado_apuesta === 'pendiente') apuestaTxt = `APUESTA $${j.stake} PENDIENTE`;
+        if (j.estado_apuesta === 'ganada') apuestaTxt = `GANADA ${fmtMoney(j.profit)}`;
+        if (j.estado_apuesta === 'perdida') apuestaTxt = `PERDIDA ${fmtMoney(j.profit)}`;
+
+        return `<div class="card ${cls}">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+                <span class="estado">● ${j.estado}</span>${tag}
+            </div>
+            <div style="font-size:0.7rem;color:#8899aa;margin-bottom:6px">
+                P: ${j.pitcherAway||'?'} (${j.pitcherAwayEra??'?'}) · ${j.pitcherHome||'?'} (${j.pitcherHomeEra??'?'})
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
+                <div style="display:flex;align-items:center">
+                    <img src="${j.logoAway}" class="team-logo" onerror="this.style.display='none'">
+                    <span>${j.visitante}</span>
+                </div>
+                <b>${j.scoreAway}</b>
+            </div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
+                <div style="display:flex;align-items:center">
+                    <img src="${j.logoHome}" class="team-logo" onerror="this.style.display='none'">
+                    <span>${j.home}</span>
+                </div>
+                <b>${j.scoreHome}</b>
+            </div>
+            <div class="pick-box" style="font-size:0.85rem">
+                <div style="color:#8899aa;margin-bottom:6px">
+                    <b style="color:#00f2ff">BetMGM ML</b><br>
+                    ${j.visitante}: ${fmtAmer(j.odds_away_american)} (${j.odds_away_decimal || '—'})<br>
+                    ${j.home}: ${fmtAmer(j.odds_home_american)} (${j.odds_home_decimal || '—'})
+                </div>
+                <span style="font-size:0.75rem;color:var(--muted)">
+                    Modelo ${j.probAway||'?'}% / ${j.probHome||'?'}% · Mercado ${j.implAway||'?'}% / ${j.implHome||'?'}%
+                </span><br>
+                <b>${j.pick || '—'} @ ${j.odds || '—'} ${j.odds_american != null ? '(' + fmtAmer(j.odds_american) + ')' : ''}</b>
+                <div style="font-size:0.7rem;color:#8899aa;margin-top:4px">${j.motivo_apuesta || ''}</div>
+            </div>
+            <div class="estado-apuesta ${j.estado_apuesta||''}">${apuestaTxt}</div>
+        </div>`;
+    }).join('');
+}
+
+async function bloquearHoy() {
+    try {
+        const r = await fetch(API + '/api/bloquear-hoy', { method: 'POST' });
+        const d = await r.json();
+        if (!r.ok) {
+            const msg = typeof d.detail === 'string' ? d.detail : (d.detail?.[0]?.msg || d.motivo || 'Error');
+            throw new Error(msg);
+        }
+        toast(`Bloqueadas: ${d.apuestas_nuevas} · Programados hoy: ${d.programados || '?'}`);
+        cargarEstado();
+    } catch (e) {
+        toast(e.message || 'No se pudo bloquear');
+    }
+}
+
+async function liquidar() {
+    const r = await fetch(API + '/api/liquidar', { method: 'POST' });
+    const d = await r.json();
+    toast(`${d.liquidaciones} juegos liquidados · Banca $${d.capital.toFixed(2)}`);
+    cargarEstado();
+}
+
+async function reiniciar() {
+    if (!confirm('¿Reiniciar el experimento a $100 y día 1?')) return;
+    await fetch(API + '/api/reiniciar', { method: 'POST' });
+    toast('Experimento reiniciado');
+    cargarEstado();
+}
+
+let parleysIntervalo = null;
+let parleysSectionVisible = false;
+
+function toggleParleys() {
+    const section = document.getElementById('parleys-section');
+    parleysSectionVisible = !parleysSectionVisible;
+    
+    if (parleysSectionVisible) {
+        section.style.display = 'block';
+        cargarParleys();
+    } else {
+        section.style.display = 'none';
+        if (parleysIntervalo) {
+            clearInterval(parleysIntervalo);
+            parleysIntervalo = null;
+        }
+    }
+}
+
+async function cargarParleys() {
+    const section = document.getElementById('parleys-section');
+    const content = document.getElementById('parleys-content');
+    
+    try {
+        content.innerHTML = '<p style="color:var(--muted)">Calculando parleys óptimos...</p>';
+        section.style.display = 'block';
+        
+        const r = await fetch(API + '/api/parleys');
+        const d = await r.json();
+        
+        if (!d.parleys || d.parleys.length === 0) {
+            content.innerHTML = '<p style="color:var(--muted)">No hay suficientes picks con valor para generar parleys hoy.</p>';
+            return;
+        }
+        
+        let html = '';
+        
+        // Mostrar el mejor parley destacado
+        if (d.mejor_parley) {
+            const p = d.mejor_parley;
+            html += `<div style="background:rgba(0,255,136,0.1);border:2px solid var(--green);border-radius:12px;padding:16px;margin-bottom:16px;">
+                <h4 style="margin:0 0 12px;color:var(--green)">🏆 MEJOR PARLEY RECOMENDADO</h4>
+                <div style="font-size:1.2rem;font-weight:bold;margin-bottom:8px">
+                    Cuota: ${p.cuota_parley.toFixed(2)} (${p.cuota_parley_american > 0 ? '+' : ''}${p.cuota_parley_american})
+                </div>
+                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;font-size:0.9rem">
+                    <div>Prob Modelo: <span style="color:var(--cyan)">${p.prob_modelo.toFixed(1)}%</span></div>
+                    <div>Prob Mercado: <span style="color:var(--muted)">${p.prob_implicita.toFixed(1)}%</span></div>
+                    <div>EDGE: <span style="color:var(--green)">+${p.edge.toFixed(1)}%</span></div>
+                    <div>EV: <span style="color:${p.ev_esperado > 0 ? 'var(--green)' : 'var(--red)'}">$${p.ev_esperado.toFixed(2)}/$1</span></div>
+                </div>
+                <div style="margin-bottom:12px">
+                    <strong>PICKS (${p.num_picks}):</strong>
+                </div>`;
+            
+            p.picks.forEach((pick, i) => {
+                html += `<div style="background:rgba(0,0,0,0.3);padding:8px;margin:4px 0;border-radius:6px;font-size:0.85rem">
+                    ${i + 1}. ${pick.pick} @ ${pick.odds.toFixed(2)} (Edge +${pick.edge.toFixed(1)}%, Prob ${pick.prob.toFixed(0)}%)
+                </div>`;
+            });
+            
+            html += `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+                <strong>💰 STAKE RECOMENDADO: $${p.stake_recomendado.toFixed(0)}</strong>
+            </div></div>`;
+        }
+        
+        // Mostrar otros parleys
+        if (d.parleys.length > 1) {
+            html += `<h4 style="margin:16px 0 8px">Otros Parleys (${d.parleys.length - 1} más)</h4>`;
+            d.parleys.slice(1).forEach((p, idx) => {
+                html += `<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;margin:8px 0">
+                    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
+                        <strong>Parley #${idx + 2} (${p.num_picks} picks)</strong>
+                        <span style="color:var(--green)">+${p.edge.toFixed(1)}%</span>
+                    </div>
+                    <div style="font-size:0.9rem;margin-bottom:8px">
+                        Cuota: ${p.cuota_parley.toFixed(2)} · Prob: ${p.prob_modelo.toFixed(1)}% · EV: $${p.ev_esperado.toFixed(2)}
+                    </div>
+                    <div style="font-size:0.8rem;color:var(--muted)">`;
+                p.picks.forEach(pick => {
+                    html += `• ${pick.pick} @ ${pick.odds.toFixed(2)}<br>`;
+                });
+                html += `</div></div>`;
+            });
+        }
+        
+        html += `<div style="margin-top:16px;font-size:0.8rem;color:var(--muted)">
+            Analizados: ${d.total_juegos_analizados} juegos · Picks con valor: ${d.juegos_con_valor} · <span style="color:var(--green)">🔄 Actualizando en vivo...</span>
+        </div>`;
+        
+        content.innerHTML = html;
+        
+        // Iniciar actualización automática cada minuto
+        if (parleysIntervalo) clearInterval(parleysIntervalo);
+        parleysIntervalo = setInterval(cargarParleys, 60000);
+        
+    } catch (e) {
+        content.innerHTML = `<p style="color:var(--red)">Error: ${e.message}</p>`;
+    }
+}
+
+cargarEstado();
+setInterval(cargarEstado, 8000);
+</script>
+</body>
+</html>

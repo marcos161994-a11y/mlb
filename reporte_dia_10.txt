@@ -1,0 +1,16 @@
+==========================================================================================
+ QUANTUM MLB // DÍA 10 DE 10 — 2026-06-12
+ MODO: SIMULACION | Solo picks con VALOR vs BetMGM
+==========================================================================================
+
+PARTIDO                                PICK                   EDGE  CUOTA  STAKE ESTADO          P/L
+------------------------------------------------------------------------------------------
+San Diego Padres vs Baltimore Orioles  Baltimore Orioles ML +11.8% 1.74 (-135) $   5 PENDIENTE  PENDIENTE
+Texas Rangers vs Boston Red Sox        Boston Red Sox ML    +20.2% 1.85 (-118) $   5 PENDIENTE  PENDIENTE
+
+==========================================================================================
+ Capital al inicio del experimento : $100.00
+ BANCA VIVA ACUMULADA              : $95.40
+ P/L del día                       : $+0.00
+ Ganadas / Perdidas / Pendientes   : 0 / 0 / 2
+==========================================================================================

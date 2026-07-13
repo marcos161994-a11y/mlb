@@ -1,0 +1,40 @@
+{
+  "capital_inicial": 100.0,
+  "dias_totales": 200,
+  "unidades_kelly": 0.25,
+  "stake_por_juego": 5.0,
+  "minutos_antes_juego": 60,
+  "timezone": "America/Puerto_Rico",
+  "temporada_mlb": 2026,
+  "lineas": {
+    "casa": "betmgm",
+    "proveedor": "the-odds-api",
+    "region": "us",
+    "mercado": "h2h",
+    "api_key": ""
+  },
+  "estrategia": {
+    "min_edge_pct": 6.0,
+    "max_apuestas_dia": 8,
+    "min_prob_modelo": 54.0,
+    "requiere_betmgm": true,
+    "gestion_bankroll_dinamica": true,
+    "min_stake_pct": 2.0,
+    "max_stake_pct": 5.0,
+    "preferir_underdogs": true,
+    "min_cuota_underdog": 1.5,
+    "analizar_bullpen": true,
+    "analizar_matchups_zurdo_diestro": true,
+    "mercado_f5": false,
+    "preferir_f5_bullpen_debil": true
+  },
+  "usar_ia": false,
+  "usar_ml": true,
+  "pesos_ensemble": {
+    "estadistico": 0.5,
+    "ml": 0.5,
+    "ia": 0.0
+  },
+  "gcp_project": "still-summit-323011",
+  "gcp_location": "us-east1"
+}

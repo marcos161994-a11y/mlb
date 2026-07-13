@@ -1,0 +1,28 @@
+﻿QUANTUM MLB // AUDITORÍA FINANCIERA;DÍA DE CONTROL: 01
+FECHA DE OPERACIÓN;2026-05-18
+
+ID JUEGO;VISITANTE;LOCAL;PROYECCIÓN GANADOR;CUOTA (8:00 AM);STAKE INVERTIDO;ESTADO;RETORNO NETO
+824277;Cleveland Guardians;Detroit Tigers;Detroit Tigers;1,79;$5.00;EN VIVO;PENDIENTE
+822980;Baltimore Orioles;Tampa Bay Rays;Baltimore Orioles;1,74;$5.00;EN VIVO;PENDIENTE
+823465;Cincinnati Reds;Philadelphia Phillies;Philadelphia Phillies;1,65;$5.00;FINALIZADO;+$3.25
+823867;Atlanta Braves;Miami Marlins;Atlanta Braves;1,6;$5.00;EN VIVO;PENDIENTE
+822734;New York Mets;Washington Nationals;New York Mets;1,68;$5.00;EN VIVO;PENDIENTE
+823549;Toronto Blue Jays;New York Yankees;New York Yankees;1,74;$5.00;EN VIVO;PENDIENTE
+824114;Boston Red Sox;Kansas City Royals;Kansas City Royals;1,82;$5.00;EN VIVO;PENDIENTE
+823705;Houston Astros;Minnesota Twins;Houston Astros;1,84;$5.00;EN VIVO;PENDIENTE
+824680;Milwaukee Brewers;Chicago Cubs;Milwaukee Brewers;1,9;$5.00;EN VIVO;PENDIENTE
+824357;Texas Rangers;Colorado Rockies;Texas Rangers;1,61;$5.00;EN VIVO;PENDIENTE
+824035;Athletics;Los Angeles Angels;Los Angeles Angels;1,91;$5.00;EN VIVO;PENDIENTE
+823301;Los Angeles Dodgers;San Diego Padres;Los Angeles Dodgers;1,83;$5.00;EN VIVO;PENDIENTE
+825087;San Francisco Giants;Arizona Diamondbacks;San Francisco Giants;1,85;$5.00;PROGRAMADO;PENDIENTE
+823137;Chicago White Sox;Seattle Mariners;Chicago White Sox;1,85;$5.00;EN VIVO;PENDIENTE
+
+MÉTRICAS DE RENDIMIENTO GENERAL
+Capital Inicial Base;$100.00 USD
+Volumen de Juegos Analizados;1
+Pronósticos Correctos;1
+Total Capital Arriesgado;$5.00 USD
+Resultado Neto de la Jornada;$3.25 USD
+-----------------------------------------
+ESTADO TOTAL DE LA BANCA VIVA;$103.25 USD
+Retorno de Inversión (ROI);+3.25%

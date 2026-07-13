@@ -1,0 +1,19 @@
+==========================================================================================
+ QUANTUM MLB // DÍA 35 DE 10 — 2026-07-07
+ MODO: SIMULACION | Solo picks con VALOR vs BetMGM
+==========================================================================================
+
+PARTIDO                                PICK                   EDGE  CUOTA  STAKE ESTADO          P/L
+------------------------------------------------------------------------------------------
+Seattle Mariners vs Miami Marlins      Miami Marlins ML     +10.2% 1.83 (-120) $   5 PENDIENTE  PENDIENTE
+Houston Astros vs Washington Nationals Washington Nationals ML +10.1% 1.71 (-140) $   5 PERDIDA       -5.00
+Kansas City Royals vs New York Mets    New York Mets ML     +42.9% 10.50 (+950) $   5 PENDIENTE  PENDIENTE
+Cleveland Guardians vs Minnesota Twins Minnesota Twins ML    +6.4% 1.71 (-140) $   5 PENDIENTE  PENDIENTE
+Colorado Rockies vs Los Angeles Dodgers Los Angeles Dodgers ML  +8.7% 1.44 (-225) $   5 PENDIENTE  PENDIENTE
+
+==========================================================================================
+ Capital al inicio del experimento : $100.00
+ BANCA VIVA ACUMULADA              : $89.00
+ P/L del día                       : $-5.00
+ Ganadas / Perdidas / Pendientes   : 0 / 1 / 4
+==========================================================================================

@@ -1,0 +1,18 @@
+==========================================================================================
+ QUANTUM MLB // DÍA 1 DE 200 — 2026-07-08
+ MODO: SIMULACION | Solo picks con VALOR vs BetMGM
+==========================================================================================
+
+PARTIDO                                PICK                   EDGE  CUOTA  STAKE ESTADO          P/L
+------------------------------------------------------------------------------------------
+Philadelphia Phillies vs Cincinnati Reds Cincinnati Reds ML   +18.5% 2.40 (+140) $   5 PENDIENTE  PENDIENTE
+Cleveland Guardians vs Minnesota Twins Minnesota Twins ML   +20.0% 2.10 (+110) $   5 PENDIENTE  PENDIENTE
+Colorado Rockies vs Los Angeles Dodgers Colorado Rockies ML  +28.0% 3.20 (+220) $   5 PENDIENTE  PENDIENTE
+Arizona Diamondbacks vs San Diego Padres San Diego Padres ML   +8.6% 1.77 (-130) $   5 PENDIENTE  PENDIENTE
+
+==========================================================================================
+ Capital al inicio del experimento : $100.00
+ BANCA VIVA ACUMULADA              : $100.00
+ P/L del día                       : $+0.00
+ Ganadas / Perdidas / Pendientes   : 0 / 0 / 4
+==========================================================================================

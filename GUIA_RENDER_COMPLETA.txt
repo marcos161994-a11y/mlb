@@ -1,0 +1,256 @@
+==================================================
+  GUÍA COMPLETA PARA DESPLEGAR EN RENDER.COM
+  Sistema Quantum MLB - Ejecución 24/7 GRATIS
+==================================================
+
+REQUISITOS ANTES DE EMPEZAR:
+------------------------------
+1. Tener cuenta en GitHub (gratuita)
+2. Tener cuenta en Render.com (gratuita)
+3. Tu código del proyecto Quantum MLB
+
+PASO 1: SUBIR CÓDIGO A GITHUB
+-------------------------------
+
+1.1 Crear cuenta en GitHub (si no tienes)
+   - Ve a: https://github.com/
+   - Haz clic en "Sign up"
+   - Completa el registro
+   - Verifica tu email
+
+1.2 Crear nuevo repositorio
+   - En GitHub, haz clic en "+" (arriba a la derecha)
+   - Selecciona "New repository"
+   - Nombre del repositorio: "quantum-mlb"
+   - Descripción: "Sistema de predicciones MLB con Machine Learning"
+   - Marca "Public" (público) o "Private" (privado)
+   - NO marques "Initialize this repository with README"
+   - Haz clic en "Create repository"
+
+1.3 Instalar Git (si no lo tienes)
+   - Descarga desde: https://git-scm.com/download/win
+   - Instala con las opciones por defecto
+
+1.4 Subir tu código a GitHub
+   - Abre una terminal en tu carpeta del proyecto:
+     cd c:\Users\Admin\Desktop\APUESTA
+   
+   - Inicializa Git:
+     git init
+   
+   - Agrega todos los archivos:
+     git add .
+   
+   - Haz el primer commit:
+     git commit -m "Inicializar proyecto Quantum MLB"
+   
+   - Conecta con tu repositorio (copia el comando desde GitHub):
+     git remote add origin https://github.com/TU_USUARIO/quantum-mlb.git
+   
+   - Sube el código:
+     git push -u origin main
+   
+   - Si te pide usuario y contraseña:
+     - Usuario: tu email de GitHub
+     - Contraseña: tu "Personal Access Token" (necesitas crear uno en GitHub Settings)
+
+PASO 2: CREAR CUENTA EN RENDER.COM
+----------------------------------
+
+2.1 Registrarse en Render
+   - Ve a: https://render.com/
+   - Haz clic en "Get Started"
+   - Selecciona "Sign up with GitHub"
+   - Autoriza a Render a acceder a tu GitHub
+   - Completa tu información básica
+
+2.2 Verificar email
+   - Render te enviará un email de verificación
+   - Haz clic en el enlace del email
+
+PASO 3: PREPARAR ARCHIVOS PARA RENDER
+-------------------------------------
+
+3.1 Crear archivo requirements.txt (ya existe, verificar)
+   - Debe contener:
+     fastapi>=0.110.0
+     uvicorn>=0.27.0
+     requests>=2.31.0
+     apscheduler>=3.10.0
+     scikit-learn>=1.3.0
+     numpy>=1.24.0
+     pandas>=2.0.0
+
+3.2 Crear archivo start.sh (script de inicio)
+   - Crea un archivo llamado "start.sh" en la carpeta del proyecto
+   - Contenido:
+     #!/bin/bash
+     uvicorn servidor_mlb:app --host 0.0.0.0 --port $PORT
+
+3.3 Modificar servidor_mlb.py para producción
+   - Abre servidor_mlb.py
+   - Busca la línea donde inicia el servidor (al final del archivo)
+   - Asegúrate de que use $PORT como variable de entorno:
+     if __name__ == "__main__":
+         import uvicorn
+         port = int(os.environ.get("PORT", 8000))
+         uvicorn.run(app, host="0.0.0.0", port=port)
+
+3.4 Subir cambios a GitHub
+   - En la terminal:
+     git add .
+     git commit -m "Preparar para despliegue en Render"
+     git push
+
+PASO 4: DESPLEGAR EN RENDER
+---------------------------
+
+4.1 Crear nuevo Web Service en Render
+   - En Render.com, haz clic en "New +" (arriba a la derecha)
+   - Selecciona "Web Service"
+
+4.2 Conectar repositorio
+   - En "Build and deploy from a Git repository", haz clic en "Connect"
+   - Busca tu repositorio "quantum-mlb"
+   - Haz clic en "Connect"
+
+4.3 Configurar el Web Service
+   - Name: quantum-mlb
+   - Region: Oregon (us-west-1) o la más cercana a ti
+   - Branch: main
+   - Runtime: Python 3
+   - Build Command: pip install -r requirements.txt
+   - Start Command: uvicorn servidor_mlb:app --host 0.0.0.0 --port $PORT
+
+4.4 Configurar variables de entorno (si es necesario)
+   - En la sección "Environment", haz clic en "Add Environment Variable"
+   - Agrega variables si tu código las necesita:
+     - ODDS_API_KEY: tu clave de The Odds API
+     - Otras variables que uses
+
+4.5 Configurar plan gratuito
+   - Instance Type: Free
+   - RAM: 512 MB
+   - CPU: 0.1 (compartido)
+
+4.6 Crear el servicio
+   - Haz clic en "Create Web Service"
+   - Render comenzará a construir y desplegar
+
+PASO 5: VERIFICAR DESPLIEGUE
+-----------------------------
+
+5.1 Esperar construcción
+   - Render mostrará el progreso de construcción
+   - Puede tomar 2-5 minutos
+   - Verás logs en tiempo real
+
+5.2 Verificar que esté funcionando
+   - Cuando termine, verás "Live" en verde
+   - Haz clic en la URL del servicio (ej: https://quantum-mlb.onrender.com)
+   - Deberías ver la interfaz de Quantum MLB
+
+5.3 Verificar logs
+   - En Render, ve a la pestaña "Logs"
+   - Verifica que no haya errores
+   - Deberías ver mensajes del servidor iniciándose
+
+PASO 6: CONFIGURAR ACTUALIZACIONES AUTOMÁTICAS
+----------------------------------------------
+
+6.1 Habilitar auto-deploy
+   - En tu Web Service en Render
+   - Ve a "Settings"
+   - Busca "Auto-Deploy"
+   - Asegúrate de que esté activado
+   - Ahora cada vez que hagas git push, Render actualizará automáticamente
+
+PASO 7: MANTENIMIENTO
+----------------------
+
+7.1 Actualizar el sistema
+   - Haz cambios en tu código local
+   - Sube a GitHub:
+     git add .
+     git commit -m "Descripción del cambio"
+     git push
+   - Render detectará el cambio y redeployará automáticamente
+
+7.2 Monitorear
+   - Revisa los logs periódicamente en Render
+   - Verifica métricas en el dashboard de Render
+   - El plan gratuito tiene límites (750 horas/mes)
+
+7.3 Limitaciones del plan gratuito
+   - 750 horas de ejecución al mes
+   - 512 MB RAM
+   - El servicio se "duerme" después de 15 minutos de inactividad
+   - Tarda ~30 segundos en "despertar" cuando lo usas
+
+SOLUCIÓN DE PROBLEMAS COMUNES:
+-------------------------------
+
+PROBLEMA: "Build failed"
+SOLUCIÓN: 
+- Revisa los logs en Render
+- Verifica que requirements.txt esté correcto
+- Asegúrate de que todos los archivos estén en GitHub
+
+PROBLEMA: "Service not responding"
+SOLUCIÓN:
+- Verifica que el puerto sea $PORT
+- Revisa que uvicorn esté iniciando correctamente
+- Mira los logs para errores de Python
+
+PROBLEMA: "Service sleeping"
+SOLUCIÓN:
+- Es normal en el plan gratuito
+- El servicio se despierta automáticamente cuando lo usas
+- Para evitar esto, necesitas un plan de pago ($7/mes)
+
+PROBLEMA: "Database connection error"
+SOLUCIÓN:
+- Este sistema usa JSON local, no necesita base de datos
+- Si agregas base de datos, configura las variables de entorno
+
+COSTOS:
+--------
+
+PLAN GRATIS (Render):
+- $0/mes
+- 750 horas/mes
+- 512 MB RAM
+- Perfecto para desarrollo y pruebas
+
+PLAN DE PAGO (Render):
+- $7/mes
+- Sin límite de horas
+- 1 GB RAM
+- Servicio siempre activo (no se duerme)
+
+ALTERNATIVAS A RENDER:
+----------------------
+
+Si Render no funciona, prueba:
+1. Railway.app ($5/mes) - Similar a Render
+2. PythonAnywhere (gratis para básico) - Especializado en Python
+3. Heroku (ya no es gratis) - $5/mes mínimo
+4. DigitalOcean ($4-6/mes) - VPS completo, más configuración
+
+CONSEJOS FINALES:
+-----------------
+
+1. Empieza con el plan gratuito de Render
+2. Si necesitas más recursos, actualiza al plan de pago
+3. Mantén tu código en GitHub siempre
+4. Haz commits frecuentes con mensajes claros
+5. Revisa los logs regularmente
+6. El sistema se reiniciará automáticamente si falla
+
+==================================================
+  ¡LISTO! Tu sistema Quantum MLB correrá 24/7
+==================================================
+
+Para soporte adicional:
+- Documentación de Render: https://render.com/docs
+- Comunidad de Render: https://community.render.com
