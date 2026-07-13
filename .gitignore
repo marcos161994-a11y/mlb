@@ -1,3 +1,5 @@
 odds_api_key.txt
 __pycache__/
 *.pyc
+*.exe
+gcp_credentials.json
