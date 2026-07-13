@@ -947,7 +947,7 @@ app.add_middleware(
 
 @app.get("/")
 def panel():
-    return FileResponse(BASE_DIR / "QuantumMLB.html")
+    return FileResponse("QuantumMLB.html")
 
 
 def construir_estado_completo(liquidar: bool = False) -> dict:
