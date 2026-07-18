@@ -403,52 +403,37 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
     return juegos
 
 
+def _juego_finalizado(juego: dict) -> bool:
+    """Solo liquidar cuando MLB reporta el juego como final."""
+    return juego.get("estado") == "FINALIZADO"
+
+
+def _revertir_liquidacion_prematura(apuesta: dict, juego: dict) -> bool:
+    """Si se liquidó por error con el juego en vivo, vuelve a pendiente."""
+    if apuesta.get("estado") not in ("ganada", "perdida"):
+        return False
+    if _juego_finalizado(juego):
+        return False
+    apuesta["estado"] = "pendiente"
+    apuesta["profit"] = None
+    apuesta.pop("marcador_final", None)
+    apuesta.pop("liquidado_en", None)
+    print(f"[LIQUIDACIÓN] Revertida liquidación prematura juego {juego.get('id')} (aún {juego.get('estado')})")
+    return True
+
+
 def liquidar_apuesta(apuesta: dict, juego: dict, stake: float) -> bool:
     """Liquida si el juego finalizó. Devuelve True si hubo cambio."""
-    from datetime import datetime
-    
-    # Si el juego terminó pero no hay ganador oficial en el JSON, lo calculamos por score
-    estado = juego.get("estado", "")
-    
-    # Verificar si el juego parece terminado aunque API diga EN VIVO
-    score_away = juego.get("scoreAway")
-    score_home = juego.get("scoreHome")
-    inning = juego.get("inning")
-    
-    # Si tiene scores y el inning es 9 o más, o si los scores son diferentes y parece terminado
-    juego_terminado = False
-    if estado == "FINALIZADO":
-        juego_terminado = True
-    elif estado == "EN VIVO" and score_away is not None and score_home is not None:
-        # Si está en inning 9 o más, probablemente terminó
-        if inning and (str(inning).startswith("9") or str(inning).startswith("10") or str(inning).startswith("11")):
-            juego_terminado = True
-            print(f"[DEBUG LIQ] Juego {juego['id']} marcado como EN VIVO pero inning {inning}, considerando terminado")
-        # Si hay scores y parece que ya pasó mucho tiempo (más de 4 horas desde inicio)
-        elif juego.get("inicio"):
-            try:
-                inicio = datetime.fromisoformat(juego["inicio"].replace("Z", "+00:00"))
-                ahora = datetime.now(inicio.tzinfo)
-                horas_pasadas = (ahora - inicio).total_seconds() / 3600
-                if horas_pasadas > 4:
-                    juego_terminado = True
-                    print(f"[DEBUG LIQ] Juego {juego['id']} marcado como EN VIVO pero pasaron {horas_pasadas:.1f} horas, considerando terminado")
-            except:
-                pass
-        # Si hay scores y son diferentes, asumir que el juego terminó (último recurso)
-        elif int(score_away) != int(score_home):
-            juego_terminado = True
-            print(f"[DEBUG LIQ] Juego {juego['id']} marcado como EN VIVO pero hay scores diferentes ({score_away}-{score_home}), considerando terminado")
-    
-    if not juego_terminado:
-        print(f"[DEBUG LIQ] Juego {juego['id']} no terminado. Estado: {estado}, Inning: {inning}")
+    if _revertir_liquidacion_prematura(apuesta, juego):
+        return True
+
+    if not _juego_finalizado(juego):
+        print(f"[DEBUG LIQ] Juego {juego['id']} no terminado. Estado: {juego.get('estado')}")
         return False
 
-    # Normalizar para que "Oakland Athletics" coincida con "Athletics"
     pick_norm = norm_nombre(nombre_equipo_en_pick(apuesta["pick"]))
     ganador_norm = norm_nombre(juego.get("ganador") or "")
 
-    # Si el juego terminó pero no hay ganador oficial en el JSON, lo calculamos por score
     if not ganador_norm and juego.get("scoreAway") != juego.get("scoreHome"):
         print(f"[DEBUG LIQ] Juego {juego['id']} FINALIZADO pero sin ganador oficial. Intentando por score.")
         if int(juego.get("scoreAway", 0)) > int(juego.get("scoreHome", 0)):
@@ -457,7 +442,7 @@ def liquidar_apuesta(apuesta: dict, juego: dict, stake: float) -> bool:
             ganador_norm = norm_nombre(juego["home"])
 
     if not ganador_norm:
-        print(f"[DEBUG LIQ] Juego {juego['id']} FINALIZADO pero no se pudo determinar ganador. Scores: {juego.get('scoreAway')}-{juego.get('scoreHome')}")
+        print(f"[DEBUG LIQ] Juego {juego['id']} FINALIZADO pero no se pudo determinar ganador.")
         return False
 
     print(f"[LIQUIDACIÓN] Juego {juego['id']}: Comparando Pick '{pick_norm}' vs Ganador '{ganador_norm}'")
@@ -467,8 +452,7 @@ def liquidar_apuesta(apuesta: dict, juego: dict, stake: float) -> bool:
         f"{juego['visitante']} {juego['scoreAway']} - "
         f"{juego['home']} {juego['scoreHome']}"
     )
-    
-    # Si el estado y el marcador coinciden exactamente con lo guardado, no hay nada que cambiar
+
     if apuesta.get("estado") == nuevo_estado and apuesta.get("marcador_final") == nuevo_marcador:
         print(f"[DEBUG LIQ] Juego {juego['id']} ya liquidado con el mismo estado ({nuevo_estado}).")
         return False
@@ -479,12 +463,9 @@ def liquidar_apuesta(apuesta: dict, juego: dict, stake: float) -> bool:
     else:
         apuesta["profit"] = round(-stake, 2)
 
-    apuesta["marcador_final"] = (
-        f"{juego['visitante']} {juego['scoreAway']} - "
-        f"{juego['home']} {juego['scoreHome']}"
-    )
+    apuesta["marcador_final"] = nuevo_marcador
     print(f"[MOTOR] Juego {juego['id']} actualizado automáticamente: {nuevo_estado.upper()} ({apuesta['profit']:+.2f})")
-    
+
     apuesta["liquidado_en"] = datetime.now(tz_experimento()).isoformat()
     return True
 
@@ -518,14 +499,20 @@ def recalcular_capital(memoria: dict) -> None:
 
 
 def liquidar_dia(memoria: dict, dia: dict) -> int:
-    # Verificar si hay apuestas o predicciones pendientes
-    apuestas_pendientes = any(a["estado"] == "pendiente" for a in dia.get("apuestas", []))
-    predicciones_pendientes = any(p.get("estado") == "pendiente" for p in dia.get("predicciones", []))
-    
-    if not apuestas_pendientes and not predicciones_pendientes:
+    apuestas = dia.get("apuestas", [])
+    preds = dia.get("predicciones", [])
+    if not apuestas and not preds:
         return 0
-        
-    # Si hay predicciones pendientes, necesitamos datos completos (scores, inning)
+
+    apuestas_pendientes = any(a["estado"] == "pendiente" for a in apuestas)
+    predicciones_pendientes = any(p.get("estado") == "pendiente" for p in preds)
+    puede_revertir = any(
+        a["estado"] in ("ganada", "perdida") for a in apuestas
+    ) or any(p.get("estado") == "liquidado" for p in preds)
+
+    if not apuestas_pendientes and not predicciones_pendientes and not puede_revertir:
+        return 0
+
     solo_resultados = not predicciones_pendientes
     juegos = obtener_juegos_fecha(dia["fecha"], solo_resultados=solo_resultados)
     if not juegos:
@@ -536,57 +523,62 @@ def liquidar_dia(memoria: dict, dia: dict) -> int:
     cambios = 0
     for apuesta in dia.get("apuestas", []):
         juego = por_id.get(apuesta["game_id"])
-        if juego and liquidar_apuesta(apuesta, juego, apuesta["stake"]):
-            cambios += 1
+        if not juego:
+            continue
+        if apuesta.get("estado") == "pendiente" or apuesta.get("estado") in ("ganada", "perdida"):
+            if liquidar_apuesta(apuesta, juego, apuesta["stake"]):
+                cambios += 1
     
     # Liquidar también predicciones no apostadas
     if "predicciones" in dia:
         for prediccion in dia["predicciones"]:
-            if prediccion.get("estado") == "pendiente":
-                juego = por_id.get(prediccion["game_id"])
-                if juego:
-                    # Determinar resultado de la predicción
-                    estado = juego.get("estado", "")
-                    score_away = juego.get("scoreAway")
-                    score_home = juego.get("scoreHome")
-                    inning = juego.get("inning")
-                    
-                    # Verificar si el juego terminó (misma lógica que liquidar_apuesta)
-                    juego_terminado = False
-                    if estado == "FINALIZADO":
-                        juego_terminado = True
-                    elif estado == "EN VIVO" and score_away is not None and score_home is not None:
-                        # Si hay scores diferentes, asumir que el juego terminó
-                        if int(score_away) != int(score_home):
-                            juego_terminado = True
-                        # Si está en inning 9 o más, probablemente terminó
-                        elif inning and (str(inning).startswith("9") or str(inning).startswith("10") or str(inning).startswith("11")):
-                            juego_terminado = True
-                    
-                    if juego_terminado:
-                        # Calcular ganador
-                        ganador = None
-                        if not juego.get("ganador") and score_away != score_home:
-                            if int(score_away) > int(score_home):
-                                ganador = norm_nombre(juego["visitante"])
-                            else:
-                                ganador = norm_nombre(juego["home"])
-                        else:
-                            ganador = norm_nombre(juego.get("ganador") or "")
-                        
-                        # Comparar con predicción
-                        pick_norm = norm_nombre(nombre_equipo_en_pick(prediccion["pick"]))
-                        resultado = "acierto" if pick_norm == ganador else "fallo"
-                        
-                        prediccion["estado"] = "liquidado"
-                        prediccion["resultado"] = resultado
-                        prediccion["marcador_final"] = (
-                            f"{juego['visitante']} {score_away} - "
-                            f"{juego['home']} {score_home}"
-                        )
-                        prediccion["liquidado_en"] = datetime.now(tz_experimento()).isoformat()
-                        cambios += 1
-                        print(f"[PREDICCIÓN] {prediccion['pick']} -> {resultado.upper()} ({prediccion['marcador_final']})")
+            if prediccion.get("estado") not in ("pendiente", "liquidado"):
+                continue
+            juego = por_id.get(prediccion["game_id"])
+            if not juego:
+                continue
+
+            if prediccion.get("estado") == "liquidado" and not _juego_finalizado(juego):
+                prediccion["estado"] = "pendiente"
+                prediccion["resultado"] = None
+                prediccion.pop("marcador_final", None)
+                prediccion.pop("liquidado_en", None)
+                cambios += 1
+                print(f"[PREDICCIÓN] Revertida liquidación prematura {prediccion['pick']}")
+                continue
+
+            if prediccion.get("estado") != "pendiente":
+                continue
+
+            if not _juego_finalizado(juego):
+                continue
+
+            score_away = juego.get("scoreAway")
+            score_home = juego.get("scoreHome")
+            ganador = None
+            if not juego.get("ganador") and score_away != score_home:
+                if int(score_away) > int(score_home):
+                    ganador = norm_nombre(juego["visitante"])
+                else:
+                    ganador = norm_nombre(juego["home"])
+            else:
+                ganador = norm_nombre(juego.get("ganador") or "")
+
+            if not ganador:
+                continue
+
+            pick_norm = norm_nombre(nombre_equipo_en_pick(prediccion["pick"]))
+            resultado = "acierto" if pick_norm == ganador else "fallo"
+
+            prediccion["estado"] = "liquidado"
+            prediccion["resultado"] = resultado
+            prediccion["marcador_final"] = (
+                f"{juego['visitante']} {score_away} - "
+                f"{juego['home']} {score_home}"
+            )
+            prediccion["liquidado_en"] = datetime.now(tz_experimento()).isoformat()
+            cambios += 1
+            print(f"[PREDICCIÓN] {prediccion['pick']} -> {resultado.upper()} ({prediccion['marcador_final']})")
     
     if cambios:
         print(f"[DEBUG LIQ DIA] Se realizaron {cambios} cambios para el día {dia['fecha']}. Recalculando y guardando.")

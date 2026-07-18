@@ -542,11 +542,19 @@ function pintarPicksHoy(juegos, data) {
         apostables.forEach((j, i) => {
             const eq = nombrePick(j.pick);
             const hecho = j.estado_apuesta === 'pendiente' || j.estado_apuesta === 'ganada' || j.estado_apuesta === 'perdida';
-            const badge = hecho
-                ? (j.estado_apuesta === 'pendiente' ? '<span class="pick-badge wait">APOSTADO</span>'
-                    : (j.estado_apuesta === 'ganada' ? '<span class="pick-badge bet">GANÓ</span>'
-                        : '<span class="pick-badge skip">PERDIÓ</span>'))
-                : '<span class="pick-badge bet">RECOMENDADO</span>';
+            const fin = j.estado === 'FINALIZADO';
+            let badge = '<span class="pick-badge bet">RECOMENDADO</span>';
+            if (j.estado_apuesta === 'pendiente' && j.estado === 'EN VIVO') {
+                badge = '<span class="pick-badge wait">EN JUEGO</span>';
+            } else if (j.estado_apuesta === 'pendiente') {
+                badge = '<span class="pick-badge wait">APOSTADO</span>';
+            } else if (fin && j.estado_apuesta === 'ganada') {
+                badge = '<span class="pick-badge bet">GANÓ</span>';
+            } else if (fin && j.estado_apuesta === 'perdida') {
+                badge = '<span class="pick-badge skip">PERDIÓ</span>';
+            } else if (j.estado === 'EN VIVO') {
+                badge = '<span class="pick-badge wait">EN JUEGO</span>';
+            }
             html += `<div class="pick-row apostar ${hecho ? 'hecho' : ''}">
                 <div>
                     <div class="pick-equipo">${i + 1}. ${eq} ${badge}</div>
@@ -703,10 +711,17 @@ function pintarJuegos(juegos) {
         let apuestaTxt = j.motivo_apuesta || 'Espera evaluación 1h antes';
         if (j.estado_apuesta === 'sin_bloquear' && j.hora_bloqueo_txt) {
             apuestaTxt = `Auto-bloqueo ~${j.hora_bloqueo_txt} (juego ${j.hora_inicio_txt})`;
+        } else if (j.estado === 'EN VIVO' && j.estado_apuesta === 'pendiente') {
+            apuestaTxt = `APUESTA $${j.stake} · EN JUEGO (${j.scoreAway ?? '—'}-${j.scoreHome ?? '—'})`;
+        } else if (j.estado_apuesta === 'pendiente') {
+            apuestaTxt = `APUESTA $${j.stake} PENDIENTE`;
+        } else if (j.estado_apuesta === 'ganada' && j.estado === 'FINALIZADO') {
+            apuestaTxt = `GANADA ${fmtMoney(j.profit)}`;
+        } else if (j.estado_apuesta === 'perdida' && j.estado === 'FINALIZADO') {
+            apuestaTxt = `PERDIDA ${fmtMoney(j.profit)}`;
+        } else if (j.estado === 'EN VIVO') {
+            apuestaTxt = `EN JUEGO · marcador ${j.scoreAway ?? '—'}-${j.scoreHome ?? '—'}`;
         }
-        if (j.estado_apuesta === 'pendiente') apuestaTxt = `APUESTA $${j.stake} PENDIENTE`;
-        if (j.estado_apuesta === 'ganada') apuestaTxt = `GANADA ${fmtMoney(j.profit)}`;
-        if (j.estado_apuesta === 'perdida') apuestaTxt = `PERDIDA ${fmtMoney(j.profit)}`;
 
         return `<div class="card ${cls}">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
