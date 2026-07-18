@@ -1,0 +1,8 @@
+__pycache__
+*.pyc
+.git
+.env
+gcp_credentials.json
+odds_api_key.txt
+openai_api_key.txt
+*.exe

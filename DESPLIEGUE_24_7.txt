@@ -1,0 +1,70 @@
+================================================================================
+ QUANTUM MLB — DESPLIEGUE 24/7 EN RENDER (PC apagada)
+================================================================================
+
+PASO 1 — SUBIR CODIGO A GITHUB
+------------------------------
+1. Crea cuenta en https://github.com (si no tienes)
+2. Crea repo nuevo: quantum-mlb (Public o Private)
+3. Doble clic en: subir_github.bat
+4. Pega la URL del repo cuando te la pida
+
+PASO 2 — CREAR SERVICIO EN RENDER
+----------------------------------
+1. Entra en https://render.com (cuenta gratis)
+2. New +  >  Web Service
+3. Conecta tu repo quantum-mlb
+4. Configura:
+   - Name: quantum-mlb
+   - Region: Oregon
+   - Branch: main
+   - Runtime: Python 3
+   - Build Command:  pip install -r requirements.txt
+   - Start Command:  uvicorn servidor_mlb:app --host 0.0.0.0 --port $PORT
+   - Plan: Free
+
+5. Variables de entorno (Environment):
+   ODDS_API_KEY     = (tu key de the-odds-api.com)
+   CRON_SECRET      = inventa una clave larga (ej. miClaveSecreta2026)
+   DATA_DIR         = /var/data
+
+6. Create Web Service
+7. Espera 3-5 min. Tu URL sera algo como:
+   https://quantum-mlb.onrender.com
+
+PASO 3 — CRON PARA 24/7 (PLAN GRATIS)
+--------------------------------------
+Render FREE se duerme si no recibe visitas 15 min.
+Usa cron-job.org (gratis):
+
+1. Crea cuenta en https://cron-job.org
+2. Crea cron cada 10 MINUTOS:
+   URL: https://TU-APP.onrender.com/api/health
+   Metodo: GET
+
+3. Crea otro cron cada 10 MINUTOS:
+   URL: https://TU-APP.onrender.com/api/auto-bloqueo-externo?secret=TU_CRON_SECRET
+   Metodo: GET o POST
+
+Esto mantiene el servidor despierto Y ejecuta bloqueos automaticos.
+
+PASO 4 — VERIFICAR
+------------------
+Abre: https://TU-APP.onrender.com
+Deberias ver el panel con tu banca ($97.38, dia 3).
+
+PASO 5 — TU EXPERIMENTO EN LA NUBE
+------------------------------------
+- memoria_auditoria.json se copia al arrancar (banca guardada)
+- Bloqueo 1h antes de cada juego (automatico)
+- Stats + ML + BetMGM (sin IA / sin costo Google)
+- PC puede estar APAGADA
+
+NOTAS
+-----
+- Plan Free: puede tardar 30 seg en despertar la primera vez
+- Si redeployas, la banca en /var/data puede resetearse en Free
+  (para persistencia total usa plan Starter $7/mes + disco)
+- No subas odds_api_key.txt a GitHub; usa ODDS_API_KEY en Render
+
+================================================================================

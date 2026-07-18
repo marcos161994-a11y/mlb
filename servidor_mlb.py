@@ -8,6 +8,7 @@ Cada juego se evalúa y bloquea el stake configurado automáticamente 1 hora ANT
 from __future__ import annotations
 
 import json
+import os
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -27,12 +28,30 @@ from modelo_mlb import evaluar_juegos, calcular_stake_dinamico
 from parleys_betmgm import generar_parleys, seleccionar_mejor_parley, formatear_recomendacion_parley
 
 BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
+DATA_DIR.mkdir(parents=True, exist_ok=True)
 _lineas_meta_cache: dict = {"ok": False, "mensaje": "Sin cargar"}
 CONFIG_PATH = BASE_DIR / "config_experimento.json"
-MEMORIA_PATH = BASE_DIR / "memoria_auditoria.json"
+MEMORIA_PATH = DATA_DIR / "memoria_auditoria.json"
 
 MLB_SCHEDULE = "https://statsapi.mlb.com/api/v1/schedule"
 scheduler = BackgroundScheduler()
+
+
+def _inicializar_datos_persistencia() -> None:
+    """Copia memoria local a DATA_DIR en el primer arranque en la nube."""
+    if DATA_DIR.resolve() == BASE_DIR.resolve():
+        return
+    origen = BASE_DIR / "memoria_auditoria.json"
+    if origen.exists() and not MEMORIA_PATH.exists():
+        MEMORIA_PATH.write_text(origen.read_text(encoding="utf-8"), encoding="utf-8")
+        print(f"[CLOUD] Memoria copiada a {MEMORIA_PATH}")
+
+
+def _verificar_cron_secreto(secret: str | None) -> None:
+    esperado = os.environ.get("CRON_SECRET", "").strip()
+    if esperado and secret != esperado:
+        raise HTTPException(status_code=403, detail="Cron secret inválido")
 
 
 def cargar_config() -> dict:
@@ -74,7 +93,7 @@ def guardar_memoria(memoria: dict) -> None:
     with open(MEMORIA_PATH, "w", encoding="utf-8") as f:
         print(f"[GUARDAR] Guardando memoria. Capital: {memoria['capital']:.2f}, Día: {memoria['dia_actual']}")
         json.dump(memoria, f, indent=2, ensure_ascii=False)
-    js_path = BASE_DIR / "memoria_dashboard.js"
+    js_path = DATA_DIR / "memoria_dashboard.js"
     js_path.write_text(
         f"const datosMemoria = {json.dumps(memoria, ensure_ascii=False)};",
         encoding="utf-8",
@@ -838,7 +857,7 @@ def exportar_reporte(memoria: dict, dia: dict) -> None:
             "=" * 90,
         ]
     )
-    txt = BASE_DIR / f"reporte_dia_{dia['dia']}.txt"
+    txt = DATA_DIR / f"reporte_dia_{dia['dia']}.txt"
     txt.write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -898,6 +917,12 @@ def programar_tareas_background() -> None:
         id="liquidacion_periodica",
         replace_existing=True,
     )
+    scheduler.add_job(
+        lambda: bloquear_apuestas_del_dia(forzar=False),
+        CronTrigger(minute="*/5", timezone=tz),
+        id="bloqueo_periodico",
+        replace_existing=True,
+    )
     # Actualizar parleys cada minuto para datos en vivo
     scheduler.add_job(
         lambda: obtener_juegos_fecha(fecha_str()),
@@ -913,6 +938,7 @@ async def lifespan(app: FastAPI):
 
     programar_tareas_background()
     scheduler.start()
+    _inicializar_datos_persistencia()
 
     def en_fondo():
         print("[MOTOR] Iniciando motor autónomo de sincronización en segundo plano...")
@@ -1037,7 +1063,7 @@ def api_reiniciar():
     """Reinicia el experimento por completo, borrando historial previo."""
     cfg = cargar_config()
     # Borrar archivos de reporte antiguos
-    for f in BASE_DIR.glob("reporte_dia_*.txt"):
+    for f in DATA_DIR.glob("reporte_dia_*.txt"):
         f.unlink(missing_ok=True)
         
     memoria = {
@@ -1055,19 +1081,36 @@ def api_reiniciar():
     return {"ok": True, "memoria": memoria}
 
 
+@app.get("/api/health")
+def api_health():
+    """Ping para Render + cron externo (mantiene el servicio despierto en plan free)."""
+    return {
+        "ok": True,
+        "servicio": "quantum-mlb",
+        "capital": cargar_memoria().get("capital"),
+        "dia_actual": cargar_memoria().get("dia_actual"),
+        "hora": datetime.now(tz_experimento()).isoformat(),
+    }
+
+
+@app.get("/api/auto-bloqueo-externo")
 @app.post("/api/auto-bloqueo-externo")
-def api_auto_bloqueo_externo():
+def api_auto_bloqueo_externo(secret: str | None = None):
     """
-    Endpoint para servicios externos de cron (ej. cron-job.org).
-    Permite bloquear apuestas automáticamente aunque la PC esté apagada.
-    Este endpoint debe ser llamado cada 5-10 minutos.
+    Para cron-job.org u otro servicio externo (cada 5-10 min).
+    Opcional: ?secret=TU_CRON_SECRET (variable CRON_SECRET en Render).
     """
+    _verificar_cron_secreto(secret)
     try:
+        programar_bloqueos_por_juego()
         resultado = bloquear_apuestas_del_dia(forzar=False)
+        liquidar_todo(cargar_memoria())
+        memoria = cargar_memoria()
         return {
             "ok": True,
             "mensaje": "Auto-bloqueo ejecutado",
-            "resultado": resultado
+            "resultado": resultado,
+            "capital": memoria["capital"],
         }
     except Exception as e:
         return {"ok": False, "error": str(e)}

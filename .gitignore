@@ -1,5 +1,6 @@
 odds_api_key.txt
+openai_api_key.txt
+gcp_credentials.json
 __pycache__/
 *.pyc
 *.exe
-gcp_credentials.json

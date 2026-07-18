@@ -52,6 +52,8 @@ _streak_cache: dict[int, dict[int, int]] = {}
 _ia_insight_cache: dict[str, float] = {}
 _bullpen_fatigue_cache: dict[int, float] = {}
 
+_vertex_initialized = False
+
 # Factores de Estadio (1.0 es neutral, >1.0 favorece bateadores, <1.0 favorece pitchers)
 # Basado en tendencias históricas de la MLB - actualizados para 2024-2026
 PARK_FACTORS: dict[int, float] = {
@@ -86,8 +88,6 @@ PARK_FACTORS: dict[int, float] = {
     109: 1.05, # Arizona Diamondbacks (Chase Field) - Moderadamente ofensivo (domo)
     108: 1.00, # Los Angeles Angels (Angel Stadium) - Neutral
 }
-
-_vertex_initialized = False
 
 def obtener_ajuste_ia(equipo: str, rival: str, stats_e: dict, p_e: dict, p_r: dict, cfg: dict) -> float:
     """
