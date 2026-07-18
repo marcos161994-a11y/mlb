@@ -499,6 +499,25 @@ def edge_pct(prob_modelo: float, decimal: float) -> float:
     return round(prob_modelo - impl, 1)
 
 
+def cuota_desde_prob(prob: float) -> tuple[float, int]:
+    """Cuota justa según prob. del modelo (simulación sin mercado)."""
+    p = max(5.0, min(95.0, float(prob)))
+    dec = round(100.0 / p, 3)
+    dec = max(1.15, min(4.50, dec))
+    if dec >= 2.0:
+        amer = int(round((dec - 1) * 100))
+    else:
+        amer = int(round(-100 / (dec - 1)))
+    return dec, amer
+
+
+def _modo_solo_modelo(cfg: dict[str, Any]) -> bool:
+    estrategia = cfg.get("estrategia", {})
+    if cfg.get("modo_solo_modelo"):
+        return True
+    return not estrategia.get("requiere_betmgm", True)
+
+
 def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje: float = 0.0) -> dict[str, Any]:
     """Enriquece el juego con modelo, valor y si es apostable."""
     season = cfg["temporada_mlb"]
@@ -619,53 +638,82 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
     juego["implHome"] = prob_implicita(dec_home) if dec_home else None
 
     candidatos: list[dict[str, Any]] = []
-    
-    # Priorizar underdogs con valor si está activado
     preferir_underdogs = estrategia.get("preferir_underdogs", False)
-    
-    if dec_away and edge_away >= min_edge and prob_away >= min_prob:
-        es_underdog = es_underdog_con_valor(dec_away, prob_away, cfg)
-        bonus_prioridad = 2.0 if (preferir_underdogs and es_underdog) else 0.0
-        candidatos.append(
-            {
-                "pick": f"{juego['visitante']} ML",
-                "team": juego["visitante"],
-                "prob": prob_away,
-                "edge": edge_away + bonus_prioridad,
-                "edge_base": edge_away,
-                "odds": dec_away,
-                "american": juego.get("odds_away_american"),
-                "es_underdog": es_underdog,
-            }
-        )
-    if dec_home and edge_home >= min_edge and prob_home >= min_prob:
-        es_underdog = es_underdog_con_valor(dec_home, prob_home, cfg)
-        bonus_prioridad = 2.0 if (preferir_underdogs and es_underdog) else 0.0
-        candidatos.append(
-            {
-                "pick": f"{juego['home']} ML",
-                "team": juego["home"],
-                "prob": prob_home,
-                "edge": edge_home + bonus_prioridad,
-                "edge_base": edge_home,
-                "odds": dec_home,
-                "american": juego.get("odds_home_american"),
-                "es_underdog": es_underdog,
-            }
-        )
+    solo_modelo = _modo_solo_modelo(cfg)
+
+    if solo_modelo:
+        juego["lineas_fuente"] = "modelo"
+        for pick, prob in (
+            (f"{juego['visitante']} ML", prob_away),
+            (f"{juego['home']} ML", prob_home),
+        ):
+            if prob < min_prob:
+                continue
+            dec, amer = cuota_desde_prob(prob)
+            conf = round(prob - 50.0, 1)
+            bonus = 0.0
+            if preferir_underdogs and dec >= float(estrategia.get("min_cuota_underdog", 1.5)):
+                bonus = 2.0
+            candidatos.append(
+                {
+                    "pick": pick,
+                    "prob": prob,
+                    "edge": conf + bonus,
+                    "edge_base": conf,
+                    "odds": dec,
+                    "american": amer,
+                    "es_underdog": dec >= float(estrategia.get("min_cuota_underdog", 1.5)),
+                }
+            )
+    else:
+        if dec_away and edge_away >= min_edge and prob_away >= min_prob:
+            es_underdog = es_underdog_con_valor(dec_away, prob_away, cfg)
+            bonus_prioridad = 2.0 if (preferir_underdogs and es_underdog) else 0.0
+            candidatos.append(
+                {
+                    "pick": f"{juego['visitante']} ML",
+                    "team": juego["visitante"],
+                    "prob": prob_away,
+                    "edge": edge_away + bonus_prioridad,
+                    "edge_base": edge_away,
+                    "odds": dec_away,
+                    "american": juego.get("odds_away_american"),
+                    "es_underdog": es_underdog,
+                }
+            )
+        if dec_home and edge_home >= min_edge and prob_home >= min_prob:
+            es_underdog = es_underdog_con_valor(dec_home, prob_home, cfg)
+            bonus_prioridad = 2.0 if (preferir_underdogs and es_underdog) else 0.0
+            candidatos.append(
+                {
+                    "pick": f"{juego['home']} ML",
+                    "team": juego["home"],
+                    "prob": prob_home,
+                    "edge": edge_home + bonus_prioridad,
+                    "edge_base": edge_home,
+                    "odds": dec_home,
+                    "american": juego.get("odds_home_american"),
+                    "es_underdog": es_underdog,
+                }
+            )
 
     if candidatos:
         mejor = max(candidatos, key=lambda x: x["edge"])
         juego["pick"] = mejor["pick"]
         juego["odds"] = mejor["odds"]
         juego["odds_american"] = mejor["american"]
-        juego["edge"] = mejor["edge"]
+        juego["edge"] = mejor["edge_base"]
         juego["probPick"] = mejor["prob"]
         juego["apostable"] = True
-        juego["motivo_apuesta"] = (
-            f"Valor +{mejor['edge']:.1f}% vs BetMGM "
-            f"(modelo {mejor['prob']:.0f}% vs mercado {prob_implicita(mejor['odds']):.0f}%)"
-        )
+        if solo_modelo:
+            juego["motivo_apuesta"] = (
+                f"Modelo {mejor['prob']:.0f}% (solo stats+ML, sin BetMGM)"
+            )
+        else:
+            juego["motivo_apuesta"] = (
+                f"Valor +{mejor['edge']:.1f}% vs BetMGM "
+                f"(modelo {mejor['prob']:.0f}% vs mercado {prob_implicita(mejor['odds']):.0f}%)"
+            )
     else:
         # SIEMPRE hacer una predicción, aunque no sea apostable
         if prob_away >= prob_home:
@@ -682,8 +730,8 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             juego["odds_american"] = juego.get("odds_home_american", 150)
         
         juego["apostable"] = False
-        if not dec_away and not dec_home:
-            juego["motivo_apuesta"] = "Sin líneas BetMGM"
+        if solo_modelo or (not dec_away and not dec_home):
+            juego["motivo_apuesta"] = f"Prob. modelo bajo {min_prob}%"
         elif edge_away < min_edge and edge_home < min_edge:
             juego["motivo_apuesta"] = f"Sin valor (mínimo +{min_edge}% edge)"
         else:

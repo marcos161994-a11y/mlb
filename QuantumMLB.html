@@ -331,24 +331,35 @@ function pintarEstado(data) {
     roiEl.textContent = (roi >= 0 ? '+' : '') + roi.toFixed(2) + '%';
     roiEl.className = 'val ' + (roi >= 0 ? 'pos' : 'neg');
 
+    const cfg = data.config || {};
+    const estr = data.estrategia || {};
+    const soloModelo = cfg.modo_solo_modelo || estr.requiere_betmgm === false;
+    document.getElementById('modo-badge').textContent = soloModelo
+        ? 'SIMULACIÓN · Solo stats+ML'
+        : 'SIMULACIÓN · Líneas BetMGM';
+
     const mins = data.minutos_antes_juego || 60;
-    document.getElementById('proximo-bloqueo').textContent =
-        `Bloqueo automático: ${mins} min antes de cada juego (evalúa pick + BetMGM)`;
+    document.getElementById('proximo-bloqueo').textContent = soloModelo
+        ? `Bloqueo automático: ${mins} min antes de cada juego (pick por probabilidad del modelo)`
+        : `Bloqueo automático: ${mins} min antes de cada juego (evalúa pick + BetMGM)`;
 
     const ls = document.getElementById('lineas-status');
     const lin = data.lineas || {};
-    const estr = data.estrategia || {};
-    if (lin.ok) {
+    if (soloModelo) {
+        ls.style.color = '#00ff88';
+        ls.textContent = '✓ ' + (lin.mensaje || 'Modo solo modelo (sin Odds API)');
+    } else if (lin.ok) {
         ls.style.color = '#00ff88';
         ls.textContent = '✓ BetMGM · ' + (lin.mensaje || '');
     } else {
         ls.style.color = '#ffbc00';
         ls.textContent = '⚠ ' + (lin.mensaje || 'Sin líneas BetMGM');
     }
-    const fav = data.favorables_hoy ?? 0;
+    const fav = data.favorables_hoy ?? data.oportunidades_valor_hoy ?? 0;
     const maxP = estr.max_apuestas_dia || 5;
-    document.getElementById('favorables-hoy').textContent =
-        `Hoy: ${fav} pick(s) favorable(s) de máximo ${maxP} (edge ≥ +${estr.min_edge_pct || 5}%)`;
+    document.getElementById('favorables-hoy').textContent = soloModelo
+        ? `Hoy: ${fav} pick(s) favorable(s) de máximo ${maxP} (prob. modelo ≥ ${estr.min_prob_modelo || 52}%)`
+        : `Hoy: ${fav} pick(s) favorable(s) de máximo ${maxP} (edge ≥ +${estr.min_edge_pct || 5}%)`;
 
     const lista = document.getElementById('lista-historial');
     if (!m.dias.length) {

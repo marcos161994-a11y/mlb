@@ -379,7 +379,15 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
     print(f"[INFO] Se encontraron {len(juegos)} juegos. Procesando líneas...")
     
     if not solo_resultados:
-        juegos, _lineas_meta_cache = aplicar_lineas_a_juegos(juegos, cfg)
+        if cfg.get("modo_solo_modelo") or not cfg.get("estrategia", {}).get("requiere_betmgm", True):
+            _lineas_meta_cache = {
+                "ok": True,
+                "fuente": "modelo",
+                "mensaje": "Modo solo modelo (sin BetMGM / sin Odds API)",
+                "partidos": len(juegos),
+            }
+        else:
+            juegos, _lineas_meta_cache = aplicar_lineas_a_juegos(juegos, cfg)
         bias = calcular_bias_aprendizaje(memoria)
         juegos = evaluar_juegos(juegos, cfg, bias)
     else:
@@ -717,7 +725,7 @@ def bloquear_juego(game_id: str, forzar: bool = False) -> dict:
             "odds": juego["odds"],
             "odds_american": juego.get("odds_american"),
             "lineas_fuente": juego.get("lineas_fuente", "betmgm"),
-            "casa": "BetMGM",
+            "casa": "Modelo" if juego.get("lineas_fuente") == "modelo" else "BetMGM",
             "edge": juego.get("edge"),
             "probPick": juego.get("probPick"),
             "motivo_apuesta": juego.get("motivo_apuesta"),

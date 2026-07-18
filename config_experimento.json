@@ -36,7 +36,7 @@
 
     "min_prob_modelo": 54.0,
 
-    "requiere_betmgm": true,
+    "requiere_betmgm": false,
 
     "gestion_bankroll_dinamica": true,
 
@@ -59,6 +59,8 @@
   },
 
   "usar_ia": false,
+
+  "modo_solo_modelo": true,
 
   "usar_ml": true,
 
