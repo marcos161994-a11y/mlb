@@ -1081,6 +1081,43 @@ def api_reiniciar():
     return {"ok": True, "memoria": memoria}
 
 
+@app.get("/api/apuestas")
+def api_apuestas():
+    """Historial de apuestas por día (desde memoria_auditoria.json)."""
+    memoria = cargar_memoria()
+    dia = dia_operativo(memoria)
+    return {
+        "capital": memoria.get("capital"),
+        "dia_actual": memoria.get("dia_actual"),
+        "fecha_hoy": fecha_str(),
+        "apuestas_hoy": dia.get("apuestas", []) if dia else [],
+        "dias": memoria.get("dias", []),
+    }
+
+
+@app.get("/api/predicciones")
+def api_predicciones():
+    """Predicciones del modelo (apostadas y no apostadas) del día actual e historial."""
+    memoria = cargar_memoria()
+    dia = dia_operativo(memoria)
+    return {
+        "capital": memoria.get("capital"),
+        "dia_actual": memoria.get("dia_actual"),
+        "fecha_hoy": fecha_str(),
+        "predicciones_hoy": dia.get("predicciones", []) if dia else [],
+        "apuestas_hoy": dia.get("apuestas", []) if dia else [],
+        "historial": [
+            {
+                "dia": d.get("dia"),
+                "fecha": d.get("fecha"),
+                "predicciones": d.get("predicciones", []),
+                "apuestas": d.get("apuestas", []),
+            }
+            for d in memoria.get("dias", [])
+        ],
+    }
+
+
 @app.get("/api/health")
 def api_health():
     """Ping para Render + cron externo (mantiene el servicio despierto en plan free)."""
