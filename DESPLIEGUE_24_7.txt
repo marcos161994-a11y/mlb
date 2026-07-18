@@ -39,11 +39,11 @@ Usa cron-job.org (gratis):
 
 1. Crea cuenta en https://cron-job.org
 2. Crea cron cada 10 MINUTOS:
-   URL: https://TU-APP.onrender.com/api/health
+   URL: https://mlb-1-en7i.onrender.com/api/health
    Metodo: GET
 
 3. Crea otro cron cada 10 MINUTOS:
-   URL: https://TU-APP.onrender.com/api/auto-bloqueo-externo?secret=TU_CRON_SECRET
+   URL: https://mlb-1-en7i.onrender.com/api/auto-bloqueo-externo?secret=TU_CRON_SECRET
    Metodo: GET o POST
 
 Esto mantiene el servidor despierto Y ejecuta bloqueos automaticos.
