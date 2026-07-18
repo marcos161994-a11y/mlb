@@ -153,6 +153,72 @@
             margin-right: 8px;
             object-fit: contain;
         }
+        .picks-hero {
+            background: linear-gradient(135deg, rgba(0,255,136,0.12), rgba(0,242,255,0.06));
+            border: 2px solid var(--green);
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 20px;
+        }
+        .picks-hero h2 {
+            margin: 0 0 4px;
+            font-size: 1.1rem;
+            color: var(--green);
+        }
+        .picks-hero .sub {
+            font-size: 0.8rem;
+            color: var(--muted);
+            margin-bottom: 14px;
+        }
+        .pick-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            background: rgba(0,0,0,0.35);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin-bottom: 8px;
+        }
+        .pick-row.apostar { border-color: var(--green); box-shadow: 0 0 10px rgba(0,255,136,0.12); }
+        .pick-row.hecho { border-color: var(--gold); opacity: 0.9; }
+        .pick-row.no { opacity: 0.65; border-style: dashed; }
+        .pick-equipo {
+            font-size: 1.05rem;
+            font-weight: bold;
+            color: var(--green);
+        }
+        .pick-meta { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+        .pick-prob {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: var(--cyan);
+            text-align: right;
+            min-width: 56px;
+        }
+        .pick-badge {
+            display: inline-block;
+            font-size: 0.65rem;
+            font-weight: bold;
+            padding: 3px 8px;
+            border-radius: 4px;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+        .pick-badge.bet { background: var(--green); color: #000; }
+        .pick-badge.wait { background: var(--gold); color: #000; }
+        .pick-badge.skip { background: #334; color: #aaa; }
+        .ganador-tag {
+            display: inline-block;
+            background: var(--green);
+            color: #000;
+            font-size: 0.65rem;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 6px;
+        }
     </style>
 </head>
 <body>
@@ -179,6 +245,12 @@
     Máximo <strong>5 apuestas/día</strong>. Hora Puerto Rico.
 </div>
 <p id="favorables-hoy" style="text-align:center;color:var(--green);font-size:0.9rem;margin:-8px 0 16px;"></p>
+
+<div class="picks-hero" id="picks-hero">
+    <h2>🎯 ¿A quién apostarle hoy?</h2>
+    <p class="sub" id="picks-sub">Cargando picks del modelo...</p>
+    <div id="lista-picks-hoy"></div>
+</div>
 
 <div class="stats-row">
     <div class="stat-box"><div class="label">P/L Hoy</div><div class="val" id="pl-hoy">$0.00</div></div>
@@ -282,6 +354,7 @@ async function cargarEstado() {
         if (!stateRes.ok) throw new Error('Servidor respondió ' + stateRes.status);
         const state = await stateRes.json();
         pintarEstado(state);
+        pintarPicksHoy(state.games || [], state);
         pintarJuegos(state.games || []);
     } catch (e) {
         contenedor.innerHTML =
@@ -355,6 +428,17 @@ function pintarEstado(data) {
         ls.style.color = '#ffbc00';
         ls.textContent = '⚠ ' + (lin.mensaje || 'Sin líneas BetMGM');
     }
+    const aviso = document.getElementById('aviso-real');
+    if (soloModelo) {
+        aviso.innerHTML = '<strong>Modo solo modelo:</strong> abajo ves <strong>quién gana según stats+ML</strong>. ' +
+            'Los picks en verde (≥ ' + (estr.min_prob_modelo || 58) + '%) son los que el sistema apostaría. ' +
+            'Bloqueo automático <strong>1 h antes</strong> de cada juego.';
+    } else {
+        aviso.innerHTML = '<strong>Estrategia:</strong> <strong>1 hora antes</strong> de cada juego se evalúa todo ' +
+            '(pitchers, stats, BetMGM) y se apuesta solo con <strong>valor</strong> (borde verde). ' +
+            'Máximo <strong>' + (estr.max_apuestas_dia || 5) + ' apuestas/día</strong>.';
+    }
+
     const fav = data.favorables_hoy ?? data.oportunidades_valor_hoy ?? 0;
     const maxP = estr.max_apuestas_dia || 5;
     document.getElementById('favorables-hoy').textContent = soloModelo
@@ -411,6 +495,87 @@ function pintarEstado(data) {
     
     // Cargar y mostrar predicciones
     pintarPredicciones(m);
+}
+
+function nombrePick(pick) {
+    return (pick || '').replace(/\s*ML\s*$/i, '').trim();
+}
+
+function pintarPicksHoy(juegos, data) {
+    const lista = document.getElementById('lista-picks-hoy');
+    const sub = document.getElementById('picks-sub');
+    const estr = data.estrategia || {};
+    const minProb = estr.min_prob_modelo || 58;
+    const maxP = estr.max_apuestas_dia || 8;
+
+    const vistos = new Set();
+    const unicos = [];
+    for (const j of juegos) {
+        if (vistos.has(j.id)) continue;
+        vistos.add(j.id);
+        unicos.push(j);
+    }
+
+    const apostables = unicos
+        .filter(j => j.apostable && (j.probPick || 0) >= minProb)
+        .sort((a, b) => (b.probPick || 0) - (a.probPick || 0))
+        .slice(0, maxP);
+
+    const yaApostados = unicos.filter(j =>
+        j.estado_apuesta && j.estado_apuesta !== 'sin_bloquear'
+    );
+
+    if (!unicos.length) {
+        sub.textContent = 'No hay juegos MLB hoy.';
+        lista.innerHTML = '';
+        return;
+    }
+
+    sub.textContent = apostables.length
+        ? `El modelo recomienda ${apostables.length} pick(s) con ≥ ${minProb}% de confianza (máx. ${maxP}/día).`
+        : `Ningún juego supera ${minProb}% hoy. Revisa abajo las predicciones por partido.`;
+
+    let html = '';
+
+    if (apostables.length) {
+        html += '<div style="font-size:0.75rem;color:var(--green);margin-bottom:8px;font-weight:bold;">✅ APOSTAR A ESTOS</div>';
+        apostables.forEach((j, i) => {
+            const eq = nombrePick(j.pick);
+            const hecho = j.estado_apuesta === 'pendiente' || j.estado_apuesta === 'ganada' || j.estado_apuesta === 'perdida';
+            const badge = hecho
+                ? (j.estado_apuesta === 'pendiente' ? '<span class="pick-badge wait">APOSTADO</span>'
+                    : (j.estado_apuesta === 'ganada' ? '<span class="pick-badge bet">GANÓ</span>'
+                        : '<span class="pick-badge skip">PERDIÓ</span>'))
+                : '<span class="pick-badge bet">RECOMENDADO</span>';
+            html += `<div class="pick-row apostar ${hecho ? 'hecho' : ''}">
+                <div>
+                    <div class="pick-equipo">${i + 1}. ${eq} ${badge}</div>
+                    <div class="pick-meta">${j.visitante} @ ${j.home} · ${j.hora_inicio_txt || '—'} · ${j.estado || ''}</div>
+                </div>
+                <div class="pick-prob">${(j.probPick || 0).toFixed(0)}%</div>
+            </div>`;
+        });
+    }
+
+    const otros = unicos
+        .filter(j => !j.apostable && (j.probPick || 0) > 0)
+        .sort((a, b) => (b.probPick || 0) - (a.probPick || 0))
+        .slice(0, 5);
+
+    if (otros.length) {
+        html += '<div style="font-size:0.75rem;color:var(--muted);margin:14px 0 8px;font-weight:bold;">👁 Predicción (no apostar — bajo mínimo o fuera del top)</div>';
+        otros.forEach(j => {
+            html += `<div class="pick-row no">
+                <div>
+                    <div class="pick-equipo" style="color:var(--muted)">${nombrePick(j.pick)}</div>
+                    <div class="pick-meta">${j.visitante} @ ${j.home} · ${(j.motivo_apuesta || '').slice(0, 55)}</div>
+                </div>
+                <div class="pick-prob" style="color:var(--muted)">${(j.probPick || 0).toFixed(0)}%</div>
+            </div>`;
+        });
+    }
+
+    lista.innerHTML = html || '<p style="color:var(--muted);margin:0">Sin picks claros todavía. Actualiza en unos minutos.</p>';
 }
 
 function pintarPredicciones(memoria) {
@@ -530,8 +695,11 @@ function pintarJuegos(juegos) {
         let cls = j.estado_apuesta === 'ganada' ? 'ganada' : (j.estado_apuesta === 'perdida' ? 'perdida' : '');
         cls += j.apostable ? ' apostable' : ' no-apostable';
         const tag = j.apostable
-            ? `<span class="tag-apostar">APOSTAR +${(j.edge||0).toFixed(1)}%</span>`
+            ? `<span class="tag-apostar">APOSTAR · ${(j.probPick||0).toFixed(0)}%</span>`
             : `<span class="tag-skip">NO APOSTAR</span>`;
+        const eqGana = nombrePick(j.pick);
+        const awayWin = j.pick && j.pick.indexOf(j.visitante) >= 0;
+        const homeWin = j.pick && j.pick.indexOf(j.home) >= 0;
         let apuestaTxt = j.motivo_apuesta || 'Espera evaluación 1h antes';
         if (j.estado_apuesta === 'sin_bloquear' && j.hora_bloqueo_txt) {
             apuestaTxt = `Auto-bloqueo ~${j.hora_bloqueo_txt} (juego ${j.hora_inicio_txt})`;
@@ -550,27 +718,27 @@ function pintarJuegos(juegos) {
             <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
                 <div style="display:flex;align-items:center">
                     <img src="${j.logoAway}" class="team-logo" onerror="this.style.display='none'">
-                    <span>${j.visitante}</span>
+                    <span>${j.visitante}${awayWin ? '<span class="ganador-tag">GANA</span>' : ''}</span>
                 </div>
-                <b>${j.scoreAway}</b>
+                <b>${j.scoreAway ?? '—'}</b>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
                 <div style="display:flex;align-items:center">
                     <img src="${j.logoHome}" class="team-logo" onerror="this.style.display='none'">
-                    <span>${j.home}</span>
+                    <span>${j.home}${homeWin ? '<span class="ganador-tag">GANA</span>' : ''}</span>
                 </div>
-                <b>${j.scoreHome}</b>
+                <b>${j.scoreHome ?? '—'}</b>
             </div>
             <div class="pick-box" style="font-size:0.85rem">
-                <div style="color:#8899aa;margin-bottom:6px">
-                    <b style="color:#00f2ff">BetMGM ML</b><br>
-                    ${j.visitante}: ${fmtAmer(j.odds_away_american)} (${j.odds_away_decimal || '—'})<br>
-                    ${j.home}: ${fmtAmer(j.odds_home_american)} (${j.odds_home_decimal || '—'})
+                <div style="font-size:0.7rem;color:var(--muted);margin-bottom:6px">PICK DEL MODELO</div>
+                <b style="font-size:1rem;color:var(--green)">→ ${eqGana || '—'}</b>
+                <div style="font-size:0.8rem;margin-top:6px">
+                    Confianza: <b style="color:var(--cyan)">${j.probPick != null ? j.probPick.toFixed(1) + '%' : '—'}</b>
+                    · Cuota simulada: ${j.odds || '—'}
                 </div>
-                <span style="font-size:0.75rem;color:var(--muted)">
-                    Modelo ${j.probAway||'?'}% / ${j.probHome||'?'}% · Mercado ${j.implAway||'?'}% / ${j.implHome||'?'}%
-                </span><br>
-                <b>${j.pick || '—'} @ ${j.odds || '—'} ${j.odds_american != null ? '(' + fmtAmer(j.odds_american) + ')' : ''}</b>
+                <div style="font-size:0.75rem;color:#8899aa;margin-top:6px">
+                    Modelo ${j.probAway||'?'}% / ${j.probHome||'?'}% (visitante / local)
+                </div>
                 <div style="font-size:0.7rem;color:#8899aa;margin-top:4px">${j.motivo_apuesta || ''}</div>
             </div>
             <div class="estado-apuesta ${j.estado_apuesta||''}">${apuestaTxt}</div>

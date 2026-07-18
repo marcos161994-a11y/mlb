@@ -1051,6 +1051,48 @@ def api_state():
     return construir_estado_completo(liquidar=True)
 
 
+@app.get("/api/picks-hoy")
+def api_picks_hoy():
+    """Lista clara de picks recomendados para apostar hoy."""
+    estado = construir_estado_completo()
+    cfg = estado.get("config", {})
+    estr = estado.get("estrategia", {})
+    min_prob = float(estr.get("min_prob_modelo", 58))
+    max_dia = int(estr.get("max_apuestas_dia", 8))
+    vistos: set[str] = set()
+    juegos = []
+    for g in estado.get("games", []):
+        if g.get("id") in vistos:
+            continue
+        vistos.add(g["id"])
+        juegos.append(g)
+    apostables = sorted(
+        [g for g in juegos if g.get("apostable") and (g.get("probPick") or 0) >= min_prob],
+        key=lambda x: x.get("probPick", 0),
+        reverse=True,
+    )[:max_dia]
+    return {
+        "fecha": estado.get("fecha_hoy"),
+        "min_prob_modelo": min_prob,
+        "modo_solo_modelo": cfg.get("modo_solo_modelo", False),
+        "total_apostables": len(apostables),
+        "picks": [
+            {
+                "rank": i + 1,
+                "equipo": (g.get("pick") or "").replace(" ML", ""),
+                "pick": g.get("pick"),
+                "prob": g.get("probPick"),
+                "partido": f"{g.get('visitante')} @ {g.get('home')}",
+                "hora": g.get("hora_inicio_txt"),
+                "estado_juego": g.get("estado"),
+                "estado_apuesta": g.get("estado_apuesta"),
+                "motivo": g.get("motivo_apuesta"),
+            }
+            for i, g in enumerate(apostables)
+        ],
+    }
+
+
 @app.get("/api/live-data")
 def api_live_data():
     estado = construir_estado_completo()
