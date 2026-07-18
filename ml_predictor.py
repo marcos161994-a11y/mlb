@@ -11,12 +11,94 @@ from typing import Dict, Any, List, Optional
 import pickle
 import os
 from datetime import datetime
+from pathlib import Path
 
 # Caché del modelo entrenado
 _modelo_rf: Optional[RandomForestClassifier] = None
 _scaler: Optional[StandardScaler] = None
-_modelo_path = "modelo_rf_mlb.pkl"
-_scaler_path = "scaler_rf_mlb.pkl"
+BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
+DATA_DIR.mkdir(parents=True, exist_ok=True)
+
+FEATURE_COLUMNS = [
+    "era_pitcher",
+    "whip_pitcher",
+    "k9_pitcher",
+    "woba_equipo",
+    "ops_equipo",
+    "win_pct_equipo",
+    "es_local",
+    "park_factor",
+    "fatiga_bullpen",
+    "matchup_zurdo_diestro",
+    "edge_estadistico",
+    "bb9_pitcher",
+    "hr9_pitcher",
+    "racha_equipo",
+    "diferencia_run",
+    "vs_pitcher_hand",
+]
+
+
+def _modelo_path() -> Path:
+    return DATA_DIR / "modelo_rf_mlb.pkl"
+
+
+def _scaler_path() -> Path:
+    return DATA_DIR / "scaler_rf_mlb.pkl"
+
+
+def _features_vector(features: Dict[str, Any]) -> np.ndarray:
+    return np.array([[features.get(col, 0) for col in FEATURE_COLUMNS]])
+
+
+def _features_desde_registro(reg: Dict[str, Any]) -> Dict[str, Any]:
+    """Aproxima features ML desde un registro de apuesta/predicción liquidada."""
+    prob = float(reg.get("probPick") or 50) / 100.0
+    edge = float(reg.get("edge") or 0)
+    pick = reg.get("pick") or ""
+    home = reg.get("home") or ""
+    es_local = 1.0 if home and home in pick else 0.0
+    return {
+        "era_pitcher": 4.5 - edge / 200.0,
+        "whip_pitcher": 1.35 - edge / 400.0,
+        "k9_pitcher": 7.5 + edge / 50.0,
+        "woba_equipo": 0.300 + prob * 0.05,
+        "ops_equipo": 0.680 + prob * 0.06,
+        "win_pct_equipo": prob,
+        "es_local": es_local,
+        "park_factor": 1.0,
+        "fatiga_bullpen": 0.3,
+        "matchup_zurdo_diestro": 0.0,
+        "edge_estadistico": edge,
+        "bb9_pitcher": 3.0,
+        "hr9_pitcher": 1.0,
+        "racha_equipo": prob,
+        "diferencia_run": (prob - 0.5) * 20,
+        "vs_pitcher_hand": 0.0,
+    }
+
+
+def cargar_datos_entrenamiento_desde_memoria(memoria: dict) -> List[Dict[str, Any]]:
+    """Apuestas y predicciones liquidadas → dataset para Random Forest."""
+    datos: List[Dict[str, Any]] = []
+    for dia in memoria.get("dias", []):
+        for apuesta in dia.get("apuestas", []):
+            if apuesta.get("estado") not in ("ganada", "perdida"):
+                continue
+            fila = _features_desde_registro(apuesta)
+            fila["resultado"] = 1 if apuesta["estado"] == "ganada" else 0
+            datos.append(fila)
+        for pred in dia.get("predicciones", []):
+            if pred.get("estado") != "liquidado" or pred.get("resultado") not in (
+                "acierto",
+                "fallo",
+            ):
+                continue
+            fila = _features_desde_registro(pred)
+            fila["resultado"] = 1 if pred["resultado"] == "acierto" else 0
+            datos.append(fila)
+    return datos
 
 
 def entrenar_modelo_rf(datos_historicos: List[Dict[str, Any]]) -> RandomForestClassifier:
@@ -35,113 +117,125 @@ def entrenar_modelo_rf(datos_historicos: List[Dict[str, Any]]) -> RandomForestCl
         print("[ML] No hay datos históricos para entrenar")
         return None
     
-    # Convertir a DataFrame
     df = pd.DataFrame(datos_historicos)
-    
-    # Features para el modelo
-    feature_columns = [
-        'era_pitcher', 'whip_pitcher', 'k9_pitcher',
-        'woba_equipo', 'ops_equipo', 'win_pct_equipo',
-        'es_local', 'park_factor', 'fatiga_bullpen',
-        'matchup_zurdo_diestro', 'edge_estadistico',
-        'bb9_pitcher', 'hr9_pitcher', 'racha_equipo',
-        'diferencia_run', 'vs_pitcher_hand'
-    ]
-    
-    # Filtrar solo columnas que existen
-    available_features = [col for col in feature_columns if col in df.columns]
-    
-    if len(available_features) < 5:
-        print(f"[ML] Insuficientes features disponibles: {available_features}")
-        return None
-    
-    X = df[available_features].fillna(0)
-    y = df.get('resultado', 0)  # 1 = ganada, 0 = perdida
-    
-    # Escalar features
+    X = df[FEATURE_COLUMNS].fillna(0)
+    y = df["resultado"]
+
     _scaler = StandardScaler()
     X_scaled = _scaler.fit_transform(X)
-    
-    # Entrenar Random Forest
+
     _modelo_rf = RandomForestClassifier(
         n_estimators=100,
         max_depth=10,
         min_samples_split=5,
         random_state=42,
-        n_jobs=-1
+        n_jobs=-1,
     )
-    
     _modelo_rf.fit(X_scaled, y)
-    
-    # Guardar modelo y scaler
-    with open(_modelo_path, 'wb') as f:
+
+    with open(_modelo_path(), "wb") as f:
         pickle.dump(_modelo_rf, f)
-    with open(_scaler_path, 'wb') as f:
+    with open(_scaler_path(), "wb") as f:
         pickle.dump(_scaler, f)
-    
+    if DATA_DIR.resolve() != BASE_DIR.resolve():
+        try:
+            (BASE_DIR / "modelo_rf_mlb.pkl").write_bytes(_modelo_path().read_bytes())
+            (BASE_DIR / "scaler_rf_mlb.pkl").write_bytes(_scaler_path().read_bytes())
+        except OSError:
+            pass
+
+    acc = _modelo_rf.score(X_scaled, y)
     print(f"[ML] Modelo Random Forest entrenado con {len(datos_historicos)} muestras")
-    print(f"[ML] Features usadas: {available_features}")
-    print(f"[ML] Accuracy en entrenamiento: {_modelo_rf.score(X_scaled, y):.3f}")
-    
+    print(f"[ML] Features usadas: {len(FEATURE_COLUMNS)}")
+    print(f"[ML] Accuracy en entrenamiento: {acc:.3f}")
     return _modelo_rf
+
+
+def auto_entrenar_ml(memoria: dict, min_muestras: int = 5) -> dict:
+    """Reentrena el Random Forest cuando hay nuevas liquidaciones."""
+    meta_prev = memoria.get("ml_meta") or {}
+    datos = cargar_datos_entrenamiento_desde_memoria(memoria)
+    meta: Dict[str, Any] = {
+        "ok": False,
+        "muestras": len(datos),
+        "mensaje": "",
+        "accuracy_train": meta_prev.get("accuracy_train"),
+        "ultimo_entreno": meta_prev.get("ultimo_entreno"),
+    }
+    if len(datos) < min_muestras:
+        meta["mensaje"] = f"Esperando más datos ({len(datos)}/{min_muestras} muestras)"
+        return meta
+    if meta_prev.get("muestras") == len(datos) and _modelo_path().exists():
+        meta["ok"] = True
+        meta["mensaje"] = "Modelo ya entrenado con el historial actual"
+        return meta
+
+    modelo = entrenar_modelo_rf(datos)
+    if not modelo or _scaler is None:
+        meta["mensaje"] = "Error al entrenar"
+        return meta
+
+    X = pd.DataFrame(datos)[FEATURE_COLUMNS].fillna(0)
+    acc = float(modelo.score(_scaler.transform(X), pd.DataFrame(datos)["resultado"]))
+    meta.update(
+        {
+            "ok": True,
+            "muestras": len(datos),
+            "accuracy_train": round(acc, 3),
+            "ultimo_entreno": datetime.now().isoformat(),
+            "mensaje": f"Reentrenado con {len(datos)} muestras (acc {acc:.1%})",
+        }
+    )
+    memoria["ml_meta"] = meta
+    print(f"[ML] Auto-entrenamiento: {meta['mensaje']}")
+    return meta
 
 
 def cargar_modelo_rf() -> Optional[RandomForestClassifier]:
     """Carga el modelo entrenado desde disco."""
     global _modelo_rf, _scaler
-    
+
     if _modelo_rf is not None:
         return _modelo_rf
-    
-    if os.path.exists(_modelo_path) and os.path.exists(_scaler_path):
+
+    mp, sp = _modelo_path(), _scaler_path()
+    if not mp.exists() and DATA_DIR.resolve() != BASE_DIR.resolve():
+        repo_m, repo_s = BASE_DIR / "modelo_rf_mlb.pkl", BASE_DIR / "scaler_rf_mlb.pkl"
+        if repo_m.exists() and repo_s.exists():
+            try:
+                mp.write_bytes(repo_m.read_bytes())
+                sp.write_bytes(repo_s.read_bytes())
+            except OSError:
+                pass
+
+    if mp.exists() and sp.exists():
         try:
-            with open(_modelo_path, 'rb') as f:
+            with open(mp, "rb") as f:
                 _modelo_rf = pickle.load(f)
-            with open(_scaler_path, 'rb') as f:
+            with open(sp, "rb") as f:
                 _scaler = pickle.load(f)
             print("[ML] Modelo Random Forest cargado desde disco")
             return _modelo_rf
         except Exception as e:
             print(f"[ML] Error cargando modelo: {e}")
-    
+
     return None
 
 
 def predecir_rf(features: Dict[str, Any]) -> Optional[float]:
     """
     Predice probabilidad de victoria usando Random Forest.
-    
-    Args:
-        features: Diccionario con features del juego
-        
-    Returns:
-        Probabilidad de victoria (0-100) o None si no hay modelo
     """
     global _modelo_rf, _scaler
-    
-    # Cargar modelo si no está cargado
+
     if _modelo_rf is None:
         cargar_modelo_rf()
-    
+
     if _modelo_rf is None or _scaler is None:
         return None
-    
-    # Extraer features en el orden correcto
-    feature_order = [
-        'era_pitcher', 'whip_pitcher', 'k9_pitcher',
-        'woba_equipo', 'ops_equipo', 'win_pct_equipo',
-        'es_local', 'park_factor', 'fatiga_bullpen',
-        'matchup_zurdo_diestro', 'edge_estadistico',
-        'bb9_pitcher', 'hr9_pitcher', 'racha_equipo',
-        'diferencia_run', 'vs_pitcher_hand'
-    ]
-    
-    X = np.array([[features.get(col, 0) for col in feature_order]])
-    X_scaled = _scaler.transform(X)
-    
-    # Obtener probabilidad de clase positiva (ganada)
+
+    X_scaled = _scaler.transform(_features_vector(features))
     prob = _modelo_rf.predict_proba(X_scaled)[0, 1] * 100
-    
     return round(prob, 1)
 
 

@@ -298,5 +298,12 @@
       "predicciones": [],
       "resumen": {}
     }
-  ]
+  ],
+  "ml_meta": {
+    "ok": true,
+    "muestras": 12,
+    "mensaje": "Reentrenado con 12 muestras (acc 91.7%)",
+    "accuracy_train": 0.917,
+    "ultimo_entreno": "2026-07-17T23:15:50.473749"
+  }
 }

@@ -25,6 +25,7 @@ from fastapi.responses import FileResponse
 from lineas_betmgm import aplicar_lineas_a_juegos
 from lineas_betmgm import normalizar_nombre_equipo as norm_nombre
 from modelo_mlb import evaluar_juegos, calcular_stake_dinamico
+from ml_predictor import auto_entrenar_ml
 from parleys_betmgm import generar_parleys, seleccionar_mejor_parley, formatear_recomendacion_parley
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -46,6 +47,12 @@ def _inicializar_datos_persistencia() -> None:
     if origen.exists() and not MEMORIA_PATH.exists():
         MEMORIA_PATH.write_text(origen.read_text(encoding="utf-8"), encoding="utf-8")
         print(f"[CLOUD] Memoria copiada a {MEMORIA_PATH}")
+    for nombre in ("modelo_rf_mlb.pkl", "scaler_rf_mlb.pkl"):
+        src = BASE_DIR / nombre
+        dst = DATA_DIR / nombre
+        if src.exists() and not dst.exists():
+            dst.write_bytes(src.read_bytes())
+            print(f"[CLOUD] Modelo ML copiado a {dst}")
 
 
 def _verificar_cron_secreto(secret: str | None) -> None:
@@ -585,6 +592,7 @@ def liquidar_dia(memoria: dict, dia: dict) -> int:
         print(f"[DEBUG LIQ DIA] Se realizaron {cambios} cambios para el día {dia['fecha']}. Recalculando y guardando.")
         recalcular_capital(memoria)
         actualizar_resumen(memoria)
+        auto_entrenar_ml(memoria)
         guardar_memoria(memoria)
     return cambios
 
@@ -592,10 +600,10 @@ def liquidar_dia(memoria: dict, dia: dict) -> int:
 def liquidar_todo(memoria: dict) -> int:
     total = 0
     for dia in memoria["dias"]:
-        # SOLO pedir datos a la API si el día realmente tiene algo que liquidar
-        if any(a["estado"] == "pendiente" for a in dia.get("apuestas", [])):
+        ap_p = any(a["estado"] == "pendiente" for a in dia.get("apuestas", []))
+        pr_p = any(p.get("estado") == "pendiente" for p in dia.get("predicciones", []))
+        if ap_p or pr_p:
             total += liquidar_dia(memoria, dia)
-        
     return total
 
 
@@ -1034,6 +1042,7 @@ def construir_estado_completo(liquidar: bool = False) -> dict:
         "fecha_hoy": fecha_str(),
         "games": juegos,
         "stats_modelo": stats_modelo,
+        "ml_meta": memoria.get("ml_meta"),
     }
 
 
