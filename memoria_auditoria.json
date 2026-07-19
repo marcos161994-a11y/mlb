@@ -114,7 +114,8 @@
         "profit_dia": 2.5,
         "capital_arriesgado": 0,
         "total_apostado": 20.0
-      }
+      },
+      "predicciones": []
     },
     {
       "dia": 2,
@@ -163,7 +164,9 @@
           "resultado": "acierto",
           "predicho_en": "2026-07-09T20:59:34.593850-04:00",
           "marcador_final": "Athletics 1 - Detroit Tigers 4",
-          "liquidado_en": "2026-07-09T21:09:33.648732-04:00"
+          "liquidado_en": "2026-07-09T21:09:33.648732-04:00",
+          "profit": 0.05,
+          "stake_virtual": 5.0
         },
         {
           "game_id": "823846",
@@ -182,7 +185,9 @@
           "resultado": "acierto",
           "predicho_en": "2026-07-09T20:59:38.430501-04:00",
           "marcador_final": "Seattle Mariners 4 - Miami Marlins 8",
-          "liquidado_en": "2026-07-09T21:09:33.648923-04:00"
+          "liquidado_en": "2026-07-09T21:09:33.648923-04:00",
+          "profit": 0.05,
+          "stake_virtual": 5.0
         },
         {
           "game_id": "824494",
@@ -201,7 +206,9 @@
           "resultado": "fallo",
           "predicho_en": "2026-07-09T20:59:42.433061-04:00",
           "marcador_final": "Philadelphia Phillies 1 - Cincinnati Reds 0",
-          "liquidado_en": "2026-07-09T21:09:33.649066-04:00"
+          "liquidado_en": "2026-07-09T21:09:33.649066-04:00",
+          "profit": -5.0,
+          "stake_virtual": 5.0
         },
         {
           "game_id": "823034",
@@ -220,7 +227,9 @@
           "resultado": "acierto",
           "predicho_en": "2026-07-09T20:59:46.201990-04:00",
           "marcador_final": "Milwaukee Brewers 6 - St. Louis Cardinals 1",
-          "liquidado_en": "2026-07-09T21:09:33.649210-04:00"
+          "liquidado_en": "2026-07-09T21:09:33.649210-04:00",
+          "profit": 0.1,
+          "stake_virtual": 5.0
         },
         {
           "game_id": "822877",
@@ -239,7 +248,9 @@
           "resultado": "acierto",
           "predicho_en": "2026-07-09T20:59:49.994825-04:00",
           "marcador_final": "Los Angeles Angels 1 - Texas Rangers 2",
-          "liquidado_en": "2026-07-09T21:09:33.649345-04:00"
+          "liquidado_en": "2026-07-09T21:09:33.649345-04:00",
+          "profit": 1.82,
+          "stake_virtual": 5.0
         },
         {
           "game_id": "823277",
@@ -258,7 +269,9 @@
           "resultado": "fallo",
           "predicho_en": "2026-07-09T20:59:53.788523-04:00",
           "marcador_final": "Arizona Diamondbacks 3 - San Diego Padres 1",
-          "liquidado_en": "2026-07-09T23:51:36.251549-04:00"
+          "liquidado_en": "2026-07-09T23:51:36.251549-04:00",
+          "profit": -5.0,
+          "stake_virtual": 5.0
         },
         {
           "game_id": "823201",
@@ -277,7 +290,9 @@
           "resultado": "acierto",
           "predicho_en": "2026-07-09T20:59:58.117393-04:00",
           "marcador_final": "Colorado Rockies 2 - San Francisco Giants 4",
-          "liquidado_en": "2026-07-09T23:51:36.251746-04:00"
+          "liquidado_en": "2026-07-09T23:51:36.251746-04:00",
+          "profit": 3.84,
+          "stake_virtual": 5.0
         }
       ],
       "resumen": {
@@ -296,7 +311,15 @@
       "bloqueado_en": null,
       "apuestas": [],
       "predicciones": [],
-      "resumen": {}
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
     },
     {
       "dia": 4,
@@ -304,7 +327,15 @@
       "bloqueado_en": null,
       "apuestas": [],
       "predicciones": [],
-      "resumen": {}
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
     },
     {
       "dia": 5,
@@ -312,7 +343,15 @@
       "bloqueado_en": null,
       "apuestas": [],
       "predicciones": [],
-      "resumen": {}
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
     },
     {
       "dia": 6,
@@ -320,7 +359,15 @@
       "bloqueado_en": null,
       "apuestas": [],
       "predicciones": [],
-      "resumen": {}
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
     },
     {
       "dia": 7,
@@ -328,7 +375,15 @@
       "bloqueado_en": null,
       "apuestas": [],
       "predicciones": [],
-      "resumen": {}
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
     },
     {
       "dia": 8,
@@ -336,7 +391,15 @@
       "bloqueado_en": null,
       "apuestas": [],
       "predicciones": [],
-      "resumen": {}
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
     },
     {
       "dia": 9,
@@ -344,7 +407,15 @@
       "bloqueado_en": null,
       "apuestas": [],
       "predicciones": [],
-      "resumen": {}
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
     },
     {
       "dia": 10,
@@ -352,7 +423,15 @@
       "bloqueado_en": null,
       "apuestas": [],
       "predicciones": [],
-      "resumen": {}
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
     },
     {
       "dia": 11,
@@ -360,7 +439,15 @@
       "bloqueado_en": null,
       "apuestas": [],
       "predicciones": [],
-      "resumen": {}
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
     }
   ],
   "ml_meta": {

@@ -643,19 +643,38 @@ def liquidar_dia(memoria: dict, dia: dict) -> int:
                 f"{juego['home']} {juego.get('scoreHome')}"
             )
 
+            stake_v = float(
+                prediccion.get("stake_virtual")
+                or stake_virtual_prediccion(memoria)
+            )
+            odds = float(prediccion.get("odds") or 1.5)
+            if resultado == "acierto":
+                profit_v = round(stake_v * (odds - 1), 2)
+            else:
+                profit_v = round(-stake_v, 2)
+
             if (
                 prediccion.get("estado") == "liquidado"
                 and prediccion.get("resultado") == resultado
                 and prediccion.get("marcador_final") == marcador
+                and prediccion.get("profit") == profit_v
             ):
                 continue
 
             prediccion["estado"] = "liquidado"
             prediccion["resultado"] = resultado
             prediccion["marcador_final"] = marcador
+            prediccion["stake_virtual"] = stake_v
+            prediccion["profit"] = profit_v
             prediccion["liquidado_en"] = datetime.now(tz_experimento()).isoformat()
+            # Marcar si ese juego también tuvo apuesta con dinero
+            if any(a.get("game_id") == prediccion.get("game_id") for a in apuestas):
+                prediccion["con_dinero"] = True
             cambios += 1
-            print(f"[PREDICCIÓN] {prediccion['pick']} -> {resultado.upper()} ({marcador})")
+            print(
+                f"[PREDICCIÓN] {prediccion['pick']} -> {resultado.upper()} "
+                f"({marcador}) P/L papel {profit_v:+.2f}"
+            )
     
     if cambios:
         print(f"[DEBUG LIQ DIA] Se realizaron {cambios} cambios para el día {dia['fecha']}. Recalculando y guardando.")
@@ -743,8 +762,169 @@ def avanzar_dia_automatico() -> None:
         print(f"[SISTEMA] Error al sincronizar el día automáticamente: {e}")
 
 
+def stake_virtual_prediccion(memoria: dict | None = None) -> float:
+    """Unidad de P/L en papel para TODAS las predicciones (no mueve la banca)."""
+    memoria = memoria if memoria is not None else cargar_memoria()
+    cfg = cargar_config()
+    return float(memoria.get("stake_por_juego") or cfg.get("stake_por_juego") or 5.0)
+
+
+def guardar_prediccion(
+    dia: dict,
+    juego: dict,
+    *,
+    con_dinero: bool = False,
+    stake_virtual: float | None = None,
+) -> bool:
+    """Guarda/actualiza predicción de un juego. No mueve capital."""
+    pick = (juego.get("pick") or "").strip()
+    if not pick:
+        return False
+    if "predicciones" not in dia:
+        dia["predicciones"] = []
+
+    stake_v = float(stake_virtual if stake_virtual is not None else stake_virtual_prediccion())
+    ahora = datetime.now(tz_experimento()).isoformat()
+    existente = next((p for p in dia["predicciones"] if p.get("game_id") == juego["id"]), None)
+    if existente:
+        # No cambiar pick ya congelado; solo marcar si hubo dinero
+        if con_dinero:
+            existente["con_dinero"] = True
+        if existente.get("stake_virtual") is None:
+            existente["stake_virtual"] = stake_v
+        return False
+
+    dia["predicciones"].append(
+        {
+            "game_id": juego["id"],
+            "visitante": juego["visitante"],
+            "home": juego["home"],
+            "pick": juego["pick"],
+            "odds": juego.get("odds", 1.5),
+            "odds_american": juego.get("odds_american", 150),
+            "edge": juego.get("edge", 0),
+            "probPick": juego.get("probPick", 50),
+            "motivo_apuesta": juego.get("motivo_apuesta", ""),
+            "pitcherAway": juego.get("pitcherAway"),
+            "pitcherHome": juego.get("pitcherHome"),
+            "inicio_juego": juego.get("inicio_juego"),
+            "estado": "pendiente",
+            "resultado": None,
+            "profit": None,
+            "stake_virtual": stake_v,
+            "con_dinero": bool(con_dinero),
+            "predicho_en": ahora,
+        }
+    )
+    return True
+
+
+def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
+    """
+    Registra un pick en PAPEL para todos los juegos PROGRAMADOS del día
+    (cuando ya pasó la hora de bloqueo). La apuesta con dinero es aparte.
+    """
+    memoria = cargar_memoria()
+    hoy = fecha_str()
+    ahora = ahora_simulado()
+    dia = asegurar_dia_operativo(memoria, hoy)
+    juegos = obtener_juegos_fecha(hoy)
+    stake_v = stake_virtual_prediccion(memoria)
+    nuevas = 0
+
+    for juego in juegos:
+        if juego.get("estado") != "PROGRAMADO":
+            continue
+        if not (juego.get("pick") or "").strip():
+            continue
+        try:
+            hb = datetime.fromisoformat(juego["hora_bloqueo"])
+        except Exception:
+            continue
+        if not forzar and hb > ahora:
+            continue
+        if guardar_prediccion(dia, juego, con_dinero=False, stake_virtual=stake_v):
+            nuevas += 1
+
+    if nuevas:
+        guardar_memoria(memoria)
+    return {"ok": True, "predicciones_nuevas": nuevas, "fecha": hoy}
+
+
+def resumen_predicciones_y_dinero(memoria: dict) -> dict:
+    """Totales separados: predicciones (papel) vs apuestas con dinero.
+
+    Devuelve también `_mutado` (interno) si rellenó profit faltante.
+    """
+    pred_aciertos = pred_fallos = 0
+    pred_ganado = pred_perdido = 0.0
+    din_ganadas = din_perdidas = 0
+    din_ganado = din_perdido = 0.0
+    mutado = False
+
+    for dia in memoria.get("dias", []):
+        for p in dia.get("predicciones", []):
+            if p.get("estado") != "liquidado":
+                continue
+            profit = p.get("profit")
+            if profit is None and p.get("resultado") in ("acierto", "fallo"):
+                stake_v = float(p.get("stake_virtual") or 5.0)
+                odds = float(p.get("odds") or 1.5)
+                profit = (
+                    round(stake_v * (odds - 1), 2)
+                    if p["resultado"] == "acierto"
+                    else round(-stake_v, 2)
+                )
+                p["profit"] = profit
+                p["stake_virtual"] = stake_v
+                mutado = True
+            profit = float(profit or 0)
+            if p.get("resultado") == "acierto":
+                pred_aciertos += 1
+                if profit > 0:
+                    pred_ganado += profit
+            elif p.get("resultado") == "fallo":
+                pred_fallos += 1
+                if profit < 0:
+                    pred_perdido += abs(profit)
+
+        for a in dia.get("apuestas", []):
+            if a.get("estado") not in ("ganada", "perdida"):
+                continue
+            profit = float(a.get("profit") or 0)
+            if a["estado"] == "ganada":
+                din_ganadas += 1
+                din_ganado += max(profit, 0)
+            else:
+                din_perdidas += 1
+                din_perdido += abs(min(profit, 0))
+
+    pred_total = pred_aciertos + pred_fallos
+    din_total = din_ganadas + din_perdidas
+    return {
+        "predicciones": {
+            "total": pred_total,
+            "aciertos": pred_aciertos,
+            "fallos": pred_fallos,
+            "win_rate": round(100 * pred_aciertos / pred_total, 1) if pred_total else 0,
+            "ganado": round(pred_ganado, 2),
+            "perdido": round(pred_perdido, 2),
+            "neto": round(pred_ganado - pred_perdido, 2),
+        },
+        "dinero": {
+            "total": din_total,
+            "ganadas": din_ganadas,
+            "perdidas": din_perdidas,
+            "win_rate": round(100 * din_ganadas / din_total, 1) if din_total else 0,
+            "ganado": round(din_ganado, 2),
+            "perdido": round(din_perdido, 2),
+            "neto": round(din_ganado - din_perdido, 2),
+        },
+    }
+
+
 def bloquear_juego(game_id: str, forzar: bool = False) -> dict:
-    """Evalúa 1h antes del partido y bloquea el stake configurado si hay valor vs BetMGM."""
+    """1h antes: siempre registra predicción; si es apostable, también apuesta con dinero."""
     memoria = cargar_memoria()
     cfg = cargar_config()
     estr = cfg.get("estrategia", {})
@@ -779,40 +959,18 @@ def bloquear_juego(game_id: str, forzar: bool = False) -> dict:
             "motivo": f"El juego ya está {juego['estado']}; solo se apuesta antes del inicio.",
         }
 
+    stake_v = stake_virtual_prediccion(memoria)
+    # SIEMPRE guardar predicción en papel para este juego
+    guardar_prediccion(dia, juego, con_dinero=False, stake_virtual=stake_v)
+
     if not juego.get("apostable"):
         print(f"[DEBUG BLOQUEO] Juego {game_id} no apostable. Motivo: {juego.get('motivo_apuesta', 'Desconocido')}")
-        
-        # Guardar predicción aunque no sea apostable
-        ahora = datetime.now(tz_experimento())
-        if "predicciones" not in dia:
-            dia["predicciones"] = []
-        
-        # Guardar predicción solo si hay pick válido (no vacío / pitchers TBD)
-        pick_ok = bool((juego.get("pick") or "").strip())
-        if pick_ok and not any(p["game_id"] == game_id for p in dia["predicciones"]):
-            dia["predicciones"].append({
-                "game_id": juego["id"],
-                "visitante": juego["visitante"],
-                "home": juego["home"],
-                "pick": juego["pick"],
-                "odds": juego.get("odds", 1.5),
-                "odds_american": juego.get("odds_american", 150),
-                "edge": juego.get("edge", 0),
-                "probPick": juego.get("probPick", 50),
-                "motivo_apuesta": juego.get("motivo_apuesta", "Sin valor"),
-                "pitcherAway": juego.get("pitcherAway"),
-                "pitcherHome": juego.get("pitcherHome"),
-                "inicio_juego": juego.get("inicio_juego"),
-                "estado": "pendiente",
-                "resultado": None,  # acierto/fallo
-                "predicho_en": ahora.isoformat(),
-            })
-            guardar_memoria(memoria)
-        
+        guardar_memoria(memoria)
         return {
             "ok": False,
             "motivo": juego.get("motivo_apuesta", "Sin valor vs BetMGM ahora."),
             "juego": juego["visitante"] + " vs " + juego["home"],
+            "prediccion_guardada": True,
         }
 
     # Calcular stake dinámico si está activado
@@ -823,9 +981,11 @@ def bloquear_juego(game_id: str, forzar: bool = False) -> dict:
     riesgo = sum(a["stake"] for a in dia["apuestas"] if a["estado"] == "pendiente")
     print(f"[DEBUG BLOQUEO] Juego {game_id} - Riesgo: {riesgo}, Stake: {stake}, Capital: {memoria['capital']}")
     if riesgo + stake > memoria["capital"]:
+        guardar_memoria(memoria)
         return {
             "ok": False,
             "motivo": f"Banca insuficiente (${memoria['capital']:.2f}).",
+            "prediccion_guardada": True,
         }
 
     ahora = datetime.now(tz_experimento())
@@ -852,6 +1012,7 @@ def bloquear_juego(game_id: str, forzar: bool = False) -> dict:
             "bloqueado_en": ahora.isoformat(),
         }
     )
+    guardar_prediccion(dia, juego, con_dinero=True, stake_virtual=stake_v)
     if not dia.get("bloqueado_en"):
         dia["bloqueado_en"] = ahora.isoformat()
 
@@ -876,8 +1037,9 @@ def bloquear_juego(game_id: str, forzar: bool = False) -> dict:
 
 
 def bloquear_apuestas_del_dia(forzar: bool = False) -> dict:
-    """Reprograma bloqueos 1h antes de cada juego y procesa los vencidos."""
+    """Predicción en todos los juegos + apuesta con dinero solo en apostables."""
     programar_bloqueos_por_juego()
+    pred_res = registrar_predicciones_del_dia(forzar=forzar)
     memoria = cargar_memoria()
     hoy = fecha_str()
     ahora = ahora_simulado()
@@ -892,6 +1054,9 @@ def bloquear_apuestas_del_dia(forzar: bool = False) -> dict:
         ya_pasó = hb <= ahora or forzar
         if not ya_pasó:
             continue
+        # Solo intentar apuesta con dinero si el modelo lo marca apostable
+        if not juego.get("apostable"):
+            continue
         res = bloquear_juego(juego["id"], forzar=forzar)
         if res.get("ok"):
             nuevas += 1
@@ -902,6 +1067,7 @@ def bloquear_apuestas_del_dia(forzar: bool = False) -> dict:
     return {
         "ok": True,
         "apuestas_nuevas": nuevas,
+        "predicciones_nuevas": pred_res.get("predicciones_nuevas", 0),
         "omitidos": omitidos,
         "programados": sum(
             1 for j in juegos if j["estado"] != "FINALIZADO"
@@ -1127,6 +1293,13 @@ def construir_estado_completo(liquidar: bool = False) -> dict:
     # Asegurar que el día actual existe en memoria para que los contadores no salgan en 0
     asegurar_dia_operativo(memoria)
 
+    # Registrar picks en papel de todos los juegos listos (sin mover banca)
+    try:
+        registrar_predicciones_del_dia(forzar=False)
+        memoria = cargar_memoria()
+    except Exception as e:
+        print(f"Aviso predicciones: {e}")
+
     if liquidar:
         try:
             liquidar_todo(memoria)
@@ -1143,7 +1316,6 @@ def construir_estado_completo(liquidar: bool = False) -> dict:
     cfg = cargar_config()
     memoria["stake_por_juego"] = cfg.get("stake_por_juego", 3.0)
     dia = dia_operativo(memoria)
-    ahora = ahora_simulado()
     juegos = []
     try:
         juegos = fusionar_apuestas_con_juegos(
@@ -1154,6 +1326,12 @@ def construir_estado_completo(liquidar: bool = False) -> dict:
 
     # Calcular estadísticas del modelo
     stats_modelo = calcular_estadisticas_modelo(memoria)
+    pl_split = resumen_predicciones_y_dinero(memoria)
+    # Persistir P/L papel recalculado en predicciones antiguas
+    try:
+        guardar_memoria(memoria)
+    except Exception:
+        pass
     
     return {
         "memoria": memoria,
@@ -1168,6 +1346,7 @@ def construir_estado_completo(liquidar: bool = False) -> dict:
         "fecha_hoy": fecha_str(),
         "games": juegos,
         "stats_modelo": stats_modelo,
+        "pl_split": pl_split,
         "ml_meta": memoria.get("ml_meta"),
     }
 
@@ -1329,6 +1508,7 @@ def api_auto_bloqueo_externo(secret: str | None = None):
     try:
         sincronizar_experimento_a_hoy()
         programar_bloqueos_por_juego()
+        registrar_predicciones_del_dia(forzar=False)
         resultado = bloquear_apuestas_del_dia(forzar=False)
         liquidar_todo(cargar_memoria())
         memoria = cargar_memoria()

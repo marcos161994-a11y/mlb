@@ -290,7 +290,7 @@
 
 <div class="historial" id="historial-predicciones">
     <h3 onclick="togglePredicciones()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
-        <span>🎯 Historial de Predicciones (Aciertos/Fallos)</span>
+        <span>Predicciones de todos los juegos · aparte apuestas con dinero</span>
         <span id="predicciones-toggle" style="font-size:1.2rem;">▼</span>
     </h3>
     <div id="lista-predicciones" style="display:none;"><p style="color:var(--muted)">Sin predicciones registradas aún.</p></div>
@@ -387,12 +387,17 @@ function pintarEstado(data) {
         `Disponible: $${(b.disponible ?? m.capital).toFixed(2)} · ` +
         `En juego hoy: $${(b.en_juego_hoy || 0).toFixed(2)} · $${m.stake_por_juego} por partido`;
     
-    // Mostrar estadísticas del modelo
-    const stats = data.stats_modelo || { total_predicciones: 0, aciertos: 0, fallos: 0, win_rate: 0 };
+    // Stats: predicciones (papel) vs dinero real
+    const split = data.pl_split || {};
+    const pred = split.predicciones || {};
+    const din = split.dinero || {};
     const statsContent = document.getElementById('stats-modelo-content');
-    if (stats.total_predicciones > 0) {
-        statsContent.textContent = 
-            `${stats.total_predicciones} predicciones · ${stats.aciertos} aciertos · ${stats.fallos} fallos · ${stats.win_rate}% win rate`;
+    if ((pred.total || 0) > 0 || (din.total || 0) > 0) {
+        statsContent.innerHTML =
+            `Predicciones: ${pred.aciertos||0}✓ / ${pred.fallos||0}✗ (${pred.win_rate||0}%) · ` +
+            `Ganado $${(pred.ganado||0).toFixed(2)} · Perdido $${(pred.perdido||0).toFixed(2)} · Neto $${(pred.neto||0).toFixed(2)}` +
+            `<br>Dinero: ${din.ganadas||0}✓ / ${din.perdidas||0}✗ · ` +
+            `Ganado $${(din.ganado||0).toFixed(2)} · Perdido $${(din.perdido||0).toFixed(2)} · Neto $${(din.neto||0).toFixed(2)}`;
     } else {
         statsContent.textContent = 'Sin datos suficientes';
     }
@@ -502,8 +507,8 @@ function pintarEstado(data) {
     }
     lista.innerHTML = html;
     
-    // Cargar y mostrar predicciones
-    pintarPredicciones(m);
+    // Cargar y mostrar predicciones (todas) + dinero aparte
+    pintarPredicciones(m, data.pl_split);
 }
 
 function nombrePick(pick) {
@@ -540,27 +545,34 @@ function pintarPicksHoy(juegos, data) {
         return;
     }
 
-    sub.textContent = apostables.length
-        ? `El modelo recomienda ${apostables.length} pick(s) con ≥ ${minProb}% de confianza (máx. ${maxP}/día).`
-        : `Ningún juego supera ${minProb}% hoy. Revisa abajo las predicciones por partido.`;
+    const idsDinero = new Set(apostables.map(j => j.id).concat(
+        yaApostados.map(j => j.id)
+    ));
+
+    sub.textContent = `${unicos.length} juegos hoy · ${apostables.length || yaApostados.length} con dinero (máx. ${maxP}, ≥${minProb}%) · el resto solo predicción.`;
 
     let html = '';
 
-    if (apostables.length) {
-        html += '<div style="font-size:0.75rem;color:var(--green);margin-bottom:8px;font-weight:bold;">✅ APOSTAR A ESTOS</div>';
-        apostables.forEach((j, i) => {
+    const conDinero = unicos
+        .filter(j => idsDinero.has(j.id) || (j.apostable && (j.probPick || 0) >= minProb))
+        .sort((a, b) => (b.probPick || 0) - (a.probPick || 0))
+        .slice(0, maxP);
+
+    if (conDinero.length) {
+        html += '<div style="font-size:0.75rem;color:var(--green);margin-bottom:8px;font-weight:bold;">💰 APOSTAR CON DINERO</div>';
+        conDinero.forEach((j, i) => {
             const eq = nombrePick(j.pick);
             const hecho = j.estado_apuesta === 'pendiente' || j.estado_apuesta === 'ganada' || j.estado_apuesta === 'perdida';
             const fin = j.estado === 'FINALIZADO';
-            let badge = '<span class="pick-badge bet">RECOMENDADO</span>';
+            let badge = '<span class="pick-badge bet">DINERO</span>';
             if (j.estado_apuesta === 'pendiente' && j.estado === 'EN VIVO') {
                 badge = '<span class="pick-badge wait">EN JUEGO</span>';
             } else if (j.estado_apuesta === 'pendiente') {
                 badge = '<span class="pick-badge wait">APOSTADO</span>';
             } else if (fin && j.estado_apuesta === 'ganada') {
-                badge = '<span class="pick-badge bet">GANÓ</span>';
+                badge = '<span class="pick-badge bet">GANÓ $</span>';
             } else if (fin && j.estado_apuesta === 'perdida') {
-                badge = '<span class="pick-badge skip">PERDIÓ</span>';
+                badge = '<span class="pick-badge skip">PERDIÓ $</span>';
             } else if (j.estado === 'EN VIVO') {
                 badge = '<span class="pick-badge wait">EN JUEGO</span>';
             }
@@ -574,18 +586,17 @@ function pintarPicksHoy(juegos, data) {
         });
     }
 
-    const otros = unicos
-        .filter(j => !j.apostable && (j.probPick || 0) > 0)
-        .sort((a, b) => (b.probPick || 0) - (a.probPick || 0))
-        .slice(0, 5);
+    const soloPred = unicos
+        .filter(j => (j.probPick || 0) > 0 && !conDinero.some(c => c.id === j.id))
+        .sort((a, b) => (b.probPick || 0) - (a.probPick || 0));
 
-    if (otros.length) {
-        html += '<div style="font-size:0.75rem;color:var(--muted);margin:14px 0 8px;font-weight:bold;">👁 Predicción (no apostar — bajo mínimo o fuera del top)</div>';
-        otros.forEach(j => {
+    if (soloPred.length) {
+        html += '<div style="font-size:0.75rem;color:var(--muted);margin:14px 0 8px;font-weight:bold;">Predicción en papel (todos los demás — sin dinero)</div>';
+        soloPred.forEach(j => {
             html += `<div class="pick-row no">
                 <div>
                     <div class="pick-equipo" style="color:var(--muted)">${nombrePick(j.pick)}</div>
-                    <div class="pick-meta">${j.visitante} @ ${j.home} · ${(j.motivo_apuesta || '').slice(0, 55)}</div>
+                    <div class="pick-meta">${j.visitante} @ ${j.home} · ${j.hora_inicio_txt || ''} · ${(j.motivo_apuesta || '').slice(0, 50)}</div>
                 </div>
                 <div class="pick-prob" style="color:var(--muted)">${(j.probPick || 0).toFixed(0)}%</div>
             </div>`;
@@ -595,110 +606,133 @@ function pintarPicksHoy(juegos, data) {
     lista.innerHTML = html || '<p style="color:var(--muted);margin:0">Sin picks claros todavía. Actualiza en unos minutos.</p>';
 }
 
-function pintarPredicciones(memoria) {
+function pintarPredicciones(memoria, plSplit) {
     const lista = document.getElementById('lista-predicciones');
     if (!memoria.dias || memoria.dias.length === 0) {
         lista.innerHTML = '<p style="color:var(--muted)">Sin predicciones registradas aún.</p>';
         return;
     }
-    
-    let html = '';
-    let totalAciertos = 0;
-    let totalFallos = 0;
-    
+
+    const pred = (plSplit && plSplit.predicciones) || {};
+    const din = (plSplit && plSplit.dinero) || {};
+
+    let html = `<div style="margin-bottom:12px;padding:10px;background:rgba(0,242,255,0.08);border-radius:8px;border:1px solid rgba(0,242,255,0.25);font-size:0.85rem;line-height:1.55">
+        <div><b>Todas las predicciones (papel):</b> ${pred.aciertos||0} ganadas · ${pred.fallos||0} perdidas ·
+        Ganado <span style="color:var(--green)">$${(pred.ganado||0).toFixed(2)}</span> ·
+        Perdido <span style="color:var(--red)">$${(pred.perdido||0).toFixed(2)}</span> ·
+        Neto <b>$${(pred.neto||0).toFixed(2)}</b></div>
+        <div style="margin-top:4px"><b>Solo con dinero (banca real):</b> ${din.ganadas||0} ganadas · ${din.perdidas||0} perdidas ·
+        Ganado <span style="color:var(--green)">$${(din.ganado||0).toFixed(2)}</span> ·
+        Perdido <span style="color:var(--red)">$${(din.perdido||0).toFixed(2)}</span> ·
+        Neto <b>$${(din.neto||0).toFixed(2)}</b></div>
+        <div style="margin-top:6px;color:var(--muted);font-size:0.75rem">💰 = apuesta con dinero · sin badge = solo predicción</div>
+    </div>`;
+
+    let hayFilas = false;
     for (const d of memoria.dias) {
-        // Combinar apuestas y predicciones
-        const todasPredicciones = [];
-        
-        // Agregar apuestas (son predicciones que se apostaron)
-        if (d.apuestas) {
-            d.apuestas.forEach(a => {
-                todasPredicciones.push({
-                    pick: a.pick,
-                    odds: a.odds,
-                    probPick: a.probPick,
-                    estado: a.estado,
-                    resultado: a.estado === 'ganada' ? 'acierto' : (a.estado === 'perdida' ? 'fallo' : null),
-                    marcador_final: a.marcador_final,
-                    es_apuesta: true
-                });
+        const porJuego = new Map();
+        (d.predicciones || []).forEach(p => {
+            porJuego.set(p.game_id, {
+                game_id: p.game_id,
+                visitante: p.visitante,
+                home: p.home,
+                pick: p.pick,
+                odds: p.odds,
+                probPick: p.probPick,
+                resultado: p.resultado,
+                estado: p.estado,
+                profit_papel: p.profit,
+                marcador: p.marcador_final,
+                con_dinero: !!p.con_dinero,
+                stake_dinero: null,
+                profit_dinero: null,
             });
-        }
-        
-        // Agregar predicciones no apostadas
-        if (d.predicciones) {
-            d.predicciones.forEach(p => {
-                todasPredicciones.push({
-                    pick: p.pick,
-                    odds: p.odds,
-                    probPick: p.probPick,
-                    estado: p.estado,
-                    resultado: p.resultado,
-                    marcador_final: p.marcador_final,
-                    es_apuesta: false
-                });
-            });
-        }
-        
-        if (todasPredicciones.length === 0) continue;
-        
-        html += `<div style="margin-bottom:16px;padding:12px;background:var(--panel);border-radius:8px;border:1px solid var(--border);">
+        });
+        (d.apuestas || []).forEach(a => {
+            const row = porJuego.get(a.game_id) || {
+                game_id: a.game_id,
+                visitante: a.visitante,
+                home: a.home,
+                pick: a.pick,
+                odds: a.odds,
+                probPick: a.probPick,
+                resultado: a.estado === 'ganada' ? 'acierto' : (a.estado === 'perdida' ? 'fallo' : null),
+                estado: a.estado,
+                profit_papel: null,
+                marcador: a.marcador_final,
+                con_dinero: true,
+            };
+            row.con_dinero = true;
+            row.stake_dinero = a.stake;
+            row.profit_dinero = a.profit;
+            if (!row.resultado && (a.estado === 'ganada' || a.estado === 'perdida')) {
+                row.resultado = a.estado === 'ganada' ? 'acierto' : 'fallo';
+            }
+            if (!row.marcador) row.marcador = a.marcador_final;
+            porJuego.set(a.game_id, row);
+        });
+
+        const filas = [...porJuego.values()];
+        if (!filas.length) continue;
+        hayFilas = true;
+
+        const gPapel = filas.filter(f => f.resultado === 'acierto').length;
+        const pPapel = filas.filter(f => f.resultado === 'fallo').length;
+        const netoPapel = filas.reduce((s, f) => s + (Number(f.profit_papel) || 0), 0);
+        const netoDin = filas.reduce((s, f) => s + (f.con_dinero ? (Number(f.profit_dinero) || 0) : 0), 0);
+
+        html += `<div style="margin-bottom:14px;padding:12px;background:var(--panel);border-radius:8px;border:1px solid var(--border);">
             <div style="font-weight:bold;color:var(--cyan);margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;" onclick="togglePredDia('${d.dia}')">
-                <span>Día ${d.dia} (${d.fecha})</span>
+                <span>Día ${d.dia} (${d.fecha}) — ${filas.length} juegos · pred ${gPapel}✓/${pPapel}✗ · papel ${fmtMoney(netoPapel)} · dinero ${fmtMoney(netoDin)}</span>
                 <span id="pred-toggle-${d.dia}" style="font-size:1rem;">▼</span>
-            </div>`;
-        
-        html += `<div id="pred-content-${d.dia}" style="display:none;padding:8px 0 12px 10px;">`;
-        
-        const aciertos = todasPredicciones.filter(p => p.resultado === 'acierto');
-        const fallos = todasPredicciones.filter(p => p.resultado === 'fallo');
-        const pendientes = todasPredicciones.filter(p => p.resultado === null);
-        
-        totalAciertos += aciertos.length;
-        totalFallos += fallos.length;
-        
-        if (aciertos.length > 0) {
-            html += `<div style="font-size:0.8rem;color:var(--green);margin-bottom:6px;">
-                <b>✓ Aciertos (${aciertos.length}):</b><br>`;
-            aciertos.forEach(p => {
-                const badge = p.es_apuesta ? '💰' : '🎯';
-                html += `${badge} ${p.pick} @ ${p.odds.toFixed(2)} (${p.probPick?.toFixed(1)}%) - ${p.marcador_final || 'Pendiente'}<br>`;
-            });
-            html += `</div>`;
-        }
-        
-        if (fallos.length > 0) {
-            html += `<div style="font-size:0.8rem;color:var(--red);margin-bottom:6px;">
-                <b>✗ Fallos (${fallos.length}):</b><br>`;
-            fallos.forEach(p => {
-                const badge = p.es_apuesta ? '💰' : '🎯';
-                html += `${badge} ${p.pick} @ ${p.odds.toFixed(2)} (${p.probPick?.toFixed(1)}%) - ${p.marcador_final || 'Pendiente'}<br>`;
-            });
-            html += `</div>`;
-        }
-        
-        if (pendientes.length > 0) {
-            html += `<div style="font-size:0.8rem;color:var(--muted);">
-                <b>⏳ Pendientes (${pendientes.length}):</b><br>`;
-            pendientes.forEach(p => {
-                const badge = p.es_apuesta ? '💰' : '🎯';
-                html += `${badge} ${p.pick} @ ${p.odds.toFixed(2)} (${p.probPick?.toFixed(1)}%)<br>`;
-            });
-            html += `</div>`;
-        }
-        
-        html += `</div></div>`;
+            </div>
+            <div id="pred-content-${d.dia}" style="display:none;overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.78rem;min-width:640px">
+                <thead>
+                    <tr style="color:var(--muted);text-align:left;border-bottom:1px solid var(--border)">
+                        <th style="padding:6px 4px">Partido</th>
+                        <th style="padding:6px 4px">Pick</th>
+                        <th style="padding:6px 4px">%</th>
+                        <th style="padding:6px 4px">Resultado</th>
+                        <th style="padding:6px 4px">P/L papel</th>
+                        <th style="padding:6px 4px">Dinero</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+        filas.sort((a, b) => (b.probPick || 0) - (a.probPick || 0));
+        filas.forEach(f => {
+            let resTxt = '⏳ pendiente';
+            let resColor = 'var(--muted)';
+            if (f.resultado === 'acierto') { resTxt = '✓ ganó'; resColor = 'var(--green)'; }
+            else if (f.resultado === 'fallo') { resTxt = '✗ perdió'; resColor = 'var(--red)'; }
+            const plPapel = f.profit_papel != null ? fmtMoney(f.profit_papel) : '—';
+            const plColor = (f.profit_papel || 0) > 0 ? 'var(--green)' : ((f.profit_papel || 0) < 0 ? 'var(--red)' : 'var(--muted)');
+            let dinTxt = '—';
+            let dinColor = 'var(--muted)';
+            if (f.con_dinero) {
+                if (f.profit_dinero != null) {
+                    dinTxt = `💰 ${fmtMoney(f.profit_dinero)}`;
+                    dinColor = f.profit_dinero >= 0 ? 'var(--green)' : 'var(--red)';
+                } else {
+                    dinTxt = `💰 $${(f.stake_dinero || 0).toFixed(2)} en juego`;
+                    dinColor = 'var(--gold)';
+                }
+            }
+            html += `<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+                <td style="padding:7px 4px">${f.visitante || '?'} @ ${f.home || '?'}</td>
+                <td style="padding:7px 4px;color:var(--cyan)">${nombrePick(f.pick) || '—'}</td>
+                <td style="padding:7px 4px">${f.probPick != null ? Number(f.probPick).toFixed(0) + '%' : '—'}</td>
+                <td style="padding:7px 4px;color:${resColor}">${resTxt}</td>
+                <td style="padding:7px 4px;color:${plColor}">${plPapel}</td>
+                <td style="padding:7px 4px;color:${dinColor}">${dinTxt}</td>
+            </tr>`;
+        });
+
+        html += `</tbody></table></div></div>`;
     }
-    
-    // Resumen total
-    const total = totalAciertos + totalFallos;
-    const winRate = total > 0 ? ((totalAciertos / total) * 100).toFixed(1) : 0;
-    
-    html = `<div style="margin-bottom:12px;padding:10px;background:rgba(0,242,255,0.1);border-radius:8px;border:1px solid rgba(0,242,255,0.3);">
-        <b>📊 Resumen Total:</b> ${total} predicciones · ${totalAciertos} aciertos · ${totalFallos} fallos · ${winRate}% win rate
-    </div>` + html;
-    
-    lista.innerHTML = html || '<p style="color:var(--muted)">Sin predicciones registradas aún.</p>';
+
+    lista.innerHTML = hayFilas ? html : '<p style="color:var(--muted)">Sin predicciones registradas aún.</p>';
 }
 
 function pintarJuegos(juegos) {
@@ -783,7 +817,7 @@ async function bloquearHoy() {
             const msg = typeof d.detail === 'string' ? d.detail : (d.detail?.[0]?.msg || d.motivo || 'Error');
             throw new Error(msg);
         }
-        toast(`Bloqueadas: ${d.apuestas_nuevas} · Programados hoy: ${d.programados || '?'}`);
+        toast(`Dinero: ${d.apuestas_nuevas || 0} · Predicciones: ${d.predicciones_nuevas || 0} · Programados: ${d.programados || '?'}`);
         cargarEstado();
     } catch (e) {
         toast(e.message || 'No se pudo bloquear');
