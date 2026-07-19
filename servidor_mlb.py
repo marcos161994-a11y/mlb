@@ -120,27 +120,26 @@ def ahora_simulado() -> datetime:
 
 
 def hoy_local() -> date:
-    memoria = cargar_memoria()
-    # Usar la fecha del día actual del experimento para que el dashboard sea consistente
-    dia = dia_operativo(memoria)
-    # Si el experimento está activo, respetamos la fecha de la memoria
-    if memoria.get("experimento_activo") and dia and dia.get("fecha"):
-        try:
-            fecha_mem = datetime.strptime(dia["fecha"], "%Y-%m-%d").date()
-            return fecha_mem
-        except Exception: pass
-
-    # Si el día actual no existe en memoria, calculamos la fecha relativa al inicio del experimento
-    if memoria.get("dias") and len(memoria["dias"]) > 0:
-        try:
-            f_inicio = datetime.strptime(memoria["dias"][0]["fecha"], "%Y-%m-%d").date()
-            desplazamiento = memoria["dia_actual"] - 1
-            print(f"[DEBUG] hoy_local() calculando fecha relativa: {f_inicio + timedelta(days=desplazamiento)}")
-            return f_inicio + timedelta(days=desplazamiento)
-        except Exception: pass
-
-    print(f"[DEBUG] hoy_local() usando ahora_simulado: {ahora_simulado().date()}")
+    """Fecha calendario real (Puerto Rico / temporada MLB). No se congela en memoria."""
     return ahora_simulado().date()
+
+
+def fecha_inicio_experimento(memoria: dict) -> date | None:
+    if not memoria.get("dias"):
+        return None
+    try:
+        return datetime.strptime(memoria["dias"][0]["fecha"], "%Y-%m-%d").date()
+    except Exception:
+        return None
+
+
+def numero_dia_para_fecha(memoria: dict, fecha: date | None = None) -> int:
+    """Día del experimento (1-based) correspondiente a una fecha calendario."""
+    fecha = fecha or hoy_local()
+    f_inicio = fecha_inicio_experimento(memoria)
+    if not f_inicio:
+        return int(memoria.get("dia_actual") or 1)
+    return max(1, (fecha - f_inicio).days + 1)
 
 
 def fecha_str(d: date | None = None) -> str:
@@ -157,6 +156,13 @@ def fecha_mlb_api(d: date | None = None) -> str:
 def dia_operativo(memoria: dict) -> dict | None:
     for d in memoria["dias"]:
         if d["dia"] == memoria["dia_actual"]:
+            return d
+    return None
+
+
+def dia_por_fecha(memoria: dict, fecha: str) -> dict | None:
+    for d in memoria.get("dias", []):
+        if d.get("fecha") == fecha:
             return d
     return None
 
@@ -226,18 +232,32 @@ def contar_apuestas_hoy(memoria: dict, fecha: str | None = None) -> int:
 
 def asegurar_dia_operativo(memoria: dict, fecha: str | None = None) -> dict:
     fecha = fecha or fecha_str()
-    dia = dia_operativo(memoria)
-    if dia and dia["fecha"] == fecha:
-        return dia
+    existente = dia_por_fecha(memoria, fecha)
+    if existente:
+        return existente
+
+    try:
+        f = datetime.strptime(fecha, "%Y-%m-%d").date()
+        num = numero_dia_para_fecha(memoria, f)
+    except Exception:
+        num = int(memoria.get("dia_actual") or 1)
+
+    # Evitar duplicar el número de día si ya existe otra fecha con ese índice
+    for d in memoria.get("dias", []):
+        if d.get("dia") == num and d.get("fecha") != fecha:
+            num = max(int(x.get("dia") or 0) for x in memoria["dias"]) + 1
+            break
+
     dia = {
-        "dia": memoria["dia_actual"],
+        "dia": num,
         "fecha": fecha,
         "bloqueado_en": None,
         "apuestas": [],
-        "predicciones": [],  # Predicciones de juegos no apostados
+        "predicciones": [],
         "resumen": {},
     }
     memoria["dias"].append(dia)
+    memoria["dias"].sort(key=lambda x: x.get("fecha") or "")
     return dia
 
 
@@ -354,8 +374,16 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
             detailed = status_info.get("detailedState", "")
 
             # Solo FINALIZADO con códigos oficiales MLB. Nunca por marcador en vivo.
+            # Postponed/Cancelled a veces vienen con abstractGameState=Final: no liquidar.
             estado = "PROGRAMADO"
             if (
+                coded in ("D", "C", "DR", "DI")
+                or "Postponed" in detailed
+                or "Cancelled" in detailed
+                or "Suspended" in detailed
+            ):
+                estado = "POSPUESTO"
+            elif (
                 abs_state == "Live"
                 or coded in ("I", "IW", "IR")
                 or "In Progress" in detailed
@@ -652,40 +680,59 @@ def liquidar_todo(memoria: dict) -> int:
     return total
 
 
-def avanzar_dia_automatico() -> None:
-    """Avanza al siguiente día del experimento a la medianoche de forma autónoma."""
-    memoria = cargar_memoria()
+def sincronizar_experimento_a_hoy(memoria: dict | None = None) -> dict:
+    """
+    Alinea dia_actual y registros de días con la fecha real de Puerto Rico.
+    Crea días vacíos para las fechas saltadas (sin inventar apuestas).
+    """
+    memoria = memoria if memoria is not None else cargar_memoria()
     if not memoria.get("experimento_activo") or not memoria.get("dias"):
-        return
+        return memoria
 
-    hoy_real = ahora_simulado().date()
+    f_inicio = fecha_inicio_experimento(memoria)
+    if not f_inicio:
+        return memoria
+
+    hoy = hoy_local()
+    dias_totales = int(memoria.get("dias_totales") or 200)
+    dia_objetivo = min(numero_dia_para_fecha(memoria, hoy), dias_totales)
+    fecha_objetivo = f_inicio + timedelta(days=dia_objetivo - 1)
+
+    # Rellenar huecos desde el día 1 hasta hoy
+    hubo = False
+    for n in range(1, dia_objetivo + 1):
+        f = f_inicio + timedelta(days=n - 1)
+        antes = len(memoria["dias"])
+        asegurar_dia_operativo(memoria, f.strftime("%Y-%m-%d"))
+        if len(memoria["dias"]) != antes:
+            hubo = True
+
+    if memoria.get("dia_actual") != dia_objetivo:
+        print(
+            f"[SISTEMA] Sincronizando experimento: día {memoria.get('dia_actual')} → "
+            f"{dia_objetivo} ({fecha_objetivo})"
+        )
+        memoria["dia_actual"] = dia_objetivo
+        hubo = True
+
+    if hubo:
+        actualizar_resumen(memoria)
+        guardar_memoria(memoria)
+    return memoria
+
+
+def avanzar_dia_automatico() -> None:
+    """Sincroniza el puntero del experimento con el calendario real."""
     try:
-        f_inicio = datetime.strptime(memoria["dias"][0]["fecha"], "%Y-%m-%d").date()
-        hubo_cambio = False
-        while memoria["dia_actual"] < memoria.get("dias_totales", 10):
-            # Fecha asociada al día operativo actual (basada en el puntero dia_actual)
-            fecha_operativa = f_inicio + timedelta(days=memoria["dia_actual"] - 1)
-            
-            if fecha_operativa < hoy_real:
-                # Asegurar registro del día que estamos dejando atrás
-                asegurar_dia_operativo(memoria, fecha_operativa.strftime("%Y-%m-%d"))
-                
-                memoria["dia_actual"] += 1
-                hubo_cambio = True
-                
-                # Inicializar el nuevo día operativo
-                nueva_fecha_str = (f_inicio + timedelta(days=memoria["dia_actual"] - 1)).strftime("%Y-%m-%d")
-                asegurar_dia_operativo(memoria, nueva_fecha_str)
-                
-                print(f"[SISTEMA] Avanzando automáticamente al DÍA {memoria['dia_actual']} ({nueva_fecha_str})")
-            else:
-                break
-
-        if hubo_cambio:
-            guardar_memoria(memoria)
-            programar_bloqueos_por_juego()
+        antes = cargar_memoria().get("dia_actual")
+        memoria = sincronizar_experimento_a_hoy()
+        if memoria.get("experimento_activo") and memoria.get("dia_actual") != antes:
+            try:
+                programar_bloqueos_por_juego()
+            except Exception as e:
+                print(f"[SISTEMA] Aviso al reprogramar bloqueos: {e}")
     except Exception as e:
-        print(f"[SISTEMA] Error al avanzar el día automáticamente: {e}")
+        print(f"[SISTEMA] Error al sincronizar el día automáticamente: {e}")
 
 
 def bloquear_juego(game_id: str, forzar: bool = False) -> dict:

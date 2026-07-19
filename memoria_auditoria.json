@@ -2,7 +2,7 @@
   "modo": "simulacion",
   "capital": 97.38,
   "capital_inicial": 100.0,
-  "dia_actual": 3,
+  "dia_actual": 11,
   "dias_totales": 200,
   "stake_por_juego": 5.125,
   "experimento_activo": true,
@@ -293,6 +293,70 @@
     {
       "dia": 3,
       "fecha": "2026-07-10",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
+      "resumen": {}
+    },
+    {
+      "dia": 4,
+      "fecha": "2026-07-11",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
+      "resumen": {}
+    },
+    {
+      "dia": 5,
+      "fecha": "2026-07-12",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
+      "resumen": {}
+    },
+    {
+      "dia": 6,
+      "fecha": "2026-07-13",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
+      "resumen": {}
+    },
+    {
+      "dia": 7,
+      "fecha": "2026-07-14",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
+      "resumen": {}
+    },
+    {
+      "dia": 8,
+      "fecha": "2026-07-15",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
+      "resumen": {}
+    },
+    {
+      "dia": 9,
+      "fecha": "2026-07-16",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
+      "resumen": {}
+    },
+    {
+      "dia": 10,
+      "fecha": "2026-07-17",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
+      "resumen": {}
+    },
+    {
+      "dia": 11,
+      "fecha": "2026-07-18",
       "bloqueado_en": null,
       "apuestas": [],
       "predicciones": [],
