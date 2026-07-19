@@ -209,6 +209,17 @@
         .pick-badge.bet { background: var(--green); color: #000; }
         .pick-badge.wait { background: var(--gold); color: #000; }
         .pick-badge.skip { background: #334; color: #aaa; }
+        .pick-tag {
+            display: inline-block;
+            background: rgba(0, 242, 255, 0.25);
+            color: var(--cyan);
+            border: 1px solid var(--cyan);
+            font-size: 0.65rem;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 4px;
+            margin-left: 6px;
+        }
         .ganador-tag {
             display: inline-block;
             background: var(--green);
@@ -430,9 +441,9 @@ function pintarEstado(data) {
     }
     const aviso = document.getElementById('aviso-real');
     if (soloModelo) {
-        aviso.innerHTML = '<strong>Modo solo modelo:</strong> abajo ves <strong>quién gana según stats+ML</strong>. ' +
-            'Los picks en verde (≥ ' + (estr.min_prob_modelo || 58) + '%) son los que el sistema apostaría. ' +
-            'Bloqueo automático <strong>1 h antes</strong> de cada juego.';
+        aviso.innerHTML = '<strong>Modo solo modelo:</strong> el tag <strong>PICK</strong> es la predicción (fija al apostar). ' +
+            '<strong>GANÓ</strong> solo aparece cuando MLB confirma el resultado final. ' +
+            'Los verdes (≥ ' + (estr.min_prob_modelo || 58) + '%) son apostables. Bloqueo <strong>1 h antes</strong>.';
     } else {
         aviso.innerHTML = '<strong>Estrategia:</strong> <strong>1 hora antes</strong> de cada juego se evalúa todo ' +
             '(pitchers, stats, BetMGM) y se apuesta solo con <strong>valor</strong> (borde verde). ' +
@@ -705,22 +716,27 @@ function pintarJuegos(juegos) {
         const tag = j.apostable
             ? `<span class="tag-apostar">APOSTAR · ${(j.probPick||0).toFixed(0)}%</span>`
             : `<span class="tag-skip">NO APOSTAR</span>`;
-        const eqGana = nombrePick(j.pick);
-        const awayWin = j.pick && j.pick.indexOf(j.visitante) >= 0;
-        const homeWin = j.pick && j.pick.indexOf(j.home) >= 0;
+        const eqPick = nombrePick(j.pick);
+        const awayPick = j.pick && j.pick.indexOf(j.visitante) >= 0;
+        const homePick = j.pick && j.pick.indexOf(j.home) >= 0;
+        // "GANÓ" solo con resultado oficial MLB; el pick nunca se presenta como ganador en vivo.
+        const awayWon = j.estado === 'FINALIZADO' && j.ganador === j.visitante;
+        const homeWon = j.estado === 'FINALIZADO' && j.ganador === j.home;
         let apuestaTxt = j.motivo_apuesta || 'Espera evaluación 1h antes';
         if (j.estado_apuesta === 'sin_bloquear' && j.hora_bloqueo_txt) {
             apuestaTxt = `Auto-bloqueo ~${j.hora_bloqueo_txt} (juego ${j.hora_inicio_txt})`;
         } else if (j.estado === 'EN VIVO' && j.estado_apuesta === 'pendiente') {
-            apuestaTxt = `APUESTA $${j.stake} · EN JUEGO (${j.scoreAway ?? '—'}-${j.scoreHome ?? '—'})`;
+            apuestaTxt = `APUESTA $${j.stake} · EN JUEGO (${j.scoreAway ?? '—'}-${j.scoreHome ?? '—'}) · pick fijo`;
         } else if (j.estado_apuesta === 'pendiente') {
             apuestaTxt = `APUESTA $${j.stake} PENDIENTE`;
         } else if (j.estado_apuesta === 'ganada' && j.estado === 'FINALIZADO') {
             apuestaTxt = `GANADA ${fmtMoney(j.profit)}`;
         } else if (j.estado_apuesta === 'perdida' && j.estado === 'FINALIZADO') {
             apuestaTxt = `PERDIDA ${fmtMoney(j.profit)}`;
+        } else if (j.estado_apuesta === 'ganada' || j.estado_apuesta === 'perdida') {
+            apuestaTxt = `Resultado en revisión (juego ${j.estado})`;
         } else if (j.estado === 'EN VIVO') {
-            apuestaTxt = `EN JUEGO · marcador ${j.scoreAway ?? '—'}-${j.scoreHome ?? '—'}`;
+            apuestaTxt = `EN JUEGO · marcador ${j.scoreAway ?? '—'}-${j.scoreHome ?? '—'} · sin liquidar`;
         }
 
         return `<div class="card ${cls}">
@@ -733,20 +749,20 @@ function pintarJuegos(juegos) {
             <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
                 <div style="display:flex;align-items:center">
                     <img src="${j.logoAway}" class="team-logo" onerror="this.style.display='none'">
-                    <span>${j.visitante}${awayWin ? '<span class="ganador-tag">GANA</span>' : ''}</span>
+                    <span>${j.visitante}${awayPick ? '<span class="pick-tag">PICK</span>' : ''}${awayWon ? '<span class="ganador-tag">GANÓ</span>' : ''}</span>
                 </div>
                 <b>${j.scoreAway ?? '—'}</b>
             </div>
             <div style="display:flex;justify-content:space-between;align-items:center;margin:8px 0">
                 <div style="display:flex;align-items:center">
                     <img src="${j.logoHome}" class="team-logo" onerror="this.style.display='none'">
-                    <span>${j.home}${homeWin ? '<span class="ganador-tag">GANA</span>' : ''}</span>
+                    <span>${j.home}${homePick ? '<span class="pick-tag">PICK</span>' : ''}${homeWon ? '<span class="ganador-tag">GANÓ</span>' : ''}</span>
                 </div>
                 <b>${j.scoreHome ?? '—'}</b>
             </div>
             <div class="pick-box" style="font-size:0.85rem">
-                <div style="font-size:0.7rem;color:var(--muted);margin-bottom:6px">PICK DEL MODELO</div>
-                <b style="font-size:1rem;color:var(--green)">→ ${eqGana || '—'}</b>
+                <div style="font-size:0.7rem;color:var(--muted);margin-bottom:6px">PICK DEL MODELO${j.pick_congelado ? ' (fijo)' : ''}</div>
+                <b style="font-size:1rem;color:var(--green)">→ ${eqPick || '—'}</b>
                 <div style="font-size:0.8rem;margin-top:6px">
                     Confianza: <b style="color:var(--cyan)">${j.probPick != null ? j.probPick.toFixed(1) + '%' : '—'}</b>
                     · Cuota simulada: ${j.odds || '—'}

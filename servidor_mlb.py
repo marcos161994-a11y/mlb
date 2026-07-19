@@ -312,6 +312,17 @@ def calcular_estadisticas_modelo(memoria: dict) -> dict:
 # API MLB
 # ---------------------------------------------------------------------------
 
+def _score_equipo(linescore_side: dict, team_side: dict) -> int:
+    """Lee carreras sin tratar 0 como vacío (bug de `x or y`)."""
+    runs = linescore_side.get("runs")
+    if runs is not None:
+        return int(runs)
+    score = team_side.get("score")
+    if score is not None:
+        return int(score)
+    return 0
+
+
 def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False) -> list[dict]:
     memoria = cargar_memoria()
     params = {"sportId": 1, "hydrate": "probablePitcher,lineups,linescore,team"}
@@ -334,13 +345,29 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
     for date_entry in datos["dates"]:
         for juego in date_entry.get("games", []):
             status_info = juego.get("status", {})
-            abs_state = status_info.get("abstractGameState")
+            abs_state = status_info.get("abstractGameState", "")
+            coded = (
+                status_info.get("codedGameState")
+                or status_info.get("statusCode")
+                or ""
+            )
             detailed = status_info.get("detailedState", "")
 
+            # Solo FINALIZADO con códigos oficiales MLB. Nunca por marcador en vivo.
             estado = "PROGRAMADO"
-            if abs_state == "Live" or "In Progress" in detailed or "Warmup" in detailed:
+            if (
+                abs_state == "Live"
+                or coded in ("I", "IW", "IR")
+                or "In Progress" in detailed
+                or "Warmup" in detailed
+                or "Manager Challenge" in detailed
+            ):
                 estado = "EN VIVO"
-            elif abs_state == "Final" or "Final" in detailed or "Game Over" in detailed:
+            elif (
+                abs_state == "Final"
+                or coded in ("F", "O", "FT", "FR")
+                or detailed in ("Final", "Game Over", "Completed Early")
+            ):
                 estado = "FINALIZADO"
 
             away = juego["teams"]["away"]
@@ -350,13 +377,21 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
             lineups_api = juego.get("lineups", {})
             lineup_confirmado = bool(lineups_api.get("away") and lineups_api.get("home"))
             ls = juego.get("linescore", {}).get("teams", {})
-            s_away = int(ls.get("away", {}).get("runs") or away.get("score", 0))
-            s_home = int(ls.get("home", {}).get("runs") or home.get("score", 0))
+            s_away = _score_equipo(ls.get("away", {}), away)
+            s_home = _score_equipo(ls.get("home", {}), home)
             inicio = parse_inicio_juego(juego["gameDate"])
             bloqueo = hora_bloqueo_para_inicio(inicio)
+            # Ganador oficial solo al finalizar: prioriza isWinner de MLB.
             winner = None
             if estado == "FINALIZADO":
-                winner = visitante if s_away > s_home else (home_name if s_home > s_away else None)
+                if away.get("isWinner") is True:
+                    winner = visitante
+                elif home.get("isWinner") is True:
+                    winner = home_name
+                elif s_away > s_home:
+                    winner = visitante
+                elif s_home > s_away:
+                    winner = home_name
             juegos.append({
                 "id": str(juego["gamePk"]),
                 "fecha": juego.get("gameDate", "").split("T")[0],
@@ -408,11 +443,27 @@ def _juego_finalizado(juego: dict) -> bool:
     return juego.get("estado") == "FINALIZADO"
 
 
+def _ganador_oficial(juego: dict) -> str:
+    """Nombre normalizado del ganador oficial, o '' si aún no hay."""
+    if not _juego_finalizado(juego):
+        return ""
+    ganador = juego.get("ganador") or ""
+    if ganador:
+        return norm_nombre(ganador)
+    s_away = int(juego.get("scoreAway") or 0)
+    s_home = int(juego.get("scoreHome") or 0)
+    if s_away == s_home:
+        return ""
+    if s_away > s_home:
+        return norm_nombre(juego["visitante"])
+    return norm_nombre(juego["home"])
+
+
 def _revertir_liquidacion_prematura(apuesta: dict, juego: dict) -> bool:
     """Si se liquidó por error con el juego en vivo, vuelve a pendiente."""
     if apuesta.get("estado") not in ("ganada", "perdida"):
         return False
-    if _juego_finalizado(juego):
+    if _juego_finalizado(juego) and _ganador_oficial(juego):
         return False
     apuesta["estado"] = "pendiente"
     apuesta["profit"] = None
@@ -432,17 +483,10 @@ def liquidar_apuesta(apuesta: dict, juego: dict, stake: float) -> bool:
         return False
 
     pick_norm = norm_nombre(nombre_equipo_en_pick(apuesta["pick"]))
-    ganador_norm = norm_nombre(juego.get("ganador") or "")
-
-    if not ganador_norm and juego.get("scoreAway") != juego.get("scoreHome"):
-        print(f"[DEBUG LIQ] Juego {juego['id']} FINALIZADO pero sin ganador oficial. Intentando por score.")
-        if int(juego.get("scoreAway", 0)) > int(juego.get("scoreHome", 0)):
-            ganador_norm = norm_nombre(juego["visitante"])
-        else:
-            ganador_norm = norm_nombre(juego["home"])
+    ganador_norm = _ganador_oficial(juego)
 
     if not ganador_norm:
-        print(f"[DEBUG LIQ] Juego {juego['id']} FINALIZADO pero no se pudo determinar ganador.")
+        print(f"[DEBUG LIQ] Juego {juego['id']} FINALIZADO pero sin ganador oficial.")
         return False
 
     print(f"[LIQUIDACIÓN] Juego {juego['id']}: Comparando Pick '{pick_norm}' vs Ganador '{ganador_norm}'")
@@ -529,7 +573,7 @@ def liquidar_dia(memoria: dict, dia: dict) -> int:
             if liquidar_apuesta(apuesta, juego, apuesta["stake"]):
                 cambios += 1
     
-    # Liquidar también predicciones no apostadas
+    # Liquidar también predicciones no apostadas (y corregir si se liquidaron mal)
     if "predicciones" in dia:
         for prediccion in dia["predicciones"]:
             if prediccion.get("estado") not in ("pendiente", "liquidado"):
@@ -538,7 +582,9 @@ def liquidar_dia(memoria: dict, dia: dict) -> int:
             if not juego:
                 continue
 
-            if prediccion.get("estado") == "liquidado" and not _juego_finalizado(juego):
+            if prediccion.get("estado") == "liquidado" and not (
+                _juego_finalizado(juego) and _ganador_oficial(juego)
+            ):
                 prediccion["estado"] = "pendiente"
                 prediccion["resultado"] = None
                 prediccion.pop("marcador_final", None)
@@ -547,38 +593,33 @@ def liquidar_dia(memoria: dict, dia: dict) -> int:
                 print(f"[PREDICCIÓN] Revertida liquidación prematura {prediccion['pick']}")
                 continue
 
-            if prediccion.get("estado") != "pendiente":
-                continue
-
             if not _juego_finalizado(juego):
                 continue
 
-            score_away = juego.get("scoreAway")
-            score_home = juego.get("scoreHome")
-            ganador = None
-            if not juego.get("ganador") and score_away != score_home:
-                if int(score_away) > int(score_home):
-                    ganador = norm_nombre(juego["visitante"])
-                else:
-                    ganador = norm_nombre(juego["home"])
-            else:
-                ganador = norm_nombre(juego.get("ganador") or "")
-
+            ganador = _ganador_oficial(juego)
             if not ganador:
                 continue
 
             pick_norm = norm_nombre(nombre_equipo_en_pick(prediccion["pick"]))
             resultado = "acierto" if pick_norm == ganador else "fallo"
+            marcador = (
+                f"{juego['visitante']} {juego.get('scoreAway')} - "
+                f"{juego['home']} {juego.get('scoreHome')}"
+            )
+
+            if (
+                prediccion.get("estado") == "liquidado"
+                and prediccion.get("resultado") == resultado
+                and prediccion.get("marcador_final") == marcador
+            ):
+                continue
 
             prediccion["estado"] = "liquidado"
             prediccion["resultado"] = resultado
-            prediccion["marcador_final"] = (
-                f"{juego['visitante']} {score_away} - "
-                f"{juego['home']} {score_home}"
-            )
+            prediccion["marcador_final"] = marcador
             prediccion["liquidado_en"] = datetime.now(tz_experimento()).isoformat()
             cambios += 1
-            print(f"[PREDICCIÓN] {prediccion['pick']} -> {resultado.upper()} ({prediccion['marcador_final']})")
+            print(f"[PREDICCIÓN] {prediccion['pick']} -> {resultado.upper()} ({marcador})")
     
     if cambios:
         print(f"[DEBUG LIQ DIA] Se realizaron {cambios} cambios para el día {dia['fecha']}. Recalculando y guardando.")
@@ -590,11 +631,23 @@ def liquidar_dia(memoria: dict, dia: dict) -> int:
 
 
 def liquidar_todo(memoria: dict) -> int:
+    """Revisa días con pendientes o recientes (corrige liquidaciones prematuras)."""
     total = 0
+    hoy = ahora_simulado().date()
     for dia in memoria["dias"]:
-        ap_p = any(a["estado"] == "pendiente" for a in dia.get("apuestas", []))
-        pr_p = any(p.get("estado") == "pendiente" for p in dia.get("predicciones", []))
-        if ap_p or pr_p:
+        apuestas = dia.get("apuestas", [])
+        preds = dia.get("predicciones", [])
+        if not apuestas and not preds:
+            continue
+        hay_pendiente = any(a.get("estado") == "pendiente" for a in apuestas) or any(
+            p.get("estado") == "pendiente" for p in preds
+        )
+        try:
+            f_dia = datetime.strptime(dia["fecha"], "%Y-%m-%d").date()
+            reciente = (hoy - f_dia).days <= 2
+        except Exception:
+            reciente = True
+        if hay_pendiente or reciente:
             total += liquidar_dia(memoria, dia)
     return total
 
@@ -663,9 +716,13 @@ def bloquear_juego(game_id: str, forzar: bool = False) -> dict:
         print(f"[DEBUG BLOQUEO] Juego {game_id} no encontrado en la API para el día {hoy}.")
         return {"ok": False, "motivo": "Juego no encontrado en el calendario."}
 
-    if juego["estado"] == "FINALIZADO" and not forzar:
-        print(f"[DEBUG BLOQUEO] Juego {game_id} ya FINALIZADO y no se fuerza. Estado: {juego['estado']}")
-        return {"ok": False, "motivo": "El juego ya terminó."}
+    # Nunca bloquear juegos en vivo o finalizados: el pick no debe cambiar con el marcador.
+    if juego["estado"] != "PROGRAMADO":
+        print(f"[DEBUG BLOQUEO] Juego {game_id} no programado ({juego['estado']}). No se bloquea.")
+        return {
+            "ok": False,
+            "motivo": f"El juego ya está {juego['estado']}; solo se apuesta antes del inicio.",
+        }
 
     if not juego.get("apostable"):
         print(f"[DEBUG BLOQUEO] Juego {game_id} no apostable. Motivo: {juego.get('motivo_apuesta', 'Desconocido')}")
@@ -773,7 +830,7 @@ def bloquear_apuestas_del_dia(forzar: bool = False) -> dict:
     omitidos = []
 
     for juego in juegos:
-        if juego["estado"] == "FINALIZADO" and not forzar:
+        if juego["estado"] != "PROGRAMADO":
             continue
         hb = datetime.fromisoformat(juego["hora_bloqueo"])
         ya_pasó = hb <= ahora or forzar
@@ -870,30 +927,51 @@ def exportar_reporte(memoria: dict, dia: dict) -> None:
 
 
 def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict]:
+    """Congela el pick bloqueado/predicho para que no 'cambie' con el marcador en vivo."""
     dia = dia_operativo(memoria)
     por_id = {}
+    preds_por_id = {}
     if dia:
-        por_id = {a["game_id"]: a for a in dia["apuestas"]}
+        por_id = {a["game_id"]: a for a in dia.get("apuestas", [])}
+        preds_por_id = {p["game_id"]: p for p in dia.get("predicciones", [])}
 
     resultado = []
     for juego in juegos:
         copia = dict(juego)
         ap = por_id.get(juego["id"])
+        pred = preds_por_id.get(juego["id"])
         if ap:
             copia["stake"] = ap["stake"]
             copia["pick"] = ap["pick"]
             copia["odds"] = ap["odds"]
             copia["odds_american"] = ap.get("odds_american")
+            copia["probPick"] = ap.get("probPick", copia.get("probPick"))
             copia["lineas_fuente"] = ap.get("lineas_fuente", "betmgm")
             copia["estado_apuesta"] = ap["estado"]
             copia["profit"] = ap.get("profit")
+            copia["edge"] = ap.get("edge", copia.get("edge"))
+            copia["motivo_apuesta"] = ap.get("motivo_apuesta", copia.get("motivo_apuesta", ""))
+            copia["pick_congelado"] = True
+        elif pred:
+            # Mantener el pick original de la predicción (no el recalculado en vivo)
+            copia["stake"] = memoria["stake_por_juego"]
+            copia["pick"] = pred["pick"]
+            copia["odds"] = pred.get("odds", copia.get("odds"))
+            copia["odds_american"] = pred.get("odds_american", copia.get("odds_american"))
+            copia["probPick"] = pred.get("probPick", copia.get("probPick"))
+            copia["edge"] = pred.get("edge", copia.get("edge"))
+            copia["motivo_apuesta"] = pred.get("motivo_apuesta", copia.get("motivo_apuesta", ""))
+            copia["estado_apuesta"] = "sin_bloquear"
+            copia["profit"] = None
+            copia["pick_congelado"] = True
         else:
             copia["stake"] = memoria["stake_por_juego"]
             copia["estado_apuesta"] = "sin_bloquear"
             copia["profit"] = None
+            copia["pick_congelado"] = False
         copia["apostable"] = copia.get("apostable", False)
-        copia["edge"] = copia.get("edge") or ap.get("edge") if ap else copia.get("edge")
-        copia["motivo_apuesta"] = copia.get("motivo_apuesta", "")
+        if not copia.get("motivo_apuesta"):
+            copia["motivo_apuesta"] = ""
         resultado.append(copia)
     return resultado
 
