@@ -821,8 +821,11 @@ def guardar_prediccion(
 
 def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     """
-    Registra un pick en PAPEL para todos los juegos PROGRAMADOS del día
-    (cuando ya pasó la hora de bloqueo). La apuesta con dinero es aparte.
+    Registra un pick en PAPEL para los juegos del día.
+    - PROGRAMADO: cuando ya pasó la hora de bloqueo (o forzar).
+    - EN VIVO: solo si aún no había predicción (alcanzar juegos que ya empezaron).
+    No registra FINALIZADO/POSPUESTO a posteriori.
+    La apuesta con dinero es aparte.
     """
     memoria = cargar_memoria()
     hoy = fecha_str()
@@ -830,18 +833,23 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     dia = asegurar_dia_operativo(memoria, hoy)
     juegos = obtener_juegos_fecha(hoy)
     stake_v = stake_virtual_prediccion(memoria)
+    ya = {p.get("game_id") for p in dia.get("predicciones", [])}
     nuevas = 0
 
     for juego in juegos:
-        if juego.get("estado") != "PROGRAMADO":
+        estado = juego.get("estado")
+        if estado not in ("PROGRAMADO", "EN VIVO"):
             continue
         if not (juego.get("pick") or "").strip():
             continue
-        try:
-            hb = datetime.fromisoformat(juego["hora_bloqueo"])
-        except Exception:
-            continue
-        if not forzar and hb > ahora:
+        if estado == "PROGRAMADO":
+            try:
+                hb = datetime.fromisoformat(juego["hora_bloqueo"])
+            except Exception:
+                continue
+            if not forzar and hb > ahora:
+                continue
+        elif estado == "EN VIVO" and juego["id"] in ya and not forzar:
             continue
         if guardar_prediccion(dia, juego, con_dinero=False, stake_virtual=stake_v):
             nuevas += 1
