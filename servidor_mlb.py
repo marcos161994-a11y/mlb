@@ -920,6 +920,7 @@ def resumen_predicciones_y_dinero(memoria: dict) -> dict:
             "perdido": round(din_perdido, 2),
             "neto": round(din_ganado - din_perdido, 2),
         },
+        "_mutado": mutado,
     }
 
 
@@ -1327,11 +1328,11 @@ def construir_estado_completo(liquidar: bool = False) -> dict:
     # Calcular estadísticas del modelo
     stats_modelo = calcular_estadisticas_modelo(memoria)
     pl_split = resumen_predicciones_y_dinero(memoria)
-    # Persistir P/L papel recalculado en predicciones antiguas
-    try:
-        guardar_memoria(memoria)
-    except Exception:
-        pass
+    if pl_split.pop("_mutado", False):
+        try:
+            guardar_memoria(memoria)
+        except Exception:
+            pass
     
     return {
         "memoria": memoria,
