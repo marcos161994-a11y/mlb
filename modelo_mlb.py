@@ -564,6 +564,7 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
     f_away = fuerza_lado(away_id, home_id, p_away_id, p_home_id, season, False, ia_away, bias_aprendizaje, cfg)
     f_home = fuerza_lado(home_id, away_id, p_home_id, p_away_id, season, True, ia_home, bias_aprendizaje, cfg)
     prob_away, prob_home = prob_logistica(f_away, f_home)
+    prob_est_away, prob_est_home = prob_away, prob_home
     
     # Usar Ensemble Learning si está activado y disponible
     usar_ml = cfg.get("usar_ml", False) and HAS_ML
@@ -597,26 +598,40 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
                 features_away['matchup_zurdo_diestro'] = matchup_adj_away
                 features_home['matchup_zurdo_diestro'] = matchup_adj_home
             
-            # Obtener predicciones ML
+            # Obtener predicciones ML y normalizarlas (RF no garantiza suma 100)
             prob_ml_away = predecir_rf(features_away)
             prob_ml_home = predecir_rf(features_home)
+            if prob_ml_away is not None and prob_ml_home is not None:
+                s_ml = float(prob_ml_away) + float(prob_ml_home)
+                if s_ml > 0:
+                    prob_ml_away = round(100.0 * float(prob_ml_away) / s_ml, 1)
+                    prob_ml_home = round(100.0 - prob_ml_away, 1)
             
-            # Obtener pesos del ensemble (pueden ajustarse dinámicamente)
             pesos_ensemble = cfg.get("pesos_ensemble", {
                 'estadistico': 0.4,
                 'ml': 0.4,
                 'ia': 0.2
             })
+            # ia_away/ia_home son ajustes de fuerza (~[-1,1]), NO probabilidades.
+            # No inyectarlos al ensemble como % de victoria.
+            prob_away = ensemble_prediction(prob_est_away, prob_ml_away, None, pesos_ensemble)
+            prob_home = ensemble_prediction(prob_est_home, prob_ml_home, None, pesos_ensemble)
+            total_ens = float(prob_away) + float(prob_home)
+            if total_ens > 0:
+                prob_away = round(100.0 * float(prob_away) / total_ens, 1)
+                prob_home = round(100.0 - prob_away, 1)
             
-            # Combinar predicciones usando ensemble
-            prob_away = ensemble_prediction(prob_away, prob_ml_away, ia_away, pesos_ensemble)
-            prob_home = ensemble_prediction(prob_home, prob_ml_home, ia_home, pesos_ensemble)
-            
-            print(f"[ML] Ensemble: Away {prob_away:.1f}% (est: {prob_away if prob_ml_away is None else prob_away:.1f}%, ml: {prob_ml_away:.1f}%, ia: {ia_away:.1f}%)")
-            print(f"[ML] Ensemble: Home {prob_home:.1f}% (est: {prob_home if prob_ml_home is None else prob_home:.1f}%, ml: {prob_ml_home:.1f}%, ia: {ia_home:.1f}%)")
+            print(
+                f"[ML] Ensemble: Away {prob_away:.1f}% "
+                f"(est: {prob_est_away:.1f}%, ml: {prob_ml_away if prob_ml_away is not None else '—'})"
+            )
+            print(
+                f"[ML] Ensemble: Home {prob_home:.1f}% "
+                f"(est: {prob_est_home:.1f}%, ml: {prob_ml_home if prob_ml_home is not None else '—'})"
+            )
         except Exception as e:
             print(f"[ML] Error en ensemble prediction: {e}")
-            # Usar predicciones estadísticas como fallback
+            prob_away, prob_home = prob_est_away, prob_est_home
 
     juego["probAway"] = prob_away
     juego["probHome"] = prob_home
@@ -643,12 +658,12 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
 
     if solo_modelo:
         juego["lineas_fuente"] = "modelo"
-        for pick, prob in (
-            (f"{juego['visitante']} ML", prob_away),
-            (f"{juego['home']} ML", prob_home),
-        ):
-            if prob < min_prob:
-                continue
+        # Un solo favorito por partido (el de mayor prob). Evita picks <50% o ambos lados.
+        if prob_away >= prob_home:
+            pick, prob = f"{juego['visitante']} ML", prob_away
+        else:
+            pick, prob = f"{juego['home']} ML", prob_home
+        if prob >= min_prob and prob >= 50.0:
             dec, amer = cuota_desde_prob(prob)
             conf = round(prob - 50.0, 1)
             bonus = 0.0

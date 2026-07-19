@@ -292,14 +292,19 @@ def calcular_bias_aprendizaje(memoria: dict) -> float:
 
 def calcular_estadisticas_modelo(memoria: dict) -> dict:
     """
-    Calcula estadísticas de aciertos/fallos del modelo incluyendo predicciones no apostadas.
+    Calcula aciertos/fallos del modelo.
+    Si un juego tiene apuesta, no se cuenta también su predicción (evita doble conteo).
     """
     total_predicciones = 0
     aciertos = 0
     fallos = 0
     
     for dia in memoria.get("dias", []):
-        # Contar apuestas liquidadas
+        apostados = {
+            a.get("game_id")
+            for a in dia.get("apuestas", [])
+            if a.get("estado") in ("ganada", "perdida", "pendiente")
+        }
         for apuesta in dia.get("apuestas", []):
             if apuesta["estado"] in ("ganada", "perdida"):
                 total_predicciones += 1
@@ -308,15 +313,15 @@ def calcular_estadisticas_modelo(memoria: dict) -> dict:
                 else:
                     fallos += 1
         
-        # Contar predicciones no apostadas liquidadas
-        if "predicciones" in dia:
-            for prediccion in dia["predicciones"]:
-                if prediccion.get("estado") == "liquidado":
-                    total_predicciones += 1
-                    if prediccion.get("resultado") == "acierto":
-                        aciertos += 1
-                    else:
-                        fallos += 1
+        for prediccion in dia.get("predicciones", []):
+            if prediccion.get("game_id") in apostados:
+                continue
+            if prediccion.get("estado") == "liquidado":
+                total_predicciones += 1
+                if prediccion.get("resultado") == "acierto":
+                    aciertos += 1
+                else:
+                    fallos += 1
     
     win_rate = (aciertos / total_predicciones * 100) if total_predicciones > 0 else 0
     
@@ -488,10 +493,13 @@ def _ganador_oficial(juego: dict) -> str:
 
 
 def _revertir_liquidacion_prematura(apuesta: dict, juego: dict) -> bool:
-    """Si se liquidó por error con el juego en vivo, vuelve a pendiente."""
+    """Si se liquidó por error con el juego aún no final, vuelve a pendiente."""
     if apuesta.get("estado") not in ("ganada", "perdida"):
         return False
-    if _juego_finalizado(juego) and _ganador_oficial(juego):
+    # No tocar liquidaciones si MLB ya marca Final (aunque falte isWinner un momento).
+    if _juego_finalizado(juego):
+        return False
+    if juego.get("estado") not in ("EN VIVO", "PROGRAMADO", "POSPUESTO"):
         return False
     apuesta["estado"] = "pendiente"
     apuesta["profit"] = None
@@ -610,8 +618,8 @@ def liquidar_dia(memoria: dict, dia: dict) -> int:
             if not juego:
                 continue
 
-            if prediccion.get("estado") == "liquidado" and not (
-                _juego_finalizado(juego) and _ganador_oficial(juego)
+            if prediccion.get("estado") == "liquidado" and juego.get("estado") in (
+                "EN VIVO", "PROGRAMADO", "POSPUESTO"
             ):
                 prediccion["estado"] = "pendiente"
                 prediccion["resultado"] = None
@@ -779,8 +787,9 @@ def bloquear_juego(game_id: str, forzar: bool = False) -> dict:
         if "predicciones" not in dia:
             dia["predicciones"] = []
         
-        # Verificar si ya existe predicción para este juego
-        if not any(p["game_id"] == game_id for p in dia["predicciones"]):
+        # Guardar predicción solo si hay pick válido (no vacío / pitchers TBD)
+        pick_ok = bool((juego.get("pick") or "").strip())
+        if pick_ok and not any(p["game_id"] == game_id for p in dia["predicciones"]):
             dia["predicciones"].append({
                 "game_id": juego["id"],
                 "visitante": juego["visitante"],
@@ -1227,9 +1236,12 @@ def api_bloquear_hoy():
 
 @app.post("/api/liquidar")
 def api_liquidar():
-    estado = construir_estado_completo(liquidar=True)
+    memoria = cargar_memoria()
+    sincronizar_experimento_a_hoy(memoria)
+    cambios = liquidar_todo(cargar_memoria())
+    estado = construir_estado_completo(liquidar=False)
     return {
-        "liquidaciones": 1,
+        "liquidaciones": cambios,
         "capital": estado["memoria"]["capital"],
     }
 
@@ -1315,6 +1327,7 @@ def api_auto_bloqueo_externo(secret: str | None = None):
     """
     _verificar_cron_secreto(secret)
     try:
+        sincronizar_experimento_a_hoy()
         programar_bloqueos_por_juego()
         resultado = bloquear_apuestas_del_dia(forzar=False)
         liquidar_todo(cargar_memoria())
@@ -1324,6 +1337,8 @@ def api_auto_bloqueo_externo(secret: str | None = None):
             "mensaje": "Auto-bloqueo ejecutado",
             "resultado": resultado,
             "capital": memoria["capital"],
+            "dia_actual": memoria.get("dia_actual"),
+            "fecha_hoy": fecha_str(),
         }
     except Exception as e:
         return {"ok": False, "error": str(e)}
@@ -1331,14 +1346,17 @@ def api_auto_bloqueo_externo(secret: str | None = None):
 
 @app.post("/api/avanzar-dia")
 def api_avanzar_dia():
-    """Fuerza el avance al siguiente día del experimento."""
-    memoria = cargar_memoria()
-    if memoria["dia_actual"] < memoria["dias_totales"]:
-        memoria["dia_actual"] += 1
-        guardar_memoria(memoria)
+    """Fuerza sincronización del experimento a la fecha real."""
+    memoria = sincronizar_experimento_a_hoy()
+    try:
         programar_bloqueos_por_juego()
-        return {"ok": True, "nuevo_dia": memoria["dia_actual"]}
-    return {"ok": False, "motivo": "Ya se alcanzó el límite de días."}
+    except Exception:
+        pass
+    return {
+        "ok": True,
+        "nuevo_dia": memoria["dia_actual"],
+        "fecha_hoy": fecha_str(),
+    }
 
 
 @app.get("/api/parleys")

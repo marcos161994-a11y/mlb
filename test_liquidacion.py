@@ -83,10 +83,39 @@ def test_liquidar_solo_al_final():
     assert apuesta["estado"] == "perdida"
 
 
+def test_no_revertir_final_sin_ganador_momentaneo():
+    apuesta = {
+        "pick": "Boston Red Sox ML",
+        "estado": "ganada",
+        "odds": 2.0,
+        "profit": 5.0,
+        "marcador_final": "x",
+    }
+    final_sin_winner = {
+        "id": "2",
+        "estado": "FINALIZADO",
+        "ganador": None,
+        "visitante": "New York Yankees",
+        "home": "Boston Red Sox",
+        "scoreAway": 2,
+        "scoreHome": 2,
+    }
+    assert _revertir_liquidacion_prematura(apuesta, final_sin_winner) is False
+    assert apuesta["estado"] == "ganada"
+
+
+def test_probs_suman_100():
+    from modelo_mlb import prob_logistica
+    a, h = prob_logistica(10.0, 12.0)
+    assert abs((a + h) - 100.0) < 0.2
+
+
 if __name__ == "__main__":
     test_score_cero_no_se_pierde()
     test_no_ganador_en_vivo()
     test_ganador_oficial_final()
     test_revertir_prematura()
     test_liquidar_solo_al_final()
+    test_no_revertir_final_sin_ganador_momentaneo()
+    test_probs_suman_100()
     print("OK: tests de liquidación pasaron")

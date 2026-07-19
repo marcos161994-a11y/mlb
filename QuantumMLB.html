@@ -467,16 +467,14 @@ function pintarEstado(data) {
         const r = d.resumen || {};
         const pl = r.profit_dia || 0;
         
-        // Calcular ganadas y perdidas incluyendo predicciones
+        // Apuestas + predicciones de juegos NO apostados (sin doble conteo)
         let ganadas = r.ganadas || 0;
         let perdidas = r.perdidas || 0;
-        
-        // Agregar predicciones liquidadas al conteo
         if (d.predicciones) {
-            const aciertos = d.predicciones.filter(p => p.resultado === 'acierto').length;
-            const fallos = d.predicciones.filter(p => p.resultado === 'fallo').length;
-            ganadas += aciertos;
-            perdidas += fallos;
+            const apostados = new Set((d.apuestas || []).map(a => a.game_id));
+            const predsExtra = d.predicciones.filter(p => !apostados.has(p.game_id));
+            ganadas += predsExtra.filter(p => p.resultado === 'acierto').length;
+            perdidas += predsExtra.filter(p => p.resultado === 'fallo').length;
         }
         
         bancaCorr += pl;
