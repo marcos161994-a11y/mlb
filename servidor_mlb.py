@@ -1594,6 +1594,22 @@ def api_auto_bloqueo_externo(secret: str | None = None):
         return {"ok": False, "error": str(e)}
 
 
+@app.post("/api/subir-memoria")
+def api_subir_memoria(payload: dict, secret: str | None = None):
+    """Sube memoria_auditoria.json desde la PC local a Render (requiere CRON_SECRET)."""
+    _verificar_cron_secreto(secret)
+    if not isinstance(payload, dict) or "capital" not in payload:
+        raise HTTPException(status_code=400, detail="JSON de memoria invalido")
+    guardar_memoria(payload)
+    memoria = cargar_memoria()
+    return {
+        "ok": True,
+        "capital": memoria.get("capital"),
+        "dia_actual": memoria.get("dia_actual"),
+        "dias": len(memoria.get("dias", [])),
+    }
+
+
 @app.post("/api/avanzar-dia")
 def api_avanzar_dia():
     """Fuerza sincronización del experimento a la fecha real."""
