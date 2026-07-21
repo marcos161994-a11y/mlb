@@ -686,7 +686,7 @@ def liquidar_dia(memoria: dict, dia: dict) -> int:
 
 
 def liquidar_todo(memoria: dict) -> int:
-    """Revisa días con pendientes o recientes (corrige liquidaciones prematuras)."""
+    """Revisa dias con pendientes o con predicciones/apuestas recientes."""
     total = 0
     hoy = ahora_simulado().date()
     for dia in memoria["dias"]:
@@ -699,7 +699,7 @@ def liquidar_todo(memoria: dict) -> int:
         )
         try:
             f_dia = datetime.strptime(dia["fecha"], "%Y-%m-%d").date()
-            reciente = (hoy - f_dia).days <= 2
+            reciente = (hoy - f_dia).days <= 7
         except Exception:
             reciente = True
         if hay_pendiente or reciente:
@@ -736,7 +736,7 @@ def sincronizar_experimento_a_hoy(memoria: dict | None = None) -> dict:
 
     if memoria.get("dia_actual") != dia_objetivo:
         print(
-            f"[SISTEMA] Sincronizando experimento: día {memoria.get('dia_actual')} → "
+            f"[SISTEMA] Sincronizando experimento: dia {memoria.get('dia_actual')} -> "
             f"{dia_objetivo} ({fecha_objetivo})"
         )
         memoria["dia_actual"] = dia_objetivo
@@ -857,6 +857,58 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     if nuevas:
         guardar_memoria(memoria)
     return {"ok": True, "predicciones_nuevas": nuevas, "fecha": hoy}
+
+
+def rellenar_predicciones_fecha(memoria: dict, fecha: str) -> int:
+    """
+    Si faltaron predicciones (servidor apagado), las crea para esa fecha
+    usando el modelo actual y los resultados de MLB.
+    """
+    dia = dia_por_fecha(memoria, fecha)
+    if not dia:
+        dia = asegurar_dia_operativo(memoria, fecha)
+
+    juegos = obtener_juegos_fecha(fecha, solo_resultados=False)
+    if not juegos:
+        return 0
+
+    stake_v = stake_virtual_prediccion(memoria)
+    ya = {p.get("game_id") for p in dia.get("predicciones", [])}
+    nuevas = 0
+
+    for juego in juegos:
+        if juego.get("estado") == "POSPUESTO":
+            continue
+        if not (juego.get("pick") or "").strip():
+            continue
+        if juego["id"] in ya:
+            continue
+        if guardar_prediccion(dia, juego, con_dinero=False, stake_virtual=stake_v):
+            pred = next(p for p in dia["predicciones"] if p["game_id"] == juego["id"])
+            pred["retroactivo"] = True
+            nuevas += 1
+
+    return nuevas
+
+
+def rellenar_predicciones_recientes(memoria: dict, dias_atras: int = 7) -> int:
+    """Rellena predicciones faltantes de los ultimos N dias calendario."""
+    hoy = hoy_local()
+    f_inicio = fecha_inicio_experimento(memoria)
+    if not f_inicio:
+        return 0
+
+    total = 0
+    for offset in range(dias_atras + 1):
+        f = hoy - timedelta(days=offset)
+        if f < f_inicio:
+            continue
+        total += rellenar_predicciones_fecha(memoria, f.strftime("%Y-%m-%d"))
+
+    if total:
+        guardar_memoria(memoria)
+        print(f"[PREDICCIONES] Rellenadas {total} prediccion(es) de dias anteriores.")
+    return total
 
 
 def resumen_predicciones_y_dinero(memoria: dict) -> dict:
@@ -1262,6 +1314,7 @@ async def lifespan(app: FastAPI):
         try:
             # Catch-up de días si el servidor estuvo apagado o se pasó la medianoche
             avanzar_dia_automatico()
+            rellenar_predicciones_recientes(cargar_memoria(), dias_atras=7)
             # Al arrancar, procesamos inmediatamente los juegos que ya deberían estar bloqueados
             bloquear_apuestas_del_dia(forzar=False)
             # Luego programamos los del resto del día
@@ -1301,6 +1354,13 @@ def construir_estado_completo(liquidar: bool = False) -> dict:
 
     # Asegurar que el día actual existe en memoria para que los contadores no salgan en 0
     asegurar_dia_operativo(memoria)
+
+    # Rellenar dias que se quedaron sin predicciones (servidor apagado)
+    try:
+        rellenar_predicciones_recientes(memoria, dias_atras=7)
+        memoria = cargar_memoria()
+    except Exception as e:
+        print(f"Aviso relleno predicciones: {e}")
 
     # Registrar picks en papel de todos los juegos listos (sin mover banca)
     try:
@@ -1516,6 +1576,7 @@ def api_auto_bloqueo_externo(secret: str | None = None):
     _verificar_cron_secreto(secret)
     try:
         sincronizar_experimento_a_hoy()
+        rellenar_predicciones_recientes(cargar_memoria(), dias_atras=7)
         programar_bloqueos_por_juego()
         registrar_predicciones_del_dia(forzar=False)
         resultado = bloquear_apuestas_del_dia(forzar=False)
