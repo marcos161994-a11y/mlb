@@ -735,14 +735,25 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             juego["pick"] = f"{juego['visitante']} ML"
             juego["probPick"] = prob_away
             juego["edge"] = edge_away if edge_away > -900 else 0
-            juego["odds"] = dec_away if dec_away else 1.5
-            juego["odds_american"] = juego.get("odds_away_american", 150)
+            if dec_away:
+                juego["odds"] = dec_away
+                juego["odds_american"] = juego.get("odds_away_american", 150)
+            else:
+                # Cuota justa del modelo (nunca 1.5 fijo: sesgaba el P/L en papel)
+                dec, amer = cuota_desde_prob(prob_away)
+                juego["odds"] = dec
+                juego["odds_american"] = amer
         else:
             juego["pick"] = f"{juego['home']} ML"
             juego["probPick"] = prob_home
             juego["edge"] = edge_home if edge_home > -900 else 0
-            juego["odds"] = dec_home if dec_home else 1.5
-            juego["odds_american"] = juego.get("odds_home_american", 150)
+            if dec_home:
+                juego["odds"] = dec_home
+                juego["odds_american"] = juego.get("odds_home_american", 150)
+            else:
+                dec, amer = cuota_desde_prob(prob_home)
+                juego["odds"] = dec
+                juego["odds_american"] = amer
         
         juego["apostable"] = False
         if solo_modelo or (not dec_away and not dec_home):

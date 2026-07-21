@@ -110,6 +110,61 @@ def test_probs_suman_100():
     assert abs((a + h) - 100.0) < 0.2
 
 
+def test_cuota_desde_prob_no_fija_15():
+    from modelo_mlb import cuota_desde_prob
+    dec, amer = cuota_desde_prob(54.0)
+    assert dec > 1.5
+    assert abs(dec - (100.0 / 54.0)) < 0.05
+
+
+def test_prediccion_no_apostable_usa_cuota_justa():
+    """Sin mercado, picks bajo min_prob no deben quedar en odds=1.5."""
+    from modelo_mlb import cuota_desde_prob
+
+    # Simula rama else de analizar_juego
+    prob = 54.3
+    dec, amer = cuota_desde_prob(prob)
+    assert abs(dec - 1.5) > 0.2
+    assert amer != 150 or dec >= 2.0
+
+
+def test_reparar_odds_papel_default_roto():
+    from servidor_mlb import reparar_odds_papel
+
+    memoria = {
+        "stake_por_juego": 5.125,
+        "capital": 100.0,
+        "capital_inicial": 100.0,
+        "dias": [
+            {
+                "dia": 1,
+                "fecha": "2026-07-20",
+                "apuestas": [],
+                "predicciones": [
+                    {
+                        "game_id": "1",
+                        "pick": "Boston Red Sox ML",
+                        "odds": 1.5,
+                        "odds_american": 150,
+                        "probPick": 54.0,
+                        "estado": "liquidado",
+                        "resultado": "acierto",
+                        "stake_virtual": 5.0,
+                        "profit": 2.5,
+                    }
+                ],
+                "resumen": {},
+            }
+        ],
+    }
+    n = reparar_odds_papel(memoria, persistir=False)
+    assert n >= 1
+    pred = memoria["dias"][0]["predicciones"][0]
+    assert abs(pred["odds"] - (100.0 / 54.0)) < 0.05
+    assert abs(pred["profit"] - round(5.0 * (pred["odds"] - 1), 2)) < 0.01
+    assert abs(float(memoria["stake_por_juego"]) - 5.0) < 0.01
+
+
 if __name__ == "__main__":
     test_score_cero_no_se_pierde()
     test_no_ganador_en_vivo()
@@ -118,4 +173,7 @@ if __name__ == "__main__":
     test_liquidar_solo_al_final()
     test_no_revertir_final_sin_ganador_momentaneo()
     test_probs_suman_100()
+    test_cuota_desde_prob_no_fija_15()
+    test_prediccion_no_apostable_usa_cuota_justa()
+    test_reparar_odds_papel_default_roto()
     print("OK: tests de liquidación pasaron")

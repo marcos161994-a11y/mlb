@@ -26,7 +26,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from lineas_betmgm import aplicar_lineas_a_juegos
 from lineas_betmgm import normalizar_nombre_equipo as norm_nombre
-from modelo_mlb import evaluar_juegos, calcular_stake_dinamico
+from modelo_mlb import evaluar_juegos, calcular_stake_dinamico, cuota_desde_prob
 from ml_predictor import auto_entrenar_ml
 from parleys_betmgm import generar_parleys, seleccionar_mejor_parley, formatear_recomendacion_parley
 
@@ -653,7 +653,11 @@ def liquidar_dia(memoria: dict, dia: dict) -> int:
                 prediccion.get("stake_virtual")
                 or stake_virtual_prediccion(memoria)
             )
-            odds = float(prediccion.get("odds") or 1.5)
+            odds = float(prediccion.get("odds") or 0)
+            if odds <= 1.0:
+                odds, amer = cuota_desde_prob(float(prediccion.get("probPick") or 50))
+                prediccion["odds"] = odds
+                prediccion["odds_american"] = amer
             if resultado == "acierto":
                 profit_v = round(stake_v * (odds - 1), 2)
             else:
@@ -775,6 +779,54 @@ def stake_virtual_prediccion(memoria: dict | None = None) -> float:
     return float(memoria.get("stake_por_juego") or cfg.get("stake_por_juego") or 5.0)
 
 
+def reparar_odds_papel(memoria: dict | None = None, *, persistir: bool = True) -> int:
+    """Corrige predicciones con cuota fija 1.5/+150 (default roto) usando cuota_desde_prob.
+
+    También recalcula profit virtual si ya estaban liquidadas, y restaura
+    stake_por_juego al valor de config si quedó pisado por Kelly.
+    """
+    memoria = memoria if memoria is not None else cargar_memoria()
+    cfg = cargar_config()
+    cambios = 0
+
+    stake_cfg = float(cfg.get("stake_por_juego") or 5.0)
+    actual_stake = float(memoria.get("stake_por_juego") or stake_cfg)
+    if abs(actual_stake - stake_cfg) > 0.01:
+        memoria["stake_por_juego"] = stake_cfg
+        cambios += 1
+
+    for dia in memoria.get("dias", []):
+        for pred in dia.get("predicciones", []):
+            odds = float(pred.get("odds") or 0)
+            amer = pred.get("odds_american")
+            # Default histórico roto: decimal 1.5 + americano +150
+            es_default_roto = abs(odds - 1.5) < 0.001 and (
+                amer is None or int(amer) == 150
+            )
+            if not es_default_roto and odds > 1.0:
+                continue
+            prob = float(pred.get("probPick") or 50)
+            nueva, amer_n = cuota_desde_prob(prob)
+            if abs(nueva - odds) < 0.001 and amer is not None and int(amer) == int(amer_n):
+                continue
+            pred["odds"] = nueva
+            pred["odds_american"] = amer_n
+            if pred.get("estado") == "liquidado" and pred.get("resultado") in ("acierto", "fallo"):
+                stake_v = float(pred.get("stake_virtual") or stake_virtual_prediccion(memoria))
+                if pred["resultado"] == "acierto":
+                    pred["profit"] = round(stake_v * (nueva - 1), 2)
+                else:
+                    pred["profit"] = round(-stake_v, 2)
+            cambios += 1
+
+    if cambios:
+        actualizar_resumen(memoria)
+        if persistir:
+            guardar_memoria(memoria)
+        print(f"[REPARAR] Corregidas {cambios} cuota(s)/stake de predicciones en papel.")
+    return cambios
+
+
 def guardar_prediccion(
     dia: dict,
     juego: dict,
@@ -800,16 +852,22 @@ def guardar_prediccion(
             existente["stake_virtual"] = stake_v
         return False
 
+    prob = float(juego.get("probPick") or 50)
+    odds = juego.get("odds")
+    odds_amer = juego.get("odds_american")
+    if not odds or float(odds) <= 1.0:
+        odds, odds_amer = cuota_desde_prob(prob)
+
     dia["predicciones"].append(
         {
             "game_id": juego["id"],
             "visitante": juego["visitante"],
             "home": juego["home"],
             "pick": juego["pick"],
-            "odds": juego.get("odds", 1.5),
-            "odds_american": juego.get("odds_american", 150),
+            "odds": float(odds),
+            "odds_american": odds_amer if odds_amer is not None else 150,
             "edge": juego.get("edge", 0),
-            "probPick": juego.get("probPick", 50),
+            "probPick": prob,
             "motivo_apuesta": juego.get("motivo_apuesta", ""),
             "pitcherAway": juego.get("pitcherAway"),
             "pitcherHome": juego.get("pitcherHome"),
@@ -898,14 +956,19 @@ def rellenar_predicciones_fecha(memoria: dict, fecha: str) -> int:
 
 
 def rellenar_predicciones_recientes(memoria: dict, dias_atras: int = 7) -> int:
-    """Rellena predicciones faltantes de los ultimos N dias calendario."""
+    """Rellena predicciones faltantes de dias ANTERIORES (no hoy).
+
+    Hoy se registra con registrar_predicciones_del_dia (respeta T-60).
+    Rellenar hoy congelaría picks demasiado temprano.
+    """
     hoy = hoy_local()
     f_inicio = fecha_inicio_experimento(memoria)
     if not f_inicio:
         return 0
 
     total = 0
-    for offset in range(dias_atras + 1):
+    # offset 1..N: solo días pasados
+    for offset in range(1, dias_atras + 1):
         f = hoy - timedelta(days=offset)
         if f < f_inicio:
             continue
@@ -1083,8 +1146,7 @@ def bloquear_juego(game_id: str, forzar: bool = False) -> dict:
     if not dia.get("bloqueado_en"):
         dia["bloqueado_en"] = ahora.isoformat()
 
-    # Asegurar que la memoria refleje el stake configurado actualmente
-    memoria["stake_por_juego"] = stake
+    # No pisar stake_por_juego (unidad de papel / config) con el Kelly de esta apuesta.
 
     actualizar_resumen(memoria)
     guardar_memoria(memoria)
@@ -1320,6 +1382,7 @@ async def lifespan(app: FastAPI):
         try:
             # Catch-up de días si el servidor estuvo apagado o se pasó la medianoche
             avanzar_dia_automatico()
+            reparar_odds_papel(cargar_memoria())
             rellenar_predicciones_recientes(cargar_memoria(), dias_atras=7)
             # Al arrancar, procesamos inmediatamente los juegos que ya deberían estar bloqueados
             bloquear_apuestas_del_dia(forzar=False)
@@ -1592,6 +1655,7 @@ def api_health():
 def ejecutar_trabajo_cron_externo() -> dict:
     """Sincroniza fecha, predicciones, bloqueos y liquidacion."""
     sincronizar_experimento_a_hoy()
+    reparar_odds_papel(cargar_memoria())
     rellenar_predicciones_recientes(cargar_memoria(), dias_atras=7)
     programar_bloqueos_por_juego()
     registrar_predicciones_del_dia(forzar=False)
