@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import threading
+import time
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -40,6 +41,8 @@ MLB_SCHEDULE = "https://statsapi.mlb.com/api/v1/schedule"
 scheduler = BackgroundScheduler()
 _cron_externo_lock = threading.Lock()
 _cron_externo_activo = False
+_juegos_ui_cache: dict = {"fecha": "", "ts": 0.0, "juegos": []}
+_JUEGOS_UI_TTL_SEC = 90
 
 
 def _inicializar_datos_persistencia() -> None:
@@ -1349,7 +1352,22 @@ def panel():
     return FileResponse("QuantumMLB.html")
 
 
-def construir_estado_completo(liquidar: bool = False) -> dict:
+def obtener_juegos_para_panel(fecha: str, ligero: bool = False) -> list[dict]:
+    """Cache corto para no recalcular ML en cada refresh del panel."""
+    ahora = time.monotonic()
+    if (
+        ligero
+        and _juegos_ui_cache["fecha"] == fecha
+        and (ahora - _juegos_ui_cache["ts"]) < _JUEGOS_UI_TTL_SEC
+    ):
+        return _juegos_ui_cache["juegos"]
+    juegos = obtener_juegos_fecha(fecha)
+    if ligero:
+        _juegos_ui_cache.update({"fecha": fecha, "ts": ahora, "juegos": juegos})
+    return juegos
+
+
+def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> dict:
     memoria = cargar_memoria()
     # Sincronizar el día del experimento con el tiempo real/simulado
     avanzar_dia_automatico()
@@ -1358,19 +1376,20 @@ def construir_estado_completo(liquidar: bool = False) -> dict:
     # Asegurar que el día actual existe en memoria para que los contadores no salgan en 0
     asegurar_dia_operativo(memoria)
 
-    # Rellenar dias que se quedaron sin predicciones (servidor apagado)
-    try:
-        rellenar_predicciones_recientes(memoria, dias_atras=7)
-        memoria = cargar_memoria()
-    except Exception as e:
-        print(f"Aviso relleno predicciones: {e}")
+    if not ligero:
+        # Rellenar dias que se quedaron sin predicciones (servidor apagado)
+        try:
+            rellenar_predicciones_recientes(memoria, dias_atras=7)
+            memoria = cargar_memoria()
+        except Exception as e:
+            print(f"Aviso relleno predicciones: {e}")
 
-    # Registrar picks en papel de todos los juegos listos (sin mover banca)
-    try:
-        registrar_predicciones_del_dia(forzar=False)
-        memoria = cargar_memoria()
-    except Exception as e:
-        print(f"Aviso predicciones: {e}")
+        # Registrar picks en papel de todos los juegos listos (sin mover banca)
+        try:
+            registrar_predicciones_del_dia(forzar=False)
+            memoria = cargar_memoria()
+        except Exception as e:
+            print(f"Aviso predicciones: {e}")
 
     if liquidar:
         try:
@@ -1391,7 +1410,7 @@ def construir_estado_completo(liquidar: bool = False) -> dict:
     juegos = []
     try:
         juegos = fusionar_apuestas_con_juegos(
-            obtener_juegos_fecha(fecha_str()), memoria
+            obtener_juegos_para_panel(fecha_str(), ligero=ligero), memoria
         )
     except Exception as e:
         print(f"Error cargando juegos: {e}")
@@ -1425,13 +1444,14 @@ def construir_estado_completo(liquidar: bool = False) -> dict:
 
 @app.get("/api/state")
 def api_state():
-    return construir_estado_completo(liquidar=True)
+    """Estado del panel (ligero). Liquidacion y backfill corren en el cron."""
+    return construir_estado_completo(liquidar=False, ligero=True)
 
 
 @app.get("/api/picks-hoy")
 def api_picks_hoy():
     """Lista clara de picks recomendados para apostar hoy."""
-    estado = construir_estado_completo()
+    estado = construir_estado_completo(ligero=True)
     cfg = estado.get("config", {})
     estr = estado.get("estrategia", {})
     min_prob = float(estr.get("min_prob_modelo", 58))
@@ -1472,7 +1492,7 @@ def api_picks_hoy():
 
 @app.get("/api/live-data")
 def api_live_data():
-    estado = construir_estado_completo()
+    estado = construir_estado_completo(ligero=True)
     return {"games": estado["games"]}
 
 
