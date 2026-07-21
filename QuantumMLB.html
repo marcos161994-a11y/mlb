@@ -48,21 +48,124 @@
             font-size: 0.75rem;
             margin-top: 8px;
         }
+        .banca-mini {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .banca-mini .bm {
+            background: rgba(0,0,0,0.25);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 6px;
+        }
+        .banca-mini .bm .l { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; }
+        .banca-mini .bm .v { font-size: 0.95rem; font-weight: 700; margin-top: 2px; color: var(--cyan); }
+        .rendimiento {
+            margin-top: 12px;
+            background: rgba(0,242,255,0.08);
+            border: 1px solid rgba(0,242,255,0.3);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .rendimiento > summary {
+            list-style: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            font-size: 0.85rem;
+            color: var(--cyan);
+            font-weight: 700;
+            user-select: none;
+        }
+        .rendimiento > summary::-webkit-details-marker { display: none; }
+        .rendimiento > summary::after { content: '▼'; font-size: 0.8rem; }
+        .rendimiento[open] > summary::after { content: '▲'; }
+        .rendimiento-body { padding: 0 10px 12px; }
+        .rend-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .rend-card {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .rend-card h4 {
+            margin: 0 0 8px;
+            font-size: 0.72rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .rend-card .wr {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--cyan);
+            margin-bottom: 8px;
+        }
+        .rend-card .wr span { font-size: 0.75rem; font-weight: 600; color: var(--muted); }
+        .rend-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.78rem;
+            padding: 3px 0;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        .rend-row .k { color: var(--muted); }
+        .rend-row .v.pos { color: var(--green); }
+        .rend-row .v.neg { color: var(--red); }
+        .meta-line {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+        .aviso details > summary {
+            list-style: none;
+            cursor: pointer;
+            font-weight: 700;
+            user-select: none;
+        }
+        .aviso details > summary::-webkit-details-marker { display: none; }
+        .aviso details > summary::after {
+            content: ' ▼';
+            font-weight: normal;
+            opacity: 0.8;
+        }
+        .aviso details[open] > summary::after { content: ' ▲'; }
+        .aviso .aviso-body { margin-top: 8px; font-weight: normal; }
+        .favorables-hoy {
+            text-align: center;
+            color: var(--green);
+            font-size: 0.82rem;
+            margin: -4px 0 14px;
+            line-height: 1.45;
+        }
         .stats-row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
             margin-bottom: 20px;
+        }
+        @media (min-width: 700px) {
+            .stats-row { grid-template-columns: repeat(6, 1fr); }
         }
         .stat-box {
             background: var(--card);
             border: 1px solid var(--border);
             border-radius: 10px;
-            padding: 12px;
+            padding: 12px 8px;
             text-align: center;
         }
-        .stat-box .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; }
-        .stat-box .val { font-size: 1.4rem; font-weight: bold; margin-top: 4px; }
+        .stat-box .label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; line-height: 1.2; }
+        .stat-box .val { font-size: 1.2rem; font-weight: bold; margin-top: 4px; }
         .stat-box .val.pos { color: var(--green); }
         .stat-box .val.neg { color: var(--red); }
         .controls {
@@ -301,27 +404,38 @@
 <body>
 
 <div class="header">
-    <h1>QUANTUM MLB — EXPERIMENTO 5 DÍAS</h1>
+    <h1>QUANTUM MLB</h1>
     <div class="banca-valor" id="capital-display">$100.00</div>
-    <p id="dia-actual">DÍA 1 DE 5</p>
-    <p id="banca-detalle" style="font-size:0.9rem;color:#8899aa;margin-top:6px;">
-        Disponible: $100.00 · En juego hoy: $0.00 · $5 por partido
-    </p>
-    <span class="badge" id="modo-badge">SIMULACIÓN · Líneas BetMGM</span>
-    <div id="stats-modelo" style="margin-top:12px;padding:8px;background:rgba(0,242,255,0.1);border-radius:8px;border:1px solid rgba(0,242,255,0.3);">
-        <span style="font-size:0.8rem;color:var(--muted);">🎯 Rendimiento del Modelo:</span>
-        <span id="stats-modelo-content" style="font-size:0.85rem;color:var(--cyan);margin-left:8px;">Cargando...</span>
+    <p id="dia-actual">DÍA 1 DE 200</p>
+    <div class="banca-mini" id="banca-detalle">
+        <div class="bm"><div class="l">Disponible</div><div class="v" id="bm-disponible">$100.00</div></div>
+        <div class="bm"><div class="l">En juego</div><div class="v" id="bm-enjuego">$0.00</div></div>
+        <div class="bm"><div class="l">Stake</div><div class="v" id="bm-stake">$5</div></div>
     </div>
-    <p id="lineas-status" style="font-size:0.75rem;margin-top:6px;color:#ffbc00;"></p>
-    <p id="proximo-bloqueo" style="font-size:0.8rem;color:var(--muted);margin-top:8px;"></p>
+    <span class="badge" id="modo-badge">SIMULACIÓN · Solo stats+ML</span>
+
+    <details class="rendimiento" id="stats-modelo" open>
+        <summary>🎯 Rendimiento</summary>
+        <div class="rendimiento-body" id="stats-modelo-content">
+            <p class="meta-line">Cargando...</p>
+        </div>
+    </details>
+
+    <p class="meta-line" id="lineas-status" style="color:#ffbc00;"></p>
+    <p class="meta-line" id="proximo-bloqueo"></p>
 </div>
 
 <div class="aviso" id="aviso-real">
-    <strong>Estrategia:</strong> <strong>1 hora antes</strong> de cada juego se evalúa todo
-    (pitchers, stats, BetMGM) y se apuesta $5 solo con <strong>valor</strong> (borde verde).
-    Máximo <strong>5 apuestas/día</strong>. Hora Puerto Rico.
+    <details>
+        <summary>Modo solo modelo</summary>
+        <div class="aviso-body" id="aviso-body">
+            El tag <strong>PICK</strong> es la predicción (fija al apostar).
+            <strong>GANÓ</strong> solo aparece cuando MLB confirma el final.
+            Verdes (≥58%) son apostables. Bloqueo 1 h antes.
+        </div>
+    </details>
 </div>
-<p id="favorables-hoy" style="text-align:center;color:var(--green);font-size:0.9rem;margin:-8px 0 16px;"></p>
+<p class="favorables-hoy" id="favorables-hoy"></p>
 
 <div class="picks-hero" id="picks-hero">
     <details id="picks-hoy-details" open>
@@ -349,8 +463,11 @@
 </div>
 
 <div class="historial" id="historial-dias">
-    <h3>💰 Banca real (solo apuestas con dinero)</h3>
-    <div id="lista-historial"><p style="color:var(--muted)">Sin días registrados aún.</p></div>
+    <h3 onclick="toggleHistorialBanca()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+        <span>💰 Banca real (solo apuestas con dinero)</span>
+        <span id="historial-toggle" style="font-size:1.2rem;">▼</span>
+    </h3>
+    <div id="lista-historial" style="display:none;"><p style="color:var(--muted)">Sin días registrados aún.</p></div>
 </div>
 
 <div class="historial" id="historial-predicciones">
@@ -358,7 +475,7 @@
         <span>📋 Predicciones en papel (todos los juegos)</span>
         <span id="predicciones-toggle" style="font-size:1.2rem;">▼</span>
     </h3>
-    <div id="lista-predicciones"><p style="color:var(--muted)">Sin predicciones registradas aún.</p></div>
+    <div id="lista-predicciones" style="display:none;"><p style="color:var(--muted)">Sin predicciones registradas aún.</p></div>
 </div>
 
 <div id="contenedor-juegos" class="grid-juegos">
@@ -484,6 +601,22 @@ async function cargarEstado() {
     }
 }
 
+function fmtMoneyPlain(n) {
+    return '$' + Math.abs(Number(n) || 0).toFixed(2);
+}
+
+function rendCard(titulo, w, l, wr, ganado, perdido, neto) {
+    const netoCls = (neto || 0) >= 0 ? 'pos' : 'neg';
+    const netoTxt = ((neto || 0) >= 0 ? '+' : '-') + fmtMoneyPlain(neto);
+    return `<div class="rend-card">
+        <h4>${titulo}</h4>
+        <div class="wr">${(wr || 0).toFixed ? (wr || 0).toFixed(1) : (wr || 0)}%<span> · ${w||0}✓ / ${l||0}✗</span></div>
+        <div class="rend-row"><span class="k">Ganado</span><span class="v pos">${fmtMoneyPlain(ganado)}</span></div>
+        <div class="rend-row"><span class="k">Perdido</span><span class="v neg">${fmtMoneyPlain(perdido)}</span></div>
+        <div class="rend-row"><span class="k">Neto</span><span class="v ${netoCls}">${netoTxt}</span></div>
+    </div>`;
+}
+
 function pintarEstado(data) {
     const m = data.memoria;
     const dia = data.dia_hoy;
@@ -491,25 +624,25 @@ function pintarEstado(data) {
 
     const b = data.banca || {};
     document.getElementById('capital-display').textContent = '$' + m.capital.toFixed(2);
-    document.getElementById('banca-detalle').textContent =
-        `Disponible: $${(b.disponible ?? m.capital).toFixed(2)} · ` +
-        `En juego hoy: $${(b.en_juego_hoy || 0).toFixed(2)} · $${m.stake_por_juego} por partido`;
-    
-    // Stats: predicciones (papel) vs dinero real
+    document.getElementById('bm-disponible').textContent = '$' + (b.disponible ?? m.capital).toFixed(2);
+    document.getElementById('bm-enjuego').textContent = '$' + (b.en_juego_hoy || 0).toFixed(2);
+    document.getElementById('bm-stake').textContent = '$' + Number(m.stake_por_juego || 5).toFixed(0);
+
+    // Stats: dos tarjetas claras (papel vs dinero)
     const split = data.pl_split || {};
     const pred = split.predicciones || {};
     const din = split.dinero || {};
     const statsContent = document.getElementById('stats-modelo-content');
     if ((pred.total || 0) > 0 || (din.total || 0) > 0) {
         statsContent.innerHTML =
-            `Predicciones: ${pred.aciertos||0}✓ / ${pred.fallos||0}✗ (${pred.win_rate||0}%) · ` +
-            `Ganado $${(pred.ganado||0).toFixed(2)} · Perdido $${(pred.perdido||0).toFixed(2)} · Neto $${(pred.neto||0).toFixed(2)}` +
-            `<br>Dinero: ${din.ganadas||0}✓ / ${din.perdidas||0}✗ · ` +
-            `Ganado $${(din.ganado||0).toFixed(2)} · Perdido $${(din.perdido||0).toFixed(2)} · Neto $${(din.neto||0).toFixed(2)}`;
+            `<div class="rend-grid">` +
+            rendCard('📋 Papel', pred.aciertos, pred.fallos, pred.win_rate, pred.ganado, pred.perdido, pred.neto) +
+            rendCard('💰 Dinero', din.ganadas, din.perdidas, din.win_rate, din.ganado, din.perdido, din.neto) +
+            `</div>`;
     } else {
-        statsContent.textContent = 'Sin datos suficientes';
+        statsContent.innerHTML = '<p class="meta-line">Sin datos suficientes todavía.</p>';
     }
-    
+
     document.getElementById('dia-actual').textContent =
         m.experimento_activo
             ? `DÍA ${m.dia_actual} DE ${m.dias_totales}`
@@ -558,14 +691,14 @@ function pintarEstado(data) {
 
     const mins = data.minutos_antes_juego || 60;
     document.getElementById('proximo-bloqueo').textContent = soloModelo
-        ? `Bloqueo automático: ${mins} min antes de cada juego (pick por probabilidad del modelo)`
-        : `Bloqueo automático: ${mins} min antes de cada juego (evalúa pick + BetMGM)`;
+        ? `Bloqueo automático: ${mins} min antes de cada juego`
+        : `Bloqueo: ${mins} min antes · evalúa pick + BetMGM`;
 
     const ls = document.getElementById('lineas-status');
     const lin = data.lineas || {};
     if (soloModelo) {
         ls.style.color = '#00ff88';
-        ls.textContent = '✓ ' + (lin.mensaje || 'Modo solo modelo (sin Odds API)');
+        ls.textContent = '✓ Modo solo modelo (sin Odds API)';
     } else if (lin.ok) {
         ls.style.color = '#00ff88';
         ls.textContent = '✓ BetMGM · ' + (lin.mensaje || '');
@@ -573,29 +706,31 @@ function pintarEstado(data) {
         ls.style.color = '#ffbc00';
         ls.textContent = '⚠ ' + (lin.mensaje || 'Sin líneas BetMGM');
     }
-    const aviso = document.getElementById('aviso-real');
-    if (soloModelo) {
-        aviso.innerHTML = '<strong>Modo solo modelo:</strong> el tag <strong>PICK</strong> es la predicción (fija al apostar). ' +
-            '<strong>GANÓ</strong> solo aparece cuando MLB confirma el resultado final. ' +
-            'Los verdes (≥ ' + (estr.min_prob_modelo || 58) + '%) son apostables. Bloqueo <strong>1 h antes</strong>.';
-    } else {
-        aviso.innerHTML = '<strong>Estrategia:</strong> <strong>1 hora antes</strong> de cada juego se evalúa todo ' +
-            '(pitchers, stats, BetMGM) y se apuesta solo con <strong>valor</strong> (borde verde). ' +
-            'Máximo <strong>' + (estr.max_apuestas_dia || 5) + ' apuestas/día</strong>.';
+
+    const avisoSum = document.querySelector('#aviso-real summary');
+    const avisoBody = document.getElementById('aviso-body');
+    const minP = estr.min_prob_modelo || 58;
+    if (avisoSum && avisoBody) {
+        if (soloModelo) {
+            avisoSum.textContent = 'Modo solo modelo';
+            avisoBody.innerHTML =
+                'El tag <strong>PICK</strong> es la predicción (fija al apostar). ' +
+                '<strong>GANÓ</strong> solo al final oficial de MLB. ' +
+                `Verdes (≥${minP}%) son apostables. Bloqueo 1 h antes.`;
+        } else {
+            avisoSum.textContent = 'Estrategia BetMGM';
+            avisoBody.innerHTML =
+                '1 h antes se evalúa pitchers + stats + BetMGM. ' +
+                'Solo se apuesta con valor (borde verde). ' +
+                `Máximo ${estr.max_apuestas_dia || 5} apuestas/día.`;
+        }
     }
 
-    // Nota breve con sumas de hoy (papel + dinero)
+    // Nota corta de hoy
     const fav = data.favorables_hoy ?? data.oportunidades_valor_hoy ?? 0;
     const maxP = estr.max_apuestas_dia || 5;
-    const netoP = Number(res.pred_neto || 0);
-    const lineaFav = soloModelo
-        ? `${fav} listo(s) de máx. ${maxP} (≥${estr.min_prob_modelo || 58}%)`
-        : `${fav} listo(s) de máx. ${maxP} (edge ≥ +${estr.min_edge_pct || 5}%)`;
     document.getElementById('favorables-hoy').textContent =
-        `${lineaFav} · Dinero hoy ${ganadas}✓/${perdidas}✗/${pendientes}⏳ ${fmtMoney(profitHoy)}` +
-        ((res.pred_total || 0) > 0
-            ? ` · Papel hoy ${res.pred_aciertos || 0}✓/${res.pred_fallos || 0}✗/${res.pred_pendientes || 0}⏳ ${fmtMoney(netoP)}`
-            : '');
+        `Hoy: ${fav} listo(s) / máx ${maxP} · dinero ${ganadas}✓ ${perdidas}✗ ${pendientes}⏳ ${fmtMoney(profitHoy)}`;
 
     const lista = document.getElementById('lista-historial');
     const diasDinero = (m.dias || []).filter(d => (d.apuestas || []).length > 0);
