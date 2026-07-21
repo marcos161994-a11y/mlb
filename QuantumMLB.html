@@ -307,6 +307,9 @@
 const API = (!window.location.origin || window.location.protocol === 'file:')
     ? 'http://localhost:8000'
     : window.location.origin;
+const ES_NUBE = API.includes('onrender.com') || API.includes('render.com');
+const REFRESH_MS = ES_NUBE ? 45000 : 8000;
+let cargandoEstado = false;
 
 function toast(msg) {
     const t = document.getElementById('toast');
@@ -359,20 +362,42 @@ function fmtAmer(a) {
 }
 
 async function cargarEstado() {
+    if (cargandoEstado) return;
+    cargandoEstado = true;
     const contenedor = document.getElementById('contenedor-juegos');
+    const yaCargo = contenedor.dataset.loaded === '1';
+    if (!yaCargo) {
+        contenedor.innerHTML = ES_NUBE
+            ? '<p style="color:var(--muted)">Conectando con el motor... (la nube puede tardar ~1 min al despertar)</p>'
+            : '<p style="color:var(--muted)">Conectando con el motor...</p>';
+    }
+    const ctrl = new AbortController();
+    const timeoutMs = ES_NUBE ? 180000 : 45000;
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
-        const stateRes = await fetch(API + '/api/state', { cache: 'no-store' });
+        const stateRes = await fetch(API + '/api/state', { cache: 'no-store', signal: ctrl.signal });
         if (!stateRes.ok) throw new Error('Servidor respondió ' + stateRes.status);
         const state = await stateRes.json();
+        contenedor.dataset.loaded = '1';
         pintarEstado(state);
         pintarPicksHoy(state.games || [], state);
         pintarJuegos(state.games || []);
     } catch (e) {
+        if (e.name === 'AbortError' && ES_NUBE) {
+            contenedor.innerHTML =
+                '<p style="color:#ffaa00"><b>El servidor está despertando...</b><br>Reintentando en unos segundos.</p>';
+            setTimeout(cargarEstado, 8000);
+            return;
+        }
         contenedor.innerHTML =
             '<p style="color:#ff4466"><b>Servidor apagado.</b><br>' +
-            '1) Doble clic en <b>iniciar.bat</b><br>' +
-            '2) Abre <b>http://localhost:8000</b> (no el archivo HTML)<br>' +
+            (ES_NUBE
+                ? 'Abre <b>https://mlb-1-en7i.onrender.com</b> y espera ~1 min.<br>'
+                : '1) Doble clic en <b>iniciar.bat</b><br>2) Abre <b>http://localhost:8000</b><br>') +
             '<small>' + (e.message || e) + '</small></p>';
+    } finally {
+        clearTimeout(timer);
+        cargandoEstado = false;
     }
 }
 
@@ -940,7 +965,7 @@ async function cargarParleys() {
 }
 
 cargarEstado();
-setInterval(cargarEstado, 8000);
+setInterval(cargarEstado, REFRESH_MS);
 </script>
 </body>
 </html>
