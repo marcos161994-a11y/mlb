@@ -317,21 +317,16 @@
 <div class="stats-row">
     <div class="stat-box"><div class="label">P/L Hoy (dinero)</div><div class="val" id="pl-hoy">$0.00</div></div>
     <div class="stat-box"><div class="label">Ganadas Hoy</div><div class="val" id="ganadas-hoy">0</div></div>
+    <div class="stat-box"><div class="label">Perdidas Hoy</div><div class="val" id="perdidas-hoy">0</div></div>
     <div class="stat-box"><div class="label">Pendientes</div><div class="val" id="pendientes-hoy">0</div></div>
-    <div class="stat-box"><div class="label">ROI Total</div><div class="val" id="roi-total">0%</div></div>
+    <div class="stat-box"><div class="label">ROI Banca</div><div class="val" id="roi-total">0%</div></div>
     <div class="stat-box"><div class="label">Exposición Hoy</div><div class="val" id="exposicion-hoy">$0</div></div>
 </div>
 
 <div class="controls">
     <button onclick="bloquearHoy()">Forzar bloqueos pendientes ahora</button>
     <button onclick="liquidar()">Actualizar resultados</button>
-    <button onclick="toggleParleys()">🎯 Parleys (Click para expandir)</button>
     <button class="warn" onclick="reiniciar()">Reiniciar experimento</button>
-</div>
-
-<div class="historial" id="parleys-section" style="display:none;">
-    <h3>🎯 RECOMENDACIONES DE PARLEYS BETMGM</h3>
-    <div id="parleys-content"></div>
 </div>
 
 <div class="historial" id="historial-dias">
@@ -502,14 +497,35 @@ function pintarEstado(data) {
             : 'EXPERIMENTO FINALIZADO';
 
     const plEl = document.getElementById('pl-hoy');
-    plEl.textContent = fmtMoney(res.profit_dia || 0);
-    plEl.className = 'val ' + ((res.profit_dia || 0) >= 0 ? 'pos' : 'neg');
+    // Recalcular sumas desde las apuestas del día (no confiar solo en resumen cacheado)
+    const apuestasHoy = Array.isArray(dia?.apuestas) ? dia.apuestas : [];
+    const ganadas = apuestasHoy.filter(a => a.estado === 'ganada').length;
+    const perdidas = apuestasHoy.filter(a => a.estado === 'perdida').length;
+    const pendientes = apuestasHoy.filter(a => a.estado === 'pendiente').length;
+    const profitHoy = apuestasHoy.reduce((s, a) => {
+        if (a.profit == null || a.estado === 'pendiente') return s;
+        return s + Number(a.profit || 0);
+    }, 0);
+    const exposicion = apuestasHoy
+        .filter(a => a.estado === 'pendiente')
+        .reduce((s, a) => s + Number(a.stake || 0), 0);
 
-    document.getElementById('ganadas-hoy').textContent = res.ganadas || 0;
-    document.getElementById('pendientes-hoy').textContent = res.pendientes || 0;
-    document.getElementById('exposicion-hoy').textContent = '$' + (res.capital_arriesgado || 0).toFixed(0);
+    plEl.textContent = fmtMoney(profitHoy);
+    plEl.className = 'val ' + (profitHoy >= 0 ? 'pos' : 'neg');
 
-    const roi = ((m.capital - m.capital_inicial) / m.capital_inicial * 100);
+    document.getElementById('ganadas-hoy').textContent = ganadas;
+    const perdEl = document.getElementById('perdidas-hoy');
+    if (perdEl) {
+        perdEl.textContent = perdidas;
+        perdEl.className = 'val ' + (perdidas > 0 ? 'neg' : '');
+    }
+    document.getElementById('pendientes-hoy').textContent = pendientes;
+    document.getElementById('exposicion-hoy').textContent = '$' + exposicion.toFixed(0);
+
+    // ROI de la banca real (capital vs inicial)
+    const capitalIni = Number(m.capital_inicial || 100);
+    const capitalNow = Number(m.capital || capitalIni);
+    const roi = capitalIni ? ((capitalNow - capitalIni) / capitalIni * 100) : 0;
     const roiEl = document.getElementById('roi-total');
     roiEl.textContent = (roi >= 0 ? '+' : '') + roi.toFixed(2) + '%';
     roiEl.className = 'val ' + (roi >= 0 ? 'pos' : 'neg');
@@ -549,11 +565,18 @@ function pintarEstado(data) {
             'Máximo <strong>' + (estr.max_apuestas_dia || 5) + ' apuestas/día</strong>.';
     }
 
+    // Nota breve con sumas de hoy (papel + dinero)
     const fav = data.favorables_hoy ?? data.oportunidades_valor_hoy ?? 0;
     const maxP = estr.max_apuestas_dia || 5;
-    document.getElementById('favorables-hoy').textContent = soloModelo
-        ? `Hoy: ${fav} pick(s) favorable(s) de máximo ${maxP} (prob. modelo ≥ ${estr.min_prob_modelo || 52}%)`
-        : `Hoy: ${fav} pick(s) favorable(s) de máximo ${maxP} (edge ≥ +${estr.min_edge_pct || 5}%)`;
+    const netoP = Number(res.pred_neto || 0);
+    const lineaFav = soloModelo
+        ? `${fav} listo(s) de máx. ${maxP} (≥${estr.min_prob_modelo || 58}%)`
+        : `${fav} listo(s) de máx. ${maxP} (edge ≥ +${estr.min_edge_pct || 5}%)`;
+    document.getElementById('favorables-hoy').textContent =
+        `${lineaFav} · Dinero hoy ${ganadas}✓/${perdidas}✗/${pendientes}⏳ ${fmtMoney(profitHoy)}` +
+        ((res.pred_total || 0) > 0
+            ? ` · Papel hoy ${res.pred_aciertos || 0}✓/${res.pred_fallos || 0}✗/${res.pred_pendientes || 0}⏳ ${fmtMoney(netoP)}`
+            : '');
 
     const lista = document.getElementById('lista-historial');
     const diasDinero = (m.dias || []).filter(d => (d.apuestas || []).length > 0);
@@ -561,19 +584,21 @@ function pintarEstado(data) {
         lista.innerHTML = '<p style="color:var(--muted);font-size:0.82rem;margin:0">Sin apuestas con dinero. Las predicciones en papel estan abajo.</p>';
     } else {
         let html = '';
-        let bancaCorr = m.capital_inicial;
+        let bancaCorr = Number(m.capital_inicial || 100);
         for (const d of m.dias) {
             const apuestas = d.apuestas || [];
             if (!apuestas.length) continue;
-            const r = d.resumen || {};
-            const pl = r.profit_dia || 0;
-            const ganadas = r.ganadas || 0;
-            const perdidas = r.perdidas || 0;
+            const g = apuestas.filter(a => a.estado === 'ganada').length;
+            const p = apuestas.filter(a => a.estado === 'perdida').length;
+            const pl = apuestas.reduce((s, a) => {
+                if (a.profit == null || a.estado === 'pendiente') return s;
+                return s + Number(a.profit || 0);
+            }, 0);
             bancaCorr += pl;
             const diaId = 'dia-' + d.dia;
             html += '<div class="dia-fila" style="cursor:pointer;" onclick="toggleDia(\'' + diaId + '\')">';
-            html += '<span>Día ' + d.dia + ' (' + d.fecha + ') — ' + ganadas + 'G / ' + perdidas + 'P — ' + apuestas.length + ' apuesta(s)</span>';
-            html += '<span style="color:' + (pl >= 0 ? 'var(--green)' : 'var(--red)') + '">' + fmtMoney(pl) + ' → Banca $' + bancaCorr.toFixed(2) + '</span></div>';
+            html += '<span>Día ' + d.dia + ' (' + d.fecha + ') — ' + g + 'G / ' + p + 'P — ' + apuestas.length + ' apuesta(s)</span>';
+            html += '<span style="color:' + (pl >= 0 ? 'var(--green)' : 'var(--red)') + '">' + fmtMoney(pl) + ' → Banca $' + bancaCorr.toFixed(2) + '</span>';
             html += '</div>';
             html += '<div id="' + diaId + '" style="display:none;padding:8px 0 12px 10px;">';
             apuestas.forEach(a => {
@@ -589,7 +614,7 @@ function pintarEstado(data) {
         lista.innerHTML = html;
     }
 
-        pintarPredicciones(m, data.pl_split);
+    pintarPredicciones(m, data.pl_split);
 }
 
 function nombrePick(pick) {
@@ -941,109 +966,9 @@ async function reiniciar() {
     cargarEstado();
 }
 
-let parleysIntervalo = null;
-let parleysSectionVisible = false;
-
-function toggleParleys() {
-    const section = document.getElementById('parleys-section');
-    parleysSectionVisible = !parleysSectionVisible;
-    
-    if (parleysSectionVisible) {
-        section.style.display = 'block';
-        cargarParleys();
-    } else {
-        section.style.display = 'none';
-        if (parleysIntervalo) {
-            clearInterval(parleysIntervalo);
-            parleysIntervalo = null;
-        }
-    }
-}
-
-async function cargarParleys() {
-    const section = document.getElementById('parleys-section');
-    const content = document.getElementById('parleys-content');
-    
-    try {
-        content.innerHTML = '<p style="color:var(--muted)">Calculando parleys óptimos...</p>';
-        section.style.display = 'block';
-        
-        const r = await fetch(API + '/api/parleys');
-        const d = await r.json();
-        
-        if (!d.parleys || d.parleys.length === 0) {
-            content.innerHTML = '<p style="color:var(--muted)">No hay suficientes picks con valor para generar parleys hoy.</p>';
-            return;
-        }
-        
-        let html = '';
-        
-        // Mostrar el mejor parley destacado
-        if (d.mejor_parley) {
-            const p = d.mejor_parley;
-            html += `<div style="background:rgba(0,255,136,0.1);border:2px solid var(--green);border-radius:12px;padding:16px;margin-bottom:16px;">
-                <h4 style="margin:0 0 12px;color:var(--green)">🏆 MEJOR PARLEY RECOMENDADO</h4>
-                <div style="font-size:1.2rem;font-weight:bold;margin-bottom:8px">
-                    Cuota: ${p.cuota_parley.toFixed(2)} (${p.cuota_parley_american > 0 ? '+' : ''}${p.cuota_parley_american})
-                </div>
-                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;font-size:0.9rem">
-                    <div>Prob Modelo: <span style="color:var(--cyan)">${p.prob_modelo.toFixed(1)}%</span></div>
-                    <div>Prob Mercado: <span style="color:var(--muted)">${p.prob_implicita.toFixed(1)}%</span></div>
-                    <div>EDGE: <span style="color:var(--green)">+${p.edge.toFixed(1)}%</span></div>
-                    <div>EV: <span style="color:${p.ev_esperado > 0 ? 'var(--green)' : 'var(--red)'}">$${p.ev_esperado.toFixed(2)}/$1</span></div>
-                </div>
-                <div style="margin-bottom:12px">
-                    <strong>PICKS (${p.num_picks}):</strong>
-                </div>`;
-            
-            p.picks.forEach((pick, i) => {
-                html += `<div style="background:rgba(0,0,0,0.3);padding:8px;margin:4px 0;border-radius:6px;font-size:0.85rem">
-                    ${i + 1}. ${pick.pick} @ ${pick.odds.toFixed(2)} (Edge +${pick.edge.toFixed(1)}%, Prob ${pick.prob.toFixed(0)}%)
-                </div>`;
-            });
-            
-            html += `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-                <strong>💰 STAKE RECOMENDADO: $${p.stake_recomendado.toFixed(0)}</strong>
-            </div></div>`;
-        }
-        
-        // Mostrar otros parleys
-        if (d.parleys.length > 1) {
-            html += `<h4 style="margin:16px 0 8px">Otros Parleys (${d.parleys.length - 1} más)</h4>`;
-            d.parleys.slice(1).forEach((p, idx) => {
-                html += `<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;margin:8px 0">
-                    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-                        <strong>Parley #${idx + 2} (${p.num_picks} picks)</strong>
-                        <span style="color:var(--green)">+${p.edge.toFixed(1)}%</span>
-                    </div>
-                    <div style="font-size:0.9rem;margin-bottom:8px">
-                        Cuota: ${p.cuota_parley.toFixed(2)} · Prob: ${p.prob_modelo.toFixed(1)}% · EV: $${p.ev_esperado.toFixed(2)}
-                    </div>
-                    <div style="font-size:0.8rem;color:var(--muted)">`;
-                p.picks.forEach(pick => {
-                    html += `• ${pick.pick} @ ${pick.odds.toFixed(2)}<br>`;
-                });
-                html += `</div></div>`;
-            });
-        }
-        
-        html += `<div style="margin-top:16px;font-size:0.8rem;color:var(--muted)">
-            Analizados: ${d.total_juegos_analizados} juegos · Picks con valor: ${d.juegos_con_valor} · <span style="color:var(--green)">🔄 Actualizando en vivo...</span>
-        </div>`;
-        
-        content.innerHTML = html;
-        
-        // Iniciar actualización automática cada minuto
-        if (parleysIntervalo) clearInterval(parleysIntervalo);
-        parleysIntervalo = setInterval(cargarParleys, 60000);
-        
-    } catch (e) {
-        content.innerHTML = `<p style="color:var(--red)">Error: ${e.message}</p>`;
-    }
-}
-
 cargarEstado();
 setInterval(cargarEstado, REFRESH_MS);
+
 </script>
 </body>
 </html>

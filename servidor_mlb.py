@@ -28,7 +28,6 @@ from lineas_betmgm import aplicar_lineas_a_juegos
 from lineas_betmgm import normalizar_nombre_equipo as norm_nombre
 from modelo_mlb import evaluar_juegos, calcular_stake_dinamico, cuota_desde_prob
 from ml_predictor import auto_entrenar_ml
-from parleys_betmgm import generar_parleys, seleccionar_mejor_parley, formatear_recomendacion_parley
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
@@ -1414,13 +1413,6 @@ def programar_tareas_background() -> None:
         id="bloqueo_periodico",
         replace_existing=True,
     )
-    # Actualizar parleys cada minuto para datos en vivo
-    scheduler.add_job(
-        lambda: obtener_juegos_fecha(fecha_str()),
-        CronTrigger(minute="*", timezone=tz),
-        id="actualizar_parleys_vivo",
-        replace_existing=True,
-    )
 
 
 @asynccontextmanager
@@ -1523,11 +1515,15 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
     # Sincronizar el stake visual con la configuración actual
     cfg = cargar_config()
     memoria["stake_por_juego"] = cfg.get("stake_por_juego", 3.0)
-    dia = dia_operativo(memoria)
+    # Día de HOY por fecha (no solo por dia_actual) y resumen siempre fresco
+    fecha_hoy = fecha_str()
+    dia = dia_por_fecha(memoria, fecha_hoy) or dia_operativo(memoria)
+    if dia:
+        dia["resumen"] = resumen_dia(dia)
     juegos = []
     try:
         juegos = fusionar_apuestas_con_juegos(
-            obtener_juegos_para_panel(fecha_str(), ligero=ligero), memoria
+            obtener_juegos_para_panel(fecha_hoy, ligero=ligero), memoria
         )
     except Exception as e:
         print(f"Error cargando juegos: {e}")
@@ -1540,6 +1536,27 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
             guardar_memoria(memoria)
         except Exception:
             pass
+
+    # Resumen del día también con predicciones en papel (para el panel)
+    resumen_hoy = dict(dia["resumen"]) if dia else {
+        "jugadas": 0, "ganadas": 0, "perdidas": 0, "pendientes": 0,
+        "profit_dia": 0.0, "capital_arriesgado": 0.0, "total_apostado": 0.0,
+    }
+    preds_hoy = (dia or {}).get("predicciones") or []
+    pred_aciertos = sum(1 for p in preds_hoy if p.get("resultado") == "acierto")
+    pred_fallos = sum(1 for p in preds_hoy if p.get("resultado") == "fallo")
+    pred_pend = sum(1 for p in preds_hoy if p.get("estado") == "pendiente")
+    pred_neto = round(
+        sum(float(p.get("profit") or 0) for p in preds_hoy if p.get("profit") is not None),
+        2,
+    )
+    resumen_hoy["pred_aciertos"] = pred_aciertos
+    resumen_hoy["pred_fallos"] = pred_fallos
+    resumen_hoy["pred_pendientes"] = pred_pend
+    resumen_hoy["pred_neto"] = pred_neto
+    resumen_hoy["pred_total"] = len(preds_hoy)
+    if dia:
+        dia["resumen"] = resumen_hoy
     
     return {
         "memoria": memoria,
@@ -1551,7 +1568,7 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
         "total_juegos_bloqueados": len(dia["apuestas"]) if dia else 0,
         "oportunidades_valor_hoy": sum(1 for j in juegos if j.get("apostable")),
         "minutos_antes_juego": cfg.get("minutos_antes_juego", 60),
-        "fecha_hoy": fecha_str(),
+        "fecha_hoy": fecha_hoy,
         "games": juegos,
         "stats_modelo": stats_modelo,
         "pl_split": pl_split,
@@ -1789,34 +1806,6 @@ def api_avanzar_dia():
         "fecha_hoy": fecha_str(),
     }
 
-
-@app.get("/api/parleys")
-def api_parleys():
-    """Genera y devuelve recomendaciones de parleys basadas en los juegos del día."""
-    cfg = cargar_config()
-    estrategia = cfg.get("estrategia", {})
-    
-    # Obtener juegos del día con modelo y líneas
-    juegos = obtener_juegos_fecha(fecha_str())
-    
-    # Generar parleys
-    parleys = generar_parleys(
-        juegos,
-        max_picks_por_parley=3,
-        min_edge_individual=estrategia.get("min_edge_pct", 5.0),
-        min_prob_modelo=estrategia.get("min_prob_modelo", 52.0)
-    )
-    
-    # Seleccionar el mejor parley
-    mejor_parley = seleccionar_mejor_parley(parleys)
-    
-    return {
-        "parleys": parleys[:10],  # Top 10 parleys
-        "mejor_parley": mejor_parley,
-        "recomendacion_texto": formatear_recomendacion_parley(mejor_parley) if mejor_parley else "No hay parleys recomendados",
-        "total_juegos_analizados": len(juegos),
-        "juegos_con_valor": len([j for j in juegos if j.get("apostable")])
-    }
 
 if __name__ == "__main__":
     print("=" * 60)
