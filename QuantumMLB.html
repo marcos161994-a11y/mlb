@@ -193,7 +193,11 @@
             margin: 8px 0 14px;
         }
         .picks-grupo {
-            margin-top: 8px;
+            margin-top: 10px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: rgba(0,0,0,0.25);
+            overflow: hidden;
         }
         .picks-grupo > summary {
             list-style: none;
@@ -201,22 +205,37 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            font-size: 0.75rem;
+            gap: 8px;
+            font-size: 0.78rem;
             font-weight: bold;
-            margin: 10px 0 8px;
-            padding: 6px 0;
+            margin: 0;
+            padding: 12px 14px;
             user-select: none;
+            -webkit-tap-highlight-color: transparent;
         }
         .picks-grupo > summary::-webkit-details-marker { display: none; }
         .picks-grupo > summary::after {
             content: '▼';
             font-size: 0.85rem;
+            flex-shrink: 0;
         }
         .picks-grupo[open] > summary::after {
             content: '▲';
         }
+        .picks-grupo > summary .hint {
+            font-weight: normal;
+            opacity: 0.7;
+            font-size: 0.7rem;
+            margin-left: 6px;
+        }
+        .picks-grupo.dinero {
+            border-color: rgba(0,255,136,0.35);
+        }
         .picks-grupo.dinero > summary { color: var(--green); }
         .picks-grupo.papel > summary { color: var(--muted); }
+        .picks-grupo .picks-grupo-body {
+            padding: 0 10px 10px;
+        }
         .pick-row {
             display: flex;
             align-items: center;
@@ -663,8 +682,8 @@ function pintarPicksHoy(juegos, data) {
 
     if (conDinero.length) {
         html += `<details class="picks-grupo dinero" id="picks-grupo-dinero" ${picksUi.dinero ? 'open' : ''}>
-            <summary>💰 APOSTAR CON DINERO (${conDinero.length})</summary>
-            <div>`;
+            <summary><span>💰 APOSTAR CON DINERO (${conDinero.length})<span class="hint">toca para abrir/cerrar</span></span></summary>
+            <div class="picks-grupo-body">`;
         conDinero.forEach((j, i) => {
             const eq = nombrePick(j.pick);
             const hecho = j.estado_apuesta === 'pendiente' || j.estado_apuesta === 'ganada' || j.estado_apuesta === 'perdida';
@@ -701,8 +720,8 @@ function pintarPicksHoy(juegos, data) {
 
     if (soloPred.length) {
         html += `<details class="picks-grupo papel" id="picks-grupo-papel" ${picksUi.papel ? 'open' : ''}>
-            <summary>Predicción en papel (${soloPred.length} — sin dinero)</summary>
-            <div>`;
+            <summary><span>📋 Predicción en papel (${soloPred.length})<span class="hint">toca para ver el resto</span></span></summary>
+            <div class="picks-grupo-body">`;
         soloPred.forEach(j => {
             html += `<div class="pick-row no">
                 <div>
