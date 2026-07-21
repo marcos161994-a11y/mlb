@@ -10,10 +10,10 @@ on:
 jobs:
   ping-render:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 20
     steps:
       - name: Health (despierta Render)
-        run: curl -fsS "https://mlb-1-en7i.onrender.com/api/health"
+        run: curl -fsS --max-time 120 "https://mlb-1-en7i.onrender.com/api/health"
 
       - name: Auto-bloqueo + liquidacion + predicciones
         env:
@@ -23,4 +23,4 @@ jobs:
             echo "::warning::Falta CRON_SECRET en GitHub Secrets. Ve a Settings > Secrets > Actions."
             exit 0
           fi
-          curl -fsS "https://mlb-1-en7i.onrender.com/api/auto-bloqueo-externo?secret=${CRON_SECRET}"
+          curl -fsS --max-time 600 "https://mlb-1-en7i.onrender.com/api/auto-bloqueo-externo?secret=${CRON_SECRET}"
