@@ -53,7 +53,7 @@ def _features_vector(features: Dict[str, Any]) -> np.ndarray:
 
 
 def _features_desde_registro(reg: Dict[str, Any]) -> Dict[str, Any]:
-    """Aproxima features ML desde un registro de apuesta/predicción liquidada."""
+    """Aproxima features ML desde prob/edge (solo registros legacy sin ml_features)."""
     prob = float(reg.get("probPick") or 50) / 100.0
     edge = float(reg.get("edge") or 0)
     pick = reg.get("pick") or ""
@@ -79,14 +79,38 @@ def _features_desde_registro(reg: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def serializar_features_ml(features: Dict[str, Any]) -> Dict[str, float]:
+    """Normaliza el vector de features para guardar en memoria o entrenar."""
+    out: Dict[str, float] = {}
+    for col in FEATURE_COLUMNS:
+        try:
+            out[col] = float(features.get(col, 0) or 0)
+        except (TypeError, ValueError):
+            out[col] = 0.0
+    return out
+
+
+def features_entrenamiento_desde_registro(reg: Dict[str, Any]) -> Dict[str, Any]:
+    """Features reales guardadas al predecir; fallback sintético en historial viejo."""
+    saved = reg.get("ml_features")
+    if isinstance(saved, dict) and saved:
+        return serializar_features_ml(saved)
+    return _features_desde_registro(reg)
+
+
 def cargar_datos_entrenamiento_desde_memoria(memoria: dict) -> List[Dict[str, Any]]:
     """Apuestas y predicciones liquidadas → dataset para Random Forest."""
     datos: List[Dict[str, Any]] = []
+    reales = sinteticas = 0
     for dia in memoria.get("dias", []):
         for apuesta in dia.get("apuestas", []):
             if apuesta.get("estado") not in ("ganada", "perdida"):
                 continue
-            fila = _features_desde_registro(apuesta)
+            fila = features_entrenamiento_desde_registro(apuesta)
+            if apuesta.get("ml_features"):
+                reales += 1
+            else:
+                sinteticas += 1
             fila["resultado"] = 1 if apuesta["estado"] == "ganada" else 0
             datos.append(fila)
         for pred in dia.get("predicciones", []):
@@ -95,9 +119,18 @@ def cargar_datos_entrenamiento_desde_memoria(memoria: dict) -> List[Dict[str, An
                 "fallo",
             ):
                 continue
-            fila = _features_desde_registro(pred)
+            fila = features_entrenamiento_desde_registro(pred)
+            if pred.get("ml_features"):
+                reales += 1
+            else:
+                sinteticas += 1
             fila["resultado"] = 1 if pred["resultado"] == "acierto" else 0
             datos.append(fila)
+    if datos:
+        print(
+            f"[ML] Dataset entrenamiento: {reales} muestras con features reales, "
+            f"{sinteticas} sintéticas (historial antiguo)"
+        )
     return datos
 
 

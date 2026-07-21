@@ -18,7 +18,7 @@ ODDS_URL = "https://api.the-odds-api.com/v4/sports/baseball_mlb/odds"
 
 _cache: dict[tuple[str, str], dict[str, Any]] | None = None
 _cache_ts: datetime | None = None
-CACHE_MINUTES = 1  # Actualizar cada minuto para parleys en vivo
+CACHE_MINUTES = 1  # Actualizar líneas con frecuencia durante el día
 
 # MLB statsapi -> nombres típicos en The Odds API / BetMGM
 # Usamos un solo nombre canónico (Oakland Athletics) para evitar rebotes en el mapeo

@@ -28,8 +28,6 @@ from lineas_betmgm import aplicar_lineas_a_juegos
 from lineas_betmgm import normalizar_nombre_equipo as norm_nombre
 from modelo_mlb import evaluar_juegos, calcular_stake_dinamico
 from ml_predictor import auto_entrenar_ml
-from parleys_betmgm import generar_parleys, seleccionar_mejor_parley, formatear_recomendacion_parley
-
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -474,6 +472,7 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
     else:
         print(f"[INFO] Modo solo_resultados activo para {fecha or 'hoy'}. Saltando IA y Cuotas.")
         
+    juegos.sort(key=lambda g: g.get("inicio_juego") or "")
     return juegos
 
 
@@ -775,6 +774,16 @@ def stake_virtual_prediccion(memoria: dict | None = None) -> float:
     return float(memoria.get("stake_por_juego") or cfg.get("stake_por_juego") or 5.0)
 
 
+def _prob_modelos_desde_juego(juego: dict) -> dict:
+    """prob_est / prob_ml del equipo elegido en el pick."""
+    campos: dict = {}
+    if juego.get("probEstPick") is not None:
+        campos["prob_est"] = juego["probEstPick"]
+    if juego.get("probMlPick") is not None:
+        campos["prob_ml"] = juego["probMlPick"]
+    return campos
+
+
 def guardar_prediccion(
     dia: dict,
     juego: dict,
@@ -798,10 +807,14 @@ def guardar_prediccion(
             existente["con_dinero"] = True
         if existente.get("stake_virtual") is None:
             existente["stake_virtual"] = stake_v
+        if juego.get("ml_features") and not existente.get("ml_features"):
+            existente["ml_features"] = juego["ml_features"]
+        for k, v in _prob_modelos_desde_juego(juego).items():
+            if existente.get(k) is None:
+                existente[k] = v
         return False
 
-    dia["predicciones"].append(
-        {
+    registro: dict = {
             "game_id": juego["id"],
             "visitante": juego["visitante"],
             "home": juego["home"],
@@ -821,7 +834,10 @@ def guardar_prediccion(
             "con_dinero": bool(con_dinero),
             "predicho_en": ahora,
         }
-    )
+    if juego.get("ml_features"):
+        registro["ml_features"] = juego["ml_features"]
+    registro.update(_prob_modelos_desde_juego(juego))
+    dia["predicciones"].append(registro)
     return True
 
 
@@ -1056,8 +1072,7 @@ def bloquear_juego(game_id: str, forzar: bool = False) -> dict:
         }
 
     ahora = datetime.now(tz_experimento())
-    dia["apuestas"].append(
-        {
+    apuesta_reg: dict = {
             "game_id": juego["id"],
             "visitante": juego["visitante"],
             "home": juego["home"],
@@ -1078,7 +1093,10 @@ def bloquear_juego(game_id: str, forzar: bool = False) -> dict:
             "profit": None,
             "bloqueado_en": ahora.isoformat(),
         }
-    )
+    if juego.get("ml_features"):
+        apuesta_reg["ml_features"] = juego["ml_features"]
+    apuesta_reg.update(_prob_modelos_desde_juego(juego))
+    dia["apuestas"].append(apuesta_reg)
     guardar_prediccion(dia, juego, con_dinero=True, stake_virtual=stake_v)
     if not dia.get("bloqueado_en"):
         dia["bloqueado_en"] = ahora.isoformat()
@@ -1240,6 +1258,10 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
             copia["profit"] = ap.get("profit")
             copia["edge"] = ap.get("edge", copia.get("edge"))
             copia["motivo_apuesta"] = ap.get("motivo_apuesta", copia.get("motivo_apuesta", ""))
+            copia["prob_est"] = ap.get("prob_est", copia.get("prob_est"))
+            copia["prob_ml"] = ap.get("prob_ml", copia.get("prob_ml"))
+            copia["probEstPick"] = ap.get("prob_est", copia.get("probEstPick"))
+            copia["probMlPick"] = ap.get("prob_ml", copia.get("probMlPick"))
             copia["pick_congelado"] = True
         elif pred:
             # Mantener el pick original de la predicción (no el recalculado en vivo)
@@ -1250,6 +1272,11 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
             copia["probPick"] = pred.get("probPick", copia.get("probPick"))
             copia["edge"] = pred.get("edge", copia.get("edge"))
             copia["motivo_apuesta"] = pred.get("motivo_apuesta", copia.get("motivo_apuesta", ""))
+            copia["resultado"] = pred.get("resultado")
+            copia["prob_est"] = pred.get("prob_est", copia.get("prob_est"))
+            copia["prob_ml"] = pred.get("prob_ml", copia.get("prob_ml"))
+            copia["probEstPick"] = pred.get("prob_est", copia.get("probEstPick"))
+            copia["probMlPick"] = pred.get("prob_ml", copia.get("probMlPick"))
             copia["estado_apuesta"] = "sin_bloquear"
             copia["profit"] = None
             copia["pick_congelado"] = True
@@ -1296,13 +1323,6 @@ def programar_tareas_background() -> None:
         lambda: bloquear_apuestas_del_dia(forzar=False),
         CronTrigger(minute="*/5", timezone=tz),
         id="bloqueo_periodico",
-        replace_existing=True,
-    )
-    # Actualizar parleys cada minuto para datos en vivo
-    scheduler.add_job(
-        lambda: obtener_juegos_fecha(fecha_str()),
-        CronTrigger(minute="*", timezone=tz),
-        id="actualizar_parleys_vivo",
         replace_existing=True,
     )
 
@@ -1671,34 +1691,6 @@ def api_avanzar_dia():
         "fecha_hoy": fecha_str(),
     }
 
-
-@app.get("/api/parleys")
-def api_parleys():
-    """Genera y devuelve recomendaciones de parleys basadas en los juegos del día."""
-    cfg = cargar_config()
-    estrategia = cfg.get("estrategia", {})
-    
-    # Obtener juegos del día con modelo y líneas
-    juegos = obtener_juegos_fecha(fecha_str())
-    
-    # Generar parleys
-    parleys = generar_parleys(
-        juegos,
-        max_picks_por_parley=3,
-        min_edge_individual=estrategia.get("min_edge_pct", 5.0),
-        min_prob_modelo=estrategia.get("min_prob_modelo", 52.0)
-    )
-    
-    # Seleccionar el mejor parley
-    mejor_parley = seleccionar_mejor_parley(parleys)
-    
-    return {
-        "parleys": parleys[:10],  # Top 10 parleys
-        "mejor_parley": mejor_parley,
-        "recomendacion_texto": formatear_recomendacion_parley(mejor_parley) if mejor_parley else "No hay parleys recomendados",
-        "total_juegos_analizados": len(juegos),
-        "juegos_con_valor": len([j for j in juegos if j.get("apostable")])
-    }
 
 if __name__ == "__main__":
     print("=" * 60)

@@ -4,49 +4,146 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Quantum MLB — Experimento 5 Días</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg: #050a0f;
-            --panel: #101a26;
-            --card: #111b27;
-            --border: #1e2f44;
+            --bg: #02060c;
+            --panel: rgba(12, 20, 32, 0.82);
+            --card: rgba(14, 24, 38, 0.88);
+            --border: #1e3a55;
             --cyan: #00f2ff;
+            --cyan-dim: rgba(0, 242, 255, 0.45);
             --gold: #ffbc00;
             --green: #00ff88;
             --red: #ff4466;
-            --muted: #8899aa;
+            --muted: #7a8fa6;
+            --glow-cyan: 0 0 20px rgba(0, 242, 255, 0.35);
+            --glow-green: 0 0 18px rgba(0, 255, 136, 0.3);
         }
         * { box-sizing: border-box; }
+        @keyframes gridShift {
+            0%, 100% { background-position: 0 0, 0 0, 0 0, 0 0; }
+            50% { background-position: 0 0, 0 0, 20px 20px, 20px 20px; }
+        }
+        @keyframes neonPulse {
+            0%, 100% { text-shadow: 0 0 8px var(--cyan), 0 0 24px rgba(0, 242, 255, 0.4); }
+            50% { text-shadow: 0 0 14px var(--cyan), 0 0 40px rgba(0, 242, 255, 0.65), 0 0 60px rgba(0, 255, 136, 0.2); }
+        }
+        @keyframes borderGlow {
+            0%, 100% { opacity: 0.5; }
+            50% { opacity: 1; }
+        }
+        @keyframes scanline {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100vh); }
+        }
+        @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
         body {
-            background: var(--bg);
+            background-color: var(--bg);
+            background-image:
+                radial-gradient(ellipse 80% 50% at 50% -10%, rgba(0, 242, 255, 0.12) 0%, transparent 55%),
+                radial-gradient(ellipse 60% 40% at 100% 100%, rgba(0, 255, 136, 0.06) 0%, transparent 45%),
+                linear-gradient(rgba(0, 242, 255, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 242, 255, 0.04) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 48px 48px, 48px 48px;
+            animation: gridShift 12s ease-in-out infinite;
             color: var(--cyan);
             font-family: 'Segoe UI', system-ui, sans-serif;
             margin: 0;
             padding: 16px;
             line-height: 1.4;
+            min-height: 100vh;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.12) 2px,
+                rgba(0, 0, 0, 0.12) 4px
+            );
+            pointer-events: none;
+            z-index: 9998;
+            opacity: 0.35;
+        }
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--cyan), var(--green), transparent);
+            opacity: 0.15;
+            animation: scanline 6s linear infinite;
+            pointer-events: none;
+            z-index: 9999;
+        }
+        h1, h2, h3, .picks-hero h2 {
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 0.06em;
         }
         .header {
             background: var(--panel);
-            border: 2px solid var(--cyan);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 2px solid transparent;
+            background-image: linear-gradient(var(--panel), var(--panel)), linear-gradient(135deg, var(--cyan), rgba(0, 255, 136, 0.6), var(--cyan));
+            background-origin: border-box;
+            background-clip: padding-box, border-box;
             border-radius: 16px;
-            padding: 20px;
+            padding: 24px 20px;
             text-align: center;
             margin-bottom: 20px;
+            position: relative;
+            box-shadow: var(--glow-cyan), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            animation: fadeSlideIn 0.6s ease-out;
+        }
+        .header::before,
+        .header::after {
+            content: '';
+            position: absolute;
+            width: 18px;
+            height: 18px;
+            border-color: var(--cyan);
+            border-style: solid;
+            opacity: 0.7;
+        }
+        .header::before { top: 10px; left: 10px; border-width: 2px 0 0 2px; }
+        .header::after { bottom: 10px; right: 10px; border-width: 0 2px 2px 0; }
+        .header h1 {
+            font-size: clamp(0.95rem, 3vw, 1.25rem);
+            margin: 0 0 8px;
+            text-shadow: 0 0 20px rgba(0, 242, 255, 0.5);
         }
         .banca-valor {
-            font-size: 2.8rem;
-            font-weight: bold;
-            text-shadow: 0 0 12px var(--cyan);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: clamp(2rem, 8vw, 2.8rem);
+            font-weight: 700;
+            animation: neonPulse 4s ease-in-out infinite;
         }
         .badge {
             display: inline-block;
-            background: rgba(255, 188, 0, 0.15);
+            background: rgba(255, 188, 0, 0.1);
             border: 1px solid var(--gold);
             color: var(--gold);
-            padding: 4px 12px;
-            border-radius: 20px;
-            font-size: 0.75rem;
+            padding: 4px 14px;
+            border-radius: 2px;
+            font-size: 0.7rem;
             margin-top: 8px;
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            box-shadow: 0 0 12px rgba(255, 188, 0, 0.15);
         }
         .stats-row {
             display: grid;
@@ -56,15 +153,41 @@
         }
         .stat-box {
             background: var(--card);
+            backdrop-filter: blur(8px);
             border: 1px solid var(--border);
-            border-radius: 10px;
-            padding: 12px;
+            border-top: 2px solid var(--cyan-dim);
+            border-radius: 4px;
+            padding: 14px 12px;
             text-align: center;
+            position: relative;
+            transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s;
+            animation: fadeSlideIn 0.5s ease-out backwards;
         }
-        .stat-box .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; }
-        .stat-box .val { font-size: 1.4rem; font-weight: bold; margin-top: 4px; }
-        .stat-box .val.pos { color: var(--green); }
-        .stat-box .val.neg { color: var(--red); }
+        .stat-box:nth-child(1) { animation-delay: 0.05s; }
+        .stat-box:nth-child(2) { animation-delay: 0.1s; }
+        .stat-box:nth-child(3) { animation-delay: 0.15s; }
+        .stat-box:nth-child(4) { animation-delay: 0.2s; }
+        .stat-box:nth-child(5) { animation-delay: 0.25s; }
+        .stat-box:hover {
+            border-top-color: var(--cyan);
+            box-shadow: var(--glow-cyan);
+            transform: translateY(-2px);
+        }
+        .stat-box .label {
+            font-size: 0.65rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.12em;
+            font-family: 'Orbitron', sans-serif;
+        }
+        .stat-box .val {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-top: 6px;
+        }
+        .stat-box .val.pos { color: var(--green); text-shadow: var(--glow-green); }
+        .stat-box .val.neg { color: var(--red); text-shadow: 0 0 12px rgba(255, 68, 102, 0.4); }
         .controls {
             display: flex;
             flex-wrap: wrap;
@@ -72,30 +195,59 @@
             margin-bottom: 20px;
         }
         button {
-            background: rgba(0, 242, 255, 0.12);
-            border: 1px solid var(--cyan);
+            background: rgba(0, 242, 255, 0.06);
+            border: 1px solid var(--cyan-dim);
             color: var(--cyan);
-            padding: 10px 16px;
-            border-radius: 8px;
+            padding: 10px 18px;
+            border-radius: 2px;
             cursor: pointer;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            transition: all 0.25s ease;
+            position: relative;
+            overflow: hidden;
         }
-        button:hover { background: rgba(0, 242, 255, 0.25); }
-        button.warn { border-color: var(--red); color: var(--red); }
+        button::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, rgba(0, 242, 255, 0.15), transparent);
+            transform: translateX(-100%);
+            transition: transform 0.4s;
+        }
+        button:hover {
+            background: rgba(0, 242, 255, 0.18);
+            box-shadow: var(--glow-cyan);
+            border-color: var(--cyan);
+        }
+        button:hover::before { transform: translateX(100%); }
+        button.warn { border-color: rgba(255, 68, 102, 0.6); color: var(--red); }
+        button.warn:hover { box-shadow: 0 0 16px rgba(255, 68, 102, 0.35); }
         .historial {
             background: var(--card);
+            backdrop-filter: blur(8px);
             border: 1px solid var(--border);
-            border-radius: 12px;
-            padding: 14px;
+            border-left: 3px solid var(--cyan-dim);
+            border-radius: 4px;
+            padding: 16px;
             margin-bottom: 20px;
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.2);
         }
-        .historial h3 { margin: 0 0 10px; font-size: 0.9rem; }
+        .historial h3 {
+            margin: 0 0 12px;
+            font-size: 0.85rem;
+            color: var(--cyan);
+            text-shadow: 0 0 10px rgba(0, 242, 255, 0.3);
+        }
         .dia-fila {
             display: flex;
             justify-content: space-between;
-            padding: 6px 0;
-            border-bottom: 1px solid var(--border);
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(30, 58, 85, 0.6);
             font-size: 0.85rem;
+            font-family: 'JetBrains Mono', monospace;
         }
         .grid-juegos {
             display: grid;
@@ -104,120 +256,296 @@
         }
         .card {
             background: var(--card);
-            border-radius: 12px;
+            backdrop-filter: blur(6px);
+            border-radius: 4px;
             padding: 14px;
             border: 1px solid var(--border);
+            transition: transform 0.2s, box-shadow 0.25s, border-color 0.25s;
+            position: relative;
         }
-        .card.ganada { border-color: var(--green); }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 8px;
+            height: 8px;
+            border-top: 1px solid var(--cyan-dim);
+            border-left: 1px solid var(--cyan-dim);
+        }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+        }
+        .card.ganada { border-color: var(--green); box-shadow: var(--glow-green); }
         .card.perdida { border-color: var(--red); }
-        .card.apostable { border: 2px solid var(--green); box-shadow: 0 0 12px rgba(0,255,136,0.15); }
+        .card.apostable {
+            border: 1px solid var(--green);
+            box-shadow: var(--glow-green), inset 0 0 20px rgba(0, 255, 136, 0.04);
+        }
         .card.no-apostable { opacity: 0.55; }
-        .tag-apostar { background: rgba(0,255,136,0.2); color: var(--green); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
-        .tag-skip { background: rgba(136,153,170,0.2); color: #8899aa; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; }
-        .estado { color: var(--gold); font-size: 0.75rem; font-weight: bold; }
+        .tag-apostar {
+            background: rgba(0, 255, 136, 0.15);
+            color: var(--green);
+            padding: 2px 8px;
+            border-radius: 2px;
+            font-size: 0.65rem;
+            font-weight: bold;
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 0.05em;
+            border: 1px solid rgba(0, 255, 136, 0.4);
+        }
+        .tag-skip {
+            background: rgba(136, 153, 170, 0.15);
+            color: #8899aa;
+            padding: 2px 8px;
+            border-radius: 2px;
+            font-size: 0.7rem;
+        }
+        .estado { color: var(--gold); font-size: 0.75rem; font-weight: bold; font-family: 'Orbitron', sans-serif; }
         .estado-apuesta { font-size: 0.7rem; margin-top: 4px; }
         .estado-apuesta.ganada { color: var(--green); }
         .estado-apuesta.perdida { color: var(--red); }
         .estado-apuesta.pendiente { color: var(--gold); }
         .pick-box {
-            background: rgba(0, 242, 255, 0.08);
-            border: 1px dashed var(--cyan);
+            background: rgba(0, 242, 255, 0.05);
+            border: 1px dashed var(--cyan-dim);
             padding: 10px;
             margin-top: 10px;
             text-align: center;
-            border-radius: 8px;
+            border-radius: 4px;
         }
         .aviso {
-            background: rgba(255, 188, 0, 0.1);
-            border: 1px solid var(--gold);
+            background: rgba(255, 188, 0, 0.06);
+            border: 1px solid rgba(255, 188, 0, 0.4);
+            border-left: 3px solid var(--gold);
             color: var(--gold);
-            padding: 12px;
-            border-radius: 10px;
+            padding: 14px 16px;
+            border-radius: 4px;
             margin-bottom: 16px;
             font-size: 0.85rem;
+            backdrop-filter: blur(6px);
         }
         .toast {
             position: fixed;
             bottom: 20px;
             right: 20px;
             background: var(--panel);
+            backdrop-filter: blur(12px);
             border: 1px solid var(--cyan);
             padding: 12px 18px;
-            border-radius: 8px;
+            border-radius: 4px;
             display: none;
-            z-index: 99;
+            z-index: 10000;
+            box-shadow: var(--glow-cyan);
+            font-family: 'JetBrains Mono', monospace;
         }
         .team-logo {
             width: 24px;
             height: 24px;
             margin-right: 8px;
             object-fit: contain;
+            filter: drop-shadow(0 0 4px rgba(0, 242, 255, 0.3));
         }
         .picks-hero {
-            background: linear-gradient(135deg, rgba(0,255,136,0.12), rgba(0,242,255,0.06));
-            border: 2px solid var(--green);
-            border-radius: 16px;
-            padding: 18px;
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.08), rgba(0, 242, 255, 0.04));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 255, 136, 0.45);
+            border-radius: 4px;
             margin-bottom: 20px;
+            position: relative;
+            box-shadow: var(--glow-green), inset 0 0 40px rgba(0, 255, 136, 0.03);
+            animation: fadeSlideIn 0.5s ease-out 0.1s backwards;
+            overflow: hidden;
+        }
+        .picks-hero-header {
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 16px 18px;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+        .picks-hero-header:hover { background: rgba(0, 255, 136, 0.05); }
+        .picks-hero-header .arrow {
+            font-size: 1rem;
+            color: var(--green);
+            margin-top: 4px;
+            flex-shrink: 0;
+            text-shadow: 0 0 8px rgba(0, 255, 136, 0.5);
+        }
+        .picks-hero-body {
+            display: none;
+            padding: 0 18px 16px;
+            border-top: 1px solid rgba(0, 255, 136, 0.2);
+        }
+        .picks-hero-body.open { display: block; }
+        .picks-hero::before {
+            content: 'SIGNAL';
+            position: absolute;
+            top: 8px;
+            right: 12px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.55rem;
+            letter-spacing: 0.2em;
+            color: var(--green);
+            opacity: 0.5;
+            animation: borderGlow 2s ease-in-out infinite;
         }
         .picks-hero h2 {
             margin: 0 0 4px;
-            font-size: 1.1rem;
+            font-size: 1rem;
             color: var(--green);
+            text-shadow: var(--glow-green);
         }
         .picks-hero .sub {
-            font-size: 0.8rem;
+            font-size: 0.78rem;
             color: var(--muted);
-            margin-bottom: 14px;
+            margin: 0;
+            font-family: 'JetBrains Mono', monospace;
         }
         .pick-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            background: rgba(0,0,0,0.35);
+            background: rgba(0, 0, 0, 0.45);
             border: 1px solid var(--border);
-            border-radius: 10px;
+            border-radius: 4px;
             padding: 12px 14px;
             margin-bottom: 8px;
+            position: relative;
+            overflow: hidden;
+            transition: border-color 0.2s, box-shadow 0.2s;
         }
-        .pick-row.apostar { border-color: var(--green); box-shadow: 0 0 10px rgba(0,255,136,0.12); }
-        .pick-row.hecho { border-color: var(--gold); opacity: 0.9; }
-        .pick-row.no { opacity: 0.65; border-style: dashed; }
+        .pick-row::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: var(--border);
+        }
+        .pick-row.apostar {
+            border-color: rgba(0, 255, 136, 0.5);
+            box-shadow: inset 0 0 24px rgba(0, 255, 136, 0.04);
+        }
+        .pick-row.apostar::before { background: var(--green); box-shadow: 0 0 8px var(--green); }
+        .pick-row.hecho { border-color: var(--gold); opacity: 0.95; }
+        .pick-row.hecho::before { background: var(--gold); }
+        .pick-row.no { opacity: 0.75; border-style: dashed; }
+        .pick-row.no::before { background: var(--muted); }
         .pick-equipo {
-            font-size: 1.05rem;
+            font-size: 1rem;
             font-weight: bold;
             color: var(--green);
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 0.03em;
         }
-        .pick-meta { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
-        .pick-prob {
-            font-size: 1.4rem;
-            font-weight: bold;
-            color: var(--cyan);
+        .pick-meta {
+            font-size: 0.72rem;
+            color: var(--muted);
+            margin-top: 4px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .pick-prob-wrap {
             text-align: right;
-            min-width: 56px;
+            min-width: 72px;
         }
+        .pick-prob {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 1.35rem;
+            font-weight: 700;
+            color: var(--cyan);
+            text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+            line-height: 1;
+        }
+        .prob-bar {
+            height: 3px;
+            background: rgba(0, 242, 255, 0.12);
+            border-radius: 2px;
+            margin-top: 6px;
+            overflow: hidden;
+        }
+        .prob-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--cyan), var(--green));
+            border-radius: 2px;
+            box-shadow: 0 0 8px rgba(0, 242, 255, 0.6);
+            transition: width 0.6s ease-out;
+        }
+        .prob-breakdown {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.62rem;
+            color: var(--muted);
+            margin-top: 5px;
+            line-height: 1.35;
+            white-space: nowrap;
+        }
+        .prob-breakdown b { color: var(--cyan); font-weight: 600; }
         .pick-badge {
             display: inline-block;
-            font-size: 0.65rem;
+            font-size: 0.6rem;
             font-weight: bold;
             padding: 3px 8px;
-            border-radius: 4px;
+            border-radius: 2px;
             margin-left: 8px;
             vertical-align: middle;
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 0.06em;
         }
-        .pick-badge.bet { background: var(--green); color: #000; }
+        .pick-badge.bet { background: var(--green); color: #000; box-shadow: 0 0 10px rgba(0, 255, 136, 0.5); }
         .pick-badge.wait { background: var(--gold); color: #000; }
-        .pick-badge.skip { background: #334; color: #aaa; }
+        .pick-badge.skip { background: #2a3544; color: #aaa; border: 1px solid #445; }
+        .picks-dropdown {
+            margin-top: 14px;
+            border: 1px dashed rgba(0, 242, 255, 0.25);
+            border-radius: 4px;
+            overflow: hidden;
+            background: rgba(0, 0, 0, 0.35);
+        }
+        .picks-dropdown-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 12px 14px;
+            cursor: pointer;
+            user-select: none;
+            font-size: 0.75rem;
+            font-weight: bold;
+            color: var(--muted);
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 0.05em;
+            transition: background 0.2s, color 0.2s;
+        }
+        .picks-dropdown-header:hover {
+            background: rgba(0, 242, 255, 0.06);
+            color: var(--cyan);
+        }
+        .picks-dropdown-header .arrow {
+            font-size: 0.9rem;
+            color: var(--cyan);
+            text-shadow: 0 0 8px rgba(0, 242, 255, 0.5);
+        }
+        .picks-dropdown-body {
+            display: none;
+            padding: 4px 10px 10px;
+            border-top: 1px solid rgba(0, 242, 255, 0.15);
+        }
+        .picks-dropdown-body.open { display: block; }
         .pick-tag {
             display: inline-block;
-            background: rgba(0, 242, 255, 0.25);
+            background: rgba(0, 242, 255, 0.15);
             color: var(--cyan);
-            border: 1px solid var(--cyan);
+            border: 1px solid var(--cyan-dim);
             font-size: 0.65rem;
             font-weight: bold;
             padding: 2px 6px;
-            border-radius: 4px;
+            border-radius: 2px;
             margin-left: 6px;
         }
         .ganador-tag {
@@ -227,8 +555,22 @@
             font-size: 0.65rem;
             font-weight: bold;
             padding: 2px 6px;
-            border-radius: 4px;
+            border-radius: 2px;
             margin-left: 6px;
+            box-shadow: 0 0 8px rgba(0, 255, 136, 0.4);
+        }
+        #stats-modelo {
+            margin-top: 12px;
+            padding: 10px 12px;
+            background: rgba(0, 242, 255, 0.06) !important;
+            border-radius: 4px !important;
+            border: 1px solid rgba(0, 242, 255, 0.25) !important;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        #favorables-hoy {
+            font-family: 'Orbitron', sans-serif;
+            letter-spacing: 0.04em;
+            text-shadow: 0 0 12px rgba(0, 255, 136, 0.4);
         }
     </style>
 </head>
@@ -258,9 +600,16 @@
 <p id="favorables-hoy" style="text-align:center;color:var(--green);font-size:0.9rem;margin:-8px 0 16px;"></p>
 
 <div class="picks-hero" id="picks-hero">
-    <h2>🎯 ¿A quién apostarle hoy?</h2>
-    <p class="sub" id="picks-sub">Cargando picks del modelo...</p>
-    <div id="lista-picks-hoy"></div>
+    <div class="picks-hero-header" onclick="togglePicksHero()">
+        <div>
+            <h2>🎯 ¿A quién apostarle hoy?</h2>
+            <p class="sub" id="picks-sub">Cargando picks del modelo...</p>
+        </div>
+        <span class="arrow" id="picks-hero-arrow">▼</span>
+    </div>
+    <div class="picks-hero-body" id="picks-hero-body">
+        <div id="lista-picks-hoy"></div>
+    </div>
 </div>
 
 <div class="stats-row">
@@ -274,13 +623,7 @@
 <div class="controls">
     <button onclick="bloquearHoy()">Forzar bloqueos pendientes ahora</button>
     <button onclick="liquidar()">Actualizar resultados</button>
-    <button onclick="toggleParleys()">🎯 Parleys (Click para expandir)</button>
     <button class="warn" onclick="reiniciar()">Reiniciar experimento</button>
-</div>
-
-<div class="historial" id="parleys-section" style="display:none;">
-    <h3>🎯 RECOMENDACIONES DE PARLEYS BETMGM</h3>
-    <div id="parleys-content"></div>
 </div>
 
 <div class="historial" id="historial-dias">
@@ -316,6 +659,61 @@ function toast(msg) {
     t.textContent = msg;
     t.style.display = 'block';
     setTimeout(() => t.style.display = 'none', 4000);
+}
+
+function togglePicksHero() {
+    const body = document.getElementById('picks-hero-body');
+    const arrow = document.getElementById('picks-hero-arrow');
+    if (!body) return;
+    const open = body.classList.toggle('open');
+    if (arrow) arrow.textContent = open ? '▲' : '▼';
+}
+
+function togglePicksPapel() {
+    const body = document.getElementById('picks-papel-body');
+    const arrow = document.getElementById('picks-papel-arrow');
+    if (!body) return;
+    const open = body.classList.toggle('open');
+    if (arrow) arrow.textContent = open ? '▲' : '▼';
+}
+
+function htmlProb(pctOrJuego, muted) {
+    if (typeof pctOrJuego === 'object' && pctOrJuego !== null) {
+        return htmlProbJuego(pctOrJuego, muted);
+    }
+    const p = Math.min(100, Math.max(0, pctOrJuego || 0));
+    const style = muted ? ' style="color:var(--muted)"' : '';
+    return '<div class="pick-prob-wrap"><div class="pick-prob"' + style + '>' + p.toFixed(0) + '%</div>'
+        + '<div class="prob-bar"><div class="prob-fill" style="width:' + p + '%"></div></div></div>';
+}
+
+function htmlProbJuego(j, muted) {
+    const p = Math.min(100, Math.max(0, j.probPick || 0));
+    const est = j.prob_est != null ? j.prob_est : j.probEstPick;
+    const ml = j.prob_ml != null ? j.prob_ml : j.probMlPick;
+    const style = muted ? ' style="color:var(--muted)"' : '';
+    let breakdown = '';
+    if (est != null && ml != null) {
+        breakdown = '<div class="prob-breakdown">Est ' + Number(est).toFixed(0) + '% \u00b7 ML '
+            + Number(ml).toFixed(0) + '% \u2192 <b>' + p.toFixed(0) + '%</b></div>';
+    } else if (est != null) {
+        breakdown = '<div class="prob-breakdown">Est ' + Number(est).toFixed(0) + '%</div>';
+    }
+    return '<div class="pick-prob-wrap"><div class="pick-prob"' + style + '>' + p.toFixed(0) + '%</div>'
+        + breakdown
+        + '<div class="prob-bar"><div class="prob-fill" style="width:' + p + '%"></div></div></div>';
+}
+
+function textoProbBreakdown(j) {
+    const est = j.prob_est != null ? j.prob_est : j.probEstPick;
+    const ml = j.prob_ml != null ? j.prob_ml : j.probMlPick;
+    const fin = j.probPick;
+    if (est != null && ml != null && fin != null) {
+        return 'Est ' + Number(est).toFixed(0) + '% \u00b7 ML ' + Number(ml).toFixed(0)
+            + '% \u2192 ' + Number(fin).toFixed(0) + '%';
+    }
+    if (est != null) return 'Est ' + Number(est).toFixed(0) + '%';
+    return '';
 }
 
 function togglePredicciones() {
@@ -527,6 +925,21 @@ function nombrePick(pick) {
     return (pick || '').replace(/\s*ML\s*$/i, '').trim();
 }
 
+function tsInicio(j) {
+    const raw = j && (j.inicio_juego || j.inicio);
+    if (!raw) return Number.MAX_SAFE_INTEGER;
+    const t = new Date(raw).getTime();
+    return Number.isFinite(t) ? t : Number.MAX_SAFE_INTEGER;
+}
+
+function ordenarPorHora(juegos) {
+    return [...juegos].sort((a, b) => {
+        const diff = tsInicio(a) - tsInicio(b);
+        if (diff !== 0) return diff;
+        return String(a.visitante || '').localeCompare(String(b.visitante || ''));
+    });
+}
+
 function pintarPicksHoy(juegos, data) {
     const lista = document.getElementById('lista-picks-hoy');
     const sub = document.getElementById('picks-sub');
@@ -593,26 +1006,38 @@ function pintarPicksHoy(juegos, data) {
                     <div class="pick-equipo">${i + 1}. ${eq} ${badge}</div>
                     <div class="pick-meta">${j.visitante} @ ${j.home} · ${j.hora_inicio_txt || '—'} · ${j.estado || ''}</div>
                 </div>
-                <div class="pick-prob">${(j.probPick || 0).toFixed(0)}%</div>
+                ${htmlProb(j)}
             </div>`;
         });
     }
 
-    const soloPred = unicos
-        .filter(j => (j.probPick || 0) > 0 && !conDinero.some(c => c.id === j.id))
-        .sort((a, b) => (b.probPick || 0) - (a.probPick || 0));
+    const soloPred = ordenarPorHora(
+        unicos.filter(j => (j.probPick || 0) > 0 && !conDinero.some(c => c.id === j.id))
+    );
 
     if (soloPred.length) {
-        html += '<div style="font-size:0.75rem;color:var(--muted);margin:14px 0 8px;font-weight:bold;">Predicción en papel (todos los demás — sin dinero)</div>';
-        soloPred.forEach(j => {
+        html += '<div class="picks-dropdown">';
+        html += '<div class="picks-dropdown-header" onclick="togglePicksPapel()"><span>📋 Predicción en papel — ' + soloPred.length + ' juegos (sin dinero)</span><span class="arrow" id="picks-papel-arrow">▼</span></div>';
+        html += '<div class="picks-dropdown-body" id="picks-papel-body">';
+        soloPred.forEach((j, i) => {
+            const fin = j.estado === 'FINALIZADO';
+            let badge = '<span class="pick-badge skip">PAPEL</span>';
+            if (j.estado === 'EN VIVO') {
+                badge = '<span class="pick-badge wait">EN JUEGO</span>';
+            } else if (fin && j.resultado === 'acierto') {
+                badge = '<span class="pick-badge bet">ACIERTO</span>';
+            } else if (fin && j.resultado === 'fallo') {
+                badge = '<span class="pick-badge skip">FALLO</span>';
+            }
             html += `<div class="pick-row no">
                 <div>
-                    <div class="pick-equipo" style="color:var(--muted)">${nombrePick(j.pick)}</div>
-                    <div class="pick-meta">${j.visitante} @ ${j.home} · ${j.hora_inicio_txt || ''} · ${(j.motivo_apuesta || '').slice(0, 50)}</div>
+                    <div class="pick-equipo" style="color:var(--muted)">${i + 1}. ${nombrePick(j.pick)} ${badge}</div>
+                    <div class="pick-meta">${j.visitante} @ ${j.home} · ${j.hora_inicio_txt || ''} · ${j.estado || ''}</div>
                 </div>
-                <div class="pick-prob" style="color:var(--muted)">${(j.probPick || 0).toFixed(0)}%</div>
+                ${htmlProb(j, true)}
             </div>`;
         });
+        html += '</div></div>';
     }
 
     lista.innerHTML = html || '<p style="color:var(--muted);margin:0">Sin picks claros todavía. Actualiza en unos minutos.</p>';
@@ -652,6 +1077,7 @@ function pintarPredicciones(memoria, plSplit) {
                 pick: p.pick,
                 odds: p.odds,
                 probPick: p.probPick,
+                inicio_juego: p.inicio_juego,
                 resultado: p.resultado,
                 estado: p.estado,
                 profit_papel: p.profit,
@@ -669,6 +1095,7 @@ function pintarPredicciones(memoria, plSplit) {
                 pick: a.pick,
                 odds: a.odds,
                 probPick: a.probPick,
+                inicio_juego: a.inicio_juego,
                 resultado: a.estado === 'ganada' ? 'acierto' : (a.estado === 'perdida' ? 'fallo' : null),
                 estado: a.estado,
                 profit_papel: null,
@@ -713,7 +1140,7 @@ function pintarPredicciones(memoria, plSplit) {
                 </thead>
                 <tbody>`;
 
-        filas.sort((a, b) => (b.probPick || 0) - (a.probPick || 0));
+        filas.sort((a, b) => tsInicio(a) - tsInicio(b));
         filas.forEach(f => {
             let resTxt = '⏳ pendiente';
             let resColor = 'var(--muted)';
@@ -754,7 +1181,7 @@ function pintarJuegos(juegos) {
         c.innerHTML = '<p style="color:var(--muted)">No hay juegos MLB hoy.</p>';
         return;
     }
-    const orden = [...juegos].sort((a, b) => (b.apostable ? 1 : 0) - (a.apostable ? 1 : 0));
+    const orden = ordenarPorHora(juegos);
     c.innerHTML = orden.map(j => {
         let cls = j.estado_apuesta === 'ganada' ? 'ganada' : (j.estado_apuesta === 'perdida' ? 'perdida' : '');
         cls += j.apostable ? ' apostable' : ' no-apostable';
@@ -786,7 +1213,7 @@ function pintarJuegos(juegos) {
 
         return `<div class="card ${cls}">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
-                <span class="estado">● ${j.estado}</span>${tag}
+                <span class="estado">● ${j.estado}${j.hora_inicio_txt ? ' · ' + j.hora_inicio_txt : ''}</span>${tag}
             </div>
             <div style="font-size:0.7rem;color:#8899aa;margin-bottom:6px">
                 P: ${j.pitcherAway||'?'} (${j.pitcherAwayEra??'?'}) · ${j.pitcherHome||'?'} (${j.pitcherHomeEra??'?'})
@@ -812,6 +1239,7 @@ function pintarJuegos(juegos) {
                     Confianza: <b style="color:var(--cyan)">${j.probPick != null ? j.probPick.toFixed(1) + '%' : '—'}</b>
                     · Cuota simulada: ${j.odds || '—'}
                 </div>
+                ${textoProbBreakdown(j) ? `<div class="prob-breakdown" style="margin-top:6px">${textoProbBreakdown(j)}</div>` : ''}
                 <div style="font-size:0.75rem;color:#8899aa;margin-top:6px">
                     Modelo ${j.probAway||'?'}% / ${j.probHome||'?'}% (visitante / local)
                 </div>
@@ -849,107 +1277,6 @@ async function reiniciar() {
     await fetch(API + '/api/reiniciar', { method: 'POST' });
     toast('Experimento reiniciado');
     cargarEstado();
-}
-
-let parleysIntervalo = null;
-let parleysSectionVisible = false;
-
-function toggleParleys() {
-    const section = document.getElementById('parleys-section');
-    parleysSectionVisible = !parleysSectionVisible;
-    
-    if (parleysSectionVisible) {
-        section.style.display = 'block';
-        cargarParleys();
-    } else {
-        section.style.display = 'none';
-        if (parleysIntervalo) {
-            clearInterval(parleysIntervalo);
-            parleysIntervalo = null;
-        }
-    }
-}
-
-async function cargarParleys() {
-    const section = document.getElementById('parleys-section');
-    const content = document.getElementById('parleys-content');
-    
-    try {
-        content.innerHTML = '<p style="color:var(--muted)">Calculando parleys óptimos...</p>';
-        section.style.display = 'block';
-        
-        const r = await fetch(API + '/api/parleys');
-        const d = await r.json();
-        
-        if (!d.parleys || d.parleys.length === 0) {
-            content.innerHTML = '<p style="color:var(--muted)">No hay suficientes picks con valor para generar parleys hoy.</p>';
-            return;
-        }
-        
-        let html = '';
-        
-        // Mostrar el mejor parley destacado
-        if (d.mejor_parley) {
-            const p = d.mejor_parley;
-            html += `<div style="background:rgba(0,255,136,0.1);border:2px solid var(--green);border-radius:12px;padding:16px;margin-bottom:16px;">
-                <h4 style="margin:0 0 12px;color:var(--green)">🏆 MEJOR PARLEY RECOMENDADO</h4>
-                <div style="font-size:1.2rem;font-weight:bold;margin-bottom:8px">
-                    Cuota: ${p.cuota_parley.toFixed(2)} (${p.cuota_parley_american > 0 ? '+' : ''}${p.cuota_parley_american})
-                </div>
-                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;font-size:0.9rem">
-                    <div>Prob Modelo: <span style="color:var(--cyan)">${p.prob_modelo.toFixed(1)}%</span></div>
-                    <div>Prob Mercado: <span style="color:var(--muted)">${p.prob_implicita.toFixed(1)}%</span></div>
-                    <div>EDGE: <span style="color:var(--green)">+${p.edge.toFixed(1)}%</span></div>
-                    <div>EV: <span style="color:${p.ev_esperado > 0 ? 'var(--green)' : 'var(--red)'}">$${p.ev_esperado.toFixed(2)}/$1</span></div>
-                </div>
-                <div style="margin-bottom:12px">
-                    <strong>PICKS (${p.num_picks}):</strong>
-                </div>`;
-            
-            p.picks.forEach((pick, i) => {
-                html += `<div style="background:rgba(0,0,0,0.3);padding:8px;margin:4px 0;border-radius:6px;font-size:0.85rem">
-                    ${i + 1}. ${pick.pick} @ ${pick.odds.toFixed(2)} (Edge +${pick.edge.toFixed(1)}%, Prob ${pick.prob.toFixed(0)}%)
-                </div>`;
-            });
-            
-            html += `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-                <strong>💰 STAKE RECOMENDADO: $${p.stake_recomendado.toFixed(0)}</strong>
-            </div></div>`;
-        }
-        
-        // Mostrar otros parleys
-        if (d.parleys.length > 1) {
-            html += `<h4 style="margin:16px 0 8px">Otros Parleys (${d.parleys.length - 1} más)</h4>`;
-            d.parleys.slice(1).forEach((p, idx) => {
-                html += `<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;margin:8px 0">
-                    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-                        <strong>Parley #${idx + 2} (${p.num_picks} picks)</strong>
-                        <span style="color:var(--green)">+${p.edge.toFixed(1)}%</span>
-                    </div>
-                    <div style="font-size:0.9rem;margin-bottom:8px">
-                        Cuota: ${p.cuota_parley.toFixed(2)} · Prob: ${p.prob_modelo.toFixed(1)}% · EV: $${p.ev_esperado.toFixed(2)}
-                    </div>
-                    <div style="font-size:0.8rem;color:var(--muted)">`;
-                p.picks.forEach(pick => {
-                    html += `• ${pick.pick} @ ${pick.odds.toFixed(2)}<br>`;
-                });
-                html += `</div></div>`;
-            });
-        }
-        
-        html += `<div style="margin-top:16px;font-size:0.8rem;color:var(--muted)">
-            Analizados: ${d.total_juegos_analizados} juegos · Picks con valor: ${d.juegos_con_valor} · <span style="color:var(--green)">🔄 Actualizando en vivo...</span>
-        </div>`;
-        
-        content.innerHTML = html;
-        
-        // Iniciar actualización automática cada minuto
-        if (parleysIntervalo) clearInterval(parleysIntervalo);
-        parleysIntervalo = setInterval(cargarParleys, 60000);
-        
-    } catch (e) {
-        content.innerHTML = `<p style="color:var(--red)">Error: ${e.message}</p>`;
-    }
 }
 
 cargarEstado();
