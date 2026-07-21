@@ -157,37 +157,66 @@
             background: linear-gradient(135deg, rgba(0,255,136,0.12), rgba(0,242,255,0.06));
             border: 2px solid var(--green);
             border-radius: 16px;
-            padding: 18px;
+            padding: 12px 18px 18px;
             margin-bottom: 20px;
         }
-        .picks-hero h2 {
-            margin: 0 0 4px;
-            font-size: 1.1rem;
-            color: var(--green);
+        .picks-hero > details {
+            border: none;
+        }
+        .picks-hero > details > summary {
+            list-style: none;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 10px;
+            margin: 0;
+            padding: 6px 0 4px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--green);
             user-select: none;
         }
-        .picks-hero h2:hover { opacity: 0.9; }
+        .picks-hero > details > summary::-webkit-details-marker { display: none; }
+        .picks-hero > details > summary::after {
+            content: '▼';
+            font-size: 1rem;
+            color: var(--green);
+            transition: transform 0.15s ease;
+        }
+        .picks-hero > details[open] > summary::after {
+            content: '▲';
+        }
         .picks-hero .sub {
             font-size: 0.8rem;
             color: var(--muted);
-            margin-bottom: 14px;
+            margin: 8px 0 14px;
         }
-        .picks-grupo-titulo {
-            font-size: 0.75rem;
-            font-weight: bold;
-            margin: 14px 0 8px;
+        .picks-grupo {
+            margin-top: 8px;
+        }
+        .picks-grupo > summary {
+            list-style: none;
             cursor: pointer;
             display: flex;
             align-items: center;
             justify-content: space-between;
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin: 10px 0 8px;
+            padding: 6px 0;
             user-select: none;
         }
-        .picks-grupo-titulo:first-child { margin-top: 0; }
+        .picks-grupo > summary::-webkit-details-marker { display: none; }
+        .picks-grupo > summary::after {
+            content: '▼';
+            font-size: 0.85rem;
+        }
+        .picks-grupo[open] > summary::after {
+            content: '▲';
+        }
+        .picks-grupo.dinero > summary { color: var(--green); }
+        .picks-grupo.papel > summary { color: var(--muted); }
         .pick-row {
             display: flex;
             align-items: center;
@@ -276,14 +305,13 @@
 <p id="favorables-hoy" style="text-align:center;color:var(--green);font-size:0.9rem;margin:-8px 0 16px;"></p>
 
 <div class="picks-hero" id="picks-hero">
-    <h2 onclick="togglePicksHoy()">
-        <span>🎯 ¿A quién apostarle hoy?</span>
-        <span id="picks-hoy-toggle" style="font-size:1.2rem;">▲</span>
-    </h2>
-    <div id="picks-hoy-content">
-        <p class="sub" id="picks-sub">Cargando picks del modelo...</p>
-        <div id="lista-picks-hoy"></div>
-    </div>
+    <details id="picks-hoy-details" open>
+        <summary>🎯 ¿A quién apostarle hoy?</summary>
+        <div id="picks-hoy-content">
+            <p class="sub" id="picks-sub">Cargando picks del modelo...</p>
+            <div id="lista-picks-hoy"></div>
+        </div>
+    </details>
 </div>
 
 <div class="stats-row">
@@ -360,23 +388,15 @@ const picksUi = {
     papel: false,
 };
 
-function togglePicksHoy() {
-    picksUi.abierto = !picksUi.abierto;
-    const content = document.getElementById('picks-hoy-content');
-    const toggle = document.getElementById('picks-hoy-toggle');
-    content.style.display = picksUi.abierto ? 'block' : 'none';
-    toggle.textContent = picksUi.abierto ? '▲' : '▼';
-}
-
-function togglePicksGrupo(grupo) {
-    if (grupo === 'dinero') picksUi.dinero = !picksUi.dinero;
-    if (grupo === 'papel') picksUi.papel = !picksUi.papel;
-    const content = document.getElementById(`picks-grupo-${grupo}`);
-    const toggle = document.getElementById(`picks-grupo-toggle-${grupo}`);
-    if (!content || !toggle) return;
-    const abierto = grupo === 'dinero' ? picksUi.dinero : picksUi.papel;
-    content.style.display = abierto ? 'block' : 'none';
-    toggle.textContent = abierto ? '▲' : '▼';
+function wirePicksDesplegables() {
+    const main = document.getElementById('picks-hoy-details');
+    if (main && !main.dataset.wired) {
+        main.dataset.wired = '1';
+        main.open = picksUi.abierto;
+        main.addEventListener('toggle', () => {
+            picksUi.abierto = main.open;
+        });
+    }
 }
 
 function toggleDia(diaId) {
@@ -579,15 +599,13 @@ function nombrePick(pick) {
 function pintarPicksHoy(juegos, data) {
     const lista = document.getElementById('lista-picks-hoy');
     const sub = document.getElementById('picks-sub');
-    const content = document.getElementById('picks-hoy-content');
-    const toggleMain = document.getElementById('picks-hoy-toggle');
     const estr = data.estrategia || {};
     const minProb = estr.min_prob_modelo || 58;
     const maxP = estr.max_apuestas_dia || 8;
 
-    // Restaurar estado del desplegable principal tras cada refresh
-    if (content) content.style.display = picksUi.abierto ? 'block' : 'none';
-    if (toggleMain) toggleMain.textContent = picksUi.abierto ? '▲' : '▼';
+    wirePicksDesplegables();
+    const main = document.getElementById('picks-hoy-details');
+    if (main) main.open = picksUi.abierto;
 
     const vistos = new Set();
     const unicos = [];
@@ -613,18 +631,15 @@ function pintarPicksHoy(juegos, data) {
         return;
     }
 
-    sub.textContent = `${unicos.length} juegos hoy · ${yaApostados.length} apostados · ${apostablesNuevos.length} listos (≥${minProb}%, máx. ${maxP}) · el resto solo predicción.`;
+    sub.textContent = `${unicos.length} juegos hoy · ${yaApostados.length} apostados · ${apostablesNuevos.length} listos (≥${minProb}%, máx. ${maxP}) · toca el título para abrir/cerrar.`;
 
     let html = '';
     const conDinero = [...yaApostados, ...apostablesNuevos];
 
     if (conDinero.length) {
-        const openDin = picksUi.dinero;
-        html += `<div class="picks-grupo-titulo" style="color:var(--green);" onclick="togglePicksGrupo('dinero')">
-            <span>💰 APOSTAR CON DINERO (${conDinero.length})</span>
-            <span id="picks-grupo-toggle-dinero">${openDin ? '▲' : '▼'}</span>
-        </div>
-        <div id="picks-grupo-dinero" style="display:${openDin ? 'block' : 'none'}">`;
+        html += `<details class="picks-grupo dinero" id="picks-grupo-dinero" ${picksUi.dinero ? 'open' : ''}>
+            <summary>💰 APOSTAR CON DINERO (${conDinero.length})</summary>
+            <div>`;
         conDinero.forEach((j, i) => {
             const eq = nombrePick(j.pick);
             const hecho = j.estado_apuesta === 'pendiente' || j.estado_apuesta === 'ganada' || j.estado_apuesta === 'perdida';
@@ -651,7 +666,7 @@ function pintarPicksHoy(juegos, data) {
                 <div class="pick-prob">${(j.probPick || 0).toFixed(0)}%</div>
             </div>`;
         });
-        html += '</div>';
+        html += '</div></details>';
     }
 
     const idsDinero = new Set(conDinero.map(j => j.id));
@@ -660,12 +675,9 @@ function pintarPicksHoy(juegos, data) {
         .sort((a, b) => (b.probPick || 0) - (a.probPick || 0));
 
     if (soloPred.length) {
-        const openPapel = picksUi.papel;
-        html += `<div class="picks-grupo-titulo" style="color:var(--muted);" onclick="togglePicksGrupo('papel')">
-            <span>Predicción en papel (${soloPred.length} — sin dinero)</span>
-            <span id="picks-grupo-toggle-papel">${openPapel ? '▲' : '▼'}</span>
-        </div>
-        <div id="picks-grupo-papel" style="display:${openPapel ? 'block' : 'none'}">`;
+        html += `<details class="picks-grupo papel" id="picks-grupo-papel" ${picksUi.papel ? 'open' : ''}>
+            <summary>Predicción en papel (${soloPred.length} — sin dinero)</summary>
+            <div>`;
         soloPred.forEach(j => {
             html += `<div class="pick-row no">
                 <div>
@@ -675,10 +687,21 @@ function pintarPicksHoy(juegos, data) {
                 <div class="pick-prob" style="color:var(--muted)">${(j.probPick || 0).toFixed(0)}%</div>
             </div>`;
         });
-        html += '</div>';
+        html += '</div></details>';
     }
 
     lista.innerHTML = html || '<p style="color:var(--muted);margin:0">Sin picks claros todavía. Actualiza en unos minutos.</p>';
+
+    const gDin = document.getElementById('picks-grupo-dinero');
+    const gPap = document.getElementById('picks-grupo-papel');
+    if (gDin) {
+        gDin.open = picksUi.dinero;
+        gDin.ontoggle = () => { picksUi.dinero = gDin.open; };
+    }
+    if (gPap) {
+        gPap.open = picksUi.papel;
+        gPap.ontoggle = () => { picksUi.papel = gPap.open; };
+    }
 }
 
 function pintarPredicciones(memoria, plSplit) {
