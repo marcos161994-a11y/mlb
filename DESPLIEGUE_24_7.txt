@@ -32,21 +32,28 @@ PASO 2 — CREAR SERVICIO EN RENDER
 7. Espera 3-5 min. Tu URL sera algo como:
    https://quantum-mlb.onrender.com
 
-PASO 3 — CRON PARA 24/7 (PLAN GRATIS)
---------------------------------------
+PASO 3 — CRON PARA 24/7 (PC APAGADA)
+------------------------------------
 Render FREE se duerme si no recibe visitas 15 min.
-Usa cron-job.org (gratis):
 
+OPCION A — GitHub Actions (recomendado, ya en el repo)
+1. En Render: copia el valor de CRON_SECRET (Environment)
+2. En GitHub: repo mlb > Settings > Secrets and variables > Actions
+3. New secret: nombre CRON_SECRET, mismo valor que Render
+4. El workflow .github/workflows/cloud-cron.yml corre cada 10 min
+
+OPCION B — cron-job.org (alternativa)
 1. Crea cuenta en https://cron-job.org
-2. Crea cron cada 10 MINUTOS:
-   URL: https://mlb-1-en7i.onrender.com/api/health
-   Metodo: GET
+2. Cron cada 10 MIN: GET https://mlb-1-en7i.onrender.com/api/health
+3. Cron cada 10 MIN: GET https://mlb-1-en7i.onrender.com/api/auto-bloqueo-externo?secret=TU_CRON_SECRET
 
-3. Crea otro cron cada 10 MINUTOS:
-   URL: https://mlb-1-en7i.onrender.com/api/auto-bloqueo-externo?secret=TU_CRON_SECRET
-   Metodo: GET o POST
+MANUAL (una vez, o si faltaron dias)
+  Doble clic: despertar_nube.bat
+  (te pedira el CRON_SECRET de Render)
 
-Esto mantiene el servidor despierto Y ejecuta bloqueos automaticos.
+PANEL SIN PC
+  Abre en el celular/otro PC: https://mlb-1-en7i.onrender.com
+  (no uses localhost si la PC esta apagada)
 
 PASO 4 — VERIFICAR
 ------------------

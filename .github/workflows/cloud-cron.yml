@@ -1,0 +1,26 @@
+# Mantiene Quantum MLB en Render despierto y liquida resultados cada 10 min.
+# Requiere: secret CRON_SECRET en GitHub (mismo valor que en Render).
+name: MLB Cloud Cron
+
+on:
+  schedule:
+    - cron: "*/10 * * * *"
+  workflow_dispatch:
+
+jobs:
+  ping-render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Health (despierta Render)
+        run: curl -fsS "https://mlb-1-en7i.onrender.com/api/health"
+
+      - name: Auto-bloqueo + liquidacion + predicciones
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::warning::Falta CRON_SECRET en GitHub Secrets. Ve a Settings > Secrets > Actions."
+            exit 0
+          fi
+          curl -fsS "https://mlb-1-en7i.onrender.com/api/auto-bloqueo-externo?secret=${CRON_SECRET}"
