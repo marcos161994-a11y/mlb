@@ -46,7 +46,7 @@
 
     "preferir_underdogs": true,
 
-    "min_cuota_underdog": 1.5,
+    "min_cuota_underdog": 2.0,
 
     "analizar_bullpen": true,
 

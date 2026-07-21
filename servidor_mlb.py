@@ -36,6 +36,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 _lineas_meta_cache: dict = {"ok": False, "mensaje": "Sin cargar"}
 CONFIG_PATH = BASE_DIR / "config_experimento.json"
 MEMORIA_PATH = DATA_DIR / "memoria_auditoria.json"
+_memoria_lock = threading.RLock()
 
 MLB_SCHEDULE = "https://statsapi.mlb.com/api/v1/schedule"
 scheduler = BackgroundScheduler()
@@ -103,14 +104,18 @@ def cargar_memoria() -> dict:
 
 
 def guardar_memoria(memoria: dict) -> None:
-    with open(MEMORIA_PATH, "w", encoding="utf-8") as f:
-        print(f"[GUARDAR] Guardando memoria. Capital: {memoria['capital']:.2f}, Día: {memoria['dia_actual']}")
-        json.dump(memoria, f, indent=2, ensure_ascii=False)
-    js_path = DATA_DIR / "memoria_dashboard.js"
-    js_path.write_text(
-        f"const datosMemoria = {json.dumps(memoria, ensure_ascii=False)};",
-        encoding="utf-8",
-    )
+    with _memoria_lock:
+        with open(MEMORIA_PATH, "w", encoding="utf-8") as f:
+            print(
+                f"[GUARDAR] Guardando memoria. Capital: {memoria['capital']:.2f}, "
+                f"Día: {memoria['dia_actual']}"
+            )
+            json.dump(memoria, f, indent=2, ensure_ascii=False)
+        js_path = DATA_DIR / "memoria_dashboard.js"
+        js_path.write_text(
+            f"const datosMemoria = {json.dumps(memoria, ensure_ascii=False)};",
+            encoding="utf-8",
+        )
 
 
 def tz_experimento() -> ZoneInfo:
@@ -201,7 +206,8 @@ def resumen_banca(memoria: dict) -> dict:
     return {
         "capital": memoria["capital"],
         "capital_inicial": memoria["capital_inicial"],
-        "capital_bruto": memoria["capital"] + en_juego, # Capital + lo que está en juego
+        # capital = disponible + en_juego (no se resta stake al abrir).
+        "capital_bruto": memoria["capital"],
         "en_juego_hoy": en_juego,
         "disponible": round(memoria["capital"] - en_juego, 2),
         "stake_por_juego": memoria["stake_por_juego"],
@@ -600,11 +606,19 @@ def liquidar_dia(memoria: dict, dia: dict) -> int:
         return 0
 
     solo_resultados = not predicciones_pendientes
+    # Red fuera del lock
     juegos = obtener_juegos_fecha(dia["fecha"], solo_resultados=solo_resultados)
     if not juegos:
         print(f"[DEBUG LIQ DIA] No se encontraron juegos para el día {dia['fecha']}. No se liquida.")
         return 0
-    
+
+    with _memoria_lock:
+        return _liquidar_dia_con_juegos(memoria, dia, juegos)
+
+
+def _liquidar_dia_con_juegos(memoria: dict, dia: dict, juegos: list) -> int:
+    apuestas = dia.get("apuestas", [])
+    preds = dia.get("predicciones", [])
     por_id = {g["id"]: g for g in juegos}
     cambios = 0
     for apuesta in dia.get("apuestas", []):
@@ -997,8 +1011,14 @@ def resumen_predicciones_y_dinero(memoria: dict) -> dict:
                 continue
             profit = p.get("profit")
             if profit is None and p.get("resultado") in ("acierto", "fallo"):
-                stake_v = float(p.get("stake_virtual") or 5.0)
-                odds = float(p.get("odds") or 1.5)
+                stake_v = float(
+                    p.get("stake_virtual") or stake_virtual_prediccion(memoria)
+                )
+                odds = float(p.get("odds") or 0)
+                if odds <= 1.0:
+                    odds, amer = cuota_desde_prob(float(p.get("probPick") or 50))
+                    p["odds"] = odds
+                    p["odds_american"] = amer
                 profit = (
                     round(stake_v * (odds - 1), 2)
                     if p["resultado"] == "acierto"
@@ -1055,13 +1075,42 @@ def resumen_predicciones_y_dinero(memoria: dict) -> dict:
 
 def bloquear_juego(game_id: str, forzar: bool = False) -> dict:
     """1h antes: siempre registra predicción; si es apostable, también apuesta con dinero."""
-    memoria = cargar_memoria()
     cfg = cargar_config()
     estr = cfg.get("estrategia", {})
     max_dia = int(estr.get("max_apuestas_dia", 5))
     hoy = fecha_str()
 
     print(f"[DEBUG BLOQUEO] Intentando bloquear juego {game_id} para el día {hoy}. Forzar: {forzar}")
+
+    # Red fuera del lock
+    juegos = obtener_juegos_fecha(hoy)
+    juego = next((j for j in juegos if j["id"] == game_id), None)
+    if not juego:
+        print(f"[DEBUG BLOQUEO] Juego {game_id} no encontrado en la API para el día {hoy}.")
+        return {"ok": False, "motivo": "Juego no encontrado en el calendario."}
+
+    if juego["estado"] != "PROGRAMADO":
+        print(f"[DEBUG BLOQUEO] Juego {game_id} no programado ({juego['estado']}). No se bloquea.")
+        return {
+            "ok": False,
+            "motivo": f"El juego ya está {juego['estado']}; solo se apuesta antes del inicio.",
+        }
+
+    with _memoria_lock:
+        return _bloquear_juego_locked(game_id, juego, forzar=forzar, max_dia=max_dia, hoy=hoy)
+
+
+def _bloquear_juego_locked(
+    game_id: str,
+    juego: dict,
+    *,
+    forzar: bool,
+    max_dia: int,
+    hoy: str,
+) -> dict:
+    memoria = cargar_memoria()
+    cfg = cargar_config()
+
     if not memoria.get("experimento_activo", True):
         return {"ok": False, "motivo": "Experimento finalizado."}
 
@@ -1075,23 +1124,26 @@ def bloquear_juego(game_id: str, forzar: bool = False) -> dict:
             "motivo": f"Ya tienes {max_dia} apuestas hoy (máximo del día).",
         }
 
-    juegos = obtener_juegos_fecha(hoy)
-    juego = next((j for j in juegos if j["id"] == game_id), None)
-    if not juego:
-        print(f"[DEBUG BLOQUEO] Juego {game_id} no encontrado en la API para el día {hoy}.")
-        return {"ok": False, "motivo": "Juego no encontrado en el calendario."}
-
-    # Nunca bloquear juegos en vivo o finalizados: el pick no debe cambiar con el marcador.
-    if juego["estado"] != "PROGRAMADO":
-        print(f"[DEBUG BLOQUEO] Juego {game_id} no programado ({juego['estado']}). No se bloquea.")
-        return {
-            "ok": False,
-            "motivo": f"El juego ya está {juego['estado']}; solo se apuesta antes del inicio.",
-        }
-
     stake_v = stake_virtual_prediccion(memoria)
-    # SIEMPRE guardar predicción en papel para este juego
     guardar_prediccion(dia, juego, con_dinero=False, stake_virtual=stake_v)
+
+    # Si ya había predicción congelada, la apuesta con dinero debe usar ESE pick
+    pred_existente = next(
+        (p for p in dia.get("predicciones", []) if p.get("game_id") == game_id),
+        None,
+    )
+    if pred_existente and (pred_existente.get("pick") or "").strip():
+        juego["pick"] = pred_existente["pick"]
+        if pred_existente.get("odds"):
+            juego["odds"] = pred_existente["odds"]
+        if pred_existente.get("odds_american") is not None:
+            juego["odds_american"] = pred_existente["odds_american"]
+        if pred_existente.get("probPick") is not None:
+            juego["probPick"] = pred_existente["probPick"]
+        if pred_existente.get("edge") is not None:
+            juego["edge"] = pred_existente["edge"]
+        if pred_existente.get("motivo_apuesta"):
+            juego["motivo_apuesta"] = pred_existente["motivo_apuesta"]
 
     if not juego.get("apostable"):
         print(f"[DEBUG BLOQUEO] Juego {game_id} no apostable. Motivo: {juego.get('motivo_apuesta', 'Desconocido')}")
@@ -1103,11 +1155,10 @@ def bloquear_juego(game_id: str, forzar: bool = False) -> dict:
             "prediccion_guardada": True,
         }
 
-    # Calcular stake dinámico si está activado
     edge = juego.get("edge", 0)
-    confianza = min(max((edge - 5.0) / 10.0, 0.5), 1.0)  # Normalizar edge a confianza 0.5-1.0
+    confianza = min(max((edge - 5.0) / 10.0, 0.5), 1.0)
     stake = calcular_stake_dinamico(memoria["capital"], edge, confianza, cfg)
-    
+
     riesgo = sum(a["stake"] for a in dia["apuestas"] if a["estado"] == "pendiente")
     print(f"[DEBUG BLOQUEO] Juego {game_id} - Riesgo: {riesgo}, Stake: {stake}, Capital: {memoria['capital']}")
     if riesgo + stake > memoria["capital"]:
@@ -1146,20 +1197,21 @@ def bloquear_juego(game_id: str, forzar: bool = False) -> dict:
     if not dia.get("bloqueado_en"):
         dia["bloqueado_en"] = ahora.isoformat()
 
-    # No pisar stake_por_juego (unidad de papel / config) con el Kelly de esta apuesta.
-
     actualizar_resumen(memoria)
     guardar_memoria(memoria)
     exportar_reporte(memoria, dia)
 
     print(
-        f"[BLOQUEO] {juego['visitante']} vs {juego['home']} → "
-        f"{juego['pick']} @ {juego['odds']} (edge +{juego.get('edge')}%)"
+        f"[MOTOR] Apuesta bloqueada: {juego['pick']} | stake ${stake:.2f} | "
+        f"capital ${memoria['capital']:.2f}"
     )
     return {
         "ok": True,
         "pick": juego["pick"],
-        "odds": juego["odds"],
+        "stake": stake,
+        "capital": memoria["capital"],
+        "juego": juego["visitante"] + " vs " + juego["home"],
+        "odds": juego.get("odds"),
         "edge": juego.get("edge"),
         "game_id": game_id,
     }
@@ -1303,6 +1355,8 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
             copia["edge"] = ap.get("edge", copia.get("edge"))
             copia["motivo_apuesta"] = ap.get("motivo_apuesta", copia.get("motivo_apuesta", ""))
             copia["pick_congelado"] = True
+            # Ya hay dinero: no dejar que el modelo en vivo diga "NO APOSTAR"
+            copia["apostable"] = True
         elif pred:
             # Mantener el pick original de la predicción (no el recalculado en vivo)
             copia["stake"] = memoria["stake_por_juego"]

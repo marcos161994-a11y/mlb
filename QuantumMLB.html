@@ -542,14 +542,15 @@ function pintarPicksHoy(juegos, data) {
         unicos.push(j);
     }
 
-    const apostables = unicos
-        .filter(j => j.apostable && (j.probPick || 0) >= minProb)
-        .sort((a, b) => (b.probPick || 0) - (a.probPick || 0))
-        .slice(0, maxP);
-
     const yaApostados = unicos.filter(j =>
         j.estado_apuesta && j.estado_apuesta !== 'sin_bloquear'
     );
+    const idsYa = new Set(yaApostados.map(j => j.id));
+    const cupoRestante = Math.max(0, maxP - yaApostados.length);
+    const apostablesNuevos = unicos
+        .filter(j => j.apostable && (j.probPick || 0) >= minProb && !idsYa.has(j.id))
+        .sort((a, b) => (b.probPick || 0) - (a.probPick || 0))
+        .slice(0, cupoRestante);
 
     if (!unicos.length) {
         sub.textContent = 'No hay juegos MLB hoy.';
@@ -557,18 +558,12 @@ function pintarPicksHoy(juegos, data) {
         return;
     }
 
-    const idsDinero = new Set(apostables.map(j => j.id).concat(
-        yaApostados.map(j => j.id)
-    ));
-
-    sub.textContent = `${unicos.length} juegos hoy · ${apostables.length || yaApostados.length} con dinero (máx. ${maxP}, ≥${minProb}%) · el resto solo predicción.`;
+    sub.textContent = `${unicos.length} juegos hoy · ${yaApostados.length} apostados · ${apostablesNuevos.length} listos (≥${minProb}%, máx. ${maxP}) · el resto solo predicción.`;
 
     let html = '';
 
-    const conDinero = unicos
-        .filter(j => idsDinero.has(j.id) || (j.apostable && (j.probPick || 0) >= minProb))
-        .sort((a, b) => (b.probPick || 0) - (a.probPick || 0))
-        .slice(0, maxP);
+    // Primero siempre las apuestas reales; luego candidatos nuevos (sin ocultar dinero)
+    const conDinero = [...yaApostados, ...apostablesNuevos];
 
     if (conDinero.length) {
         html += '<div style="font-size:0.75rem;color:var(--green);margin-bottom:8px;font-weight:bold;">💰 APOSTAR CON DINERO</div>';
@@ -585,6 +580,8 @@ function pintarPicksHoy(juegos, data) {
                 badge = '<span class="pick-badge bet">GANÓ $</span>';
             } else if (fin && j.estado_apuesta === 'perdida') {
                 badge = '<span class="pick-badge skip">PERDIÓ $</span>';
+            } else if (!hecho && j.apostable) {
+                badge = '<span class="pick-badge bet">LISTO</span>';
             } else if (j.estado === 'EN VIVO') {
                 badge = '<span class="pick-badge wait">EN JUEGO</span>';
             }
@@ -598,8 +595,9 @@ function pintarPicksHoy(juegos, data) {
         });
     }
 
+    const idsDinero = new Set(conDinero.map(j => j.id));
     const soloPred = unicos
-        .filter(j => (j.probPick || 0) > 0 && !conDinero.some(c => c.id === j.id))
+        .filter(j => (j.probPick || 0) > 0 && !idsDinero.has(j.id))
         .sort((a, b) => (b.probPick || 0) - (a.probPick || 0));
 
     if (soloPred.length) {
@@ -678,6 +676,10 @@ function pintarPredicciones(memoria, plSplit) {
             row.con_dinero = true;
             row.stake_dinero = a.stake;
             row.profit_dinero = a.profit;
+            // Con dinero: mostrar el pick real de la apuesta
+            if (a.pick) row.pick = a.pick;
+            if (a.probPick != null) row.probPick = a.probPick;
+            if (a.odds != null) row.odds = a.odds;
             if (!row.resultado && (a.estado === 'ganada' || a.estado === 'perdida')) {
                 row.resultado = a.estado === 'ganada' ? 'acierto' : 'fallo';
             }
