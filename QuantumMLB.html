@@ -264,7 +264,7 @@
 </div>
 
 <div class="stats-row">
-    <div class="stat-box"><div class="label">P/L Hoy</div><div class="val" id="pl-hoy">$0.00</div></div>
+    <div class="stat-box"><div class="label">P/L Hoy (dinero)</div><div class="val" id="pl-hoy">$0.00</div></div>
     <div class="stat-box"><div class="label">Ganadas Hoy</div><div class="val" id="ganadas-hoy">0</div></div>
     <div class="stat-box"><div class="label">Pendientes</div><div class="val" id="pendientes-hoy">0</div></div>
     <div class="stat-box"><div class="label">ROI Total</div><div class="val" id="roi-total">0%</div></div>
@@ -284,16 +284,16 @@
 </div>
 
 <div class="historial" id="historial-dias">
-    <h3>Historial por día (banca acumulada)</h3>
+    <h3>💰 Banca real (solo apuestas con dinero)</h3>
     <div id="lista-historial"><p style="color:var(--muted)">Sin días registrados aún.</p></div>
 </div>
 
 <div class="historial" id="historial-predicciones">
     <h3 onclick="togglePredicciones()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
-        <span>Predicciones de todos los juegos · aparte apuestas con dinero</span>
+        <span>📋 Predicciones en papel (todos los juegos)</span>
         <span id="predicciones-toggle" style="font-size:1.2rem;">▼</span>
     </h3>
-    <div id="lista-predicciones" style="display:none;"><p style="color:var(--muted)">Sin predicciones registradas aún.</p></div>
+    <div id="lista-predicciones"><p style="color:var(--muted)">Sin predicciones registradas aún.</p></div>
 </div>
 
 <div id="contenedor-juegos" class="grid-juegos">
@@ -487,53 +487,40 @@ function pintarEstado(data) {
         : `Hoy: ${fav} pick(s) favorable(s) de máximo ${maxP} (edge ≥ +${estr.min_edge_pct || 5}%)`;
 
     const lista = document.getElementById('lista-historial');
-    if (!m.dias.length) {
-        lista.innerHTML = '<p style="color:var(--muted)">Pulsa "Bloquear apuestas de hoy" o espera las 8:00 AM.</p>';
-        return;
-    }
-    let html = '';
-    let bancaCorr = m.capital_inicial;
-    for (const d of m.dias) {
-        const r = d.resumen || {};
-        const pl = r.profit_dia || 0;
-        
-        // Apuestas + predicciones de juegos NO apostados (sin doble conteo)
-        let ganadas = r.ganadas || 0;
-        let perdidas = r.perdidas || 0;
-        if (d.predicciones) {
-            const apostados = new Set((d.apuestas || []).map(a => a.game_id));
-            const predsExtra = d.predicciones.filter(p => !apostados.has(p.game_id));
-            ganadas += predsExtra.filter(p => p.resultado === 'acierto').length;
-            perdidas += predsExtra.filter(p => p.resultado === 'fallo').length;
-        }
-        
-        bancaCorr += pl;
-        const diaId = `dia-${d.dia}`;
-        html += `<div class="dia-fila" style="cursor:pointer;" onclick="toggleDia('${diaId}')">
-            <span>Día ${d.dia} (${d.fecha}) — ${ganadas} aciertos / ${perdidas} fallos <span style="font-size:0.8rem;margin-left:8px;">▼</span></span>
-            <span style="color:${pl>=0?'var(--green)':'var(--red)'}">${fmtMoney(pl)} → Banca $${bancaCorr.toFixed(2)}</span>
-        </div>`;
-        html += `<div id="${diaId}" style="display:none;padding:8px 0 12px 10px;">`;
-        if (d.apuestas?.length) {
-            const ok = d.apuestas.filter(a => a.estado === 'ganada');
-            const bad = d.apuestas.filter(a => a.estado === 'perdida');
-            if (ok.length) {
-                html += '<div style="font-size:0.75rem;color:var(--green);padding:6px 0 6px 10px"><b>Aciertos</b><br>';
-                ok.forEach(a => html += `✓ ${a.pick} ${fmtMoney(a.profit)}<br>`);
+    const diasDinero = (m.dias || []).filter(d => (d.apuestas || []).length > 0);
+    if (!diasDinero.length) {
+        lista.innerHTML = '<p style="color:var(--muted);font-size:0.82rem;margin:0">Sin apuestas con dinero. Las predicciones en papel estan abajo.</p>';
+    } else {
+        let html = '';
+        let bancaCorr = m.capital_inicial;
+        for (const d of m.dias) {
+            const apuestas = d.apuestas || [];
+            if (!apuestas.length) continue;
+            const r = d.resumen || {};
+            const pl = r.profit_dia || 0;
+            const ganadas = r.ganadas || 0;
+            const perdidas = r.perdidas || 0;
+            bancaCorr += pl;
+            const diaId = 'dia-' + d.dia;
+            html += '<div class="dia-fila" style="cursor:pointer;" onclick="toggleDia(\'' + diaId + '\')">';
+            html += '<span>Día ' + d.dia + ' (' + d.fecha + ') — ' + ganadas + 'G / ' + perdidas + 'P — ' + apuestas.length + ' apuesta(s)</span>';
+            html += '<span style="color:' + (pl >= 0 ? 'var(--green)' : 'var(--red)') + '">' + fmtMoney(pl) + ' → Banca $' + bancaCorr.toFixed(2) + '</span></div>';
+            html += '</div>';
+            html += '<div id="' + diaId + '" style="display:none;padding:8px 0 12px 10px;">';
+            apuestas.forEach(a => {
+                const ok = a.estado === 'ganada';
+                const color = ok ? 'var(--green)' : (a.estado === 'perdida' ? 'var(--red)' : 'var(--gold)');
+                const icon = ok ? '✓' : (a.estado === 'perdida' ? '✗' : '⏳');
+                html += '<div style="font-size:0.75rem;color:' + color + ';padding:4px 0 4px 10px">' + icon + ' ' + a.pick;
+                if (a.profit != null) html += ' — ' + fmtMoney(a.profit);
                 html += '</div>';
-            }
-            if (bad.length) {
-                html += '<div style="font-size:0.75rem;color:#8899aa;padding:0 0 12px 10px"><b>Fallos</b> (' + bad.length + ')</div>';
-            }
-        } else {
-            html += '<div style="font-size:0.75rem;color:var(--muted);padding:6px 0;">Sin apuestas este día</div>';
+            });
+            html += '</div>';
         }
-        html += '</div>';
+        lista.innerHTML = html;
     }
-    lista.innerHTML = html;
-    
-    // Cargar y mostrar predicciones (todas) + dinero aparte
-    pintarPredicciones(m, data.pl_split);
+
+        pintarPredicciones(m, data.pl_split);
 }
 
 function nombrePick(pick) {
@@ -654,7 +641,8 @@ function pintarPredicciones(memoria, plSplit) {
     </div>`;
 
     let hayFilas = false;
-    for (const d of memoria.dias) {
+    const diasOrden = [...memoria.dias].filter(d => (d.predicciones || []).length > 0).reverse();
+    for (const d of diasOrden) {
         const porJuego = new Map();
         (d.predicciones || []).forEach(p => {
             porJuego.set(p.game_id, {
