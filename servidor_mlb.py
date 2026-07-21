@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -37,6 +38,8 @@ MEMORIA_PATH = DATA_DIR / "memoria_auditoria.json"
 
 MLB_SCHEDULE = "https://statsapi.mlb.com/api/v1/schedule"
 scheduler = BackgroundScheduler()
+_cron_externo_lock = threading.Lock()
+_cron_externo_activo = False
 
 
 def _inicializar_datos_persistencia() -> None:
@@ -1566,30 +1569,54 @@ def api_health():
     }
 
 
+def ejecutar_trabajo_cron_externo() -> dict:
+    """Sincroniza fecha, predicciones, bloqueos y liquidacion."""
+    sincronizar_experimento_a_hoy()
+    rellenar_predicciones_recientes(cargar_memoria(), dias_atras=7)
+    programar_bloqueos_por_juego()
+    registrar_predicciones_del_dia(forzar=False)
+    resultado = bloquear_apuestas_del_dia(forzar=False)
+    liquidar_todo(cargar_memoria())
+    memoria = cargar_memoria()
+    return {
+        "ok": True,
+        "mensaje": "Auto-bloqueo ejecutado",
+        "resultado": resultado,
+        "capital": memoria["capital"],
+        "dia_actual": memoria.get("dia_actual"),
+        "fecha_hoy": fecha_str(),
+    }
+
+
+def _cron_externo_en_fondo() -> None:
+    global _cron_externo_activo
+    try:
+        ejecutar_trabajo_cron_externo()
+    except Exception as e:
+        print(f"[CRON] Error en trabajo externo: {e}")
+    finally:
+        _cron_externo_activo = False
+
+
 @app.get("/api/auto-bloqueo-externo")
 @app.post("/api/auto-bloqueo-externo")
-def api_auto_bloqueo_externo(secret: str | None = None):
+def api_auto_bloqueo_externo(secret: str | None = None, en_fondo: bool = True):
     """
     Para cron-job.org u otro servicio externo (cada 5-10 min).
+    Por defecto responde al instante y corre en segundo plano (en_fondo=1).
     Opcional: ?secret=TU_CRON_SECRET (variable CRON_SECRET en Render).
     """
     _verificar_cron_secreto(secret)
+    global _cron_externo_activo
+    if en_fondo:
+        with _cron_externo_lock:
+            if _cron_externo_activo:
+                return {"ok": True, "mensaje": "Cron ya en ejecucion", "en_fondo": True}
+            _cron_externo_activo = True
+            threading.Thread(target=_cron_externo_en_fondo, daemon=True).start()
+        return {"ok": True, "mensaje": "Cron iniciado en segundo plano", "en_fondo": True}
     try:
-        sincronizar_experimento_a_hoy()
-        rellenar_predicciones_recientes(cargar_memoria(), dias_atras=7)
-        programar_bloqueos_por_juego()
-        registrar_predicciones_del_dia(forzar=False)
-        resultado = bloquear_apuestas_del_dia(forzar=False)
-        liquidar_todo(cargar_memoria())
-        memoria = cargar_memoria()
-        return {
-            "ok": True,
-            "mensaje": "Auto-bloqueo ejecutado",
-            "resultado": resultado,
-            "capital": memoria["capital"],
-            "dia_actual": memoria.get("dia_actual"),
-            "fecha_hoy": fecha_str(),
-        }
+        return ejecutar_trabajo_cron_externo()
     except Exception as e:
         return {"ok": False, "error": str(e)}
 

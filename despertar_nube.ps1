@@ -22,7 +22,7 @@ if (-not $Secret) {
 
 Write-Host "Ejecutando auto-bloqueo + liquidacion (puede tardar 1-2 min)..." -ForegroundColor Cyan
 try {
-    $url = "$base/api/auto-bloqueo-externo?secret=$([uri]::EscapeDataString($Secret))"
+    $url = "$base/api/auto-bloqueo-externo?secret=$([uri]::EscapeDataString($Secret))&en_fondo=0"
     $r = Invoke-WebRequest -Uri $url -TimeoutSec 180 -UseBasicParsing
     $j = $r.Content | ConvertFrom-Json
     if ($j.ok) {

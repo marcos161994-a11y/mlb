@@ -10,17 +10,18 @@ on:
 jobs:
   ping-render:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
     steps:
       - name: Health (despierta Render)
-        run: curl -fsS --max-time 120 "https://mlb-1-en7i.onrender.com/api/health"
+        run: curl -fsS --retry 3 --retry-delay 15 --max-time 120 "https://mlb-1-en7i.onrender.com/api/health"
 
-      - name: Auto-bloqueo + liquidacion + predicciones
+      - name: Iniciar cron en segundo plano (respuesta rapida)
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
           if [ -z "$CRON_SECRET" ]; then
-            echo "::warning::Falta CRON_SECRET en GitHub Secrets. Ve a Settings > Secrets > Actions."
+            echo "::warning::Falta CRON_SECRET en GitHub Secrets."
             exit 0
           fi
-          curl -fsS --max-time 600 "https://mlb-1-en7i.onrender.com/api/auto-bloqueo-externo?secret=${CRON_SECRET}"
+          curl -fsS --max-time 60 \
+            "https://mlb-1-en7i.onrender.com/api/auto-bloqueo-externo?secret=${CRON_SECRET}&en_fondo=1"
