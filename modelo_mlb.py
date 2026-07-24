@@ -803,13 +803,18 @@ def seleccionar_favorables_del_dia(juegos: list[dict[str, Any]], cfg: dict[str, 
     """Marca apostable solo en los mejores picks del día aún PROGRAMADOS."""
     estrategia: dict[str, Any] = cfg.get("estrategia", {})
     max_apuestas = int(estrategia.get("max_apuestas_dia", 5))
+    solo_modelo = _modo_solo_modelo(cfg)
 
     favorables: list[dict[str, Any]] = [
         j
         for j in juegos
         if j.get("apostable") and j.get("estado") == "PROGRAMADO"
     ]
-    favorables.sort(key=lambda x: x.get("edge", 0), reverse=True)
+    # Solo-modelo: priorizar % más alto. Con BetMGM: priorizar edge de valor.
+    if solo_modelo:
+        favorables.sort(key=lambda x: float(x.get("probPick") or 0), reverse=True)
+    else:
+        favorables.sort(key=lambda x: x.get("edge", 0), reverse=True)
 
     ids_top = {j["id"] for j in favorables[:max_apuestas]}
     for j in juegos:
@@ -820,10 +825,16 @@ def seleccionar_favorables_del_dia(juegos: list[dict[str, Any]], cfg: dict[str, 
                 j["motivo_apuesta"] = f"Juego {j.get('estado', 'no programado')}"
                 continue
             j["apostable"] = False
-            j["motivo_apuesta"] = (
-                f"Fuera del top {max_apuestas} del día "
-                f"(edge +{j.get('edge', 0):.1f}%)"
-            )
+            if solo_modelo:
+                j["motivo_apuesta"] = (
+                    f"Fuera del top {max_apuestas} del día "
+                    f"(prob {float(j.get('probPick') or 0):.1f}%)"
+                )
+            else:
+                j["motivo_apuesta"] = (
+                    f"Fuera del top {max_apuestas} del día "
+                    f"(edge +{j.get('edge', 0):.1f}%)"
+                )
     return juegos
 
 

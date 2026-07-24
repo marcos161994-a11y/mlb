@@ -971,6 +971,7 @@ def guardar_prediccion(
             "odds_american": odds_amer if odds_amer is not None else 150,
             "edge": juego.get("edge", 0),
             "probPick": prob,
+            "apostable": bool(juego.get("apostable")),
             "motivo_apuesta": juego.get("motivo_apuesta", ""),
             "pitcherAway": juego.get("pitcherAway"),
             "pitcherHome": juego.get("pitcherHome"),
@@ -1204,7 +1205,8 @@ def _bloquear_juego_locked(
         return {"ok": False, "motivo": "Experimento finalizado."}
 
     dia = asegurar_dia_operativo(memoria, hoy)
-    if any(a["game_id"] == game_id for a in dia["apuestas"]):
+    gid = str(game_id)
+    if any(str(a.get("game_id")) == gid for a in dia["apuestas"]):
         return {"ok": False, "motivo": "Este juego ya fue bloqueado."}
 
     if contar_apuestas_hoy(memoria, hoy) >= max_dia and not forzar:
@@ -1218,9 +1220,11 @@ def _bloquear_juego_locked(
 
     # Si ya había predicción congelada, la apuesta con dinero debe usar ESE pick
     pred_existente = next(
-        (p for p in dia.get("predicciones", []) if p.get("game_id") == game_id),
+        (p for p in dia.get("predicciones", []) if str(p.get("game_id")) == gid),
         None,
     )
+    cfg_estr = cfg.get("estrategia") or {}
+    min_prob = float(cfg_estr.get("min_prob_modelo", 58.0))
     if pred_existente and (pred_existente.get("pick") or "").strip():
         juego["pick"] = pred_existente["pick"]
         if pred_existente.get("odds"):
@@ -1233,6 +1237,12 @@ def _bloquear_juego_locked(
             juego["edge"] = pred_existente["edge"]
         if pred_existente.get("motivo_apuesta"):
             juego["motivo_apuesta"] = pred_existente["motivo_apuesta"]
+        # Respetar el veredicto congelado: no perder la apuesta porque el % vivo bajó un poco
+        prob_f = float(pred_existente.get("probPick") or 0)
+        if pred_existente.get("apostable") or prob_f >= min_prob:
+            juego["apostable"] = True
+            if not pred_existente.get("apostable"):
+                pred_existente["apostable"] = True
 
     if not juego.get("apostable"):
         print(f"[DEBUG BLOQUEO] Juego {game_id} no apostable. Motivo: {juego.get('motivo_apuesta', 'Desconocido')}")
@@ -1313,7 +1323,13 @@ def bloquear_apuestas_del_dia(forzar: bool = False) -> dict:
     memoria = cargar_memoria()
     hoy = fecha_str()
     ahora = ahora_simulado()
+    cfg = cargar_config()
+    min_prob = float((cfg.get("estrategia") or {}).get("min_prob_modelo", 58.0))
     juegos = obtener_juegos_fecha(hoy)
+    dia = asegurar_dia_operativo(memoria, hoy)
+    preds_por_id = {
+        str(p.get("game_id")): p for p in (dia.get("predicciones") or [])
+    }
     nuevas = 0
     omitidos = []
 
@@ -1324,8 +1340,16 @@ def bloquear_apuestas_del_dia(forzar: bool = False) -> dict:
         ya_pasó = hb <= ahora or forzar
         if not ya_pasó:
             continue
-        # Solo intentar apuesta con dinero si el modelo lo marca apostable
-        if not juego.get("apostable"):
+        gid = str(juego["id"])
+        pred = preds_por_id.get(gid)
+        # Apostable vivo O predicción congelada ≥ umbral (no perder el % alto del paper)
+        apostable = bool(juego.get("apostable"))
+        if not apostable and pred is not None:
+            prob_f = float(pred.get("probPick") or 0)
+            if pred.get("apostable") or prob_f >= min_prob:
+                apostable = True
+                juego["apostable"] = True
+        if not apostable:
             continue
         res = bloquear_juego(juego["id"], forzar=forzar)
         if res.get("ok"):
