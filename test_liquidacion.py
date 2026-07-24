@@ -110,6 +110,142 @@ def test_probs_suman_100():
     assert abs((a + h) - 100.0) < 0.2
 
 
+def test_cuota_desde_prob_no_fija_15():
+    from modelo_mlb import cuota_desde_prob
+    dec, amer = cuota_desde_prob(54.0)
+    assert dec > 1.5
+    assert abs(dec - (100.0 / 54.0)) < 0.05
+
+
+def test_prediccion_no_apostable_usa_cuota_justa():
+    """Sin mercado, picks bajo min_prob no deben quedar en odds=1.5."""
+    from modelo_mlb import cuota_desde_prob
+
+    # Simula rama else de analizar_juego
+    prob = 54.3
+    dec, amer = cuota_desde_prob(prob)
+    assert abs(dec - 1.5) > 0.2
+    assert amer != 150 or dec >= 2.0
+
+
+def test_reparar_odds_papel_default_roto():
+    from servidor_mlb import reparar_odds_papel
+
+    memoria = {
+        "stake_por_juego": 5.125,
+        "capital": 100.0,
+        "capital_inicial": 100.0,
+        "dias": [
+            {
+                "dia": 1,
+                "fecha": "2026-07-20",
+                "apuestas": [],
+                "predicciones": [
+                    {
+                        "game_id": "1",
+                        "pick": "Boston Red Sox ML",
+                        "odds": 1.5,
+                        "odds_american": 150,
+                        "probPick": 54.0,
+                        "estado": "liquidado",
+                        "resultado": "acierto",
+                        "stake_virtual": 5.0,
+                        "profit": 2.5,
+                    }
+                ],
+                "resumen": {},
+            }
+        ],
+    }
+    n = reparar_odds_papel(memoria, persistir=False)
+    assert n >= 1
+    pred = memoria["dias"][0]["predicciones"][0]
+    assert abs(pred["odds"] - (100.0 / 54.0)) < 0.05
+    assert abs(pred["profit"] - round(5.0 * (pred["odds"] - 1), 2)) < 0.01
+    assert abs(float(memoria["stake_por_juego"]) - 5.0) < 0.01
+
+
+def test_top_n_solo_programados():
+    from modelo_mlb import seleccionar_favorables_del_dia
+
+    cfg = {"estrategia": {"max_apuestas_dia": 1}}
+    juegos = [
+        {"id": "1", "apostable": True, "edge": 20, "estado": "FINALIZADO"},
+        {"id": "2", "apostable": True, "edge": 10, "estado": "PROGRAMADO"},
+    ]
+    seleccionar_favorables_del_dia(juegos, cfg)
+    assert juegos[0]["apostable"] is False
+    assert juegos[1]["apostable"] is True
+
+
+def test_mano_pitcher_dict():
+    from modelo_mlb import _normalizar_mano, ajuste_matchup_zurdo_diestro
+
+    assert _normalizar_mano({"code": "L", "description": "Left"}) == "L"
+    assert _normalizar_mano("R") == "R"
+    assert ajuste_matchup_zurdo_diestro({"code": "L"}, 1.0) == -2.0
+
+
+def test_ml_sin_doble_muestra():
+    from ml_predictor import cargar_datos_entrenamiento_desde_memoria
+
+    memoria = {
+        "dias": [
+            {
+                "apuestas": [
+                    {
+                        "game_id": "9",
+                        "estado": "ganada",
+                        "probPick": 60,
+                        "edge": 5,
+                    }
+                ],
+                "predicciones": [
+                    {
+                        "game_id": "9",
+                        "estado": "liquidado",
+                        "resultado": "acierto",
+                        "probPick": 60,
+                        "edge": 5,
+                    },
+                    {
+                        "game_id": "10",
+                        "estado": "liquidado",
+                        "resultado": "fallo",
+                        "probPick": 55,
+                        "edge": 2,
+                    },
+                ],
+            }
+        ]
+    }
+    datos = cargar_datos_entrenamiento_desde_memoria(memoria)
+    assert len(datos) == 2
+
+
+def test_capital_bruto_no_infla():
+    from servidor_mlb import resumen_banca
+
+    memoria = {
+        "capital": 100.0,
+        "capital_inicial": 100.0,
+        "stake_por_juego": 5.0,
+        "dia_actual": 1,
+        "dias": [
+            {
+                "dia": 1,
+                "fecha": "2026-07-21",
+                "apuestas": [
+                    {"estado": "pendiente", "stake": 5.0, "profit": None}
+                ],
+            }
+        ],
+    }
+    b = resumen_banca(memoria)
+    assert b["capital_bruto"] == 100.0
+    assert b["disponible"] == 95.0
+
+
 if __name__ == "__main__":
     test_score_cero_no_se_pierde()
     test_no_ganador_en_vivo()
@@ -118,4 +254,11 @@ if __name__ == "__main__":
     test_liquidar_solo_al_final()
     test_no_revertir_final_sin_ganador_momentaneo()
     test_probs_suman_100()
+    test_cuota_desde_prob_no_fija_15()
+    test_prediccion_no_apostable_usa_cuota_justa()
+    test_reparar_odds_papel_default_roto()
+    test_top_n_solo_programados()
+    test_mano_pitcher_dict()
+    test_ml_sin_doble_muestra()
+    test_capital_bruto_no_infla()
     print("OK: tests de liquidación pasaron")

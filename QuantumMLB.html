@@ -48,21 +48,124 @@
             font-size: 0.75rem;
             margin-top: 8px;
         }
+        .banca-mini {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 10px;
+            text-align: center;
+        }
+        .banca-mini .bm {
+            background: rgba(0,0,0,0.25);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 6px;
+        }
+        .banca-mini .bm .l { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; }
+        .banca-mini .bm .v { font-size: 0.95rem; font-weight: 700; margin-top: 2px; color: var(--cyan); }
+        .rendimiento {
+            margin-top: 12px;
+            background: rgba(0,242,255,0.08);
+            border: 1px solid rgba(0,242,255,0.3);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .rendimiento > summary {
+            list-style: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            font-size: 0.85rem;
+            color: var(--cyan);
+            font-weight: 700;
+            user-select: none;
+        }
+        .rendimiento > summary::-webkit-details-marker { display: none; }
+        .rendimiento > summary::after { content: '▼'; font-size: 0.8rem; }
+        .rendimiento[open] > summary::after { content: '▲'; }
+        .rendimiento-body { padding: 0 10px 12px; }
+        .rend-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .rend-card {
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 10px;
+        }
+        .rend-card h4 {
+            margin: 0 0 8px;
+            font-size: 0.72rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .rend-card .wr {
+            font-size: 1.35rem;
+            font-weight: 800;
+            color: var(--cyan);
+            margin-bottom: 8px;
+        }
+        .rend-card .wr span { font-size: 0.75rem; font-weight: 600; color: var(--muted); }
+        .rend-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.78rem;
+            padding: 3px 0;
+            border-top: 1px solid rgba(255,255,255,0.06);
+        }
+        .rend-row .k { color: var(--muted); }
+        .rend-row .v.pos { color: var(--green); }
+        .rend-row .v.neg { color: var(--red); }
+        .meta-line {
+            font-size: 0.75rem;
+            color: var(--muted);
+            margin-top: 8px;
+            line-height: 1.4;
+        }
+        .aviso details > summary {
+            list-style: none;
+            cursor: pointer;
+            font-weight: 700;
+            user-select: none;
+        }
+        .aviso details > summary::-webkit-details-marker { display: none; }
+        .aviso details > summary::after {
+            content: ' ▼';
+            font-weight: normal;
+            opacity: 0.8;
+        }
+        .aviso details[open] > summary::after { content: ' ▲'; }
+        .aviso .aviso-body { margin-top: 8px; font-weight: normal; }
+        .favorables-hoy {
+            text-align: center;
+            color: var(--green);
+            font-size: 0.82rem;
+            margin: -4px 0 14px;
+            line-height: 1.45;
+        }
         .stats-row {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 12px;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
             margin-bottom: 20px;
+        }
+        @media (min-width: 700px) {
+            .stats-row { grid-template-columns: repeat(6, 1fr); }
         }
         .stat-box {
             background: var(--card);
             border: 1px solid var(--border);
             border-radius: 10px;
-            padding: 12px;
+            padding: 12px 8px;
             text-align: center;
         }
-        .stat-box .label { font-size: 0.7rem; color: var(--muted); text-transform: uppercase; }
-        .stat-box .val { font-size: 1.4rem; font-weight: bold; margin-top: 4px; }
+        .stat-box .label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; line-height: 1.2; }
+        .stat-box .val { font-size: 1.2rem; font-weight: bold; margin-top: 4px; }
         .stat-box .val.pos { color: var(--green); }
         .stat-box .val.neg { color: var(--red); }
         .controls {
@@ -157,18 +260,84 @@
             background: linear-gradient(135deg, rgba(0,255,136,0.12), rgba(0,242,255,0.06));
             border: 2px solid var(--green);
             border-radius: 16px;
-            padding: 18px;
+            padding: 12px 18px 18px;
             margin-bottom: 20px;
         }
-        .picks-hero h2 {
-            margin: 0 0 4px;
+        .picks-hero > details {
+            border: none;
+        }
+        .picks-hero > details > summary {
+            list-style: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            margin: 0;
+            padding: 6px 0 4px;
             font-size: 1.1rem;
+            font-weight: 700;
             color: var(--green);
+            user-select: none;
+        }
+        .picks-hero > details > summary::-webkit-details-marker { display: none; }
+        .picks-hero > details > summary::after {
+            content: '▼';
+            font-size: 1rem;
+            color: var(--green);
+            transition: transform 0.15s ease;
+        }
+        .picks-hero > details[open] > summary::after {
+            content: '▲';
         }
         .picks-hero .sub {
             font-size: 0.8rem;
             color: var(--muted);
-            margin-bottom: 14px;
+            margin: 8px 0 14px;
+        }
+        .picks-grupo {
+            margin-top: 10px;
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            background: rgba(0,0,0,0.25);
+            overflow: hidden;
+        }
+        .picks-grupo > summary {
+            list-style: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            font-size: 0.78rem;
+            font-weight: bold;
+            margin: 0;
+            padding: 12px 14px;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .picks-grupo > summary::-webkit-details-marker { display: none; }
+        .picks-grupo > summary::after {
+            content: '▼';
+            font-size: 0.85rem;
+            flex-shrink: 0;
+        }
+        .picks-grupo[open] > summary::after {
+            content: '▲';
+        }
+        .picks-grupo > summary .hint {
+            font-weight: normal;
+            opacity: 0.7;
+            font-size: 0.7rem;
+            margin-left: 6px;
+        }
+        .picks-grupo.dinero {
+            border-color: rgba(0,255,136,0.35);
+        }
+        .picks-grupo.dinero > summary { color: var(--green); }
+        .picks-grupo.papel > summary { color: var(--muted); }
+        .picks-grupo .picks-grupo-body {
+            padding: 0 10px 10px;
         }
         .pick-row {
             display: flex;
@@ -235,57 +404,70 @@
 <body>
 
 <div class="header">
-    <h1>QUANTUM MLB — EXPERIMENTO 5 DÍAS</h1>
+    <h1>QUANTUM MLB</h1>
     <div class="banca-valor" id="capital-display">$100.00</div>
-    <p id="dia-actual">DÍA 1 DE 5</p>
-    <p id="banca-detalle" style="font-size:0.9rem;color:#8899aa;margin-top:6px;">
-        Disponible: $100.00 · En juego hoy: $0.00 · $5 por partido
-    </p>
-    <span class="badge" id="modo-badge">SIMULACIÓN · Líneas BetMGM</span>
-    <div id="stats-modelo" style="margin-top:12px;padding:8px;background:rgba(0,242,255,0.1);border-radius:8px;border:1px solid rgba(0,242,255,0.3);">
-        <span style="font-size:0.8rem;color:var(--muted);">🎯 Rendimiento del Modelo:</span>
-        <span id="stats-modelo-content" style="font-size:0.85rem;color:var(--cyan);margin-left:8px;">Cargando...</span>
+    <p id="dia-actual">DÍA 1 DE 200</p>
+    <div class="banca-mini" id="banca-detalle">
+        <div class="bm"><div class="l">Disponible</div><div class="v" id="bm-disponible">$100.00</div></div>
+        <div class="bm"><div class="l">En juego</div><div class="v" id="bm-enjuego">$0.00</div></div>
+        <div class="bm"><div class="l">Stake</div><div class="v" id="bm-stake">$5</div></div>
     </div>
-    <p id="lineas-status" style="font-size:0.75rem;margin-top:6px;color:#ffbc00;"></p>
-    <p id="proximo-bloqueo" style="font-size:0.8rem;color:var(--muted);margin-top:8px;"></p>
+    <span class="badge" id="modo-badge">SIMULACIÓN · Solo stats+ML</span>
+
+    <details class="rendimiento" id="stats-modelo" open>
+        <summary>🎯 Rendimiento</summary>
+        <div class="rendimiento-body" id="stats-modelo-content">
+            <p class="meta-line">Cargando...</p>
+        </div>
+    </details>
+
+    <p class="meta-line" id="lineas-status" style="color:#ffbc00;"></p>
+    <p class="meta-line" id="proximo-bloqueo"></p>
 </div>
 
 <div class="aviso" id="aviso-real">
-    <strong>Estrategia:</strong> <strong>1 hora antes</strong> de cada juego se evalúa todo
-    (pitchers, stats, BetMGM) y se apuesta $5 solo con <strong>valor</strong> (borde verde).
-    Máximo <strong>5 apuestas/día</strong>. Hora Puerto Rico.
+    <details>
+        <summary>Modo solo modelo</summary>
+        <div class="aviso-body" id="aviso-body">
+            El tag <strong>PICK</strong> es la predicción (fija al apostar).
+            <strong>GANÓ</strong> solo aparece cuando MLB confirma el final.
+            Verdes (≥58%) son apostables. Bloqueo 1 h antes.
+        </div>
+    </details>
 </div>
-<p id="favorables-hoy" style="text-align:center;color:var(--green);font-size:0.9rem;margin:-8px 0 16px;"></p>
+<p class="favorables-hoy" id="favorables-hoy"></p>
 
 <div class="picks-hero" id="picks-hero">
-    <h2>🎯 ¿A quién apostarle hoy?</h2>
-    <p class="sub" id="picks-sub">Cargando picks del modelo...</p>
-    <div id="lista-picks-hoy"></div>
+    <details id="picks-hoy-details" open>
+        <summary>🎯 ¿A quién apostarle hoy?</summary>
+        <div id="picks-hoy-content">
+            <p class="sub" id="picks-sub">Cargando picks del modelo...</p>
+            <div id="lista-picks-hoy"></div>
+        </div>
+    </details>
 </div>
 
 <div class="stats-row">
-    <div class="stat-box"><div class="label">P/L Hoy (dinero)</div><div class="val" id="pl-hoy">$0.00</div></div>
-    <div class="stat-box"><div class="label">Ganadas Hoy</div><div class="val" id="ganadas-hoy">0</div></div>
+    <div class="stat-box"><div class="label">P/L Hoy (papel)</div><div class="val" id="pl-hoy">$0.00</div></div>
+    <div class="stat-box"><div class="label">Aciertos Hoy</div><div class="val" id="ganadas-hoy">0</div></div>
+    <div class="stat-box"><div class="label">Fallos Hoy</div><div class="val" id="perdidas-hoy">0</div></div>
     <div class="stat-box"><div class="label">Pendientes</div><div class="val" id="pendientes-hoy">0</div></div>
-    <div class="stat-box"><div class="label">ROI Total</div><div class="val" id="roi-total">0%</div></div>
+    <div class="stat-box"><div class="label">ROI Banca</div><div class="val" id="roi-total">0%</div></div>
     <div class="stat-box"><div class="label">Exposición Hoy</div><div class="val" id="exposicion-hoy">$0</div></div>
 </div>
 
 <div class="controls">
     <button onclick="bloquearHoy()">Forzar bloqueos pendientes ahora</button>
     <button onclick="liquidar()">Actualizar resultados</button>
-    <button onclick="toggleParleys()">🎯 Parleys (Click para expandir)</button>
     <button class="warn" onclick="reiniciar()">Reiniciar experimento</button>
 </div>
 
-<div class="historial" id="parleys-section" style="display:none;">
-    <h3>🎯 RECOMENDACIONES DE PARLEYS BETMGM</h3>
-    <div id="parleys-content"></div>
-</div>
-
 <div class="historial" id="historial-dias">
-    <h3>💰 Banca real (solo apuestas con dinero)</h3>
-    <div id="lista-historial"><p style="color:var(--muted)">Sin días registrados aún.</p></div>
+    <h3 onclick="toggleHistorialBanca()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+        <span>💰 Banca real (solo apuestas con dinero)</span>
+        <span id="historial-toggle" style="font-size:1.2rem;">▼</span>
+    </h3>
+    <div id="lista-historial" style="display:none;"><p style="color:var(--muted)">Sin días registrados aún.</p></div>
 </div>
 
 <div class="historial" id="historial-predicciones">
@@ -293,7 +475,7 @@
         <span>📋 Predicciones en papel (todos los juegos)</span>
         <span id="predicciones-toggle" style="font-size:1.2rem;">▼</span>
     </h3>
-    <div id="lista-predicciones"><p style="color:var(--muted)">Sin predicciones registradas aún.</p></div>
+    <div id="lista-predicciones" style="display:none;"><p style="color:var(--muted)">Sin predicciones registradas aún.</p></div>
 </div>
 
 <div id="contenedor-juegos" class="grid-juegos">
@@ -327,6 +509,36 @@ function togglePredicciones() {
     } else {
         lista.style.display = 'none';
         toggle.textContent = '▼';
+    }
+}
+
+function toggleHistorialBanca() {
+    const lista = document.getElementById('lista-historial');
+    const toggle = document.getElementById('historial-toggle');
+    if (lista.style.display === 'none') {
+        lista.style.display = 'block';
+        toggle.textContent = '▲';
+    } else {
+        lista.style.display = 'none';
+        toggle.textContent = '▼';
+    }
+}
+
+// Estado de desplegables de picks (sobrevive al refresh del panel)
+const picksUi = {
+    abierto: true,
+    dinero: true,
+    papel: false,
+};
+
+function wirePicksDesplegables() {
+    const main = document.getElementById('picks-hoy-details');
+    if (main && !main.dataset.wired) {
+        main.dataset.wired = '1';
+        main.open = picksUi.abierto;
+        main.addEventListener('toggle', () => {
+            picksUi.abierto = main.open;
+        });
     }
 }
 
@@ -401,6 +613,22 @@ async function cargarEstado() {
     }
 }
 
+function fmtMoneyPlain(n) {
+    return '$' + Math.abs(Number(n) || 0).toFixed(2);
+}
+
+function rendCard(titulo, w, l, wr, ganado, perdido, neto) {
+    const netoCls = (neto || 0) >= 0 ? 'pos' : 'neg';
+    const netoTxt = ((neto || 0) >= 0 ? '+' : '-') + fmtMoneyPlain(neto);
+    return `<div class="rend-card">
+        <h4>${titulo}</h4>
+        <div class="wr">${(wr || 0).toFixed ? (wr || 0).toFixed(1) : (wr || 0)}%<span> · ${w||0}✓ / ${l||0}✗</span></div>
+        <div class="rend-row"><span class="k">Ganado</span><span class="v pos">${fmtMoneyPlain(ganado)}</span></div>
+        <div class="rend-row"><span class="k">Perdido</span><span class="v neg">${fmtMoneyPlain(perdido)}</span></div>
+        <div class="rend-row"><span class="k">Neto</span><span class="v ${netoCls}">${netoTxt}</span></div>
+    </div>`;
+}
+
 function pintarEstado(data) {
     const m = data.memoria;
     const dia = data.dia_hoy;
@@ -408,39 +636,68 @@ function pintarEstado(data) {
 
     const b = data.banca || {};
     document.getElementById('capital-display').textContent = '$' + m.capital.toFixed(2);
-    document.getElementById('banca-detalle').textContent =
-        `Disponible: $${(b.disponible ?? m.capital).toFixed(2)} · ` +
-        `En juego hoy: $${(b.en_juego_hoy || 0).toFixed(2)} · $${m.stake_por_juego} por partido`;
-    
-    // Stats: predicciones (papel) vs dinero real
+    document.getElementById('bm-disponible').textContent = '$' + (b.disponible ?? m.capital).toFixed(2);
+    document.getElementById('bm-enjuego').textContent = '$' + (b.en_juego_hoy || 0).toFixed(2);
+    document.getElementById('bm-stake').textContent = '$' + Number(m.stake_por_juego || 5).toFixed(0);
+
+    // Stats: dos tarjetas claras (papel vs dinero)
     const split = data.pl_split || {};
     const pred = split.predicciones || {};
     const din = split.dinero || {};
     const statsContent = document.getElementById('stats-modelo-content');
     if ((pred.total || 0) > 0 || (din.total || 0) > 0) {
         statsContent.innerHTML =
-            `Predicciones: ${pred.aciertos||0}✓ / ${pred.fallos||0}✗ (${pred.win_rate||0}%) · ` +
-            `Ganado $${(pred.ganado||0).toFixed(2)} · Perdido $${(pred.perdido||0).toFixed(2)} · Neto $${(pred.neto||0).toFixed(2)}` +
-            `<br>Dinero: ${din.ganadas||0}✓ / ${din.perdidas||0}✗ · ` +
-            `Ganado $${(din.ganado||0).toFixed(2)} · Perdido $${(din.perdido||0).toFixed(2)} · Neto $${(din.neto||0).toFixed(2)}`;
+            `<div class="rend-grid">` +
+            rendCard('📋 Papel', pred.aciertos, pred.fallos, pred.win_rate, pred.ganado, pred.perdido, pred.neto) +
+            rendCard('💰 Dinero', din.ganadas, din.perdidas, din.win_rate, din.ganado, din.perdido, din.neto) +
+            `</div>`;
     } else {
-        statsContent.textContent = 'Sin datos suficientes';
+        statsContent.innerHTML = '<p class="meta-line">Sin datos suficientes todavía.</p>';
     }
-    
+
     document.getElementById('dia-actual').textContent =
         m.experimento_activo
             ? `DÍA ${m.dia_actual} DE ${m.dias_totales}`
             : 'EXPERIMENTO FINALIZADO';
 
     const plEl = document.getElementById('pl-hoy');
-    plEl.textContent = fmtMoney(res.profit_dia || 0);
-    plEl.className = 'val ' + ((res.profit_dia || 0) >= 0 ? 'pos' : 'neg');
+    // Hoy = predicciones en papel (todas). Dinero va aparte en Rendimiento / banca.
+    const predsHoy = Array.isArray(dia?.predicciones) ? dia.predicciones : [];
+    const apuestasHoy = Array.isArray(dia?.apuestas) ? dia.apuestas : [];
+    const ganadas = predsHoy.filter(p => p.resultado === 'acierto').length;
+    const perdidas = predsHoy.filter(p => p.resultado === 'fallo').length;
+    const pendientes = predsHoy.filter(p => p.estado === 'pendiente').length;
+    const profitHoy = predsHoy.reduce((s, p) => {
+        if (p.profit == null || p.estado === 'pendiente') return s;
+        return s + Number(p.profit || 0);
+    }, 0);
+    const exposicion = apuestasHoy
+        .filter(a => a.estado === 'pendiente')
+        .reduce((s, a) => s + Number(a.stake || 0), 0);
+    const gDin = apuestasHoy.filter(a => a.estado === 'ganada').length;
+    const pDin = apuestasHoy.filter(a => a.estado === 'perdida').length;
+    const pendDin = apuestasHoy.filter(a => a.estado === 'pendiente').length;
+    const profitDin = apuestasHoy.reduce((s, a) => {
+        if (a.profit == null || a.estado === 'pendiente') return s;
+        return s + Number(a.profit || 0);
+    }, 0);
 
-    document.getElementById('ganadas-hoy').textContent = res.ganadas || 0;
-    document.getElementById('pendientes-hoy').textContent = res.pendientes || 0;
-    document.getElementById('exposicion-hoy').textContent = '$' + (res.capital_arriesgado || 0).toFixed(0);
+    plEl.textContent = fmtMoney(profitHoy);
+    plEl.className = 'val ' + (profitHoy >= 0 ? 'pos' : 'neg');
 
-    const roi = ((m.capital - m.capital_inicial) / m.capital_inicial * 100);
+    document.getElementById('ganadas-hoy').textContent = ganadas;
+    const perdEl = document.getElementById('perdidas-hoy');
+    if (perdEl) {
+        perdEl.textContent = perdidas;
+        perdEl.className = 'val ' + (perdidas > 0 ? 'neg' : '');
+    }
+    document.getElementById('pendientes-hoy').textContent = pendientes;
+    document.getElementById('exposicion-hoy').textContent = '$' + exposicion.toFixed(0);
+
+    // ROI de la banca real (capital vs inicial)
+    const capitalIni = Number(m.capital_inicial || 100);
+    const capitalNow = Number(m.capital || capitalIni);
+    const roi = capitalIni ? ((capitalNow - capitalIni) / capitalIni * 100) : 0;
     const roiEl = document.getElementById('roi-total');
     roiEl.textContent = (roi >= 0 ? '+' : '') + roi.toFixed(2) + '%';
     roiEl.className = 'val ' + (roi >= 0 ? 'pos' : 'neg');
@@ -454,14 +711,14 @@ function pintarEstado(data) {
 
     const mins = data.minutos_antes_juego || 60;
     document.getElementById('proximo-bloqueo').textContent = soloModelo
-        ? `Bloqueo automático: ${mins} min antes de cada juego (pick por probabilidad del modelo)`
-        : `Bloqueo automático: ${mins} min antes de cada juego (evalúa pick + BetMGM)`;
+        ? `Bloqueo automático: ${mins} min antes de cada juego`
+        : `Bloqueo: ${mins} min antes · evalúa pick + BetMGM`;
 
     const ls = document.getElementById('lineas-status');
     const lin = data.lineas || {};
     if (soloModelo) {
         ls.style.color = '#00ff88';
-        ls.textContent = '✓ ' + (lin.mensaje || 'Modo solo modelo (sin Odds API)');
+        ls.textContent = '✓ Modo solo modelo (sin Odds API)';
     } else if (lin.ok) {
         ls.style.color = '#00ff88';
         ls.textContent = '✓ BetMGM · ' + (lin.mensaje || '');
@@ -469,22 +726,32 @@ function pintarEstado(data) {
         ls.style.color = '#ffbc00';
         ls.textContent = '⚠ ' + (lin.mensaje || 'Sin líneas BetMGM');
     }
-    const aviso = document.getElementById('aviso-real');
-    if (soloModelo) {
-        aviso.innerHTML = '<strong>Modo solo modelo:</strong> el tag <strong>PICK</strong> es la predicción (fija al apostar). ' +
-            '<strong>GANÓ</strong> solo aparece cuando MLB confirma el resultado final. ' +
-            'Los verdes (≥ ' + (estr.min_prob_modelo || 58) + '%) son apostables. Bloqueo <strong>1 h antes</strong>.';
-    } else {
-        aviso.innerHTML = '<strong>Estrategia:</strong> <strong>1 hora antes</strong> de cada juego se evalúa todo ' +
-            '(pitchers, stats, BetMGM) y se apuesta solo con <strong>valor</strong> (borde verde). ' +
-            'Máximo <strong>' + (estr.max_apuestas_dia || 5) + ' apuestas/día</strong>.';
+
+    const avisoSum = document.querySelector('#aviso-real summary');
+    const avisoBody = document.getElementById('aviso-body');
+    const minP = estr.min_prob_modelo || 58;
+    if (avisoSum && avisoBody) {
+        if (soloModelo) {
+            avisoSum.textContent = 'Modo solo modelo';
+            avisoBody.innerHTML =
+                'El tag <strong>PICK</strong> es la predicción (fija al apostar). ' +
+                '<strong>GANÓ</strong> solo al final oficial de MLB. ' +
+                `Verdes (≥${minP}%) son apostables. Bloqueo 1 h antes.`;
+        } else {
+            avisoSum.textContent = 'Estrategia BetMGM';
+            avisoBody.innerHTML =
+                '1 h antes se evalúa pitchers + stats + BetMGM. ' +
+                'Solo se apuesta con valor (borde verde). ' +
+                `Máximo ${estr.max_apuestas_dia || 5} apuestas/día.`;
+        }
     }
 
+    // Nota corta de hoy
     const fav = data.favorables_hoy ?? data.oportunidades_valor_hoy ?? 0;
     const maxP = estr.max_apuestas_dia || 5;
-    document.getElementById('favorables-hoy').textContent = soloModelo
-        ? `Hoy: ${fav} pick(s) favorable(s) de máximo ${maxP} (prob. modelo ≥ ${estr.min_prob_modelo || 52}%)`
-        : `Hoy: ${fav} pick(s) favorable(s) de máximo ${maxP} (edge ≥ +${estr.min_edge_pct || 5}%)`;
+    document.getElementById('favorables-hoy').textContent =
+        `Hoy: ${fav} listo(s) / máx ${maxP} · papel ${ganadas}✓ ${perdidas}✗ ${pendientes}⏳ ${fmtMoney(profitHoy)}` +
+        ` · dinero ${gDin}✓ ${pDin}✗ ${pendDin}⏳ ${fmtMoney(profitDin)}`;
 
     const lista = document.getElementById('lista-historial');
     const diasDinero = (m.dias || []).filter(d => (d.apuestas || []).length > 0);
@@ -492,19 +759,21 @@ function pintarEstado(data) {
         lista.innerHTML = '<p style="color:var(--muted);font-size:0.82rem;margin:0">Sin apuestas con dinero. Las predicciones en papel estan abajo.</p>';
     } else {
         let html = '';
-        let bancaCorr = m.capital_inicial;
+        let bancaCorr = Number(m.capital_inicial || 100);
         for (const d of m.dias) {
             const apuestas = d.apuestas || [];
             if (!apuestas.length) continue;
-            const r = d.resumen || {};
-            const pl = r.profit_dia || 0;
-            const ganadas = r.ganadas || 0;
-            const perdidas = r.perdidas || 0;
+            const g = apuestas.filter(a => a.estado === 'ganada').length;
+            const p = apuestas.filter(a => a.estado === 'perdida').length;
+            const pl = apuestas.reduce((s, a) => {
+                if (a.profit == null || a.estado === 'pendiente') return s;
+                return s + Number(a.profit || 0);
+            }, 0);
             bancaCorr += pl;
             const diaId = 'dia-' + d.dia;
             html += '<div class="dia-fila" style="cursor:pointer;" onclick="toggleDia(\'' + diaId + '\')">';
-            html += '<span>Día ' + d.dia + ' (' + d.fecha + ') — ' + ganadas + 'G / ' + perdidas + 'P — ' + apuestas.length + ' apuesta(s)</span>';
-            html += '<span style="color:' + (pl >= 0 ? 'var(--green)' : 'var(--red)') + '">' + fmtMoney(pl) + ' → Banca $' + bancaCorr.toFixed(2) + '</span></div>';
+            html += '<span>Día ' + d.dia + ' (' + d.fecha + ') — ' + g + 'G / ' + p + 'P — ' + apuestas.length + ' apuesta(s)</span>';
+            html += '<span style="color:' + (pl >= 0 ? 'var(--green)' : 'var(--red)') + '">' + fmtMoney(pl) + ' → Banca $' + bancaCorr.toFixed(2) + '</span>';
             html += '</div>';
             html += '<div id="' + diaId + '" style="display:none;padding:8px 0 12px 10px;">';
             apuestas.forEach(a => {
@@ -520,7 +789,7 @@ function pintarEstado(data) {
         lista.innerHTML = html;
     }
 
-        pintarPredicciones(m, data.pl_split);
+    pintarPredicciones(m, data.pl_split);
 }
 
 function nombrePick(pick) {
@@ -534,6 +803,10 @@ function pintarPicksHoy(juegos, data) {
     const minProb = estr.min_prob_modelo || 58;
     const maxP = estr.max_apuestas_dia || 8;
 
+    wirePicksDesplegables();
+    const main = document.getElementById('picks-hoy-details');
+    if (main) main.open = picksUi.abierto;
+
     const vistos = new Set();
     const unicos = [];
     for (const j of juegos) {
@@ -542,14 +815,15 @@ function pintarPicksHoy(juegos, data) {
         unicos.push(j);
     }
 
-    const apostables = unicos
-        .filter(j => j.apostable && (j.probPick || 0) >= minProb)
-        .sort((a, b) => (b.probPick || 0) - (a.probPick || 0))
-        .slice(0, maxP);
-
     const yaApostados = unicos.filter(j =>
         j.estado_apuesta && j.estado_apuesta !== 'sin_bloquear'
     );
+    const idsYa = new Set(yaApostados.map(j => j.id));
+    const cupoRestante = Math.max(0, maxP - yaApostados.length);
+    const apostablesNuevos = unicos
+        .filter(j => j.apostable && (j.probPick || 0) >= minProb && !idsYa.has(j.id))
+        .sort((a, b) => (b.probPick || 0) - (a.probPick || 0))
+        .slice(0, cupoRestante);
 
     if (!unicos.length) {
         sub.textContent = 'No hay juegos MLB hoy.';
@@ -557,21 +831,15 @@ function pintarPicksHoy(juegos, data) {
         return;
     }
 
-    const idsDinero = new Set(apostables.map(j => j.id).concat(
-        yaApostados.map(j => j.id)
-    ));
-
-    sub.textContent = `${unicos.length} juegos hoy · ${apostables.length || yaApostados.length} con dinero (máx. ${maxP}, ≥${minProb}%) · el resto solo predicción.`;
+    sub.textContent = `${unicos.length} juegos hoy · ${yaApostados.length} apostados · ${apostablesNuevos.length} listos (≥${minProb}%, máx. ${maxP}) · toca el título para abrir/cerrar.`;
 
     let html = '';
-
-    const conDinero = unicos
-        .filter(j => idsDinero.has(j.id) || (j.apostable && (j.probPick || 0) >= minProb))
-        .sort((a, b) => (b.probPick || 0) - (a.probPick || 0))
-        .slice(0, maxP);
+    const conDinero = [...yaApostados, ...apostablesNuevos];
 
     if (conDinero.length) {
-        html += '<div style="font-size:0.75rem;color:var(--green);margin-bottom:8px;font-weight:bold;">💰 APOSTAR CON DINERO</div>';
+        html += `<details class="picks-grupo dinero" id="picks-grupo-dinero" ${picksUi.dinero ? 'open' : ''}>
+            <summary><span>💰 APOSTAR CON DINERO (${conDinero.length})<span class="hint">toca para abrir/cerrar</span></span></summary>
+            <div class="picks-grupo-body">`;
         conDinero.forEach((j, i) => {
             const eq = nombrePick(j.pick);
             const hecho = j.estado_apuesta === 'pendiente' || j.estado_apuesta === 'ganada' || j.estado_apuesta === 'perdida';
@@ -585,6 +853,8 @@ function pintarPicksHoy(juegos, data) {
                 badge = '<span class="pick-badge bet">GANÓ $</span>';
             } else if (fin && j.estado_apuesta === 'perdida') {
                 badge = '<span class="pick-badge skip">PERDIÓ $</span>';
+            } else if (!hecho && j.apostable) {
+                badge = '<span class="pick-badge bet">LISTO</span>';
             } else if (j.estado === 'EN VIVO') {
                 badge = '<span class="pick-badge wait">EN JUEGO</span>';
             }
@@ -596,14 +866,18 @@ function pintarPicksHoy(juegos, data) {
                 <div class="pick-prob">${(j.probPick || 0).toFixed(0)}%</div>
             </div>`;
         });
+        html += '</div></details>';
     }
 
+    const idsDinero = new Set(conDinero.map(j => j.id));
     const soloPred = unicos
-        .filter(j => (j.probPick || 0) > 0 && !conDinero.some(c => c.id === j.id))
+        .filter(j => (j.probPick || 0) > 0 && !idsDinero.has(j.id))
         .sort((a, b) => (b.probPick || 0) - (a.probPick || 0));
 
     if (soloPred.length) {
-        html += '<div style="font-size:0.75rem;color:var(--muted);margin:14px 0 8px;font-weight:bold;">Predicción en papel (todos los demás — sin dinero)</div>';
+        html += `<details class="picks-grupo papel" id="picks-grupo-papel" ${picksUi.papel ? 'open' : ''}>
+            <summary><span>📋 Predicción en papel (${soloPred.length})<span class="hint">toca para ver el resto</span></span></summary>
+            <div class="picks-grupo-body">`;
         soloPred.forEach(j => {
             html += `<div class="pick-row no">
                 <div>
@@ -613,9 +887,21 @@ function pintarPicksHoy(juegos, data) {
                 <div class="pick-prob" style="color:var(--muted)">${(j.probPick || 0).toFixed(0)}%</div>
             </div>`;
         });
+        html += '</div></details>';
     }
 
     lista.innerHTML = html || '<p style="color:var(--muted);margin:0">Sin picks claros todavía. Actualiza en unos minutos.</p>';
+
+    const gDin = document.getElementById('picks-grupo-dinero');
+    const gPap = document.getElementById('picks-grupo-papel');
+    if (gDin) {
+        gDin.open = picksUi.dinero;
+        gDin.ontoggle = () => { picksUi.dinero = gDin.open; };
+    }
+    if (gPap) {
+        gPap.open = picksUi.papel;
+        gPap.ontoggle = () => { picksUi.papel = gPap.open; };
+    }
 }
 
 function pintarPredicciones(memoria, plSplit) {
@@ -678,6 +964,10 @@ function pintarPredicciones(memoria, plSplit) {
             row.con_dinero = true;
             row.stake_dinero = a.stake;
             row.profit_dinero = a.profit;
+            // Con dinero: mostrar el pick real de la apuesta
+            if (a.pick) row.pick = a.pick;
+            if (a.probPick != null) row.probPick = a.probPick;
+            if (a.odds != null) row.odds = a.odds;
             if (!row.resultado && (a.estado === 'ganada' || a.estado === 'perdida')) {
                 row.resultado = a.estado === 'ganada' ? 'acierto' : 'fallo';
             }
@@ -851,109 +1141,9 @@ async function reiniciar() {
     cargarEstado();
 }
 
-let parleysIntervalo = null;
-let parleysSectionVisible = false;
-
-function toggleParleys() {
-    const section = document.getElementById('parleys-section');
-    parleysSectionVisible = !parleysSectionVisible;
-    
-    if (parleysSectionVisible) {
-        section.style.display = 'block';
-        cargarParleys();
-    } else {
-        section.style.display = 'none';
-        if (parleysIntervalo) {
-            clearInterval(parleysIntervalo);
-            parleysIntervalo = null;
-        }
-    }
-}
-
-async function cargarParleys() {
-    const section = document.getElementById('parleys-section');
-    const content = document.getElementById('parleys-content');
-    
-    try {
-        content.innerHTML = '<p style="color:var(--muted)">Calculando parleys óptimos...</p>';
-        section.style.display = 'block';
-        
-        const r = await fetch(API + '/api/parleys');
-        const d = await r.json();
-        
-        if (!d.parleys || d.parleys.length === 0) {
-            content.innerHTML = '<p style="color:var(--muted)">No hay suficientes picks con valor para generar parleys hoy.</p>';
-            return;
-        }
-        
-        let html = '';
-        
-        // Mostrar el mejor parley destacado
-        if (d.mejor_parley) {
-            const p = d.mejor_parley;
-            html += `<div style="background:rgba(0,255,136,0.1);border:2px solid var(--green);border-radius:12px;padding:16px;margin-bottom:16px;">
-                <h4 style="margin:0 0 12px;color:var(--green)">🏆 MEJOR PARLEY RECOMENDADO</h4>
-                <div style="font-size:1.2rem;font-weight:bold;margin-bottom:8px">
-                    Cuota: ${p.cuota_parley.toFixed(2)} (${p.cuota_parley_american > 0 ? '+' : ''}${p.cuota_parley_american})
-                </div>
-                <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:12px;font-size:0.9rem">
-                    <div>Prob Modelo: <span style="color:var(--cyan)">${p.prob_modelo.toFixed(1)}%</span></div>
-                    <div>Prob Mercado: <span style="color:var(--muted)">${p.prob_implicita.toFixed(1)}%</span></div>
-                    <div>EDGE: <span style="color:var(--green)">+${p.edge.toFixed(1)}%</span></div>
-                    <div>EV: <span style="color:${p.ev_esperado > 0 ? 'var(--green)' : 'var(--red)'}">$${p.ev_esperado.toFixed(2)}/$1</span></div>
-                </div>
-                <div style="margin-bottom:12px">
-                    <strong>PICKS (${p.num_picks}):</strong>
-                </div>`;
-            
-            p.picks.forEach((pick, i) => {
-                html += `<div style="background:rgba(0,0,0,0.3);padding:8px;margin:4px 0;border-radius:6px;font-size:0.85rem">
-                    ${i + 1}. ${pick.pick} @ ${pick.odds.toFixed(2)} (Edge +${pick.edge.toFixed(1)}%, Prob ${pick.prob.toFixed(0)}%)
-                </div>`;
-            });
-            
-            html += `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
-                <strong>💰 STAKE RECOMENDADO: $${p.stake_recomendado.toFixed(0)}</strong>
-            </div></div>`;
-        }
-        
-        // Mostrar otros parleys
-        if (d.parleys.length > 1) {
-            html += `<h4 style="margin:16px 0 8px">Otros Parleys (${d.parleys.length - 1} más)</h4>`;
-            d.parleys.slice(1).forEach((p, idx) => {
-                html += `<div style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:12px;margin:8px 0">
-                    <div style="display:flex;justify-content:space-between;margin-bottom:8px">
-                        <strong>Parley #${idx + 2} (${p.num_picks} picks)</strong>
-                        <span style="color:var(--green)">+${p.edge.toFixed(1)}%</span>
-                    </div>
-                    <div style="font-size:0.9rem;margin-bottom:8px">
-                        Cuota: ${p.cuota_parley.toFixed(2)} · Prob: ${p.prob_modelo.toFixed(1)}% · EV: $${p.ev_esperado.toFixed(2)}
-                    </div>
-                    <div style="font-size:0.8rem;color:var(--muted)">`;
-                p.picks.forEach(pick => {
-                    html += `• ${pick.pick} @ ${pick.odds.toFixed(2)}<br>`;
-                });
-                html += `</div></div>`;
-            });
-        }
-        
-        html += `<div style="margin-top:16px;font-size:0.8rem;color:var(--muted)">
-            Analizados: ${d.total_juegos_analizados} juegos · Picks con valor: ${d.juegos_con_valor} · <span style="color:var(--green)">🔄 Actualizando en vivo...</span>
-        </div>`;
-        
-        content.innerHTML = html;
-        
-        // Iniciar actualización automática cada minuto
-        if (parleysIntervalo) clearInterval(parleysIntervalo);
-        parleysIntervalo = setInterval(cargarParleys, 60000);
-        
-    } catch (e) {
-        content.innerHTML = `<p style="color:var(--red)">Error: ${e.message}</p>`;
-    }
-}
-
 cargarEstado();
 setInterval(cargarEstado, REFRESH_MS);
+
 </script>
 </body>
 </html>
