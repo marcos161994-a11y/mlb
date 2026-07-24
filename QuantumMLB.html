@@ -448,9 +448,9 @@
 </div>
 
 <div class="stats-row">
-    <div class="stat-box"><div class="label">P/L Hoy (dinero)</div><div class="val" id="pl-hoy">$0.00</div></div>
-    <div class="stat-box"><div class="label">Ganadas Hoy</div><div class="val" id="ganadas-hoy">0</div></div>
-    <div class="stat-box"><div class="label">Perdidas Hoy</div><div class="val" id="perdidas-hoy">0</div></div>
+    <div class="stat-box"><div class="label">P/L Hoy (papel)</div><div class="val" id="pl-hoy">$0.00</div></div>
+    <div class="stat-box"><div class="label">Aciertos Hoy</div><div class="val" id="ganadas-hoy">0</div></div>
+    <div class="stat-box"><div class="label">Fallos Hoy</div><div class="val" id="perdidas-hoy">0</div></div>
     <div class="stat-box"><div class="label">Pendientes</div><div class="val" id="pendientes-hoy">0</div></div>
     <div class="stat-box"><div class="label">ROI Banca</div><div class="val" id="roi-total">0%</div></div>
     <div class="stat-box"><div class="label">Exposición Hoy</div><div class="val" id="exposicion-hoy">$0</div></div>
@@ -503,6 +503,18 @@ function toast(msg) {
 function togglePredicciones() {
     const lista = document.getElementById('lista-predicciones');
     const toggle = document.getElementById('predicciones-toggle');
+    if (lista.style.display === 'none') {
+        lista.style.display = 'block';
+        toggle.textContent = '▲';
+    } else {
+        lista.style.display = 'none';
+        toggle.textContent = '▼';
+    }
+}
+
+function toggleHistorialBanca() {
+    const lista = document.getElementById('lista-historial');
+    const toggle = document.getElementById('historial-toggle');
     if (lista.style.display === 'none') {
         lista.style.display = 'block';
         toggle.textContent = '▲';
@@ -649,18 +661,26 @@ function pintarEstado(data) {
             : 'EXPERIMENTO FINALIZADO';
 
     const plEl = document.getElementById('pl-hoy');
-    // Recalcular sumas desde las apuestas del día (no confiar solo en resumen cacheado)
+    // Hoy = predicciones en papel (todas). Dinero va aparte en Rendimiento / banca.
+    const predsHoy = Array.isArray(dia?.predicciones) ? dia.predicciones : [];
     const apuestasHoy = Array.isArray(dia?.apuestas) ? dia.apuestas : [];
-    const ganadas = apuestasHoy.filter(a => a.estado === 'ganada').length;
-    const perdidas = apuestasHoy.filter(a => a.estado === 'perdida').length;
-    const pendientes = apuestasHoy.filter(a => a.estado === 'pendiente').length;
-    const profitHoy = apuestasHoy.reduce((s, a) => {
-        if (a.profit == null || a.estado === 'pendiente') return s;
-        return s + Number(a.profit || 0);
+    const ganadas = predsHoy.filter(p => p.resultado === 'acierto').length;
+    const perdidas = predsHoy.filter(p => p.resultado === 'fallo').length;
+    const pendientes = predsHoy.filter(p => p.estado === 'pendiente').length;
+    const profitHoy = predsHoy.reduce((s, p) => {
+        if (p.profit == null || p.estado === 'pendiente') return s;
+        return s + Number(p.profit || 0);
     }, 0);
     const exposicion = apuestasHoy
         .filter(a => a.estado === 'pendiente')
         .reduce((s, a) => s + Number(a.stake || 0), 0);
+    const gDin = apuestasHoy.filter(a => a.estado === 'ganada').length;
+    const pDin = apuestasHoy.filter(a => a.estado === 'perdida').length;
+    const pendDin = apuestasHoy.filter(a => a.estado === 'pendiente').length;
+    const profitDin = apuestasHoy.reduce((s, a) => {
+        if (a.profit == null || a.estado === 'pendiente') return s;
+        return s + Number(a.profit || 0);
+    }, 0);
 
     plEl.textContent = fmtMoney(profitHoy);
     plEl.className = 'val ' + (profitHoy >= 0 ? 'pos' : 'neg');
@@ -730,7 +750,8 @@ function pintarEstado(data) {
     const fav = data.favorables_hoy ?? data.oportunidades_valor_hoy ?? 0;
     const maxP = estr.max_apuestas_dia || 5;
     document.getElementById('favorables-hoy').textContent =
-        `Hoy: ${fav} listo(s) / máx ${maxP} · dinero ${ganadas}✓ ${perdidas}✗ ${pendientes}⏳ ${fmtMoney(profitHoy)}`;
+        `Hoy: ${fav} listo(s) / máx ${maxP} · papel ${ganadas}✓ ${perdidas}✗ ${pendientes}⏳ ${fmtMoney(profitHoy)}` +
+        ` · dinero ${gDin}✓ ${pDin}✗ ${pendDin}⏳ ${fmtMoney(profitDin)}`;
 
     const lista = document.getElementById('lista-historial');
     const diasDinero = (m.dias || []).filter(d => (d.apuestas || []).length > 0);

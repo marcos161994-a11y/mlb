@@ -604,9 +604,8 @@ def liquidar_dia(memoria: dict, dia: dict) -> int:
     if not apuestas_pendientes and not predicciones_pendientes and not puede_revertir:
         return 0
 
-    solo_resultados = not predicciones_pendientes
-    # Red fuera del lock
-    juegos = obtener_juegos_fecha(dia["fecha"], solo_resultados=solo_resultados)
+    # Solo marcador/ganador MLB: no reevaluar modelo ni cuotas (evita timeouts en Render).
+    juegos = obtener_juegos_fecha(dia["fecha"], solo_resultados=True)
     if not juegos:
         print(f"[DEBUG LIQ DIA] No se encontraron juegos para el día {dia['fecha']}. No se liquida.")
         return 0
@@ -618,10 +617,10 @@ def liquidar_dia(memoria: dict, dia: dict) -> int:
 def _liquidar_dia_con_juegos(memoria: dict, dia: dict, juegos: list) -> int:
     apuestas = dia.get("apuestas", [])
     preds = dia.get("predicciones", [])
-    por_id = {g["id"]: g for g in juegos}
+    por_id = {str(g["id"]): g for g in juegos}
     cambios = 0
     for apuesta in dia.get("apuestas", []):
-        juego = por_id.get(apuesta["game_id"])
+        juego = por_id.get(str(apuesta.get("game_id") or ""))
         if not juego:
             continue
         if apuesta.get("estado") == "pendiente" or apuesta.get("estado") in ("ganada", "perdida"):
@@ -633,7 +632,7 @@ def _liquidar_dia_con_juegos(memoria: dict, dia: dict, juegos: list) -> int:
         for prediccion in dia["predicciones"]:
             if prediccion.get("estado") not in ("pendiente", "liquidado"):
                 continue
-            juego = por_id.get(prediccion["game_id"])
+            juego = por_id.get(str(prediccion.get("game_id") or ""))
             if not juego:
                 continue
 
@@ -1578,8 +1577,10 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
 
 @app.get("/api/state")
 def api_state():
-    """Estado del panel (ligero). Liquidacion y backfill corren en el cron."""
-    return construir_estado_completo(liquidar=False, ligero=True)
+    """Estado del panel. Liquida pendientes barato (solo marcadores MLB)."""
+    # En Render free el cron a veces no corre si el servicio duerme:
+    # liquidar aquí garantiza que al abrir/refrescar el panel salgan resultados.
+    return construir_estado_completo(liquidar=True, ligero=True)
 
 
 @app.get("/api/picks-hoy")
