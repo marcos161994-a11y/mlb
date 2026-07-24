@@ -72,6 +72,9 @@ NOTAS
 - Plan Free: puede tardar 30 seg en despertar la primera vez
 - Si redeployas, la banca en /var/data puede resetearse en Free
   (para persistencia total usa plan Starter $7/mes + disco)
+- Backup automatico: GitHub Action "Backup memoria Render" guarda
+  memoria_auditoria.json en main 3 veces al dia. Si hay wipe, al
+  arrancar se restaura desde ese archivo (+ dia actual en disco).
 - No subas odds_api_key.txt a GitHub; usa ODDS_API_KEY en Render
 
 ================================================================================
