@@ -25,8 +25,12 @@ PASO 2 — CREAR SERVICIO EN RENDER
 
 5. Variables de entorno (Environment):
    ODDS_API_KEY     = (tu key de the-odds-api.com)
+   GROQ_API_KEY     = (opcional; key gratis en console.groq.com)
    CRON_SECRET      = inventa una clave larga (ej. miClaveSecreta2026)
    DATA_DIR         = /var/data
+
+   IA veto (Groq): el modelo propone picks ≥58%; Groq dice APOSTAR o PASAR
+   antes de poner dinero. Sin key o si Groq falla/timeout → sigue el modelo.
 
 6. Create Web Service
 7. Espera 3-5 min. Tu URL sera algo como:

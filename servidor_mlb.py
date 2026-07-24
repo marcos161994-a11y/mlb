@@ -29,6 +29,7 @@ from lineas_betmgm import aplicar_lineas_a_juegos
 from lineas_betmgm import normalizar_nombre_equipo as norm_nombre
 from modelo_mlb import evaluar_juegos, calcular_stake_dinamico, cuota_desde_prob
 from ml_predictor import auto_entrenar_ml
+from ia_groq import veto_apuesta
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
@@ -1254,6 +1255,27 @@ def _bloquear_juego_locked(
             "prediccion_guardada": True,
         }
 
+    # Modelo propone → Groq veta/confirma → solo entonces dinero.
+    # Si no hay key/timeout/error (SKIP): se sigue con el modelo.
+    veto = veto_apuesta(juego, cfg)
+    if pred_existente is not None:
+        pred_existente["ia_veto"] = veto
+    if veto.get("ok") and veto.get("decision") == "PASAR":
+        motivo_veto = f"IA PASAR: {veto.get('motivo') or 'veto contextual'}"
+        if pred_existente is not None:
+            pred_existente["motivo_apuesta"] = (
+                f"{pred_existente.get('motivo_apuesta') or ''} · {motivo_veto}"
+            ).strip(" ·")
+        guardar_memoria(memoria)
+        print(f"[IA-VETO] Dinero cancelado para {juego.get('pick')}: {motivo_veto}")
+        return {
+            "ok": False,
+            "motivo": motivo_veto,
+            "juego": juego["visitante"] + " vs " + juego["home"],
+            "prediccion_guardada": True,
+            "ia_veto": veto,
+        }
+
     edge = juego.get("edge", 0)
     confianza = min(max((edge - 5.0) / 10.0, 0.5), 1.0)
     stake = calcular_stake_dinamico(memoria["capital"], edge, confianza, cfg)
@@ -1269,6 +1291,12 @@ def _bloquear_juego_locked(
         }
 
     ahora = datetime.now(tz_experimento())
+    motivo_final = juego.get("motivo_apuesta") or ""
+    if veto.get("ok") and veto.get("decision") == "APOSTAR":
+        motivo_final = (
+            f"{motivo_final} · IA APOSTAR: {veto.get('motivo')} "
+            f"(conf {veto.get('confianza')})"
+        ).strip(" ·")
     dia["apuestas"].append(
         {
             "game_id": juego["id"],
@@ -1281,7 +1309,8 @@ def _bloquear_juego_locked(
             "casa": "Modelo" if juego.get("lineas_fuente") == "modelo" else "BetMGM",
             "edge": juego.get("edge"),
             "probPick": juego.get("probPick"),
-            "motivo_apuesta": juego.get("motivo_apuesta"),
+            "motivo_apuesta": motivo_final,
+            "ia_veto": veto if veto.get("ok") else None,
             "pitcherAway": juego.get("pitcherAway"),
             "pitcherHome": juego.get("pitcherHome"),
             "inicio_juego": juego.get("inicio_juego"),
