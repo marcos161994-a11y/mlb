@@ -45,14 +45,106 @@ _juegos_ui_cache: dict = {"fecha": "", "ts": 0.0, "juegos": []}
 _JUEGOS_UI_TTL_SEC = 90
 
 
+def _contar_historial(memoria: dict) -> tuple[int, int]:
+    """(apuestas liquidadas, predicciones con resultado) para comparar backups."""
+    apuestas = 0
+    preds = 0
+    for dia in memoria.get("dias") or []:
+        for a in dia.get("apuestas") or []:
+            if a.get("estado") in ("ganada", "perdida"):
+                apuestas += 1
+        for p in dia.get("predicciones") or []:
+            if p.get("resultado") in ("acierto", "fallo"):
+                preds += 1
+    return apuestas, preds
+
+
+def _memoria_parece_reinicio(memoria: dict) -> bool:
+    """True si parece un wipe/reinicio (día 1, banca inicial, sin historial dinero)."""
+    dias = memoria.get("dias") or []
+    capital = float(memoria.get("capital") or 0)
+    inicial = float(memoria.get("capital_inicial") or 100)
+    apuestas, preds = _contar_historial(memoria)
+    return (
+        int(memoria.get("dia_actual") or 1) <= 1
+        and abs(capital - inicial) < 0.01
+        and apuestas == 0
+        and len(dias) <= 2
+        and preds <= 10  # solo el día recién creado tras el wipe
+    )
+
+
+def _fusionar_memoria(base: dict, extra: dict) -> dict:
+    """Une historial base con días más nuevos de extra (p.ej. picks de hoy tras wipe)."""
+    import copy
+
+    out = copy.deepcopy(base)
+    by_fecha = {d["fecha"]: d for d in out.get("dias") or [] if d.get("fecha")}
+    for dia in extra.get("dias") or []:
+        fecha = dia.get("fecha")
+        if not fecha:
+            continue
+        if fecha not in by_fecha:
+            by_fecha[fecha] = copy.deepcopy(dia)
+            continue
+        dest = by_fecha[fecha]
+        preds = {str(p.get("game_id")): p for p in (dest.get("predicciones") or [])}
+        for p in dia.get("predicciones") or []:
+            gid = str(p.get("game_id") or "")
+            cur = preds.get(gid)
+            if cur is None or (
+                cur.get("estado") == "pendiente" and p.get("estado") == "liquidado"
+            ):
+                preds[gid] = p
+        dest["predicciones"] = list(preds.values())
+        if not dest.get("apuestas") and dia.get("apuestas"):
+            dest["apuestas"] = copy.deepcopy(dia["apuestas"])
+    dias = sorted(by_fecha.values(), key=lambda d: d["fecha"])
+    for i, d in enumerate(dias, 1):
+        d["dia"] = i
+    out["dias"] = dias
+    # Capital real solo de apuestas con dinero
+    cap = float(out.get("capital_inicial") or 100)
+    for d in dias:
+        for a in d.get("apuestas") or []:
+            if a.get("estado") in ("ganada", "perdida") and a.get("profit") is not None:
+                cap += float(a["profit"])
+    out["capital"] = round(cap, 2)
+    return out
+
+
 def _inicializar_datos_persistencia() -> None:
-    """Copia memoria local a DATA_DIR en el primer arranque en la nube."""
+    """Copia memoria local a DATA_DIR; restaura backup del repo si hubo wipe."""
     if DATA_DIR.resolve() == BASE_DIR.resolve():
         return
     origen = BASE_DIR / "memoria_auditoria.json"
-    if origen.exists() and not MEMORIA_PATH.exists():
-        MEMORIA_PATH.write_text(origen.read_text(encoding="utf-8"), encoding="utf-8")
-        print(f"[CLOUD] Memoria copiada a {MEMORIA_PATH}")
+    if origen.exists():
+        try:
+            bundled = json.loads(origen.read_text(encoding="utf-8"))
+        except Exception:
+            bundled = None
+        if bundled is not None:
+            if not MEMORIA_PATH.exists():
+                MEMORIA_PATH.write_text(
+                    json.dumps(bundled, indent=2, ensure_ascii=False), encoding="utf-8"
+                )
+                print(f"[CLOUD] Memoria copiada a {MEMORIA_PATH}")
+            else:
+                try:
+                    disk = json.loads(MEMORIA_PATH.read_text(encoding="utf-8"))
+                except Exception:
+                    disk = None
+                b_ap, b_pr = _contar_historial(bundled)
+                if disk is not None and _memoria_parece_reinicio(disk) and (b_ap + b_pr) > 0:
+                    merged = _fusionar_memoria(bundled, disk)
+                    MEMORIA_PATH.write_text(
+                        json.dumps(merged, indent=2, ensure_ascii=False),
+                        encoding="utf-8",
+                    )
+                    print(
+                        f"[CLOUD] Memoria recuperada desde repo "
+                        f"(backup {b_ap} apuestas / {b_pr} preds + día en disco)"
+                    )
     for nombre in ("modelo_rf_mlb.pkl", "scaler_rf_mlb.pkl"):
         src = BASE_DIR / nombre
         dst = DATA_DIR / nombre
@@ -1790,6 +1882,41 @@ def api_subir_memoria(payload: dict, secret: str | None = None):
         "capital": memoria.get("capital"),
         "dia_actual": memoria.get("dia_actual"),
         "dias": len(memoria.get("dias", [])),
+    }
+
+
+@app.post("/api/restaurar-backup")
+def api_restaurar_backup(secret: str | None = None):
+    """Restaura memoria desde el JSON del repo si el disco parece un reinicio/wipe."""
+    _verificar_cron_secreto(secret)
+    origen = BASE_DIR / "memoria_auditoria.json"
+    if not origen.exists():
+        raise HTTPException(status_code=404, detail="No hay memoria_auditoria.json en el repo")
+    try:
+        bundled = json.loads(origen.read_text(encoding="utf-8"))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Backup ilegible: {e}") from e
+    disk = cargar_memoria()
+    if not _memoria_parece_reinicio(disk):
+        ap, pr = _contar_historial(disk)
+        return {
+            "ok": False,
+            "motivo": "La memoria actual no parece un reinicio; no se sobrescribe",
+            "dia_actual": disk.get("dia_actual"),
+            "capital": disk.get("capital"),
+            "historial": {"apuestas": ap, "preds": pr},
+        }
+    merged = _fusionar_memoria(bundled, disk)
+    guardar_memoria(merged)
+    sincronizar_experimento_a_hoy(merged)
+    memoria = cargar_memoria()
+    ap, pr = _contar_historial(memoria)
+    return {
+        "ok": True,
+        "capital": memoria.get("capital"),
+        "dia_actual": memoria.get("dia_actual"),
+        "dias": len(memoria.get("dias", [])),
+        "historial": {"apuestas": ap, "preds": pr},
     }
 
 
