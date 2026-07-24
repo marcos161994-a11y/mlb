@@ -1,0 +1,75 @@
+# Backup automático de memoria_auditoria.json desde Render → GitHub.
+# Así un wipe del plan free no borra el historial (se puede restaurar desde el repo).
+# Requiere: secret CRON_SECRET (igual que en Render).
+# El schedule solo corre cuando este archivo está en la rama default (main).
+name: Backup memoria Render
+
+on:
+  schedule:
+    # 4:00, 14:00 y 23:30 hora Puerto Rico (UTC-4)
+    - cron: "0 8 * * *"
+    - cron: "0 18 * * *"
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Descargar memoria desde Render
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          curl -fsS --retry 4 --retry-delay 15 --max-time 120 \
+            "https://mlb-1-en7i.onrender.com/api/health" >/dev/null
+
+          # Preferir endpoint dedicado; si aún no está desplegado, usar /api/state
+          if [ -n "$CRON_SECRET" ] && curl -fsS --max-time 120 \
+            "https://mlb-1-en7i.onrender.com/api/exportar-memoria?secret=${CRON_SECRET}" \
+            -o /tmp/memoria_live.json; then
+            echo "Fuente: /api/exportar-memoria"
+          else
+            echo "Fallback: /api/state"
+            curl -fsS --retry 3 --retry-delay 10 --max-time 180 \
+              "https://mlb-1-en7i.onrender.com/api/state" -o /tmp/state.json
+            python3 -c "import json,pathlib; s=json.load(open('/tmp/state.json')); pathlib.Path('/tmp/memoria_live.json').write_text(json.dumps(s['memoria'],ensure_ascii=False),encoding='utf-8')"
+          fi
+
+          python3 - <<'PY'
+          import json, pathlib, sys
+          raw = pathlib.Path("/tmp/memoria_live.json").read_text(encoding="utf-8")
+          data = json.loads(raw)
+          if not isinstance(data, dict) or "capital" not in data or "dias" not in data:
+              print("Respuesta invalida:", raw[:300])
+              sys.exit(1)
+          out = pathlib.Path("memoria_auditoria.json")
+          out.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+          print(
+              f"OK backup dia={data.get('dia_actual')} capital={data.get('capital')} "
+              f"dias={len(data.get('dias') or [])}"
+          )
+          PY
+
+      - name: Commit si cambió
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add memoria_auditoria.json
+          if git diff --staged --quiet; then
+            echo "Sin cambios en memoria."
+            exit 0
+          fi
+          DIA=$(python3 -c "import json; print(json.load(open('memoria_auditoria.json')).get('dia_actual'))")
+          CAP=$(python3 -c "import json; print(json.load(open('memoria_auditoria.json')).get('capital'))")
+          git commit -m "backup(memoria): dia ${DIA} capital ${CAP}"
+          git push origin main

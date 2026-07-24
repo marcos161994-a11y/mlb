@@ -7,6 +7,7 @@ Cada juego se evalúa y bloquea el stake configurado automáticamente 1 hora ANT
 
 from __future__ import annotations
 
+import copy
 import json
 import os
 import threading
@@ -76,8 +77,6 @@ def _memoria_parece_reinicio(memoria: dict) -> bool:
 
 def _fusionar_memoria(base: dict, extra: dict) -> dict:
     """Une historial base con días más nuevos de extra (p.ej. picks de hoy tras wipe)."""
-    import copy
-
     out = copy.deepcopy(base)
     by_fecha = {d["fecha"]: d for d in out.get("dias") or [] if d.get("fecha")}
     for dia in extra.get("dias") or []:
@@ -1867,6 +1866,14 @@ def api_auto_bloqueo_externo(secret: str | None = None, en_fondo: bool = True):
         return ejecutar_trabajo_cron_externo()
     except Exception as e:
         return {"ok": False, "error": str(e)}
+
+
+@app.get("/api/exportar-memoria")
+def api_exportar_memoria(secret: str | None = None):
+    """Descarga memoria_auditoria.json (backup). Requiere CRON_SECRET."""
+    _verificar_cron_secreto(secret)
+    memoria = cargar_memoria()
+    return memoria
 
 
 @app.post("/api/subir-memoria")
