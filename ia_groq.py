@@ -38,6 +38,40 @@ def ia_veto_disponible(cfg: dict | None = None) -> bool:
     return bool(_api_key(cfg))
 
 
+def probar_conexion_groq(cfg: dict | None = None) -> dict[str, Any]:
+    """Ping corto a Groq (no expone la key)."""
+    cfg = cfg or {}
+    key = _api_key(cfg)
+    if not key:
+        return {"ok": False, "motivo": "Sin GROQ_API_KEY"}
+    model = str((cfg.get("groq") or {}).get("model") or DEFAULT_MODEL)
+    timeout = min(float((cfg.get("groq") or {}).get("timeout_sec") or DEFAULT_TIMEOUT), 8.0)
+    try:
+        r = requests.post(
+            GROQ_URL,
+            headers={
+                "Authorization": f"Bearer {key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model,
+                "temperature": 0,
+                "max_tokens": 20,
+                "messages": [
+                    {"role": "user", "content": 'Responde solo JSON: {"decision":"APOSTAR","motivo":"ok","confianza":5}'}
+                ],
+            },
+            timeout=timeout,
+        )
+        if r.status_code != 200:
+            return {"ok": False, "motivo": f"HTTP {r.status_code}", "modelo": model}
+        return {"ok": True, "motivo": "Groq responde", "modelo": model}
+    except requests.Timeout:
+        return {"ok": False, "motivo": "Timeout", "modelo": model}
+    except Exception as e:
+        return {"ok": False, "motivo": str(e)[:120], "modelo": model}
+
+
 def _parse_respuesta(texto: str) -> dict[str, Any] | None:
     raw = (texto or "").strip()
     if not raw:
