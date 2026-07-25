@@ -29,7 +29,7 @@ from lineas_betmgm import aplicar_lineas_a_juegos
 from lineas_betmgm import normalizar_nombre_equipo as norm_nombre
 from modelo_mlb import evaluar_juegos, calcular_stake_dinamico, cuota_desde_prob
 from ml_predictor import auto_entrenar_ml
-from ia_groq import veto_apuesta
+from ia_groq import ia_veto_disponible, probar_conexion_groq, veto_apuesta
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
@@ -1716,6 +1716,11 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
         "stats_modelo": stats_modelo,
         "pl_split": pl_split,
         "ml_meta": memoria.get("ml_meta"),
+        "ia_veto": {
+            "activo": bool(cfg.get("usar_ia_veto")),
+            "listo": ia_veto_disponible(cfg),
+            "modelo": (cfg.get("groq") or {}).get("model") or "llama-3.1-8b-instant",
+        },
     }
 
 
