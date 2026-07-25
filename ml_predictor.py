@@ -80,12 +80,20 @@ def _features_desde_registro(reg: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def cargar_datos_entrenamiento_desde_memoria(memoria: dict) -> List[Dict[str, Any]]:
-    """Apuestas y predicciones liquidadas → dataset para Random Forest."""
+    """Apuestas y predicciones liquidadas → dataset para Random Forest.
+
+    Si un juego tiene apuesta liquidada, no se añade también su predicción
+    (evita doble muestra casi idéntica).
+    """
     datos: List[Dict[str, Any]] = []
     for dia in memoria.get("dias", []):
+        game_ids_apostados: set = set()
         for apuesta in dia.get("apuestas", []):
             if apuesta.get("estado") not in ("ganada", "perdida"):
                 continue
+            gid = apuesta.get("game_id")
+            if gid is not None:
+                game_ids_apostados.add(gid)
             fila = _features_desde_registro(apuesta)
             fila["resultado"] = 1 if apuesta["estado"] == "ganada" else 0
             datos.append(fila)
@@ -94,6 +102,8 @@ def cargar_datos_entrenamiento_desde_memoria(memoria: dict) -> List[Dict[str, An
                 "acierto",
                 "fallo",
             ):
+                continue
+            if pred.get("game_id") in game_ids_apostados:
                 continue
             fila = _features_desde_registro(pred)
             fila["resultado"] = 1 if pred["resultado"] == "acierto" else 0

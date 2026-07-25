@@ -46,7 +46,7 @@
 
     "preferir_underdogs": true,
 
-    "min_cuota_underdog": 1.5,
+    "min_cuota_underdog": 2.0,
 
     "analizar_bullpen": true,
 
@@ -59,6 +59,14 @@
   },
 
   "usar_ia": false,
+
+  "usar_ia_veto": true,
+
+  "groq": {
+    "model": "llama-3.1-8b-instant",
+    "timeout_sec": 8,
+    "api_key": ""
+  },
 
   "modo_solo_modelo": true,
 

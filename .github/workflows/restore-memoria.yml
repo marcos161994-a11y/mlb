@@ -1,0 +1,38 @@
+# Sube memoria_auditoria.json del repo a Render (recuperación tras wipe).
+# Se dispara al pushear este workflow o la memoria en la rama del fix.
+name: Restore memoria Render
+
+on:
+  push:
+    branches:
+      - cursor/fix-paper-odds-bloqueo-db50
+    paths:
+      - memoria_auditoria.json
+      - .github/workflows/restore-memoria.yml
+  workflow_dispatch:
+
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Subir memoria a Render
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::Falta CRON_SECRET en GitHub Secrets (mismo valor que Render)."
+            exit 1
+          fi
+          echo "Subiendo memoria_auditoria.json..."
+          curl -fsS --retry 3 --retry-delay 10 --max-time 120 \
+            -X POST \
+            -H "Content-Type: application/json; charset=utf-8" \
+            --data-binary @"memoria_auditoria.json" \
+            "https://mlb-1-en7i.onrender.com/api/subir-memoria?secret=${CRON_SECRET}"
+          echo
+          echo "Verificando..."
+          curl -fsS --max-time 60 "https://mlb-1-en7i.onrender.com/api/health"
+          echo

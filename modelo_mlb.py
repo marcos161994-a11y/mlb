@@ -201,7 +201,7 @@ def cargar_rachas(season: int) -> dict[int, int]:
 def stats_pitcher(pitcher_id: int | None, season: int) -> dict[str, Any]:
     if not pitcher_id:
         # Penalización por pitcher desconocido (TBD suele ser bullpen game o novato)
-        return {"era": 5.2, "whip": 1.45, "k9": 6.5, "nombre": "TBD", "hand": "R"}
+        return {"era": 5.2, "whip": 1.45, "k9": 6.5, "bb9": 3.2, "hr9": 1.2, "nombre": "TBD", "hand": "R"}
     key = (pitcher_id, season)
     if key in _pitcher_cache:
         return _pitcher_cache[key]
@@ -215,8 +215,14 @@ def stats_pitcher(pitcher_id: int | None, season: int) -> dict[str, Any]:
         people = r.json().get("people", [])
         person = cast(dict[str, Any], people[0] if people else {})
         nombre = person.get("fullName", "TBD")
-        # Determinar si es zurdo (L) o diestro (R) basado en la información del jugador
-        hand = person.get("pitchHand", "R")  # Por defecto diestro si no está disponible
+        # pitchHand en MLB API suele ser {"code":"L","description":"Left"}
+        pitch_hand = person.get("pitchHand", "R")
+        if isinstance(pitch_hand, dict):
+            hand = str(pitch_hand.get("code") or "R").upper()[:1] or "R"
+        else:
+            hand = str(pitch_hand or "R").upper()[:1] or "R"
+        if hand not in ("L", "R", "S"):
+            hand = "R"
         stat: dict[str, Any] = {}
         for st in person.get("stats", []):
             splits = st.get("splits", [])
@@ -228,10 +234,20 @@ def stats_pitcher(pitcher_id: int | None, season: int) -> dict[str, Any]:
             "era": float(stat.get("era", 4.5) or 4.5),
             "whip": float(stat.get("whip", 1.35) or 1.35),
             "k9": float(stat.get("strikeoutsPer9Inn", 7.5) or 7.5),
+            "bb9": float(
+                stat.get("walksPer9Inn")
+                or stat.get("baseOnBallsPer9Inn")
+                or 3.0
+            ),
+            "hr9": float(
+                stat.get("homeRunsPer9")
+                or stat.get("homeRunsPer9Inn")
+                or 1.0
+            ),
             "hand": hand,
         }
     except Exception:
-        data = {"era": 5.2, "whip": 1.45, "k9": 6.5, "nombre": "TBD", "hand": "R"}
+        data = {"era": 5.2, "whip": 1.45, "k9": 6.5, "bb9": 3.2, "hr9": 1.2, "nombre": "TBD", "hand": "R"}
     _pitcher_cache[key] = data
     return data
 
@@ -349,41 +365,48 @@ def calcular_stake_dinamico(capital: float, edge: float, confianza: float, cfg: 
 def obtener_balance_lineup(team_id: int, season: int) -> float:
     """
     Obtiene el balance del lineup (preferencia vs zurdos/diestros).
-    Retorna -1.0 (más zurdos) a 1.0 (más diestros), 0.0 balanceado.
-    
-    Mejorado: Usa datos reales de splits de bateo vs zurdos/diestros.
+    Retorna -1.0 (más fuertes vs R / peores vs L) a 1.0, 0.0 balanceado.
     """
     try:
-        r = _session.get(
-            f"https://statsapi.mlb.com/api/v1/teams/{team_id}/stats",
-            params={"stats": "season", "group": "hitting", "season": season, "type": "splits"},
-            timeout=15,
-        )
-        r.raise_for_status()
-        stats_data = r.json()
-        
-        # Buscar splits vs zurdos y diestros
-        splits = stats_data.get("stats", [{}])[0].get("splits", [])
-        
-        ops_vs_left = 0.70  # Default
-        ops_vs_right = 0.70  # Default
-        
-        for split in splits:
-            split_name = split.get("name", "").lower()
-            if "vs left" in split_name:
-                ops_vs_left = float(split.get("stat", {}).get("ops", 0.70))
-            elif "vs right" in split_name:
-                ops_vs_right = float(split.get("stat", {}).get("ops", 0.70))
-        
-        # Calcular balance: positivo si mejor vs diestros, negativo si mejor vs zurdos
+        ops_vs_left = None
+        ops_vs_right = None
+        for sit, destino in (("vl", "L"), ("vr", "R")):
+            r = _session.get(
+                f"https://statsapi.mlb.com/api/v1/teams/{team_id}/stats",
+                params={
+                    "stats": "statSplits",
+                    "group": "hitting",
+                    "season": season,
+                    "sitCodes": sit,
+                },
+                timeout=12,
+            )
+            r.raise_for_status()
+            splits = r.json().get("stats", [{}])[0].get("splits", [])
+            if not splits:
+                continue
+            ops = float(splits[0].get("stat", {}).get("ops") or 0)
+            if ops <= 0:
+                continue
+            if destino == "L":
+                ops_vs_left = ops
+            else:
+                ops_vs_right = ops
+
+        if ops_vs_left is None or ops_vs_right is None:
+            return 0.0
+
         diff = ops_vs_right - ops_vs_left
-        # Normalizar a rango -1 a 1 (asumiendo diferencia máxima de 0.20)
-        balance = max(-1.0, min(1.0, diff / 0.10))
-        
-        return balance
-        
+        return max(-1.0, min(1.0, diff / 0.10))
     except Exception:
-        return 0.0  # Balanceado si falla la API
+        return 0.0
+
+
+def _normalizar_mano(hand: Any) -> str:
+    if isinstance(hand, dict):
+        hand = hand.get("code") or "R"
+    code = str(hand or "R").upper()[:1] or "R"
+    return code if code in ("L", "R", "S") else "R"
 
 
 def ajuste_matchup_zurdo_diestro(pitcher_hand: str, lineup_balance: float) -> float:
@@ -397,6 +420,7 @@ def ajuste_matchup_zurdo_diestro(pitcher_hand: str, lineup_balance: float) -> fl
     Returns:
         Ajuste a aplicar a la fuerza del equipo
     """
+    pitcher_hand = _normalizar_mano(pitcher_hand)
     if pitcher_hand == 'S':  # Ambidiestro - no hay ventaja específica
         return 0.0
     
@@ -463,12 +487,12 @@ def fuerza_lado(
         bullpen_penalty = -fatiga * 3.0
     
     # Ajuste por matchup zurdo/diestro si está activado
+    # El lineup enfrenta al pitcher RIVAL, no al propio.
     matchup_adj = 0.0
     if cfg and cfg.get("estrategia", {}).get("analizar_matchups_zurdo_diestro", False):
-        pitcher_hand = pitcher_stats.get("hand", "R")
-        # Usar datos reales de balance del lineup
+        rival_hand = _normalizar_mano(stats_pitcher(opp_pitcher_id, season).get("hand", "R"))
         lineup_balance = obtener_balance_lineup(team_id, season)
-        matchup_adj = ajuste_matchup_zurdo_diestro(pitcher_hand, lineup_balance)
+        matchup_adj = ajuste_matchup_zurdo_diestro(rival_hand, lineup_balance)
     
     return round(
         of * PESO_OFENSIVA + 
@@ -570,28 +594,37 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
     usar_ml = cfg.get("usar_ml", False) and HAS_ML
     if usar_ml:
         try:
-            # Extraer features para ML
+            # Park factor del estadio (siempre home_id). Enrich equipo con record/racha.
+            park = PARK_FACTORS.get(home_id, 1.0)
+            rec_away = cargar_records(season).get(away_id, {"win_pct": 0.5})
+            rec_home = cargar_records(season).get(home_id, {"win_pct": 0.5})
+            racha_away = cargar_rachas(season).get(away_id, 0)
+            racha_home = cargar_rachas(season).get(home_id, 0)
+            ba_ml = {**ba, "win_pct": rec_away.get("win_pct", 0.5), "racha_ultimos_10": racha_away}
+            bh_ml = {**bh, "win_pct": rec_home.get("win_pct", 0.5), "racha_ultimos_10": racha_home}
+
             features_away = extraer_features_ml({
                 'es_local': False,
-                'park_factor': PARK_FACTORS.get(away_id, 1.0),
+                'park_factor': park,
                 'fatiga_bullpen': calcular_fatiga_bullpen(away_id, season) if cfg.get("estrategia", {}).get("analizar_bullpen") else 0.3,
-                'matchup_adj': 0.0  # Se calculará después
-            }, pa, ba, cfg)
+                'matchup_adj': 0.0
+            }, pa, ba_ml, cfg)
             
             features_home = extraer_features_ml({
                 'es_local': True,
-                'park_factor': PARK_FACTORS.get(home_id, 1.0),
+                'park_factor': park,
                 'fatiga_bullpen': calcular_fatiga_bullpen(home_id, season) if cfg.get("estrategia", {}).get("analizar_bullpen") else 0.3,
-                'matchup_adj': 0.0  # Se calculará después
-            }, ph, bh, cfg)
+                'matchup_adj': 0.0
+            }, ph, bh_ml, cfg)
             
             # Agregar matchup adjustment a las features
             if cfg.get("estrategia", {}).get("analizar_matchups_zurdo_diestro"):
-                pitcher_hand_away = pa.get("hand", "R")
-                pitcher_hand_home = ph.get("hand", "R")
+                pitcher_hand_away = _normalizar_mano(pa.get("hand", "R"))
+                pitcher_hand_home = _normalizar_mano(ph.get("hand", "R"))
                 lineup_balance_away = obtener_balance_lineup(away_id, season)
                 lineup_balance_home = obtener_balance_lineup(home_id, season)
                 
+                # Away lineup vs home pitcher; home lineup vs away pitcher
                 matchup_adj_away = ajuste_matchup_zurdo_diestro(pitcher_hand_home, lineup_balance_away)
                 matchup_adj_home = ajuste_matchup_zurdo_diestro(pitcher_hand_away, lineup_balance_home)
                 
@@ -735,14 +768,25 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             juego["pick"] = f"{juego['visitante']} ML"
             juego["probPick"] = prob_away
             juego["edge"] = edge_away if edge_away > -900 else 0
-            juego["odds"] = dec_away if dec_away else 1.5
-            juego["odds_american"] = juego.get("odds_away_american", 150)
+            if dec_away:
+                juego["odds"] = dec_away
+                juego["odds_american"] = juego.get("odds_away_american", 150)
+            else:
+                # Cuota justa del modelo (nunca 1.5 fijo: sesgaba el P/L en papel)
+                dec, amer = cuota_desde_prob(prob_away)
+                juego["odds"] = dec
+                juego["odds_american"] = amer
         else:
             juego["pick"] = f"{juego['home']} ML"
             juego["probPick"] = prob_home
             juego["edge"] = edge_home if edge_home > -900 else 0
-            juego["odds"] = dec_home if dec_home else 1.5
-            juego["odds_american"] = juego.get("odds_home_american", 150)
+            if dec_home:
+                juego["odds"] = dec_home
+                juego["odds_american"] = juego.get("odds_home_american", 150)
+            else:
+                dec, amer = cuota_desde_prob(prob_home)
+                juego["odds"] = dec
+                juego["odds_american"] = amer
         
         juego["apostable"] = False
         if solo_modelo or (not dec_away and not dec_home):
@@ -756,28 +800,47 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
 
 
 def seleccionar_favorables_del_dia(juegos: list[dict[str, Any]], cfg: dict[str, Any]) -> list[dict[str, Any]]:
-    """Marca apostable solo en los mejores picks del día (tope configurable)."""
+    """Marca apostable solo en los mejores picks del día aún PROGRAMADOS."""
     estrategia: dict[str, Any] = cfg.get("estrategia", {})
     max_apuestas = int(estrategia.get("max_apuestas_dia", 5))
+    solo_modelo = _modo_solo_modelo(cfg)
 
-    favorables: list[dict[str, Any]] = [j for j in juegos if j.get("apostable")]
-    favorables.sort(key=lambda x: x.get("edge", 0), reverse=True)
+    favorables: list[dict[str, Any]] = [
+        j
+        for j in juegos
+        if j.get("apostable") and j.get("estado") == "PROGRAMADO"
+    ]
+    # Solo-modelo: priorizar % más alto. Con BetMGM: priorizar edge de valor.
+    if solo_modelo:
+        favorables.sort(key=lambda x: float(x.get("probPick") or 0), reverse=True)
+    else:
+        favorables.sort(key=lambda x: x.get("edge", 0), reverse=True)
 
     ids_top = {j["id"] for j in favorables[:max_apuestas]}
     for j in juegos:
         if j.get("apostable") and j["id"] not in ids_top:
+            # No desmarcar si ya no es programado: da igual (no se bloqueará)
+            if j.get("estado") != "PROGRAMADO":
+                j["apostable"] = False
+                j["motivo_apuesta"] = f"Juego {j.get('estado', 'no programado')}"
+                continue
             j["apostable"] = False
-            j["motivo_apuesta"] = (
-                f"Fuera del top {max_apuestas} del día "
-                f"(edge +{j.get('edge', 0):.1f}%)"
-            )
+            if solo_modelo:
+                j["motivo_apuesta"] = (
+                    f"Fuera del top {max_apuestas} del día "
+                    f"(prob {float(j.get('probPick') or 0):.1f}%)"
+                )
+            else:
+                j["motivo_apuesta"] = (
+                    f"Fuera del top {max_apuestas} del día "
+                    f"(edge +{j.get('edge', 0):.1f}%)"
+                )
     return juegos
 
 
 def evaluar_juegos(juegos: list[dict[str, Any]], cfg: dict[str, Any], bias_aprendizaje: float = 0.0) -> list[dict[str, Any]]:
-    """Marca candidatos favorables; el tope diario se aplica al bloquear (1h antes)."""
+    """Marca candidatos favorables y aplica tope diario sobre juegos PROGRAMADOS."""
     for j in juegos:
         analizar_juego(j, cfg, bias_aprendizaje)
-    # Aplicar el filtro de mejores picks del día según el edge
     juegos = seleccionar_favorables_del_dia(juegos, cfg)
     return juegos
