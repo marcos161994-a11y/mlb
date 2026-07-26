@@ -2867,12 +2867,14 @@
           "pitcherAway": "Ryan Weathers",
           "pitcherHome": "Tim Mayza",
           "inicio_juego": "2026-07-25T18:05:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.31,
           "stake_virtual": 5.0,
           "con_dinero": false,
-          "predicho_en": "2026-07-25T20:00:37.613924-04:00"
+          "predicho_en": "2026-07-25T20:00:37.613924-04:00",
+          "marcador_final": "New York Yankees 3 - Philadelphia Phillies 1",
+          "liquidado_en": "2026-07-26T02:05:06.646324"
         },
         {
           "game_id": "822948",
@@ -2888,12 +2890,14 @@
           "pitcherAway": "Tanner Bibee",
           "pitcherHome": "Nick Martinez",
           "inicio_juego": "2026-07-25T18:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 3.21,
           "stake_virtual": 5.0,
           "con_dinero": false,
-          "predicho_en": "2026-07-25T20:00:37.614002-04:00"
+          "predicho_en": "2026-07-25T20:00:37.614002-04:00",
+          "marcador_final": "Cleveland Guardians 0 - Tampa Bay Rays 3",
+          "liquidado_en": "2026-07-26T02:05:06.646365"
         },
         {
           "game_id": "823355",
@@ -2909,12 +2913,14 @@
           "pitcherAway": "Shota Imanaga",
           "pitcherHome": "Paul Skenes",
           "inicio_juego": "2026-07-25T18:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.98,
           "stake_virtual": 5.0,
           "con_dinero": false,
-          "predicho_en": "2026-07-25T20:00:37.614063-04:00"
+          "predicho_en": "2026-07-25T20:00:37.614063-04:00",
+          "marcador_final": "Chicago Cubs 11 - Pittsburgh Pirates 0",
+          "liquidado_en": "2026-07-26T02:05:06.646376"
         },
         {
           "game_id": "824811",
@@ -2930,12 +2936,14 @@
           "pitcherAway": "Bryce Elder",
           "pitcherHome": "Brandon Young",
           "inicio_juego": "2026-07-25T19:05:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
-          "predicho_en": "2026-07-25T20:00:37.614123-04:00"
+          "predicho_en": "2026-07-25T20:00:37.614123-04:00",
+          "marcador_final": "Atlanta Braves 2 - Baltimore Orioles 3",
+          "liquidado_en": "2026-07-26T02:05:06.646390"
         },
         {
           "game_id": "823679",
@@ -2951,12 +2959,14 @@
           "pitcherAway": "Brady Basso",
           "pitcherHome": "Kendry Rojas",
           "inicio_juego": "2026-07-25T19:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.54,
           "stake_virtual": 5.0,
           "con_dinero": false,
-          "predicho_en": "2026-07-25T20:00:37.614179-04:00"
+          "predicho_en": "2026-07-25T20:00:37.614179-04:00",
+          "marcador_final": "Athletics 0 - Minnesota Twins 2",
+          "liquidado_en": "2026-07-26T02:05:06.646397"
         },
         {
           "game_id": "824571",
@@ -2972,12 +2982,14 @@
           "pitcherAway": "Hunter Brown",
           "pitcherHome": "Sean Burke",
           "inicio_juego": "2026-07-25T19:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.49,
           "stake_virtual": 5.0,
           "con_dinero": false,
-          "predicho_en": "2026-07-25T20:00:37.614236-04:00"
+          "predicho_en": "2026-07-25T20:00:37.614236-04:00",
+          "marcador_final": "Houston Astros 4 - Chicago White Sox 1",
+          "liquidado_en": "2026-07-26T02:05:06.646403"
         },
         {
           "game_id": "823758",
@@ -2993,12 +3005,14 @@
           "pitcherAway": "Ryan Feltner",
           "pitcherHome": "Robert Gasser",
           "inicio_juego": "2026-07-25T19:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.12,
           "stake_virtual": 5.0,
           "con_dinero": false,
-          "predicho_en": "2026-07-25T20:00:37.614298-04:00"
+          "predicho_en": "2026-07-25T20:00:37.614298-04:00",
+          "marcador_final": "Colorado Rockies 5 - Milwaukee Brewers 8",
+          "liquidado_en": "2026-07-26T02:05:06.646411"
         },
         {
           "game_id": "823600",
@@ -3035,12 +3049,14 @@
           "pitcherAway": "Hunter Greene",
           "pitcherHome": "Andre Pallante",
           "inicio_juego": "2026-07-25T19:15:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.53,
           "stake_virtual": 5.0,
           "con_dinero": false,
-          "predicho_en": "2026-07-25T20:00:37.614416-04:00"
+          "predicho_en": "2026-07-25T20:00:37.614416-04:00",
+          "marcador_final": "Cincinnati Reds 0 - St. Louis Cardinals 7",
+          "liquidado_en": "2026-07-26T02:05:06.646420"
         },
         {
           "game_id": "822869",
@@ -3056,12 +3072,14 @@
           "pitcherAway": "Bryan Woo",
           "pitcherHome": "Nathan Eovaldi",
           "inicio_juego": "2026-07-25T19:15:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.14,
           "stake_virtual": 5.0,
           "con_dinero": false,
-          "predicho_en": "2026-07-25T20:00:37.614473-04:00"
+          "predicho_en": "2026-07-25T20:00:37.614473-04:00",
+          "marcador_final": "Seattle Mariners 1 - Texas Rangers 7",
+          "liquidado_en": "2026-07-26T02:05:06.646426"
         }
       ],
       "resumen": {
