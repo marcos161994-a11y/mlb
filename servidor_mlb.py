@@ -972,6 +972,12 @@ def guardar_prediccion(
     if not odds or float(odds) <= 1.0:
         odds, odds_amer = cuota_desde_prob(prob)
 
+    # Apostable por umbral de % aunque el juego ya esté EN VIVO (motivo "Juego EN VIVO"
+    # no debe impedir marcar candidatos de dinero al recuperar del sueño de Render).
+    cfg = cargar_config()
+    min_prob = float((cfg.get("estrategia") or {}).get("min_prob_modelo", 58.0))
+    apostable_flag = bool(juego.get("apostable")) or prob >= min_prob
+
     dia["predicciones"].append(
         {
             "game_id": juego["id"],
@@ -982,7 +988,7 @@ def guardar_prediccion(
             "odds_american": odds_amer if odds_amer is not None else 150,
             "edge": juego.get("edge", 0),
             "probPick": prob,
-            "apostable": bool(juego.get("apostable")),
+            "apostable": apostable_flag,
             "motivo_apuesta": juego.get("motivo_apuesta", ""),
             "pitcherAway": juego.get("pitcherAway"),
             "pitcherHome": juego.get("pitcherHome"),
@@ -1178,6 +1184,47 @@ def resumen_predicciones_y_dinero(memoria: dict) -> dict:
     }
 
 
+def _minutos_desde_inicio(juego: dict) -> float | None:
+    """Minutos desde el inicio programado; None si no se puede calcular."""
+    raw = juego.get("inicio_juego")
+    if not raw:
+        return None
+    try:
+        inicio = datetime.fromisoformat(raw)
+        if inicio.tzinfo is None:
+            inicio = inicio.replace(tzinfo=tz_experimento())
+        return (ahora_simulado() - inicio).total_seconds() / 60.0
+    except Exception:
+        return None
+
+
+def _permite_bloqueo_dinero(juego: dict, *, forzar: bool = False) -> tuple[bool, str]:
+    """
+    PROGRAMADO siempre (si ya pasó T-60 o forzar).
+    EN VIVO: solo gracia corta tras el inicio (Render dormido en T-60).
+    """
+    estado = juego.get("estado")
+    if estado == "PROGRAMADO":
+        return True, ""
+    if estado != "EN VIVO":
+        return False, f"El juego ya está {estado}; solo se apuesta antes/al inicio."
+
+    cfg = cargar_config()
+    gracia = float(cfg.get("minutos_gracia_bloqueo", 30))
+    mins = _minutos_desde_inicio(juego)
+    if mins is None:
+        return False, "EN VIVO sin hora de inicio; no se bloquea dinero."
+    if mins < -5:
+        # Aún no debería estar EN VIVO según reloj; permitir
+        return True, "gracia_preinicio"
+    if mins <= gracia or forzar:
+        return True, f"gracia_en_vivo_{mins:.0f}m"
+    return False, (
+        f"EN VIVO hace {mins:.0f} min (gracia {gracia:.0f} min); "
+        "no se apuesta dinero a partido avanzado."
+    )
+
+
 def bloquear_juego(game_id: str, forzar: bool = False) -> dict:
     """1h antes: siempre registra predicción; si es apostable, también apuesta con dinero."""
     cfg = cargar_config()
@@ -1189,16 +1236,17 @@ def bloquear_juego(game_id: str, forzar: bool = False) -> dict:
 
     # Red fuera del lock
     juegos = obtener_juegos_fecha(hoy)
-    juego = next((j for j in juegos if j["id"] == game_id), None)
+    juego = next((j for j in juegos if str(j["id"]) == str(game_id)), None)
     if not juego:
         print(f"[DEBUG BLOQUEO] Juego {game_id} no encontrado en la API para el día {hoy}.")
         return {"ok": False, "motivo": "Juego no encontrado en el calendario."}
 
-    if juego["estado"] != "PROGRAMADO":
-        print(f"[DEBUG BLOQUEO] Juego {game_id} no programado ({juego['estado']}). No se bloquea.")
+    ok_estado, motivo_estado = _permite_bloqueo_dinero(juego, forzar=forzar)
+    if not ok_estado:
+        print(f"[DEBUG BLOQUEO] Juego {game_id} no bloqueable ({juego['estado']}). {motivo_estado}")
         return {
             "ok": False,
-            "motivo": f"El juego ya está {juego['estado']}; solo se apuesta antes del inicio.",
+            "motivo": motivo_estado,
         }
 
     with _memoria_lock:
@@ -1377,16 +1425,23 @@ def bloquear_apuestas_del_dia(forzar: bool = False) -> dict:
     omitidos = []
 
     for juego in juegos:
-        if juego["estado"] != "PROGRAMADO":
+        ok_estado, _motivo_est = _permite_bloqueo_dinero(juego, forzar=forzar)
+        if not ok_estado:
             continue
-        hb = datetime.fromisoformat(juego["hora_bloqueo"])
-        ya_pasó = hb <= ahora or forzar
-        if not ya_pasó:
-            continue
+        # PROGRAMADO: respetar hora de bloqueo T-60. EN VIVO en gracia: ya pasó.
+        if juego["estado"] == "PROGRAMADO":
+            hb = datetime.fromisoformat(juego["hora_bloqueo"])
+            ya_pasó = hb <= ahora or forzar
+            if not ya_pasó:
+                continue
         gid = str(juego["id"])
         pred = preds_por_id.get(gid)
         # Apostable vivo O predicción congelada ≥ umbral (no perder el % alto del paper)
         apostable = bool(juego.get("apostable"))
+        prob_live = float(juego.get("probPick") or 0)
+        if not apostable and prob_live >= min_prob:
+            apostable = True
+            juego["apostable"] = True
         if not apostable and pred is not None:
             prob_f = float(pred.get("probPick") or 0)
             if pred.get("apostable") or prob_f >= min_prob:

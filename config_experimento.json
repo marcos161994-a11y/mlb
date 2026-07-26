@@ -10,6 +10,8 @@
 
   "minutos_antes_juego": 60,
 
+  "minutos_gracia_bloqueo": 30,
+
   "timezone": "America/Puerto_Rico",
 
   "temporada_mlb": 2026,
