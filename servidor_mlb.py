@@ -993,8 +993,8 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     Registra un pick en PAPEL para los juegos del día.
     - PROGRAMADO: cuando ya pasó la hora de bloqueo (o forzar).
     - EN VIVO: solo si aún no había predicción (alcanzar juegos que ya empezaron).
-    No registra FINALIZADO/POSPUESTO a posteriori.
-    La apuesta con dinero es aparte.
+    - FINALIZADO: si faltó registro (servidor dormido), catch-up en papel y luego liquidar.
+    No registra POSPUESTO. La apuesta con dinero es aparte.
     """
     memoria = cargar_memoria()
     hoy = fecha_str()
@@ -1002,14 +1002,17 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     dia = asegurar_dia_operativo(memoria, hoy)
     juegos = obtener_juegos_fecha(hoy)
     stake_v = stake_virtual_prediccion(memoria)
-    ya = {p.get("game_id") for p in dia.get("predicciones", [])}
+    ya = {str(p.get("game_id")) for p in dia.get("predicciones", [])}
     nuevas = 0
 
     for juego in juegos:
         estado = juego.get("estado")
-        if estado not in ("PROGRAMADO", "EN VIVO"):
+        gid = str(juego.get("id") or "")
+        if estado not in ("PROGRAMADO", "EN VIVO", "FINALIZADO"):
             continue
         if not (juego.get("pick") or "").strip():
+            continue
+        if gid in ya and not forzar:
             continue
         if estado == "PROGRAMADO":
             try:
@@ -1018,13 +1021,26 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
                 continue
             if not forzar and hb > ahora:
                 continue
-        elif estado == "EN VIVO" and juego["id"] in ya and not forzar:
-            continue
         if guardar_prediccion(dia, juego, con_dinero=False, stake_virtual=stake_v):
+            if estado == "FINALIZADO":
+                pred = next(
+                    (p for p in dia["predicciones"] if str(p.get("game_id")) == gid),
+                    None,
+                )
+                if pred is not None:
+                    pred["retroactivo"] = True
             nuevas += 1
+            ya.add(gid)
 
     if nuevas:
         guardar_memoria(memoria)
+        # Liquidar al momento los finales que acabamos de registrar
+        try:
+            mem2 = cargar_memoria()
+            dia2 = dia_por_fecha(mem2, hoy) or asegurar_dia_operativo(mem2, hoy)
+            liquidar_dia(mem2, dia2)
+        except Exception as e:
+            print(f"[PREDICCIÓN] Aviso liquidando catch-up: {e}")
     return {"ok": True, "predicciones_nuevas": nuevas, "fecha": hoy}
 
 
@@ -1473,18 +1489,26 @@ def exportar_reporte(memoria: dict, dia: dict) -> None:
 
 def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict]:
     """Congela el pick bloqueado/predicho para que no 'cambie' con el marcador en vivo."""
-    dia = dia_operativo(memoria)
+    # Preferir día de la fecha de los juegos (hoy), no solo dia_actual
+    fecha = None
+    if juegos:
+        # inicio_juego ISO; la fecha operativa es fecha_str()
+        fecha = fecha_str()
+    dia = dia_por_fecha(memoria, fecha) if fecha else None
+    if not dia:
+        dia = dia_operativo(memoria)
     por_id = {}
     preds_por_id = {}
     if dia:
-        por_id = {a["game_id"]: a for a in dia.get("apuestas", [])}
-        preds_por_id = {p["game_id"]: p for p in dia.get("predicciones", [])}
+        por_id = {str(a["game_id"]): a for a in dia.get("apuestas", [])}
+        preds_por_id = {str(p["game_id"]): p for p in dia.get("predicciones", [])}
 
     resultado = []
     for juego in juegos:
         copia = dict(juego)
-        ap = por_id.get(juego["id"])
-        pred = preds_por_id.get(juego["id"])
+        gid = str(juego.get("id") or "")
+        ap = por_id.get(gid)
+        pred = preds_por_id.get(gid)
         if ap:
             copia["stake"] = ap["stake"]
             copia["pick"] = ap["pick"]
@@ -1508,14 +1532,32 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
             copia["probPick"] = pred.get("probPick", copia.get("probPick"))
             copia["edge"] = pred.get("edge", copia.get("edge"))
             copia["motivo_apuesta"] = pred.get("motivo_apuesta", copia.get("motivo_apuesta", ""))
-            copia["estado_apuesta"] = "sin_bloquear"
-            copia["profit"] = None
             copia["pick_congelado"] = True
+            copia["resultado_papel"] = pred.get("resultado")
+            if pred.get("estado") == "liquidado" and pred.get("resultado") in (
+                "acierto",
+                "fallo",
+            ):
+                # Para el panel: acierto/fallo en papel (no es banca real)
+                copia["estado_apuesta"] = (
+                    "ganada" if pred["resultado"] == "acierto" else "perdida"
+                )
+                copia["profit"] = pred.get("profit")
+                copia["solo_papel"] = True
+            else:
+                copia["estado_apuesta"] = "pendiente"
+                copia["profit"] = None
+                copia["solo_papel"] = True
         else:
             copia["stake"] = memoria["stake_por_juego"]
             copia["estado_apuesta"] = "sin_bloquear"
             copia["profit"] = None
             copia["pick_congelado"] = False
+            if copia.get("estado") == "FINALIZADO":
+                copia["motivo_apuesta"] = (
+                    (copia.get("motivo_apuesta") or "")
+                    + " · Final sin predicción registrada (se rellenará al actualizar)"
+                ).strip(" ·")
         copia["apostable"] = copia.get("apostable", False)
         if not copia.get("motivo_apuesta"):
             copia["motivo_apuesta"] = ""
@@ -1642,6 +1684,14 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
             memoria = cargar_memoria()
         except Exception as e:
             print(f"Aviso predicciones: {e}")
+    else:
+        # Panel ligero: igual registrar/catch-up (incluye FINALIZADO sin pred)
+        # para que los resultados del día no se queden en "pendiente".
+        try:
+            registrar_predicciones_del_dia(forzar=False)
+            memoria = cargar_memoria()
+        except Exception as e:
+            print(f"Aviso predicciones (ligero): {e}")
 
     if liquidar:
         try:

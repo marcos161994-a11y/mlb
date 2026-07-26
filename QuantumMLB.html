@@ -1084,16 +1084,25 @@ function pintarJuegos(juegos) {
         const awayWon = j.estado === 'FINALIZADO' && j.ganador === j.visitante;
         const homeWon = j.estado === 'FINALIZADO' && j.ganador === j.home;
         let apuestaTxt = j.motivo_apuesta || 'Espera evaluación 1h antes';
-        if (j.estado_apuesta === 'sin_bloquear' && j.hora_bloqueo_txt) {
+        const papel = !!j.solo_papel;
+        if (j.estado === 'FINALIZADO' && j.estado_apuesta === 'sin_bloquear') {
+            apuestaTxt = 'FINAL · sin predicción en papel (pulsa Actualizar resultados)';
+        } else if (j.estado_apuesta === 'sin_bloquear' && j.hora_bloqueo_txt) {
             apuestaTxt = `Auto-bloqueo ~${j.hora_bloqueo_txt} (juego ${j.hora_inicio_txt})`;
         } else if (j.estado === 'EN VIVO' && j.estado_apuesta === 'pendiente') {
-            apuestaTxt = `APUESTA $${j.stake} · EN JUEGO (${j.scoreAway ?? '—'}-${j.scoreHome ?? '—'}) · pick fijo`;
+            apuestaTxt = papel
+                ? `PAPEL · EN JUEGO (${j.scoreAway ?? '—'}-${j.scoreHome ?? '—'}) · pick fijo`
+                : `APUESTA $${j.stake} · EN JUEGO (${j.scoreAway ?? '—'}-${j.scoreHome ?? '—'}) · pick fijo`;
         } else if (j.estado_apuesta === 'pendiente') {
-            apuestaTxt = `APUESTA $${j.stake} PENDIENTE`;
+            apuestaTxt = papel ? 'PAPEL · pendiente de resultado MLB' : `APUESTA $${j.stake} PENDIENTE`;
         } else if (j.estado_apuesta === 'ganada' && j.estado === 'FINALIZADO') {
-            apuestaTxt = `GANADA ${fmtMoney(j.profit)}`;
+            apuestaTxt = papel
+                ? `PAPEL ACIERTO ${fmtMoney(j.profit)}`
+                : `GANADA ${fmtMoney(j.profit)}`;
         } else if (j.estado_apuesta === 'perdida' && j.estado === 'FINALIZADO') {
-            apuestaTxt = `PERDIDA ${fmtMoney(j.profit)}`;
+            apuestaTxt = papel
+                ? `PAPEL FALLO ${fmtMoney(j.profit)}`
+                : `PERDIDA ${fmtMoney(j.profit)}`;
         } else if (j.estado_apuesta === 'ganada' || j.estado_apuesta === 'perdida') {
             apuestaTxt = `Resultado en revisión (juego ${j.estado})`;
         } else if (j.estado === 'EN VIVO') {
