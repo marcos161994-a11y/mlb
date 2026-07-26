@@ -993,7 +993,7 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     Registra un pick en PAPEL para los juegos del día.
     - PROGRAMADO: cuando ya pasó la hora de bloqueo (o forzar).
     - EN VIVO: solo si aún no había predicción (alcanzar juegos que ya empezaron).
-    - FINALIZADO: si faltó registro (servidor dormido), catch-up en papel y luego liquidar.
+    - FINALIZADO: NO se inventa pick a posteriori (sesga el historial hacia el ganador).
     No registra POSPUESTO. La apuesta con dinero es aparte.
     """
     memoria = cargar_memoria()
@@ -1008,7 +1008,9 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     for juego in juegos:
         estado = juego.get("estado")
         gid = str(juego.get("id") or "")
-        if estado not in ("PROGRAMADO", "EN VIVO", "FINALIZADO"):
+        # Nunca congelar pick cuando el juego ya terminó: el modelo post-partido
+        # tiende a "acertar" y falsea el paper.
+        if estado not in ("PROGRAMADO", "EN VIVO"):
             continue
         if not (juego.get("pick") or "").strip():
             continue
@@ -1022,25 +1024,11 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
             if not forzar and hb > ahora:
                 continue
         if guardar_prediccion(dia, juego, con_dinero=False, stake_virtual=stake_v):
-            if estado == "FINALIZADO":
-                pred = next(
-                    (p for p in dia["predicciones"] if str(p.get("game_id")) == gid),
-                    None,
-                )
-                if pred is not None:
-                    pred["retroactivo"] = True
             nuevas += 1
             ya.add(gid)
 
     if nuevas:
         guardar_memoria(memoria)
-        # Liquidar al momento los finales que acabamos de registrar
-        try:
-            mem2 = cargar_memoria()
-            dia2 = dia_por_fecha(mem2, hoy) or asegurar_dia_operativo(mem2, hoy)
-            liquidar_dia(mem2, dia2)
-        except Exception as e:
-            print(f"[PREDICCIÓN] Aviso liquidando catch-up: {e}")
     return {"ok": True, "predicciones_nuevas": nuevas, "fecha": hoy}
 
 
