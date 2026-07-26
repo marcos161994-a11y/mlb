@@ -1086,7 +1086,7 @@ function pintarJuegos(juegos) {
         let apuestaTxt = j.motivo_apuesta || 'Espera evaluación 1h antes';
         const papel = !!j.solo_papel;
         if (j.estado === 'FINALIZADO' && j.estado_apuesta === 'sin_bloquear') {
-            apuestaTxt = 'FINAL · sin predicción en papel (pulsa Actualizar resultados)';
+            apuestaTxt = 'FINAL · sin pick congelado a tiempo (no cuenta en el paper de hoy)';
         } else if (j.estado_apuesta === 'sin_bloquear' && j.hora_bloqueo_txt) {
             apuestaTxt = `Auto-bloqueo ~${j.hora_bloqueo_txt} (juego ${j.hora_inicio_txt})`;
         } else if (j.estado === 'EN VIVO' && j.estado_apuesta === 'pendiente') {
