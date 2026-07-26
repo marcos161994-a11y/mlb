@@ -1864,13 +1864,35 @@ def api_predicciones():
 @app.get("/api/health")
 def api_health():
     """Ping para Render + cron externo (mantiene el servicio despierto en plan free)."""
+    cfg = cargar_config()
     return {
         "ok": True,
         "servicio": "quantum-mlb",
         "capital": cargar_memoria().get("capital"),
         "dia_actual": cargar_memoria().get("dia_actual"),
         "hora": datetime.now(tz_experimento()).isoformat(),
+        "ia_veto": {
+            "activo": bool(cfg.get("usar_ia_veto")),
+            "listo": ia_veto_disponible(cfg),
+        },
     }
+
+
+@app.get("/api/ia-status")
+def api_ia_status():
+    """Comprueba config + ping Groq (sin exponer la key)."""
+    cfg = cargar_config()
+    base = {
+        "activo": bool(cfg.get("usar_ia_veto")),
+        "key_presente": ia_veto_disponible(cfg),
+        "modelo": (cfg.get("groq") or {}).get("model") or "llama-3.1-8b-instant",
+    }
+    if not base["activo"]:
+        return {**base, "ok": False, "motivo": "usar_ia_veto=false en config"}
+    if not base["key_presente"]:
+        return {**base, "ok": False, "motivo": "Falta GROQ_API_KEY en Render"}
+    ping = probar_conexion_groq(cfg)
+    return {**base, **ping}
 
 
 def ejecutar_trabajo_cron_externo() -> dict:
