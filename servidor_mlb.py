@@ -113,38 +113,48 @@ def _fusionar_memoria(base: dict, extra: dict) -> dict:
     return out
 
 
+def _intentar_recuperar_wipe() -> bool:
+    """Si el disco parece reinicio y el repo tiene historial, restaura + fusiona hoy."""
+    origen = BASE_DIR / "memoria_auditoria.json"
+    if not origen.exists() or not MEMORIA_PATH.exists():
+        return False
+    try:
+        bundled = json.loads(origen.read_text(encoding="utf-8"))
+        disk = json.loads(MEMORIA_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return False
+    if disk.get("reinicio_manual"):
+        return False
+    b_ap, b_pr = _contar_historial(bundled)
+    if not _memoria_parece_reinicio(disk) or (b_ap + b_pr) <= 0:
+        return False
+    merged = _fusionar_memoria(bundled, disk)
+    MEMORIA_PATH.write_text(
+        json.dumps(merged, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    print(
+        f"[CLOUD] Memoria recuperada desde repo "
+        f"(backup {b_ap} apuestas / {b_pr} preds + día en disco)"
+    )
+    return True
+
+
 def _inicializar_datos_persistencia() -> None:
     """Copia memoria local a DATA_DIR; restaura backup del repo si hubo wipe."""
     if DATA_DIR.resolve() == BASE_DIR.resolve():
         return
     origen = BASE_DIR / "memoria_auditoria.json"
-    if origen.exists():
+    if origen.exists() and not MEMORIA_PATH.exists():
         try:
             bundled = json.loads(origen.read_text(encoding="utf-8"))
-        except Exception:
-            bundled = None
-        if bundled is not None:
-            if not MEMORIA_PATH.exists():
-                MEMORIA_PATH.write_text(
-                    json.dumps(bundled, indent=2, ensure_ascii=False), encoding="utf-8"
-                )
-                print(f"[CLOUD] Memoria copiada a {MEMORIA_PATH}")
-            else:
-                try:
-                    disk = json.loads(MEMORIA_PATH.read_text(encoding="utf-8"))
-                except Exception:
-                    disk = None
-                b_ap, b_pr = _contar_historial(bundled)
-                if disk is not None and _memoria_parece_reinicio(disk) and (b_ap + b_pr) > 0:
-                    merged = _fusionar_memoria(bundled, disk)
-                    MEMORIA_PATH.write_text(
-                        json.dumps(merged, indent=2, ensure_ascii=False),
-                        encoding="utf-8",
-                    )
-                    print(
-                        f"[CLOUD] Memoria recuperada desde repo "
-                        f"(backup {b_ap} apuestas / {b_pr} preds + día en disco)"
-                    )
+            MEMORIA_PATH.write_text(
+                json.dumps(bundled, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
+            print(f"[CLOUD] Memoria copiada a {MEMORIA_PATH}")
+        except Exception as e:
+            print(f"[CLOUD] No se pudo copiar memoria: {e}")
+    else:
+        _intentar_recuperar_wipe()
     for nombre in ("modelo_rf_mlb.pkl", "scaler_rf_mlb.pkl"):
         src = BASE_DIR / nombre
         dst = DATA_DIR / nombre
@@ -1650,6 +1660,12 @@ def obtener_juegos_para_panel(fecha: str, ligero: bool = False) -> list[dict]:
 
 
 def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> dict:
+    # Si Render/free borró el historial (o se pulsó reinicio por error), recuperar.
+    try:
+        if _intentar_recuperar_wipe():
+            pass
+    except Exception as e:
+        print(f"[CLOUD] Aviso recuperación wipe: {e}")
     memoria = cargar_memoria()
     # Sincronizar el día del experimento con el tiempo real/simulado
     avanzar_dia_automatico()
@@ -1857,6 +1873,8 @@ def api_reiniciar():
         "experimento_activo": True,
         "ultimo_bloqueo": None,
         "dias": [],
+        # Evita que el auto-restore del backup deshaga un reinicio deliberado
+        "reinicio_manual": True,
     }
     guardar_memoria(memoria)
     return {"ok": True, "memoria": memoria}
