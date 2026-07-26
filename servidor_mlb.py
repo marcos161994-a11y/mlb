@@ -1544,7 +1544,7 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
             if copia.get("estado") == "FINALIZADO":
                 copia["motivo_apuesta"] = (
                     (copia.get("motivo_apuesta") or "")
-                    + " · Final sin predicción registrada (se rellenará al actualizar)"
+                    + " · Final sin pick congelado (no cuenta en papel)"
                 ).strip(" ·")
         copia["apostable"] = copia.get("apostable", False)
         if not copia.get("motivo_apuesta"):
