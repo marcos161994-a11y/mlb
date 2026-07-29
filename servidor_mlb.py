@@ -113,38 +113,48 @@ def _fusionar_memoria(base: dict, extra: dict) -> dict:
     return out
 
 
+def _intentar_recuperar_wipe() -> bool:
+    """Si el disco parece reinicio y el repo tiene historial, restaura + fusiona hoy."""
+    origen = BASE_DIR / "memoria_auditoria.json"
+    if not origen.exists() or not MEMORIA_PATH.exists():
+        return False
+    try:
+        bundled = json.loads(origen.read_text(encoding="utf-8"))
+        disk = json.loads(MEMORIA_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return False
+    if disk.get("reinicio_manual"):
+        return False
+    b_ap, b_pr = _contar_historial(bundled)
+    if not _memoria_parece_reinicio(disk) or (b_ap + b_pr) <= 0:
+        return False
+    merged = _fusionar_memoria(bundled, disk)
+    MEMORIA_PATH.write_text(
+        json.dumps(merged, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+    print(
+        f"[CLOUD] Memoria recuperada desde repo "
+        f"(backup {b_ap} apuestas / {b_pr} preds + día en disco)"
+    )
+    return True
+
+
 def _inicializar_datos_persistencia() -> None:
     """Copia memoria local a DATA_DIR; restaura backup del repo si hubo wipe."""
     if DATA_DIR.resolve() == BASE_DIR.resolve():
         return
     origen = BASE_DIR / "memoria_auditoria.json"
-    if origen.exists():
+    if origen.exists() and not MEMORIA_PATH.exists():
         try:
             bundled = json.loads(origen.read_text(encoding="utf-8"))
-        except Exception:
-            bundled = None
-        if bundled is not None:
-            if not MEMORIA_PATH.exists():
-                MEMORIA_PATH.write_text(
-                    json.dumps(bundled, indent=2, ensure_ascii=False), encoding="utf-8"
-                )
-                print(f"[CLOUD] Memoria copiada a {MEMORIA_PATH}")
-            else:
-                try:
-                    disk = json.loads(MEMORIA_PATH.read_text(encoding="utf-8"))
-                except Exception:
-                    disk = None
-                b_ap, b_pr = _contar_historial(bundled)
-                if disk is not None and _memoria_parece_reinicio(disk) and (b_ap + b_pr) > 0:
-                    merged = _fusionar_memoria(bundled, disk)
-                    MEMORIA_PATH.write_text(
-                        json.dumps(merged, indent=2, ensure_ascii=False),
-                        encoding="utf-8",
-                    )
-                    print(
-                        f"[CLOUD] Memoria recuperada desde repo "
-                        f"(backup {b_ap} apuestas / {b_pr} preds + día en disco)"
-                    )
+            MEMORIA_PATH.write_text(
+                json.dumps(bundled, indent=2, ensure_ascii=False), encoding="utf-8"
+            )
+            print(f"[CLOUD] Memoria copiada a {MEMORIA_PATH}")
+        except Exception as e:
+            print(f"[CLOUD] No se pudo copiar memoria: {e}")
+    else:
+        _intentar_recuperar_wipe()
     for nombre in ("modelo_rf_mlb.pkl", "scaler_rf_mlb.pkl"):
         src = BASE_DIR / nombre
         dst = DATA_DIR / nombre
@@ -962,6 +972,12 @@ def guardar_prediccion(
     if not odds or float(odds) <= 1.0:
         odds, odds_amer = cuota_desde_prob(prob)
 
+    # Apostable por umbral de % aunque el juego ya esté EN VIVO (motivo "Juego EN VIVO"
+    # no debe impedir marcar candidatos de dinero al recuperar del sueño de Render).
+    cfg = cargar_config()
+    min_prob = float((cfg.get("estrategia") or {}).get("min_prob_modelo", 58.0))
+    apostable_flag = bool(juego.get("apostable")) or prob >= min_prob
+
     dia["predicciones"].append(
         {
             "game_id": juego["id"],
@@ -972,7 +988,7 @@ def guardar_prediccion(
             "odds_american": odds_amer if odds_amer is not None else 150,
             "edge": juego.get("edge", 0),
             "probPick": prob,
-            "apostable": bool(juego.get("apostable")),
+            "apostable": apostable_flag,
             "motivo_apuesta": juego.get("motivo_apuesta", ""),
             "pitcherAway": juego.get("pitcherAway"),
             "pitcherHome": juego.get("pitcherHome"),
@@ -993,8 +1009,8 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     Registra un pick en PAPEL para los juegos del día.
     - PROGRAMADO: cuando ya pasó la hora de bloqueo (o forzar).
     - EN VIVO: solo si aún no había predicción (alcanzar juegos que ya empezaron).
-    No registra FINALIZADO/POSPUESTO a posteriori.
-    La apuesta con dinero es aparte.
+    - FINALIZADO: NO se inventa pick a posteriori (sesga el historial hacia el ganador).
+    No registra POSPUESTO. La apuesta con dinero es aparte.
     """
     memoria = cargar_memoria()
     hoy = fecha_str()
@@ -1002,14 +1018,19 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     dia = asegurar_dia_operativo(memoria, hoy)
     juegos = obtener_juegos_fecha(hoy)
     stake_v = stake_virtual_prediccion(memoria)
-    ya = {p.get("game_id") for p in dia.get("predicciones", [])}
+    ya = {str(p.get("game_id")) for p in dia.get("predicciones", [])}
     nuevas = 0
 
     for juego in juegos:
         estado = juego.get("estado")
+        gid = str(juego.get("id") or "")
+        # Nunca congelar pick cuando el juego ya terminó: el modelo post-partido
+        # tiende a "acertar" y falsea el paper.
         if estado not in ("PROGRAMADO", "EN VIVO"):
             continue
         if not (juego.get("pick") or "").strip():
+            continue
+        if gid in ya and not forzar:
             continue
         if estado == "PROGRAMADO":
             try:
@@ -1018,10 +1039,9 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
                 continue
             if not forzar and hb > ahora:
                 continue
-        elif estado == "EN VIVO" and juego["id"] in ya and not forzar:
-            continue
         if guardar_prediccion(dia, juego, con_dinero=False, stake_virtual=stake_v):
             nuevas += 1
+            ya.add(gid)
 
     if nuevas:
         guardar_memoria(memoria)
@@ -1164,6 +1184,47 @@ def resumen_predicciones_y_dinero(memoria: dict) -> dict:
     }
 
 
+def _minutos_desde_inicio(juego: dict) -> float | None:
+    """Minutos desde el inicio programado; None si no se puede calcular."""
+    raw = juego.get("inicio_juego")
+    if not raw:
+        return None
+    try:
+        inicio = datetime.fromisoformat(raw)
+        if inicio.tzinfo is None:
+            inicio = inicio.replace(tzinfo=tz_experimento())
+        return (ahora_simulado() - inicio).total_seconds() / 60.0
+    except Exception:
+        return None
+
+
+def _permite_bloqueo_dinero(juego: dict, *, forzar: bool = False) -> tuple[bool, str]:
+    """
+    PROGRAMADO siempre (si ya pasó T-60 o forzar).
+    EN VIVO: solo gracia corta tras el inicio (Render dormido en T-60).
+    """
+    estado = juego.get("estado")
+    if estado == "PROGRAMADO":
+        return True, ""
+    if estado != "EN VIVO":
+        return False, f"El juego ya está {estado}; solo se apuesta antes/al inicio."
+
+    cfg = cargar_config()
+    gracia = float(cfg.get("minutos_gracia_bloqueo", 30))
+    mins = _minutos_desde_inicio(juego)
+    if mins is None:
+        return False, "EN VIVO sin hora de inicio; no se bloquea dinero."
+    if mins < -5:
+        # Aún no debería estar EN VIVO según reloj; permitir
+        return True, "gracia_preinicio"
+    if mins <= gracia or forzar:
+        return True, f"gracia_en_vivo_{mins:.0f}m"
+    return False, (
+        f"EN VIVO hace {mins:.0f} min (gracia {gracia:.0f} min); "
+        "no se apuesta dinero a partido avanzado."
+    )
+
+
 def bloquear_juego(game_id: str, forzar: bool = False) -> dict:
     """1h antes: siempre registra predicción; si es apostable, también apuesta con dinero."""
     cfg = cargar_config()
@@ -1175,16 +1236,17 @@ def bloquear_juego(game_id: str, forzar: bool = False) -> dict:
 
     # Red fuera del lock
     juegos = obtener_juegos_fecha(hoy)
-    juego = next((j for j in juegos if j["id"] == game_id), None)
+    juego = next((j for j in juegos if str(j["id"]) == str(game_id)), None)
     if not juego:
         print(f"[DEBUG BLOQUEO] Juego {game_id} no encontrado en la API para el día {hoy}.")
         return {"ok": False, "motivo": "Juego no encontrado en el calendario."}
 
-    if juego["estado"] != "PROGRAMADO":
-        print(f"[DEBUG BLOQUEO] Juego {game_id} no programado ({juego['estado']}). No se bloquea.")
+    ok_estado, motivo_estado = _permite_bloqueo_dinero(juego, forzar=forzar)
+    if not ok_estado:
+        print(f"[DEBUG BLOQUEO] Juego {game_id} no bloqueable ({juego['estado']}). {motivo_estado}")
         return {
             "ok": False,
-            "motivo": f"El juego ya está {juego['estado']}; solo se apuesta antes del inicio.",
+            "motivo": motivo_estado,
         }
 
     with _memoria_lock:
@@ -1363,16 +1425,23 @@ def bloquear_apuestas_del_dia(forzar: bool = False) -> dict:
     omitidos = []
 
     for juego in juegos:
-        if juego["estado"] != "PROGRAMADO":
+        ok_estado, _motivo_est = _permite_bloqueo_dinero(juego, forzar=forzar)
+        if not ok_estado:
             continue
-        hb = datetime.fromisoformat(juego["hora_bloqueo"])
-        ya_pasó = hb <= ahora or forzar
-        if not ya_pasó:
-            continue
+        # PROGRAMADO: respetar hora de bloqueo T-60. EN VIVO en gracia: ya pasó.
+        if juego["estado"] == "PROGRAMADO":
+            hb = datetime.fromisoformat(juego["hora_bloqueo"])
+            ya_pasó = hb <= ahora or forzar
+            if not ya_pasó:
+                continue
         gid = str(juego["id"])
         pred = preds_por_id.get(gid)
         # Apostable vivo O predicción congelada ≥ umbral (no perder el % alto del paper)
         apostable = bool(juego.get("apostable"))
+        prob_live = float(juego.get("probPick") or 0)
+        if not apostable and prob_live >= min_prob:
+            apostable = True
+            juego["apostable"] = True
         if not apostable and pred is not None:
             prob_f = float(pred.get("probPick") or 0)
             if pred.get("apostable") or prob_f >= min_prob:
@@ -1473,18 +1542,26 @@ def exportar_reporte(memoria: dict, dia: dict) -> None:
 
 def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict]:
     """Congela el pick bloqueado/predicho para que no 'cambie' con el marcador en vivo."""
-    dia = dia_operativo(memoria)
+    # Preferir día de la fecha de los juegos (hoy), no solo dia_actual
+    fecha = None
+    if juegos:
+        # inicio_juego ISO; la fecha operativa es fecha_str()
+        fecha = fecha_str()
+    dia = dia_por_fecha(memoria, fecha) if fecha else None
+    if not dia:
+        dia = dia_operativo(memoria)
     por_id = {}
     preds_por_id = {}
     if dia:
-        por_id = {a["game_id"]: a for a in dia.get("apuestas", [])}
-        preds_por_id = {p["game_id"]: p for p in dia.get("predicciones", [])}
+        por_id = {str(a["game_id"]): a for a in dia.get("apuestas", [])}
+        preds_por_id = {str(p["game_id"]): p for p in dia.get("predicciones", [])}
 
     resultado = []
     for juego in juegos:
         copia = dict(juego)
-        ap = por_id.get(juego["id"])
-        pred = preds_por_id.get(juego["id"])
+        gid = str(juego.get("id") or "")
+        ap = por_id.get(gid)
+        pred = preds_por_id.get(gid)
         if ap:
             copia["stake"] = ap["stake"]
             copia["pick"] = ap["pick"]
@@ -1508,14 +1585,32 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
             copia["probPick"] = pred.get("probPick", copia.get("probPick"))
             copia["edge"] = pred.get("edge", copia.get("edge"))
             copia["motivo_apuesta"] = pred.get("motivo_apuesta", copia.get("motivo_apuesta", ""))
-            copia["estado_apuesta"] = "sin_bloquear"
-            copia["profit"] = None
             copia["pick_congelado"] = True
+            copia["resultado_papel"] = pred.get("resultado")
+            if pred.get("estado") == "liquidado" and pred.get("resultado") in (
+                "acierto",
+                "fallo",
+            ):
+                # Para el panel: acierto/fallo en papel (no es banca real)
+                copia["estado_apuesta"] = (
+                    "ganada" if pred["resultado"] == "acierto" else "perdida"
+                )
+                copia["profit"] = pred.get("profit")
+                copia["solo_papel"] = True
+            else:
+                copia["estado_apuesta"] = "pendiente"
+                copia["profit"] = None
+                copia["solo_papel"] = True
         else:
             copia["stake"] = memoria["stake_por_juego"]
             copia["estado_apuesta"] = "sin_bloquear"
             copia["profit"] = None
             copia["pick_congelado"] = False
+            if copia.get("estado") == "FINALIZADO":
+                copia["motivo_apuesta"] = (
+                    (copia.get("motivo_apuesta") or "")
+                    + " · Final sin pick congelado (no cuenta en papel)"
+                ).strip(" ·")
         copia["apostable"] = copia.get("apostable", False)
         if not copia.get("motivo_apuesta"):
             copia["motivo_apuesta"] = ""
@@ -1620,6 +1715,12 @@ def obtener_juegos_para_panel(fecha: str, ligero: bool = False) -> list[dict]:
 
 
 def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> dict:
+    # Si Render/free borró el historial (o se pulsó reinicio por error), recuperar.
+    try:
+        if _intentar_recuperar_wipe():
+            pass
+    except Exception as e:
+        print(f"[CLOUD] Aviso recuperación wipe: {e}")
     memoria = cargar_memoria()
     # Sincronizar el día del experimento con el tiempo real/simulado
     avanzar_dia_automatico()
@@ -1642,6 +1743,14 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
             memoria = cargar_memoria()
         except Exception as e:
             print(f"Aviso predicciones: {e}")
+    else:
+        # Panel ligero: igual registrar/catch-up (incluye FINALIZADO sin pred)
+        # para que los resultados del día no se queden en "pendiente".
+        try:
+            registrar_predicciones_del_dia(forzar=False)
+            memoria = cargar_memoria()
+        except Exception as e:
+            print(f"Aviso predicciones (ligero): {e}")
 
     if liquidar:
         try:
@@ -1819,6 +1928,8 @@ def api_reiniciar():
         "experimento_activo": True,
         "ultimo_bloqueo": None,
         "dias": [],
+        # Evita que el auto-restore del backup deshaga un reinicio deliberado
+        "reinicio_manual": True,
     }
     guardar_memoria(memoria)
     return {"ok": True, "memoria": memoria}
@@ -1864,13 +1975,35 @@ def api_predicciones():
 @app.get("/api/health")
 def api_health():
     """Ping para Render + cron externo (mantiene el servicio despierto en plan free)."""
+    cfg = cargar_config()
     return {
         "ok": True,
         "servicio": "quantum-mlb",
         "capital": cargar_memoria().get("capital"),
         "dia_actual": cargar_memoria().get("dia_actual"),
         "hora": datetime.now(tz_experimento()).isoformat(),
+        "ia_veto": {
+            "activo": bool(cfg.get("usar_ia_veto")),
+            "listo": ia_veto_disponible(cfg),
+        },
     }
+
+
+@app.get("/api/ia-status")
+def api_ia_status():
+    """Comprueba config + ping Groq (sin exponer la key)."""
+    cfg = cargar_config()
+    base = {
+        "activo": bool(cfg.get("usar_ia_veto")),
+        "key_presente": ia_veto_disponible(cfg),
+        "modelo": (cfg.get("groq") or {}).get("model") or "llama-3.1-8b-instant",
+    }
+    if not base["activo"]:
+        return {**base, "ok": False, "motivo": "usar_ia_veto=false en config"}
+    if not base["key_presente"]:
+        return {**base, "ok": False, "motivo": "Falta GROQ_API_KEY en Render"}
+    ping = probar_conexion_groq(cfg)
+    return {**base, **ping}
 
 
 def ejecutar_trabajo_cron_externo() -> dict:

@@ -6,6 +6,7 @@ on:
   push:
     branches:
       - cursor/fix-paper-odds-bloqueo-db50
+      - cursor/ia-veto-status-db50
     paths:
       - memoria_auditoria.json
       - .github/workflows/restore-memoria.yml
