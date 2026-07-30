@@ -40,6 +40,15 @@ except ImportError:
     HAS_LESIONES = False
 
 try:
+    from lineup_scratch import (
+        analizar_scratch_lineup,
+        pick_afectado_por_scratch,
+    )
+    HAS_SCRATCH = True
+except ImportError:
+    HAS_SCRATCH = False
+
+try:
     from pitcher_avanzado import enriquecer_stats_pitcher, intentar_overlay_fangraphs
     HAS_PITCHER_ADV = True
 except ImportError:
@@ -717,6 +726,33 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             lesiones_info = {"ok": False, "starter_riesgo": False, "motivo": str(e)[:80], "resumen": ""}
     juego["lesiones"] = lesiones_info
 
+    # Scratch SP / estrellas fuera del lineup
+    scratch_info: dict[str, Any] = {"ok": False, "riesgo": False, "resumen": ""}
+    usar_scratch = bool(cfg.get("usar_scratch_lineup", True)) and HAS_SCRATCH
+    if usar_scratch:
+        try:
+            min_est = int(estrategia.get("min_estrellas_fuera_lineup", 2))
+            scratch_info = analizar_scratch_lineup(
+                away_id=away_id,
+                home_id=home_id,
+                pitcher_away_id=p_away_id,
+                pitcher_home_id=p_home_id,
+                pitcher_away_nombre=pa.get("nombre") or juego.get("pitcherAway"),
+                pitcher_home_nombre=ph.get("nombre") or juego.get("pitcherHome"),
+                lineups=juego.get("lineups"),
+                season=season,
+                pred_congelada=juego.get("_pred_congelada"),
+                min_estrellas_fuera=min_est,
+            )
+            f_away = round(f_away + float(scratch_info.get("ajuste_away") or 0.0), 2)
+            f_home = round(f_home + float(scratch_info.get("ajuste_home") or 0.0), 2)
+            if scratch_info.get("riesgo"):
+                print(f"[SCRATCH] {juego.get('visitante')}@{juego.get('home')}: {scratch_info.get('resumen')[:160]}")
+        except Exception as e:
+            print(f"[SCRATCH] Error: {e}")
+            scratch_info = {"ok": False, "riesgo": False, "motivo": str(e)[:80], "resumen": ""}
+    juego["scratch_lineup"] = scratch_info
+
     prob_away, prob_home = prob_logistica(f_away, f_home)
     prob_est_away, prob_est_home = prob_away, prob_home
 
@@ -932,17 +968,22 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         juego["apostable"] = True
         if solo_modelo:
             juego["motivo_apuesta"] = (
-                f"Modelo {mejor['prob']:.0f}% (solo stats+ML, sin BetMGM)"
+                f"Modelo {mejor['prob']:.0f}% (solo stats+ML, sin mercado)"
             )
         else:
+            fuente = juego.get("lineas_fuente") or "mercado"
             juego["motivo_apuesta"] = (
-                f"Valor +{mejor['edge']:.1f}% vs BetMGM "
+                f"Valor +{mejor['edge']:.1f}% vs {fuente} "
                 f"(modelo {mejor['prob']:.0f}% vs mercado {prob_implicita(mejor['odds']):.0f}%)"
             )
-        # Clima/lesiones ajustan fuerzas por detrás; no se exponen en el motivo del panel.
-        # Si el abridor del pick está en baja → no dinero (efecto real, mensaje neutro).
+        # Lesiones / scratch / estrellas out → no dinero (mensaje neutro en panel)
         if lesiones_info.get("starter_riesgo") and _pick_sobre_starter_lesionado(
             mejor["pick"], lesiones_info, juego["visitante"], juego["home"]
+        ):
+            juego["apostable"] = False
+            juego["motivo_apuesta"] = "Spot no apto para dinero ahora"
+        elif scratch_info.get("riesgo") and pick_afectado_por_scratch(
+            mejor["pick"], juego["visitante"], juego["home"], scratch_info
         ):
             juego["apostable"] = False
             juego["motivo_apuesta"] = "Spot no apto para dinero ahora"
