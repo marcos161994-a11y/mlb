@@ -1342,7 +1342,7 @@ def _bloquear_juego_locked(
         if (les.get("starter_away_lesionado") and juego.get("visitante") in pick_now) or (
             les.get("starter_home_lesionado") and juego.get("home") in pick_now
         ):
-            motivo = f"BLOQUEO lesiones: {les.get('alerta') or 'Starter lesionado'}"
+            motivo = "Spot no apto para dinero ahora"
             if pred_existente is not None:
                 pred_existente["apostable"] = False
                 pred_existente["motivo_apuesta"] = (

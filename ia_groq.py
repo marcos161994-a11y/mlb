@@ -161,14 +161,14 @@ def veto_apuesta(juego: dict[str, Any], cfg: dict | None = None) -> dict[str, An
             out = {
                 "ok": True,
                 "decision": "PASAR",
-                "motivo": (lesiones.get("alerta") or "Starter lesionado")[:160],
+                "motivo": "Riesgo de roster / abridor",
                 "confianza": 5,
                 "fuente": "lesiones",
                 "modelo": "regla-local",
             }
             if gid:
                 _veto_cache[gid] = dict(out)
-            print(f"[IA-VETO] PASAR por lesiones: {out['motivo']}")
+            print(f"[IA-VETO] PASAR por lesiones: {lesiones.get('alerta') or out['motivo']}")
             return out
 
     prompt = (
