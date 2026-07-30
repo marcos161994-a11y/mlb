@@ -843,24 +843,13 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
                 f"Valor +{mejor['edge']:.1f}% vs BetMGM "
                 f"(modelo {mejor['prob']:.0f}% vs mercado {prob_implicita(mejor['odds']):.0f}%)"
             )
-        if clima_info.get("ok") and abs(float(clima_info.get("run_env") or 0)) >= 0.4:
-            juego["motivo_apuesta"] = (
-                f"{juego['motivo_apuesta']} · Clima: {clima_info.get('motivo')}"
-            )
-        # No apostar dinero a un equipo cuyo abridor figura lesionado/IL
+        # Clima/lesiones ajustan fuerzas por detrás; no se exponen en el motivo del panel.
+        # Si el abridor del pick está en baja → no dinero (efecto real, mensaje neutro).
         if lesiones_info.get("starter_riesgo") and _pick_sobre_starter_lesionado(
             mejor["pick"], lesiones_info, juego["visitante"], juego["home"]
         ):
             juego["apostable"] = False
-            juego["motivo_apuesta"] = (
-                f"{juego['motivo_apuesta']} · BLOQUEO lesiones: {lesiones_info.get('alerta')}"
-            )
-        elif lesiones_info.get("ok") and (
-            lesiones_info.get("away") or lesiones_info.get("home")
-        ):
-            juego["motivo_apuesta"] = (
-                f"{juego['motivo_apuesta']} · Lesiones consideradas"
-            )
+            juego["motivo_apuesta"] = "Spot no apto para dinero ahora"
     else:
         # SIEMPRE hacer una predicción, aunque no sea apostable
         if prob_away >= prob_home:
