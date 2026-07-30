@@ -20,6 +20,8 @@
 
     "casa": "betmgm",
 
+    "bookmakers": "betmgm,draftkings,fanduel",
+
     "proveedor": "the-odds-api",
 
     "region": "us",
@@ -38,7 +40,7 @@
 
     "min_prob_modelo": 58.0,
 
-    "requiere_betmgm": false,
+    "requiere_betmgm": true,
 
     "gestion_bankroll_dinamica": true,
 
@@ -56,7 +58,9 @@
 
     "mercado_f5": false,
 
-    "preferir_f5_bullpen_debil": true
+    "preferir_f5_bullpen_debil": true,
+
+    "min_estrellas_fuera_lineup": 2
 
   },
 
@@ -68,6 +72,8 @@
 
   "usar_calibracion": true,
 
+  "usar_scratch_lineup": true,
+
   "usar_ia_veto": true,
 
   "groq": {
@@ -76,7 +82,7 @@
     "api_key": ""
   },
 
-  "modo_solo_modelo": true,
+  "modo_solo_modelo": false,
 
   "usar_ml": true,
 

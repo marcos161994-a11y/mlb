@@ -520,8 +520,15 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
             home = juego["teams"]["home"]
             visitante = away["team"]["name"]
             home_name = home["team"]["name"]
-            lineups_api = juego.get("lineups", {})
-            lineup_confirmado = bool(lineups_api.get("away") and lineups_api.get("home"))
+            try:
+                from lineup_scratch import parsear_lineups_juego
+
+                lineups_parsed = parsear_lineups_juego(juego)
+            except Exception:
+                lineups_parsed = {"away": [], "home": [], "confirmado": False}
+            lineup_confirmado = bool(lineups_parsed.get("confirmado"))
+            pa = away.get("probablePitcher") or {}
+            ph = home.get("probablePitcher") or {}
             ls = juego.get("linescore", {}).get("teams", {})
             s_away = _score_equipo(ls.get("away", {}), away)
             s_home = _score_equipo(ls.get("home", {}), home)
@@ -545,14 +552,17 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
                 "visitante": visitante,
                 "away_id": away["team"]["id"],
                 "home_id": home["team"]["id"],
-                "pitcher_away_id": away.get("probablePitcher", {}).get("id"),
-                "pitcher_home_id": home.get("probablePitcher", {}).get("id"),
+                "pitcher_away_id": pa.get("id"),
+                "pitcher_home_id": ph.get("id"),
+                "pitcherAway": pa.get("fullName"),
+                "pitcherHome": ph.get("fullName"),
                 "scoreAway": s_away,
                 "home": home_name,
                 "scoreHome": s_home,
                 "pick": "",
                 "odds": 0,
                 "lineup_confirmado": lineup_confirmado,
+                "lineups": lineups_parsed,
                 "apostable": False,
                 "ganador": winner,
                 "inicio_juego": inicio.isoformat(),
@@ -1001,6 +1011,8 @@ def guardar_prediccion(
             "motivo_apuesta": juego.get("motivo_apuesta", ""),
             "pitcherAway": juego.get("pitcherAway"),
             "pitcherHome": juego.get("pitcherHome"),
+            "pitcher_away_id": juego.get("pitcher_away_id"),
+            "pitcher_home_id": juego.get("pitcher_home_id"),
             "inicio_juego": juego.get("inicio_juego"),
             "estado": "pendiente",
             "resultado": None,
@@ -1010,6 +1022,7 @@ def guardar_prediccion(
             "predicho_en": ahora,
             "clima": juego.get("clima") if isinstance(juego.get("clima"), dict) else None,
             "lesiones": juego.get("lesiones") if isinstance(juego.get("lesiones"), dict) else None,
+            "scratch_lineup": juego.get("scratch_lineup") if isinstance(juego.get("scratch_lineup"), dict) else None,
             "ml_features": juego.get("ml_features") if isinstance(juego.get("ml_features"), dict) else None,
         }
     )
@@ -1366,6 +1379,61 @@ def _bloquear_juego_locked(
                 "juego": juego["visitante"] + " vs " + juego["home"],
                 "prediccion_guardada": True,
                 "lesiones": les,
+            }
+
+    # Scratch SP / estrellas fuera — re-chequeo al momento del dinero
+    if cfg.get("usar_scratch_lineup", True):
+        try:
+            from lineup_scratch import analizar_scratch_lineup, pick_afectado_por_scratch
+
+            pred_ref = dict(pred_existente or {})
+            scratch = analizar_scratch_lineup(
+                away_id=juego.get("away_id"),
+                home_id=juego.get("home_id"),
+                pitcher_away_id=juego.get("pitcher_away_id"),
+                pitcher_home_id=juego.get("pitcher_home_id"),
+                pitcher_away_nombre=juego.get("pitcherAway"),
+                pitcher_home_nombre=juego.get("pitcherHome"),
+                lineups=juego.get("lineups"),
+                season=int(cfg.get("temporada_mlb") or 2026),
+                pred_congelada=pred_ref,
+                min_estrellas_fuera=int((cfg.get("estrategia") or {}).get("min_estrellas_fuera_lineup", 2)),
+            )
+            juego["scratch_lineup"] = scratch
+            if scratch.get("riesgo") and pick_afectado_por_scratch(
+                pick_now, juego.get("visitante") or "", juego.get("home") or "", scratch
+            ):
+                motivo = "Spot no apto para dinero ahora"
+                if pred_existente is not None:
+                    pred_existente["apostable"] = False
+                    pred_existente["scratch_lineup"] = scratch
+                guardar_memoria(memoria)
+                print(f"[SCRATCH] Dinero cancelado: {scratch.get('alerta')}")
+                return {
+                    "ok": False,
+                    "motivo": motivo,
+                    "juego": juego["visitante"] + " vs " + juego["home"],
+                    "prediccion_guardada": True,
+                    "scratch_lineup": scratch,
+                }
+        except Exception as e:
+            print(f"[SCRATCH] refresh bloqueo: {e}")
+
+    # Con Odds API: exigir edge de mercado vigente para dinero
+    if not cfg.get("modo_solo_modelo") and (cfg.get("estrategia") or {}).get("requiere_betmgm", True):
+        min_edge = float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0))
+        edge_now = juego.get("edge")
+        tiene_cuota = bool(juego.get("odds_away_decimal") or juego.get("odds_home_decimal") or juego.get("odds"))
+        if not tiene_cuota or edge_now is None or float(edge_now) < min_edge:
+            motivo = "Sin valor vs mercado ahora"
+            if pred_existente is not None:
+                pred_existente["apostable"] = False
+            guardar_memoria(memoria)
+            return {
+                "ok": False,
+                "motivo": motivo,
+                "juego": juego["visitante"] + " vs " + juego["home"],
+                "prediccion_guardada": True,
             }
 
     # Modelo propone → Groq veta/confirma → solo entonces dinero.
@@ -2056,6 +2124,22 @@ def api_health():
             "activo": True,
             "metricas": ["fip", "xfip", "k_pct", "bb_pct"],
         },
+        "odds": {
+            "activo": not bool(cfg.get("modo_solo_modelo")),
+            "requiere_mercado": bool((cfg.get("estrategia") or {}).get("requiere_betmgm", True)),
+            "bookmakers": (cfg.get("lineas") or {}).get("bookmakers") or "betmgm",
+            "min_edge_pct": float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0)),
+            "key_presente": bool(
+                os.environ.get("ODDS_API_KEY", "").strip()
+                or ((cfg.get("lineas") or {}).get("api_key") or "").strip()
+            ),
+        },
+        "scratch_lineup": {
+            "activo": bool(cfg.get("usar_scratch_lineup", True)),
+            "min_estrellas_fuera": int(
+                (cfg.get("estrategia") or {}).get("min_estrellas_fuera_lineup", 2)
+            ),
+        },
     }
 
 
@@ -2095,6 +2179,94 @@ def api_lesiones_status():
             "fuente": "espn",
             "total": rep.get("total"),
             "motivo": rep.get("motivo"),
+        }
+    except Exception as e:
+        return {"ok": False, "activo": True, "motivo": str(e)[:120]}
+
+
+@app.get("/api/odds-status")
+def api_odds_status():
+    """Ping The Odds API (sin exponer la key). Dinero exige edge vs mercado."""
+    cfg = cargar_config()
+    solo = bool(cfg.get("modo_solo_modelo"))
+    requiere = bool((cfg.get("estrategia") or {}).get("requiere_betmgm", True))
+    base = {
+        "activo": not solo,
+        "requiere_mercado": requiere,
+        "modo_solo_modelo": solo,
+        "bookmakers": (cfg.get("lineas") or {}).get("bookmakers") or "betmgm",
+        "min_edge_pct": float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0)),
+        "proveedor": (cfg.get("lineas") or {}).get("proveedor") or "the-odds-api",
+    }
+    if solo or not requiere:
+        return {
+            **base,
+            "ok": True,
+            "motivo": "Modo solo modelo (dinero sin exigir Odds API)",
+        }
+    try:
+        from lineas_betmgm import cargar_api_key, obtener_lineas_betmgm
+
+        key = cargar_api_key(cfg)
+        if not key:
+            return {
+                **base,
+                "ok": False,
+                "key_presente": False,
+                "motivo": "Falta ODDS_API_KEY en Render (the-odds-api.com)",
+            }
+        _, meta = obtener_lineas_betmgm(cfg)
+        return {
+            **base,
+            "ok": bool(meta.get("ok")),
+            "key_presente": True,
+            "partidos": meta.get("partidos"),
+            "mensaje": meta.get("mensaje"),
+            "requests_restantes": meta.get("requests_restantes"),
+            "cache": meta.get("cache"),
+        }
+    except Exception as e:
+        return {**base, "ok": False, "motivo": str(e)[:120]}
+
+
+@app.get("/api/scratch-status")
+def api_scratch_status():
+    """Estado del módulo scratch/lineup (sin llamar a StatsAPI pesado)."""
+    cfg = cargar_config()
+    activo = bool(cfg.get("usar_scratch_lineup", True))
+    if not activo:
+        return {"ok": False, "activo": False, "motivo": "usar_scratch_lineup=false"}
+    try:
+        from lineup_scratch import analizar_scratch_lineup, pick_afectado_por_scratch
+
+        demo = analizar_scratch_lineup(
+            away_id=None,
+            home_id=None,
+            pitcher_away_id=111,
+            pitcher_home_id=222,
+            pitcher_away_nombre="Demo A",
+            pitcher_home_nombre="Demo B",
+            lineups={"away": [], "home": [], "confirmado": False},
+            season=int(cfg.get("temporada_mlb") or 2026),
+            pred_congelada={
+                "pitcher_away_id": 111,
+                "pitcher_home_id": 999,
+                "pitcherAway": "Demo A",
+                "pitcherHome": "Otro",
+            },
+            min_estrellas_fuera=int(
+                (cfg.get("estrategia") or {}).get("min_estrellas_fuera_lineup", 2)
+            ),
+        )
+        return {
+            "ok": True,
+            "activo": True,
+            "min_estrellas_fuera": int(
+                (cfg.get("estrategia") or {}).get("min_estrellas_fuera_lineup", 2)
+            ),
+            "demo_scratch_home": bool(demo.get("scratch_home")),
+            "demo_riesgo": bool(demo.get("riesgo")),
+            "pick_helper": pick_afectado_por_scratch is not None,
         }
     except Exception as e:
         return {"ok": False, "activo": True, "motivo": str(e)[:120]}
