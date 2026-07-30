@@ -47,14 +47,19 @@ FEATURE_COLUMNS = [
     "racha_equipo",
     "diferencia_run",
     "vs_pitcher_hand",
-    # Clima Open-Meteo (al final para compatibilidad con modelos viejos de 16 feats)
+    # Clima Open-Meteo
     "temp_f",
     "viento_mph",
     "run_env",
+    # Pitcher avanzado (FIP / xFIP / K% / BB%)
+    "fip_pitcher",
+    "xfip_pitcher",
+    "k_pct_pitcher",
+    "bb_pct_pitcher",
 ]
 
 
-FEATURE_SCHEMA_VERSION = 2  # v2 = features reales guardadas en predicción
+FEATURE_SCHEMA_VERSION = 3  # v3 = + FIP/xFIP/K%/BB%
 
 
 def _modelo_path() -> Path:
@@ -120,6 +125,10 @@ def _features_sinteticas_desde_registro(reg: Dict[str, Any]) -> Dict[str, Any]:
         "temp_f": float((reg.get("clima") or {}).get("temp_f") or 72.0),
         "viento_mph": float((reg.get("clima") or {}).get("viento_mph") or 5.0),
         "run_env": float((reg.get("clima") or {}).get("run_env") or 0.0),
+        "fip_pitcher": 4.5 - edge / 180.0,
+        "xfip_pitcher": 4.5 - edge / 200.0,
+        "k_pct_pitcher": 20.0 + edge / 10.0,
+        "bb_pct_pitcher": 8.0 - edge / 40.0,
     }
 
 
@@ -692,4 +701,8 @@ def extraer_features_ml(juego: Dict[str, Any], stats_pitcher: Dict[str, Any],
         'temp_f': juego.get('temp_f', 72.0),
         'viento_mph': juego.get('viento_mph', 5.0),
         'run_env': juego.get('run_env', 0.0),
+        'fip_pitcher': stats_pitcher.get('fip', stats_pitcher.get('era', 4.5)),
+        'xfip_pitcher': stats_pitcher.get('xfip', stats_pitcher.get('fip', stats_pitcher.get('era', 4.5))),
+        'k_pct_pitcher': stats_pitcher.get('k_pct', float(stats_pitcher.get('k9', 7.5)) * 2.4),
+        'bb_pct_pitcher': stats_pitcher.get('bb_pct', float(stats_pitcher.get('bb9', 3.0)) * 2.5),
     }

@@ -66,6 +66,8 @@
 
   "usar_lesiones": true,
 
+  "usar_calibracion": true,
+
   "usar_ia_veto": true,
 
   "groq": {
