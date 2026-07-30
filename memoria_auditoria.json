@@ -2,7 +2,7 @@
   "modo": "simulacion",
   "capital": 92.38,
   "capital_inicial": 100.0,
-  "dia_actual": 22,
+  "dia_actual": 23,
   "dias_totales": 200,
   "stake_por_juego": 5.0,
   "experimento_activo": true,
@@ -4118,6 +4118,22 @@
         "profit_dia": 0,
         "capital_arriesgado": 5.0,
         "total_apostado": 5.0
+      }
+    },
+    {
+      "dia": 23,
+      "fecha": "2026-07-30",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
       }
     }
   ],
