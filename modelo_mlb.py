@@ -36,6 +36,18 @@ except ImportError:
     HAS_LESIONES = False
 
 try:
+    from pitcher_avanzado import enriquecer_stats_pitcher, intentar_overlay_fangraphs
+    HAS_PITCHER_ADV = True
+except ImportError:
+    HAS_PITCHER_ADV = False
+
+try:
+    from calibracion import calibrar_par
+    HAS_CALIB = True
+except ImportError:
+    HAS_CALIB = False
+
+try:
     import vertexai
     from vertexai.generative_models import GenerativeModel
     HAS_VERTEX = True
@@ -45,9 +57,13 @@ except ImportError:
 
 # --- CONSTANTES DEL MODELO ---
 # Permite ajustar el comportamiento del modelo sin tocar la lógica funcional
-COEF_ERA_BASE, COEF_ERA_PESO = 6.5, 2.2
-COEF_WHIP_BASE, COEF_WHIP_PESO = 1.5, 3.0
-COEF_K9_PESO = 0.15
+COEF_ERA_BASE, COEF_ERA_PESO = 6.5, 1.2
+COEF_WHIP_BASE, COEF_WHIP_PESO = 1.5, 2.2
+COEF_K9_PESO = 0.10
+COEF_FIP_BASE, COEF_FIP_PESO = 4.20, 2.4
+COEF_XFIP_BASE, COEF_XFIP_PESO = 4.20, 1.6
+COEF_KPCT_PESO = 0.12
+COEF_BBPCT_PESO = -0.18
 
 COEF_WOBA_PESO = 120
 COEF_RECORD_PESO = 25
@@ -219,7 +235,11 @@ def cargar_rachas(season: int) -> dict[int, int]:
 def stats_pitcher(pitcher_id: int | None, season: int) -> dict[str, Any]:
     if not pitcher_id:
         # Penalización por pitcher desconocido (TBD suele ser bullpen game o novato)
-        return {"era": 5.2, "whip": 1.45, "k9": 6.5, "bb9": 3.2, "hr9": 1.2, "nombre": "TBD", "hand": "R"}
+        return {
+            "era": 5.2, "whip": 1.45, "k9": 6.5, "bb9": 3.2, "hr9": 1.2,
+            "fip": 5.0, "xfip": 5.0, "k_pct": 18.0, "bb_pct": 10.0,
+            "nombre": "TBD", "hand": "R", "metricas_fuente": "default",
+        }
     key = (pitcher_id, season)
     if key in _pitcher_cache:
         return _pitcher_cache[key]
@@ -264,8 +284,25 @@ def stats_pitcher(pitcher_id: int | None, season: int) -> dict[str, Any]:
             ),
             "hand": hand,
         }
+        if HAS_PITCHER_ADV:
+            data = enriquecer_stats_pitcher(stat, data)
+            data = intentar_overlay_fangraphs(nombre, season, data)
+        else:
+            data.update(
+                {
+                    "fip": data["era"],
+                    "xfip": data["era"],
+                    "k_pct": round(data["k9"] * 2.4, 1),
+                    "bb_pct": round(data["bb9"] * 2.5, 1),
+                    "metricas_fuente": "basic",
+                }
+            )
     except Exception:
-        data = {"era": 5.2, "whip": 1.45, "k9": 6.5, "bb9": 3.2, "hr9": 1.2, "nombre": "TBD", "hand": "R"}
+        data = {
+            "era": 5.2, "whip": 1.45, "k9": 6.5, "bb9": 3.2, "hr9": 1.2,
+            "fip": 5.0, "xfip": 5.0, "k_pct": 18.0, "bb_pct": 10.0,
+            "nombre": "TBD", "hand": "R", "metricas_fuente": "error",
+        }
     _pitcher_cache[key] = data
     return data
 
@@ -453,11 +490,20 @@ def ajuste_matchup_zurdo_diestro(pitcher_hand: str, lineup_balance: float) -> fl
 
 
 def score_pitcher(p: dict[str, Any]) -> float:
-    """Mayor = mejor pitcheo."""
+    """Mayor = mejor pitcheo. Prioriza FIP/xFIP/K%/BB% sobre ERA crudo."""
+    fip = float(p.get("fip") if p.get("fip") is not None else p.get("era") or 4.5)
+    xfip = float(p.get("xfip") if p.get("xfip") is not None else fip)
+    k_pct = float(p.get("k_pct") if p.get("k_pct") is not None else (float(p.get("k9") or 7.5) * 2.4))
+    bb_pct = float(p.get("bb_pct") if p.get("bb_pct") is not None else (float(p.get("bb9") or 3.0) * 2.5))
     return round(
-        (COEF_ERA_BASE - p["era"]) * COEF_ERA_PESO + 
-        (COEF_WHIP_BASE - p["whip"]) * COEF_WHIP_PESO + 
-        p["k9"] * COEF_K9_PESO, 2
+        (COEF_ERA_BASE - float(p.get("era") or 4.5)) * COEF_ERA_PESO
+        + (COEF_WHIP_BASE - float(p.get("whip") or 1.35)) * COEF_WHIP_PESO
+        + float(p.get("k9") or 7.5) * COEF_K9_PESO
+        + (COEF_FIP_BASE - fip) * COEF_FIP_PESO
+        + (COEF_XFIP_BASE - xfip) * COEF_XFIP_PESO
+        + k_pct * COEF_KPCT_PESO
+        + bb_pct * COEF_BBPCT_PESO,
+        2,
     )
 
 
@@ -753,6 +799,16 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             print(f"[ML] Error en ensemble prediction: {e}")
             prob_away, prob_home = prob_est_away, prob_est_home
 
+    # Calibración: ajusta % para que reflejen frecuencia real de aciertos
+    if HAS_CALIB and cfg.get("usar_calibracion", True):
+        try:
+            antes_a, antes_h = prob_away, prob_home
+            prob_away, prob_home = calibrar_par(prob_away, prob_home, cfg)
+            if abs(prob_away - antes_a) >= 0.3 or abs(prob_home - antes_h) >= 0.3:
+                print(f"[CALIB] {antes_a}/{antes_h} → {prob_away}/{prob_home}")
+        except Exception as e:
+            print(f"[CALIB] Error: {e}")
+
     juego["probAway"] = prob_away
     juego["probHome"] = prob_home
     juego["fuerzaAway"] = f_away
@@ -761,6 +817,8 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
     juego["pitcherHome"] = ph["nombre"]
     juego["pitcherAwayEra"] = pa["era"]
     juego["pitcherHomeEra"] = ph["era"]
+    juego["pitcherAwayFip"] = pa.get("fip")
+    juego["pitcherHomeFip"] = ph.get("fip")
     # Conservar para empaquetar tras elegir pick
     juego["_features_away"] = features_away
     juego["_features_home"] = features_home
