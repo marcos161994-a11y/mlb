@@ -2208,23 +2208,31 @@ def api_odds_status():
             "motivo": "Modo solo modelo (dinero sin exigir Odds API)",
         }
     try:
-        from lineas_betmgm import cargar_api_key, obtener_lineas_betmgm
+        from lineas_betmgm import cargar_api_key, enmascarar_api_key, obtener_lineas_betmgm
 
         key = cargar_api_key(cfg)
+        diag = enmascarar_api_key(key)
         if not key:
             return {
                 **base,
                 "ok": False,
-                "key_presente": False,
+                **diag,
                 "motivo": "Falta ODDS_API_KEY en Render (the-odds-api.com)",
+                "ayuda": (
+                    "Crea key en https://the-odds-api.com → pégala en Render "
+                    "como ODDS_API_KEY (sin comillas) → Save → Manual Deploy."
+                ),
             }
         _, meta = obtener_lineas_betmgm(cfg)
         return {
             **base,
             "ok": bool(meta.get("ok")),
-            "key_presente": True,
+            **diag,
             "partidos": meta.get("partidos"),
             "mensaje": meta.get("mensaje"),
+            "error_code": meta.get("error_code"),
+            "http_status": meta.get("http_status"),
+            "ayuda": meta.get("ayuda"),
             "requests_restantes": meta.get("requests_restantes"),
             "cache": meta.get("cache"),
         }
