@@ -16,6 +16,16 @@ from pathlib import Path
 # Caché del modelo entrenado
 _modelo_rf: Optional[RandomForestClassifier] = None
 _scaler: Optional[StandardScaler] = None
+_modelo_xgb = None  # XGBClassifier | None
+
+try:
+    from xgboost import XGBClassifier
+
+    HAS_XGB = True
+except ImportError:
+    XGBClassifier = None  # type: ignore
+    HAS_XGB = False
+
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
 DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -53,6 +63,10 @@ def _modelo_path() -> Path:
 
 def _scaler_path() -> Path:
     return DATA_DIR / "scaler_rf_mlb.pkl"
+
+
+def _modelo_xgb_path() -> Path:
+    return DATA_DIR / "modelo_xgb_mlb.pkl"
 
 
 def normalizar_features(features: Dict[str, Any] | None) -> Dict[str, float]:
@@ -232,8 +246,80 @@ def entrenar_modelo_rf(datos_historicos: List[Dict[str, Any]]) -> RandomForestCl
     return _modelo_rf
 
 
+def entrenar_modelo_xgb(datos_historicos: List[Dict[str, Any]]) -> Any:
+    """Entrena XGBoost con el mismo scaler/features que el RF."""
+    global _modelo_xgb, _scaler
+
+    if not HAS_XGB or XGBClassifier is None:
+        print("[ML] XGBoost no instalado — se omite")
+        return None
+    if not datos_historicos:
+        return None
+    if _scaler is None:
+        print("[ML] Scaler ausente; entrena RF antes que XGB")
+        return None
+
+    df = pd.DataFrame(datos_historicos)
+    X = df[FEATURE_COLUMNS].fillna(0)
+    y = df["resultado"]
+    X_scaled = _scaler.transform(X)
+
+    _modelo_xgb = XGBClassifier(
+        n_estimators=100,
+        max_depth=4,
+        learning_rate=0.08,
+        subsample=0.9,
+        colsample_bytree=0.9,
+        reg_lambda=1.5,
+        min_child_weight=2,
+        objective="binary:logistic",
+        eval_metric="logloss",
+        random_state=42,
+        n_jobs=-1,
+    )
+    _modelo_xgb.fit(X_scaled, y)
+
+    acc_h = None
+    if len(df) >= 20 and y.nunique() > 1:
+        from sklearn.model_selection import train_test_split
+
+        X_tr, X_te, y_tr, y_te = train_test_split(
+            X, y, test_size=0.2, random_state=42, stratify=y
+        )
+        xgb_tmp = XGBClassifier(
+            n_estimators=100,
+            max_depth=4,
+            learning_rate=0.08,
+            subsample=0.9,
+            colsample_bytree=0.9,
+            reg_lambda=1.5,
+            min_child_weight=2,
+            objective="binary:logistic",
+            eval_metric="logloss",
+            random_state=42,
+            n_jobs=-1,
+        )
+        xgb_tmp.fit(_scaler.transform(X_tr), y_tr)
+        acc_h = float(xgb_tmp.score(_scaler.transform(X_te), y_te))
+        print(f"[ML] XGB holdout (20%): {acc_h:.3f}")
+
+    with open(_modelo_xgb_path(), "wb") as f:
+        pickle.dump(_modelo_xgb, f)
+    if DATA_DIR.resolve() != BASE_DIR.resolve():
+        try:
+            (BASE_DIR / "modelo_xgb_mlb.pkl").write_bytes(_modelo_xgb_path().read_bytes())
+        except OSError:
+            pass
+
+    acc = float(_modelo_xgb.score(X_scaled, y))
+    print(f"[ML] XGBoost entrenado con {len(df)} muestras (acc {acc:.3f})")
+    _modelo_xgb._acc_holdout = acc_h  # type: ignore[attr-defined]
+    return _modelo_xgb
+
+
 def auto_entrenar_ml(memoria: dict, min_muestras: int = 5) -> dict:
-    """Reentrena el Random Forest cuando hay nuevas liquidaciones."""
+    """Reentrena RF (+ XGBoost si está disponible) tras liquidaciones."""
+    global _modelo_xgb
     meta_prev = memoria.get("ml_meta") or {}
     datos = cargar_datos_entrenamiento_desde_memoria(memoria)
     n_real = sum(1 for d in datos if d.get("_fuente_features") == "real")
@@ -245,17 +331,23 @@ def auto_entrenar_ml(memoria: dict, min_muestras: int = 5) -> dict:
         "mensaje": "",
         "accuracy_train": meta_prev.get("accuracy_train"),
         "accuracy_holdout": meta_prev.get("accuracy_holdout"),
+        "accuracy_xgb_train": meta_prev.get("accuracy_xgb_train"),
+        "accuracy_xgb_holdout": meta_prev.get("accuracy_xgb_holdout"),
         "ultimo_entreno": meta_prev.get("ultimo_entreno"),
+        "xgb": HAS_XGB,
     }
     if len(datos) < min_muestras:
         meta["mensaje"] = f"Esperando más datos ({len(datos)}/{min_muestras} muestras)"
         return meta
 
+    xgb_listo = (not HAS_XGB) or _modelo_xgb_path().exists()
     mismo_historial = (
         meta_prev.get("muestras") == len(datos)
         and meta_prev.get("schema") == FEATURE_SCHEMA_VERSION
         and meta_prev.get("muestras_reales") == n_real
+        and meta_prev.get("xgb") == HAS_XGB
         and _modelo_path().exists()
+        and xgb_listo
     )
     if mismo_historial:
         meta["ok"] = True
@@ -267,9 +359,29 @@ def auto_entrenar_ml(memoria: dict, min_muestras: int = 5) -> dict:
         meta["mensaje"] = "Error al entrenar"
         return meta
 
+    acc_xgb = None
+    acc_xgb_h = None
+    if HAS_XGB:
+        xgb = entrenar_modelo_xgb(datos)
+        if xgb is not None:
+            X = pd.DataFrame(datos)[FEATURE_COLUMNS].fillna(0)
+            acc_xgb = float(xgb.score(_scaler.transform(X), pd.DataFrame(datos)["resultado"]))
+            acc_xgb_h = getattr(xgb, "_acc_holdout", None)
+
     X = pd.DataFrame(datos)[FEATURE_COLUMNS].fillna(0)
     acc = float(modelo.score(_scaler.transform(X), pd.DataFrame(datos)["resultado"]))
     acc_h = getattr(modelo, "_acc_holdout", None)
+    partes = [
+        f"Reentrenado con {len(datos)} muestras ({n_real} reales",
+        f"RF acc {acc:.1%}",
+    ]
+    if acc_h is not None:
+        partes.append(f"RF holdout {acc_h:.1%}")
+    if acc_xgb is not None:
+        partes.append(f"XGB acc {acc_xgb:.1%}")
+    if acc_xgb_h is not None:
+        partes.append(f"XGB holdout {acc_xgb_h:.1%}")
+    mensaje = ", ".join(partes) + ")"
     meta.update(
         {
             "ok": True,
@@ -278,13 +390,11 @@ def auto_entrenar_ml(memoria: dict, min_muestras: int = 5) -> dict:
             "schema": FEATURE_SCHEMA_VERSION,
             "accuracy_train": round(acc, 3),
             "accuracy_holdout": round(acc_h, 3) if acc_h is not None else None,
+            "accuracy_xgb_train": round(acc_xgb, 3) if acc_xgb is not None else None,
+            "accuracy_xgb_holdout": round(acc_xgb_h, 3) if acc_xgb_h is not None else None,
             "ultimo_entreno": datetime.now().isoformat(),
-            "mensaje": (
-                f"Reentrenado con {len(datos)} muestras "
-                f"({n_real} reales, acc {acc:.1%}"
-                + (f", holdout {acc_h:.1%}" if acc_h is not None else "")
-                + ")"
-            ),
+            "xgb": HAS_XGB and _modelo_xgb is not None,
+            "mensaje": mensaje,
         }
     )
     memoria["ml_meta"] = meta
@@ -349,10 +459,37 @@ def cargar_modelo_rf() -> Optional[RandomForestClassifier]:
     return None
 
 
+def cargar_modelo_xgb() -> Any:
+    """Carga XGBoost desde disco."""
+    global _modelo_xgb, _scaler
+    if not HAS_XGB:
+        return None
+    if _modelo_xgb is not None:
+        return _modelo_xgb
+    if _scaler is None:
+        cargar_modelo_rf()
+    path = _modelo_xgb_path()
+    if not path.exists() and DATA_DIR.resolve() != BASE_DIR.resolve():
+        alt = BASE_DIR / "modelo_xgb_mlb.pkl"
+        if alt.exists():
+            try:
+                path.write_bytes(alt.read_bytes())
+            except OSError:
+                pass
+    if not path.exists():
+        return None
+    try:
+        with open(path, "rb") as f:
+            _modelo_xgb = pickle.load(f)
+        print("[ML] Modelo XGBoost cargado desde disco")
+        return _modelo_xgb
+    except Exception as e:
+        print(f"[ML] Error cargando XGB: {e}")
+        return None
+
+
 def predecir_rf(features: Dict[str, Any]) -> Optional[float]:
-    """
-    Predice probabilidad de victoria usando Random Forest.
-    """
+    """Predice probabilidad de victoria usando Random Forest."""
     global _modelo_rf, _scaler
 
     if _modelo_rf is None:
@@ -371,43 +508,98 @@ def predecir_rf(features: Dict[str, Any]) -> Optional[float]:
         return None
 
 
+def predecir_xgb(features: Dict[str, Any]) -> Optional[float]:
+    """Predice probabilidad con XGBoost (0-100)."""
+    global _modelo_xgb, _scaler
+    if not HAS_XGB:
+        return None
+    if _modelo_xgb is None:
+        cargar_modelo_xgb()
+    if _modelo_xgb is None or _scaler is None:
+        return None
+    try:
+        n_exp = int(getattr(_scaler, "n_features_in_", len(FEATURE_COLUMNS)))
+        X_scaled = _scaler.transform(_features_vector(features, n_exp))
+        prob = float(_modelo_xgb.predict_proba(X_scaled)[0, 1]) * 100.0
+        return round(prob, 1)
+    except Exception as e:
+        print(f"[ML] Error prediciendo XGB: {e}")
+        return None
+
+
+def _resolver_pesos_ensemble(
+    pesos: Optional[Dict[str, float]],
+    *,
+    has_rf: bool,
+    has_xgb: bool,
+) -> Dict[str, float]:
+    """Normaliza pesos; convierte `ml` legacy → rf/xgb."""
+    p = dict(pesos or {"estadistico": 0.4, "ml": 0.4, "ia": 0.2})
+    if "ml" in p and "rf" not in p and "xgb" not in p:
+        ml = float(p.pop("ml"))
+        if has_rf and has_xgb:
+            p["rf"] = ml * 0.4
+            p["xgb"] = ml * 0.6
+        elif has_xgb:
+            p["xgb"] = ml
+        else:
+            p["rf"] = ml
+    p.setdefault("estadistico", 0.4)
+    p.setdefault("ia", 0.0)
+    p.setdefault("rf", 0.0)
+    p.setdefault("xgb", 0.0)
+    if not has_rf:
+        p["rf"] = 0.0
+    if not has_xgb:
+        p["xgb"] = 0.0
+    total = sum(float(v) for v in p.values())
+    if total <= 0:
+        return {"estadistico": 1.0, "rf": 0.0, "xgb": 0.0, "ia": 0.0}
+    return {k: float(v) / total for k, v in p.items()}
+
+
 def ensemble_prediction(
     prob_estadistico: float,
-    prob_ml: Optional[float],
-    prob_ia: Optional[float],
-    pesos: Optional[Dict[str, float]] = None
+    prob_ml: Optional[float] = None,
+    prob_ia: Optional[float] = None,
+    pesos: Optional[Dict[str, float]] = None,
+    *,
+    prob_rf: Optional[float] = None,
+    prob_xgb: Optional[float] = None,
 ) -> float:
     """
-    Combina predicciones de múltiples modelos usando Ensemble Learning.
-    
-    Args:
-        prob_estadistico: Probabilidad del modelo estadístico
-        prob_ml: Probabilidad del modelo ML (Random Forest)
-        prob_ia: Probabilidad del modelo IA (Gemini)
-        pesos: Pesos para cada modelo (default: estadístico=0.4, ML=0.4, IA=0.2)
-        
-    Returns:
-        Probabilidad combinada (0-100)
+    Combina estadístico + RF + XGBoost (+ IA opcional).
+    `prob_ml` se trata como RF por compatibilidad.
     """
-    if pesos is None:
-        pesos = {
-            'estadistico': 0.4,
-            'ml': 0.4,
-            'ia': 0.2
-        }
-    
-    # Normalizar pesos
-    total_peso = sum(pesos.values())
-    pesos = {k: v / total_peso for k, v in pesos.items()}
-    
-    # Calcular ponderación
-    prob_combinada = (
-        prob_estadistico * pesos['estadistico'] +
-        (prob_ml if prob_ml is not None else prob_estadistico) * pesos['ml'] +
-        (prob_ia if prob_ia is not None else prob_estadistico) * pesos['ia']
+    rf = prob_rf if prob_rf is not None else prob_ml
+    xgb = prob_xgb
+    # Resolver con todos los brazos posibles del config; los ausentes se reasignan luego
+    pesos_n = _resolver_pesos_ensemble(
+        pesos,
+        has_rf=True,
+        has_xgb=True,
     )
-    
-    return round(prob_combinada, 1)
+
+    est = float(prob_estadistico)
+    peso_rf = float(pesos_n.get("rf", 0)) if rf is not None else 0.0
+    peso_xgb = float(pesos_n.get("xgb", 0)) if xgb is not None else 0.0
+    peso_ia = float(pesos_n.get("ia", 0)) if prob_ia is not None else 0.0
+    peso_est = float(pesos_n.get("estadistico", 0))
+    # Pesos de brazos ausentes → estadístico
+    peso_est += float(pesos_n.get("rf", 0)) - peso_rf
+    peso_est += float(pesos_n.get("xgb", 0)) - peso_xgb
+    peso_est += float(pesos_n.get("ia", 0)) - peso_ia
+
+    total = peso_est + peso_rf + peso_xgb + peso_ia
+    if total <= 0:
+        return round(est, 1)
+    combinada = (
+        est * peso_est
+        + (float(rf) if rf is not None else 0.0) * peso_rf
+        + (float(xgb) if xgb is not None else 0.0) * peso_xgb
+        + (float(prob_ia) if prob_ia is not None else 0.0) * peso_ia
+    ) / total
+    return round(combinada, 1)
 
 
 def ajustar_pesos_ensemble(

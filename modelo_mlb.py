@@ -14,14 +14,18 @@ import requests
 try:
     from ml_predictor import (
         predecir_rf,
+        predecir_xgb,
         ensemble_prediction,
         extraer_features_ml,
         empaquetar_features_del_pick,
+        HAS_XGB,
     )
     HAS_ML = True
 except ImportError:
     HAS_ML = False
+    HAS_XGB = False
     empaquetar_features_del_pick = None  # type: ignore
+    predecir_xgb = None  # type: ignore
 
 try:
     from clima import obtener_clima_estadio, aplicar_clima_a_fuerzas
@@ -723,19 +727,42 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         try:
             prob_ml_away = predecir_rf(features_away)
             prob_ml_home = predecir_rf(features_home)
+            usar_xgb = bool(cfg.get("usar_xgboost", True)) and HAS_XGB
+            prob_xgb_away = predecir_xgb(features_away) if usar_xgb else None
+            prob_xgb_home = predecir_xgb(features_home) if usar_xgb else None
             if prob_ml_away is not None and prob_ml_home is not None:
                 s_ml = float(prob_ml_away) + float(prob_ml_home)
                 if s_ml > 0:
                     prob_ml_away = round(100.0 * float(prob_ml_away) / s_ml, 1)
                     prob_ml_home = round(100.0 - prob_ml_away, 1)
+            if prob_xgb_away is not None and prob_xgb_home is not None:
+                s_x = float(prob_xgb_away) + float(prob_xgb_home)
+                if s_x > 0:
+                    prob_xgb_away = round(100.0 * float(prob_xgb_away) / s_x, 1)
+                    prob_xgb_home = round(100.0 - prob_xgb_away, 1)
 
             pesos_ensemble = cfg.get("pesos_ensemble", {
-                "estadistico": 0.4,
-                "ml": 0.4,
-                "ia": 0.2,
+                "estadistico": 0.40,
+                "rf": 0.25,
+                "xgb": 0.35,
+                "ia": 0.0,
             })
-            prob_away = ensemble_prediction(prob_est_away, prob_ml_away, None, pesos_ensemble)
-            prob_home = ensemble_prediction(prob_est_home, prob_ml_home, None, pesos_ensemble)
+            prob_away = ensemble_prediction(
+                prob_est_away,
+                prob_ml_away,
+                None,
+                pesos_ensemble,
+                prob_rf=prob_ml_away,
+                prob_xgb=prob_xgb_away,
+            )
+            prob_home = ensemble_prediction(
+                prob_est_home,
+                prob_ml_home,
+                None,
+                pesos_ensemble,
+                prob_rf=prob_ml_home,
+                prob_xgb=prob_xgb_home,
+            )
             total_ens = float(prob_away) + float(prob_home)
             if total_ens > 0:
                 prob_away = round(100.0 * float(prob_away) / total_ens, 1)
@@ -743,11 +770,13 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
 
             print(
                 f"[ML] Ensemble: Away {prob_away:.1f}% "
-                f"(est: {prob_est_away:.1f}%, ml: {prob_ml_away if prob_ml_away is not None else '—'})"
+                f"(est: {prob_est_away:.1f}%, rf: {prob_ml_away if prob_ml_away is not None else '—'}, "
+                f"xgb: {prob_xgb_away if prob_xgb_away is not None else '—'})"
             )
             print(
                 f"[ML] Ensemble: Home {prob_home:.1f}% "
-                f"(est: {prob_est_home:.1f}%, ml: {prob_ml_home if prob_ml_home is not None else '—'})"
+                f"(est: {prob_est_home:.1f}%, rf: {prob_ml_home if prob_ml_home is not None else '—'}, "
+                f"xgb: {prob_xgb_home if prob_xgb_home is not None else '—'})"
             )
         except Exception as e:
             print(f"[ML] Error en ensemble prediction: {e}")
