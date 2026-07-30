@@ -999,6 +999,7 @@ def guardar_prediccion(
             "stake_virtual": stake_v,
             "con_dinero": bool(con_dinero),
             "predicho_en": ahora,
+            "clima": juego.get("clima") if isinstance(juego.get("clima"), dict) else None,
         }
     )
     return True
@@ -1373,6 +1374,7 @@ def _bloquear_juego_locked(
             "probPick": juego.get("probPick"),
             "motivo_apuesta": motivo_final,
             "ia_veto": veto if veto.get("ok") else None,
+            "clima": juego.get("clima") if isinstance(juego.get("clima"), dict) else None,
             "pitcherAway": juego.get("pitcherAway"),
             "pitcherHome": juego.get("pitcherHome"),
             "inicio_juego": juego.get("inicio_juego"),
@@ -1986,7 +1988,31 @@ def api_health():
             "activo": bool(cfg.get("usar_ia_veto")),
             "listo": ia_veto_disponible(cfg),
         },
+        "clima": {
+            "activo": bool(cfg.get("usar_clima", True)),
+            "fuente": "open-meteo",
+        },
     }
+
+
+@app.get("/api/clima-status")
+def api_clima_status():
+    """Ping Open-Meteo con un estadio de prueba (Coors Field)."""
+    cfg = cargar_config()
+    if not cfg.get("usar_clima", True):
+        return {"ok": False, "activo": False, "motivo": "usar_clima=false"}
+    try:
+        from clima import obtener_clima_estadio
+
+        sample = obtener_clima_estadio(115)  # Rockies / Coors
+        return {
+            "ok": bool(sample.get("ok")),
+            "activo": True,
+            "fuente": "open-meteo",
+            "muestra": sample,
+        }
+    except Exception as e:
+        return {"ok": False, "activo": True, "motivo": str(e)[:120]}
 
 
 @app.get("/api/ia-status")
