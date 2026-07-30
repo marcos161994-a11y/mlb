@@ -64,6 +64,8 @@
 
   "usar_clima": true,
 
+  "usar_lesiones": true,
+
   "usar_ia_veto": true,
 
   "groq": {

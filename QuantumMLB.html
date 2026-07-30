@@ -1141,6 +1141,7 @@ function pintarJuegos(juegos) {
                     Modelo ${j.probAway||'?'}% / ${j.probHome||'?'}% (visitante / local)
                 </div>
                 ${j.clima && j.clima.ok ? `<div style="font-size:0.7rem;color:#7eb8d4;margin-top:4px">Clima: ${j.clima.motivo || (j.clima.temp_f != null ? j.clima.temp_f + '°F' : 'ok')}</div>` : ''}
+                ${j.lesiones && j.lesiones.ok && j.lesiones.alerta ? `<div style="font-size:0.7rem;color:#e8a0a0;margin-top:4px">⚠ ${j.lesiones.alerta}</div>` : (j.lesiones && j.lesiones.ok && (j.lesiones.away?.length || j.lesiones.home?.length) ? `<div style="font-size:0.7rem;color:#c4a574;margin-top:4px">Lesiones: ${(j.lesiones.resumen||'').slice(0,90)}</div>` : '')}
                 <div style="font-size:0.7rem;color:#8899aa;margin-top:4px">${j.motivo_apuesta || ''}</div>
             </div>
             <div class="estado-apuesta ${j.estado_apuesta||''}">${apuestaTxt}</div>

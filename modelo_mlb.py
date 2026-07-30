@@ -24,6 +24,12 @@ except ImportError:
     HAS_CLIMA = False
 
 try:
+    from lesiones import analizar_lesiones_juego, cargar_reporte_lesiones
+    HAS_LESIONES = True
+except ImportError:
+    HAS_LESIONES = False
+
+try:
     import vertexai
     from vertexai.generative_models import GenerativeModel
     HAS_VERTEX = True
@@ -548,6 +554,21 @@ def _modo_solo_modelo(cfg: dict[str, Any]) -> bool:
     return not estrategia.get("requiere_betmgm", True)
 
 
+def _pick_sobre_starter_lesionado(
+    pick: str,
+    lesiones: dict[str, Any],
+    visitante: str,
+    home: str,
+) -> bool:
+    """True si el pick es ML del equipo cuyo abridor está en baja."""
+    p = pick or ""
+    if lesiones.get("starter_away_lesionado") and visitante and visitante in p:
+        return True
+    if lesiones.get("starter_home_lesionado") and home and home in p:
+        return True
+    return False
+
+
 def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje: float = 0.0) -> dict[str, Any]:
     """Enriquece el juego con modelo, valor y si es apostable."""
     season = cfg["temporada_mlb"]
@@ -617,6 +638,28 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             print(f"[CLIMA] Error: {e}")
             clima_info = {"ok": False, "run_env": 0.0, "fuente": "error", "motivo": str(e)[:80]}
     juego["clima"] = clima_info
+
+    # Lesiones ESPN: penaliza fuerza y marca riesgo de starter
+    lesiones_info: dict[str, Any] = {"ok": False, "starter_riesgo": False, "resumen": ""}
+    usar_lesiones = bool(cfg.get("usar_lesiones", True)) and HAS_LESIONES
+    if usar_lesiones:
+        try:
+            lesiones_info = analizar_lesiones_juego(
+                juego["visitante"],
+                juego["home"],
+                pa.get("nombre"),
+                ph.get("nombre"),
+            )
+            f_away = round(f_away + float(lesiones_info.get("ajuste_away") or 0.0), 2)
+            f_home = round(f_home + float(lesiones_info.get("ajuste_home") or 0.0), 2)
+            if lesiones_info.get("ok") and (
+                lesiones_info.get("ajuste_away") or lesiones_info.get("ajuste_home") or lesiones_info.get("starter_riesgo")
+            ):
+                print(f"[LESIONES] {juego.get('visitante')}@{juego.get('home')}: {lesiones_info.get('resumen')[:160]}")
+        except Exception as e:
+            print(f"[LESIONES] Error: {e}")
+            lesiones_info = {"ok": False, "starter_riesgo": False, "motivo": str(e)[:80], "resumen": ""}
+    juego["lesiones"] = lesiones_info
 
     prob_away, prob_home = prob_logistica(f_away, f_home)
     prob_est_away, prob_est_home = prob_away, prob_home
@@ -803,6 +846,20 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         if clima_info.get("ok") and abs(float(clima_info.get("run_env") or 0)) >= 0.4:
             juego["motivo_apuesta"] = (
                 f"{juego['motivo_apuesta']} · Clima: {clima_info.get('motivo')}"
+            )
+        # No apostar dinero a un equipo cuyo abridor figura lesionado/IL
+        if lesiones_info.get("starter_riesgo") and _pick_sobre_starter_lesionado(
+            mejor["pick"], lesiones_info, juego["visitante"], juego["home"]
+        ):
+            juego["apostable"] = False
+            juego["motivo_apuesta"] = (
+                f"{juego['motivo_apuesta']} · BLOQUEO lesiones: {lesiones_info.get('alerta')}"
+            )
+        elif lesiones_info.get("ok") and (
+            lesiones_info.get("away") or lesiones_info.get("home")
+        ):
+            juego["motivo_apuesta"] = (
+                f"{juego['motivo_apuesta']} · Lesiones consideradas"
             )
     else:
         # SIEMPRE hacer una predicción, aunque no sea apostable
