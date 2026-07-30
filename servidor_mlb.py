@@ -805,6 +805,12 @@ def _liquidar_dia_con_juegos(memoria: dict, dia: dict, juegos: list) -> int:
         recalcular_capital(memoria)
         actualizar_resumen(memoria)
         auto_entrenar_ml(memoria)
+        try:
+            from calibracion import entrenar_calibrador
+
+            memoria["calib_meta"] = entrenar_calibrador(memoria, min_muestras=30)
+        except Exception as e:
+            print(f"[CALIB] auto: {e}")
         guardar_memoria(memoria)
     return cambios
 
@@ -1873,6 +1879,7 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
         "stats_modelo": stats_modelo,
         "pl_split": pl_split,
         "ml_meta": memoria.get("ml_meta"),
+        "calib_meta": memoria.get("calib_meta"),
         "ia_veto": {
             "activo": bool(cfg.get("usar_ia_veto")),
             "listo": ia_veto_disponible(cfg),
@@ -2042,6 +2049,13 @@ def api_health():
             "activo": bool(cfg.get("usar_lesiones", True)),
             "fuente": "espn",
         },
+        "calibracion": {
+            "activo": bool(cfg.get("usar_calibracion", True)),
+        },
+        "pitcher_avanzado": {
+            "activo": True,
+            "metricas": ["fip", "xfip", "k_pct", "bb_pct"],
+        },
     }
 
 
@@ -2084,6 +2098,57 @@ def api_lesiones_status():
         }
     except Exception as e:
         return {"ok": False, "activo": True, "motivo": str(e)[:120]}
+
+
+@app.get("/api/calib-status")
+def api_calib_status():
+    """Estado del calibrador de probabilidades."""
+    cfg = cargar_config()
+    if not cfg.get("usar_calibracion", True):
+        return {"ok": False, "activo": False, "motivo": "usar_calibracion=false"}
+    try:
+        from calibracion import meta_calibracion, cargar_calibrador, entrenar_calibrador
+
+        cargar_calibrador()
+        meta = meta_calibracion()
+        mem_meta = cargar_memoria().get("calib_meta") or {}
+        # Si aún no hay calibrador en disco pero hay historial, intenta entrenar
+        if not meta.get("ok"):
+            meta = entrenar_calibrador(cargar_memoria(), min_muestras=30)
+            if meta.get("ok"):
+                m = cargar_memoria()
+                m["calib_meta"] = meta
+                guardar_memoria(m)
+        return {
+            "ok": bool(meta.get("ok")),
+            "activo": True,
+            **meta,
+            "memoria": mem_meta,
+        }
+    except Exception as e:
+        return {"ok": False, "activo": True, "motivo": str(e)[:120]}
+
+
+@app.get("/api/pitcher-demo")
+def api_pitcher_demo():
+    """Muestra FIP/xFIP/K%/BB% de un pitcher de prueba (Skubal)."""
+    try:
+        from modelo_mlb import stats_pitcher
+
+        cfg = cargar_config()
+        p = stats_pitcher(669373, int(cfg.get("temporada_mlb") or 2026))
+        return {
+            "ok": True,
+            "pitcher": p.get("nombre"),
+            "era": p.get("era"),
+            "fip": p.get("fip"),
+            "xfip": p.get("xfip"),
+            "k_pct": p.get("k_pct"),
+            "bb_pct": p.get("bb_pct"),
+            "fuente": p.get("metricas_fuente"),
+        }
+    except Exception as e:
+        return {"ok": False, "motivo": str(e)[:120]}
 
 
 @app.get("/api/ia-status")
