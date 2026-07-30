@@ -999,6 +999,7 @@ def guardar_prediccion(
             "stake_virtual": stake_v,
             "con_dinero": bool(con_dinero),
             "predicho_en": ahora,
+            "lesiones": juego.get("lesiones") if isinstance(juego.get("lesiones"), dict) else None,
         }
     )
     return True
@@ -1317,6 +1318,45 @@ def _bloquear_juego_locked(
             "prediccion_guardada": True,
         }
 
+    # Refrescar lesiones justo antes del veto (aunque el pick esté congelado)
+    if cfg.get("usar_lesiones", True) and not (
+        isinstance(juego.get("lesiones"), dict) and juego["lesiones"].get("ok")
+    ):
+        try:
+            from lesiones import analizar_lesiones_juego
+
+            juego["lesiones"] = analizar_lesiones_juego(
+                juego.get("visitante") or "",
+                juego.get("home") or "",
+                juego.get("pitcherAway"),
+                juego.get("pitcherHome"),
+            )
+        except Exception as e:
+            print(f"[LESIONES] refresh bloqueo: {e}")
+
+    # Si el pick congelado es el equipo del starter lesionado → no dinero
+    les = juego.get("lesiones") if isinstance(juego.get("lesiones"), dict) else {}
+    pick_now = (juego.get("pick") or "")
+    if les.get("starter_riesgo"):
+        if (les.get("starter_away_lesionado") and juego.get("visitante") in pick_now) or (
+            les.get("starter_home_lesionado") and juego.get("home") in pick_now
+        ):
+            motivo = f"BLOQUEO lesiones: {les.get('alerta') or 'Starter lesionado'}"
+            if pred_existente is not None:
+                pred_existente["apostable"] = False
+                pred_existente["motivo_apuesta"] = (
+                    f"{pred_existente.get('motivo_apuesta') or ''} · {motivo}"
+                ).strip(" ·")
+                pred_existente["lesiones"] = les
+            guardar_memoria(memoria)
+            return {
+                "ok": False,
+                "motivo": motivo,
+                "juego": juego["visitante"] + " vs " + juego["home"],
+                "prediccion_guardada": True,
+                "lesiones": les,
+            }
+
     # Modelo propone → Groq veta/confirma → solo entonces dinero.
     # Si no hay key/timeout/error (SKIP): se sigue con el modelo.
     veto = veto_apuesta(juego, cfg)
@@ -1373,6 +1413,7 @@ def _bloquear_juego_locked(
             "probPick": juego.get("probPick"),
             "motivo_apuesta": motivo_final,
             "ia_veto": veto if veto.get("ok") else None,
+            "lesiones": juego.get("lesiones") if isinstance(juego.get("lesiones"), dict) else None,
             "pitcherAway": juego.get("pitcherAway"),
             "pitcherHome": juego.get("pitcherHome"),
             "inicio_juego": juego.get("inicio_juego"),
@@ -1986,7 +2027,32 @@ def api_health():
             "activo": bool(cfg.get("usar_ia_veto")),
             "listo": ia_veto_disponible(cfg),
         },
+        "lesiones": {
+            "activo": bool(cfg.get("usar_lesiones", True)),
+            "fuente": "espn",
+        },
     }
+
+
+@app.get("/api/lesiones-status")
+def api_lesiones_status():
+    """Ping del board de lesiones ESPN."""
+    cfg = cargar_config()
+    if not cfg.get("usar_lesiones", True):
+        return {"ok": False, "activo": False, "motivo": "usar_lesiones=false"}
+    try:
+        from lesiones import cargar_reporte_lesiones
+
+        rep = cargar_reporte_lesiones()
+        return {
+            "ok": bool(rep.get("ok")),
+            "activo": True,
+            "fuente": "espn",
+            "total": rep.get("total"),
+            "motivo": rep.get("motivo"),
+        }
+    except Exception as e:
+        return {"ok": False, "activo": True, "motivo": str(e)[:120]}
 
 
 @app.get("/api/ia-status")
