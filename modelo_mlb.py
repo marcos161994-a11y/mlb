@@ -18,6 +18,12 @@ except ImportError:
     HAS_ML = False
 
 try:
+    from clima import obtener_clima_estadio, aplicar_clima_a_fuerzas
+    HAS_CLIMA = True
+except ImportError:
+    HAS_CLIMA = False
+
+try:
     from lesiones import analizar_lesiones_juego, cargar_reporte_lesiones
     HAS_LESIONES = True
 except ImportError:
@@ -609,6 +615,30 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
     f_away = fuerza_lado(away_id, home_id, p_away_id, p_home_id, season, False, ia_away, bias_aprendizaje, cfg)
     f_home = fuerza_lado(home_id, away_id, p_home_id, p_away_id, season, True, ia_home, bias_aprendizaje, cfg)
 
+    # Clima Open-Meteo: inclina fuerzas según frío/calor/viento en el estadio local
+    clima_info: dict[str, Any] = {"ok": False, "run_env": 0.0, "fuente": "off"}
+    usar_clima = bool(cfg.get("usar_clima", True)) and HAS_CLIMA
+    if usar_clima:
+        try:
+            clima_info = obtener_clima_estadio(home_id, juego.get("inicio_juego"))
+            of_a = score_ofensiva(away_id, season)
+            of_h = score_ofensiva(home_id, season)
+            p_def_a = score_pitcher(pa)
+            p_def_h = score_pitcher(ph)
+            park_pf = PARK_FACTORS.get(home_id, 1.0)
+            f_away, f_home, _ = aplicar_clima_a_fuerzas(
+                f_away, f_home, of_a, of_h, p_def_a, p_def_h, park_pf, clima_info
+            )
+            if clima_info.get("ok"):
+                print(
+                    f"[CLIMA] {juego.get('home')}: {clima_info.get('motivo')} "
+                    f"(run_env={clima_info.get('run_env')})"
+                )
+        except Exception as e:
+            print(f"[CLIMA] Error: {e}")
+            clima_info = {"ok": False, "run_env": 0.0, "fuente": "error", "motivo": str(e)[:80]}
+    juego["clima"] = clima_info
+
     # Lesiones ESPN: penaliza fuerza y marca riesgo de starter
     lesiones_info: dict[str, Any] = {"ok": False, "starter_riesgo": False, "resumen": ""}
     usar_lesiones = bool(cfg.get("usar_lesiones", True)) and HAS_LESIONES
@@ -646,19 +676,26 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             racha_home = cargar_rachas(season).get(home_id, 0)
             ba_ml = {**ba, "win_pct": rec_away.get("win_pct", 0.5), "racha_ultimos_10": racha_away}
             bh_ml = {**bh, "win_pct": rec_home.get("win_pct", 0.5), "racha_ultimos_10": racha_home}
+            clima_feats = {
+                "temp_f": clima_info.get("temp_f") if clima_info.get("ok") else 72.0,
+                "viento_mph": clima_info.get("viento_mph") if clima_info.get("ok") else 5.0,
+                "run_env": float(clima_info.get("run_env") or 0.0),
+            }
 
             features_away = extraer_features_ml({
                 'es_local': False,
                 'park_factor': park,
                 'fatiga_bullpen': calcular_fatiga_bullpen(away_id, season) if cfg.get("estrategia", {}).get("analizar_bullpen") else 0.3,
-                'matchup_adj': 0.0
+                'matchup_adj': 0.0,
+                **clima_feats,
             }, pa, ba_ml, cfg)
             
             features_home = extraer_features_ml({
                 'es_local': True,
                 'park_factor': park,
                 'fatiga_bullpen': calcular_fatiga_bullpen(home_id, season) if cfg.get("estrategia", {}).get("analizar_bullpen") else 0.3,
-                'matchup_adj': 0.0
+                'matchup_adj': 0.0,
+                **clima_feats,
             }, ph, bh_ml, cfg)
             
             # Agregar matchup adjustment a las features
@@ -805,6 +842,10 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             juego["motivo_apuesta"] = (
                 f"Valor +{mejor['edge']:.1f}% vs BetMGM "
                 f"(modelo {mejor['prob']:.0f}% vs mercado {prob_implicita(mejor['odds']):.0f}%)"
+            )
+        if clima_info.get("ok") and abs(float(clima_info.get("run_env") or 0)) >= 0.4:
+            juego["motivo_apuesta"] = (
+                f"{juego['motivo_apuesta']} · Clima: {clima_info.get('motivo')}"
             )
         # No apostar dinero a un equipo cuyo abridor figura lesionado/IL
         if lesiones_info.get("starter_riesgo") and _pick_sobre_starter_lesionado(

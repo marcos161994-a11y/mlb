@@ -37,6 +37,10 @@ FEATURE_COLUMNS = [
     "racha_equipo",
     "diferencia_run",
     "vs_pitcher_hand",
+    # Clima Open-Meteo (al final para compatibilidad con modelos viejos de 16 feats)
+    "temp_f",
+    "viento_mph",
+    "run_env",
 ]
 
 
@@ -48,8 +52,17 @@ def _scaler_path() -> Path:
     return DATA_DIR / "scaler_rf_mlb.pkl"
 
 
-def _features_vector(features: Dict[str, Any]) -> np.ndarray:
-    return np.array([[features.get(col, 0) for col in FEATURE_COLUMNS]])
+def _features_vector(features: Dict[str, Any], n_features: int | None = None) -> np.ndarray:
+    cols = FEATURE_COLUMNS
+    if n_features is not None and n_features > 0:
+        if n_features <= len(FEATURE_COLUMNS):
+            cols = FEATURE_COLUMNS[:n_features]
+        else:
+            # pad con ceros si el scaler espera más (no debería)
+            vals = [features.get(col, 0) for col in FEATURE_COLUMNS]
+            vals.extend([0] * (n_features - len(FEATURE_COLUMNS)))
+            return np.array([vals])
+    return np.array([[features.get(col, 0) for col in cols]])
 
 
 def _features_desde_registro(reg: Dict[str, Any]) -> Dict[str, Any]:
@@ -76,6 +89,9 @@ def _features_desde_registro(reg: Dict[str, Any]) -> Dict[str, Any]:
         "racha_equipo": prob,
         "diferencia_run": (prob - 0.5) * 20,
         "vs_pitcher_hand": 0.0,
+        "temp_f": float((reg.get("clima") or {}).get("temp_f") or 72.0),
+        "viento_mph": float((reg.get("clima") or {}).get("viento_mph") or 5.0),
+        "run_env": float((reg.get("clima") or {}).get("run_env") or 0.0),
     }
 
 
@@ -244,9 +260,14 @@ def predecir_rf(features: Dict[str, Any]) -> Optional[float]:
     if _modelo_rf is None or _scaler is None:
         return None
 
-    X_scaled = _scaler.transform(_features_vector(features))
-    prob = _modelo_rf.predict_proba(X_scaled)[0, 1] * 100
-    return round(prob, 1)
+    try:
+        n_exp = int(getattr(_scaler, "n_features_in_", len(FEATURE_COLUMNS)))
+        X_scaled = _scaler.transform(_features_vector(features, n_exp))
+        prob = _modelo_rf.predict_proba(X_scaled)[0, 1] * 100
+        return round(prob, 1)
+    except Exception as e:
+        print(f"[ML] Error prediciendo RF (¿features nuevas?): {e}")
+        return None
 
 
 def ensemble_prediction(
@@ -375,4 +396,7 @@ def extraer_features_ml(juego: Dict[str, Any], stats_pitcher: Dict[str, Any],
         'racha_equipo': stats_equipo.get('racha_ultimos_10', 0.5),  # Racha últimos 10 juegos
         'diferencia_run': stats_equipo.get('run_diferencial', 0),  # Diferencial de runs
         'vs_pitcher_hand': stats_equipo.get('vs_pitcher_hand', 0.0),  # Performance vs mano del pitcher
+        'temp_f': juego.get('temp_f', 72.0),
+        'viento_mph': juego.get('viento_mph', 5.0),
+        'run_env': juego.get('run_env', 0.0),
     }
