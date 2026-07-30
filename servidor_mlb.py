@@ -2042,6 +2042,9 @@ def api_health():
             "activo": bool(cfg.get("usar_lesiones", True)),
             "fuente": "espn",
         },
+        "xgboost": {
+            "activo": bool(cfg.get("usar_xgboost", True)),
+        },
     }
 
 
