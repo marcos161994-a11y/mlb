@@ -964,6 +964,9 @@ def guardar_prediccion(
             existente["con_dinero"] = True
         if existente.get("stake_virtual") is None:
             existente["stake_virtual"] = stake_v
+        # Backfill features reales si el pick se congeló antes del fix
+        if not existente.get("ml_features") and isinstance(juego.get("ml_features"), dict):
+            existente["ml_features"] = juego["ml_features"]
         return False
 
     prob = float(juego.get("probPick") or 50)
@@ -1001,6 +1004,7 @@ def guardar_prediccion(
             "predicho_en": ahora,
             "clima": juego.get("clima") if isinstance(juego.get("clima"), dict) else None,
             "lesiones": juego.get("lesiones") if isinstance(juego.get("lesiones"), dict) else None,
+            "ml_features": juego.get("ml_features") if isinstance(juego.get("ml_features"), dict) else None,
         }
     )
     return True
@@ -1416,6 +1420,7 @@ def _bloquear_juego_locked(
             "ia_veto": veto if veto.get("ok") else None,
             "clima": juego.get("clima") if isinstance(juego.get("clima"), dict) else None,
             "lesiones": juego.get("lesiones") if isinstance(juego.get("lesiones"), dict) else None,
+            "ml_features": juego.get("ml_features") if isinstance(juego.get("ml_features"), dict) else None,
             "pitcherAway": juego.get("pitcherAway"),
             "pitcherHome": juego.get("pitcherHome"),
             "inicio_juego": juego.get("inicio_juego"),

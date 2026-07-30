@@ -44,6 +44,9 @@ FEATURE_COLUMNS = [
 ]
 
 
+FEATURE_SCHEMA_VERSION = 2  # v2 = features reales guardadas en predicción
+
+
 def _modelo_path() -> Path:
     return DATA_DIR / "modelo_rf_mlb.pkl"
 
@@ -52,21 +55,32 @@ def _scaler_path() -> Path:
     return DATA_DIR / "scaler_rf_mlb.pkl"
 
 
+def normalizar_features(features: Dict[str, Any] | None) -> Dict[str, float]:
+    """Deja solo columnas del modelo, como float."""
+    feats = features or {}
+    out: Dict[str, float] = {}
+    for col in FEATURE_COLUMNS:
+        try:
+            out[col] = float(feats.get(col, 0) or 0)
+        except (TypeError, ValueError):
+            out[col] = 0.0
+    return out
+
+
 def _features_vector(features: Dict[str, Any], n_features: int | None = None) -> np.ndarray:
     cols = FEATURE_COLUMNS
     if n_features is not None and n_features > 0:
         if n_features <= len(FEATURE_COLUMNS):
             cols = FEATURE_COLUMNS[:n_features]
         else:
-            # pad con ceros si el scaler espera más (no debería)
             vals = [features.get(col, 0) for col in FEATURE_COLUMNS]
             vals.extend([0] * (n_features - len(FEATURE_COLUMNS)))
             return np.array([vals])
     return np.array([[features.get(col, 0) for col in cols]])
 
 
-def _features_desde_registro(reg: Dict[str, Any]) -> Dict[str, Any]:
-    """Aproxima features ML desde un registro de apuesta/predicción liquidada."""
+def _features_sinteticas_desde_registro(reg: Dict[str, Any]) -> Dict[str, Any]:
+    """Fallback legacy: aproxima features si no se guardaron las reales."""
     prob = float(reg.get("probPick") or 50) / 100.0
     edge = float(reg.get("edge") or 0)
     pick = reg.get("pick") or ""
@@ -95,11 +109,31 @@ def _features_desde_registro(reg: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def features_desde_registro(reg: Dict[str, Any]) -> tuple[Dict[str, float], str]:
+    """
+    Prefiere ml_features reales guardadas al predecir.
+    Returns: (features, fuente) donde fuente es 'real' | 'sintetica'.
+    """
+    raw = reg.get("ml_features")
+    if isinstance(raw, dict) and raw:
+        # Debe tener al menos señales de pitcher reales (no el invento típico)
+        feats = normalizar_features(raw)
+        return feats, "real"
+    return normalizar_features(_features_sinteticas_desde_registro(reg)), "sintetica"
+
+
+# Compat nombre antiguo
+def _features_desde_registro(reg: Dict[str, Any]) -> Dict[str, Any]:
+    feats, _ = features_desde_registro(reg)
+    return feats
+
+
 def cargar_datos_entrenamiento_desde_memoria(memoria: dict) -> List[Dict[str, Any]]:
     """Apuestas y predicciones liquidadas → dataset para Random Forest.
 
     Si un juego tiene apuesta liquidada, no se añade también su predicción
     (evita doble muestra casi idéntica).
+    Prefiere features reales; marca fuente en cada fila.
     """
     datos: List[Dict[str, Any]] = []
     for dia in memoria.get("dias", []):
@@ -110,8 +144,9 @@ def cargar_datos_entrenamiento_desde_memoria(memoria: dict) -> List[Dict[str, An
             gid = apuesta.get("game_id")
             if gid is not None:
                 game_ids_apostados.add(gid)
-            fila = _features_desde_registro(apuesta)
+            fila, fuente = features_desde_registro(apuesta)
             fila["resultado"] = 1 if apuesta["estado"] == "ganada" else 0
+            fila["_fuente_features"] = fuente
             datos.append(fila)
         for pred in dia.get("predicciones", []):
             if pred.get("estado") != "liquidado" or pred.get("resultado") not in (
@@ -121,31 +156,48 @@ def cargar_datos_entrenamiento_desde_memoria(memoria: dict) -> List[Dict[str, An
                 continue
             if pred.get("game_id") in game_ids_apostados:
                 continue
-            fila = _features_desde_registro(pred)
+            fila, fuente = features_desde_registro(pred)
             fila["resultado"] = 1 if pred["resultado"] == "acierto" else 0
+            fila["_fuente_features"] = fuente
             datos.append(fila)
     return datos
 
 
 def entrenar_modelo_rf(datos_historicos: List[Dict[str, Any]]) -> RandomForestClassifier:
     """
-    Entrena un modelo Random Forest con datos históricos.
-    
-    Args:
-        datos_historicos: Lista de diccionarios con features y resultados
-        
-    Returns:
-        Modelo Random Forest entrenado
+    Entrena Random Forest. Si hay >=20 muestras, reporta accuracy holdout (20%).
     """
     global _modelo_rf, _scaler
-    
+
     if not datos_historicos:
         print("[ML] No hay datos históricos para entrenar")
         return None
-    
+
     df = pd.DataFrame(datos_historicos)
     X = df[FEATURE_COLUMNS].fillna(0)
     y = df["resultado"]
+
+    n = len(df)
+    acc_holdout = None
+    if n >= 20:
+        from sklearn.model_selection import train_test_split
+
+        X_tr, X_te, y_tr, y_te = train_test_split(
+            X, y, test_size=0.2, random_state=42, stratify=y if y.nunique() > 1 else None
+        )
+        scaler_tmp = StandardScaler()
+        X_tr_s = scaler_tmp.fit_transform(X_tr)
+        X_te_s = scaler_tmp.transform(X_te)
+        rf_tmp = RandomForestClassifier(
+            n_estimators=100,
+            max_depth=10,
+            min_samples_split=5,
+            random_state=42,
+            n_jobs=-1,
+        )
+        rf_tmp.fit(X_tr_s, y_tr)
+        acc_holdout = float(rf_tmp.score(X_te_s, y_te))
+        print(f"[ML] Accuracy holdout (20%): {acc_holdout:.3f}")
 
     _scaler = StandardScaler()
     X_scaled = _scaler.fit_transform(X)
@@ -170,10 +222,13 @@ def entrenar_modelo_rf(datos_historicos: List[Dict[str, Any]]) -> RandomForestCl
         except OSError:
             pass
 
-    acc = _modelo_rf.score(X_scaled, y)
-    print(f"[ML] Modelo Random Forest entrenado con {len(datos_historicos)} muestras")
+    acc = float(_modelo_rf.score(X_scaled, y))
+    n_real = sum(1 for d in datos_historicos if d.get("_fuente_features") == "real")
+    print(f"[ML] Modelo Random Forest entrenado con {n} muestras ({n_real} reales)")
     print(f"[ML] Features usadas: {len(FEATURE_COLUMNS)}")
     print(f"[ML] Accuracy en entrenamiento: {acc:.3f}")
+    _modelo_rf._acc_holdout = acc_holdout  # type: ignore[attr-defined]
+    _modelo_rf._n_reales = n_real  # type: ignore[attr-defined]
     return _modelo_rf
 
 
@@ -181,17 +236,28 @@ def auto_entrenar_ml(memoria: dict, min_muestras: int = 5) -> dict:
     """Reentrena el Random Forest cuando hay nuevas liquidaciones."""
     meta_prev = memoria.get("ml_meta") or {}
     datos = cargar_datos_entrenamiento_desde_memoria(memoria)
+    n_real = sum(1 for d in datos if d.get("_fuente_features") == "real")
     meta: Dict[str, Any] = {
         "ok": False,
         "muestras": len(datos),
+        "muestras_reales": n_real,
+        "schema": FEATURE_SCHEMA_VERSION,
         "mensaje": "",
         "accuracy_train": meta_prev.get("accuracy_train"),
+        "accuracy_holdout": meta_prev.get("accuracy_holdout"),
         "ultimo_entreno": meta_prev.get("ultimo_entreno"),
     }
     if len(datos) < min_muestras:
         meta["mensaje"] = f"Esperando más datos ({len(datos)}/{min_muestras} muestras)"
         return meta
-    if meta_prev.get("muestras") == len(datos) and _modelo_path().exists():
+
+    mismo_historial = (
+        meta_prev.get("muestras") == len(datos)
+        and meta_prev.get("schema") == FEATURE_SCHEMA_VERSION
+        and meta_prev.get("muestras_reales") == n_real
+        and _modelo_path().exists()
+    )
+    if mismo_historial:
         meta["ok"] = True
         meta["mensaje"] = "Modelo ya entrenado con el historial actual"
         return meta
@@ -203,18 +269,53 @@ def auto_entrenar_ml(memoria: dict, min_muestras: int = 5) -> dict:
 
     X = pd.DataFrame(datos)[FEATURE_COLUMNS].fillna(0)
     acc = float(modelo.score(_scaler.transform(X), pd.DataFrame(datos)["resultado"]))
+    acc_h = getattr(modelo, "_acc_holdout", None)
     meta.update(
         {
             "ok": True,
             "muestras": len(datos),
+            "muestras_reales": n_real,
+            "schema": FEATURE_SCHEMA_VERSION,
             "accuracy_train": round(acc, 3),
+            "accuracy_holdout": round(acc_h, 3) if acc_h is not None else None,
             "ultimo_entreno": datetime.now().isoformat(),
-            "mensaje": f"Reentrenado con {len(datos)} muestras (acc {acc:.1%})",
+            "mensaje": (
+                f"Reentrenado con {len(datos)} muestras "
+                f"({n_real} reales, acc {acc:.1%}"
+                + (f", holdout {acc_h:.1%}" if acc_h is not None else "")
+                + ")"
+            ),
         }
     )
     memoria["ml_meta"] = meta
     print(f"[ML] Auto-entrenamiento: {meta['mensaje']}")
     return meta
+
+
+def empaquetar_features_del_pick(
+    pick: str,
+    visitante: str,
+    home: str,
+    features_away: Dict[str, Any] | None,
+    features_home: Dict[str, Any] | None,
+    edge: float | None = None,
+) -> Dict[str, float] | None:
+    """Elige features del lado apostado y fija edge_estadistico."""
+    if not features_away or not features_home:
+        return None
+    p = pick or ""
+    if home and home in p:
+        feats = dict(features_home)
+    elif visitante and visitante in p:
+        feats = dict(features_away)
+    else:
+        feats = dict(features_home)
+    if edge is not None:
+        try:
+            feats["edge_estadistico"] = float(edge)
+        except (TypeError, ValueError):
+            pass
+    return normalizar_features(feats)
 
 
 def cargar_modelo_rf() -> Optional[RandomForestClassifier]:

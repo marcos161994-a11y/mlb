@@ -12,10 +12,16 @@ import requests
 
 # Importar módulo de Machine Learning
 try:
-    from ml_predictor import predecir_rf, ensemble_prediction, extraer_features_ml
+    from ml_predictor import (
+        predecir_rf,
+        ensemble_prediction,
+        extraer_features_ml,
+        empaquetar_features_del_pick,
+    )
     HAS_ML = True
 except ImportError:
     HAS_ML = False
+    empaquetar_features_del_pick = None  # type: ignore
 
 try:
     from clima import obtener_clima_estadio, aplicar_clima_a_fuerzas
@@ -663,12 +669,13 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
 
     prob_away, prob_home = prob_logistica(f_away, f_home)
     prob_est_away, prob_est_home = prob_away, prob_home
-    
-    # Usar Ensemble Learning si está activado y disponible
-    usar_ml = cfg.get("usar_ml", False) and HAS_ML
-    if usar_ml:
+
+    features_away: dict[str, Any] | None = None
+    features_home: dict[str, Any] | None = None
+
+    # Features ML siempre que se pueda (para guardar y entrenar con datos reales)
+    if HAS_ML:
         try:
-            # Park factor del estadio (siempre home_id). Enrich equipo con record/racha.
             park = PARK_FACTORS.get(home_id, 1.0)
             rec_away = cargar_records(season).get(away_id, {"win_pct": 0.5})
             rec_home = cargar_records(season).get(home_id, {"win_pct": 0.5})
@@ -681,38 +688,39 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
                 "viento_mph": clima_info.get("viento_mph") if clima_info.get("ok") else 5.0,
                 "run_env": float(clima_info.get("run_env") or 0.0),
             }
-
             features_away = extraer_features_ml({
-                'es_local': False,
-                'park_factor': park,
-                'fatiga_bullpen': calcular_fatiga_bullpen(away_id, season) if cfg.get("estrategia", {}).get("analizar_bullpen") else 0.3,
-                'matchup_adj': 0.0,
+                "es_local": False,
+                "park_factor": park,
+                "fatiga_bullpen": calcular_fatiga_bullpen(away_id, season) if cfg.get("estrategia", {}).get("analizar_bullpen") else 0.3,
+                "matchup_adj": 0.0,
                 **clima_feats,
             }, pa, ba_ml, cfg)
-            
             features_home = extraer_features_ml({
-                'es_local': True,
-                'park_factor': park,
-                'fatiga_bullpen': calcular_fatiga_bullpen(home_id, season) if cfg.get("estrategia", {}).get("analizar_bullpen") else 0.3,
-                'matchup_adj': 0.0,
+                "es_local": True,
+                "park_factor": park,
+                "fatiga_bullpen": calcular_fatiga_bullpen(home_id, season) if cfg.get("estrategia", {}).get("analizar_bullpen") else 0.3,
+                "matchup_adj": 0.0,
                 **clima_feats,
             }, ph, bh_ml, cfg)
-            
-            # Agregar matchup adjustment a las features
             if cfg.get("estrategia", {}).get("analizar_matchups_zurdo_diestro"):
                 pitcher_hand_away = _normalizar_mano(pa.get("hand", "R"))
                 pitcher_hand_home = _normalizar_mano(ph.get("hand", "R"))
                 lineup_balance_away = obtener_balance_lineup(away_id, season)
                 lineup_balance_home = obtener_balance_lineup(home_id, season)
-                
-                # Away lineup vs home pitcher; home lineup vs away pitcher
-                matchup_adj_away = ajuste_matchup_zurdo_diestro(pitcher_hand_home, lineup_balance_away)
-                matchup_adj_home = ajuste_matchup_zurdo_diestro(pitcher_hand_away, lineup_balance_home)
-                
-                features_away['matchup_zurdo_diestro'] = matchup_adj_away
-                features_home['matchup_zurdo_diestro'] = matchup_adj_home
-            
-            # Obtener predicciones ML y normalizarlas (RF no garantiza suma 100)
+                features_away["matchup_zurdo_diestro"] = ajuste_matchup_zurdo_diestro(
+                    pitcher_hand_home, lineup_balance_away
+                )
+                features_home["matchup_zurdo_diestro"] = ajuste_matchup_zurdo_diestro(
+                    pitcher_hand_away, lineup_balance_home
+                )
+        except Exception as e:
+            print(f"[ML] Error extrayendo features: {e}")
+            features_away, features_home = None, None
+
+    # Ensemble Learning si está activado
+    usar_ml = cfg.get("usar_ml", False) and HAS_ML and features_away and features_home
+    if usar_ml:
+        try:
             prob_ml_away = predecir_rf(features_away)
             prob_ml_home = predecir_rf(features_home)
             if prob_ml_away is not None and prob_ml_home is not None:
@@ -720,21 +728,19 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
                 if s_ml > 0:
                     prob_ml_away = round(100.0 * float(prob_ml_away) / s_ml, 1)
                     prob_ml_home = round(100.0 - prob_ml_away, 1)
-            
+
             pesos_ensemble = cfg.get("pesos_ensemble", {
-                'estadistico': 0.4,
-                'ml': 0.4,
-                'ia': 0.2
+                "estadistico": 0.4,
+                "ml": 0.4,
+                "ia": 0.2,
             })
-            # ia_away/ia_home son ajustes de fuerza (~[-1,1]), NO probabilidades.
-            # No inyectarlos al ensemble como % de victoria.
             prob_away = ensemble_prediction(prob_est_away, prob_ml_away, None, pesos_ensemble)
             prob_home = ensemble_prediction(prob_est_home, prob_ml_home, None, pesos_ensemble)
             total_ens = float(prob_away) + float(prob_home)
             if total_ens > 0:
                 prob_away = round(100.0 * float(prob_away) / total_ens, 1)
                 prob_home = round(100.0 - prob_away, 1)
-            
+
             print(
                 f"[ML] Ensemble: Away {prob_away:.1f}% "
                 f"(est: {prob_est_away:.1f}%, ml: {prob_ml_away if prob_ml_away is not None else '—'})"
@@ -755,6 +761,9 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
     juego["pitcherHome"] = ph["nombre"]
     juego["pitcherAwayEra"] = pa["era"]
     juego["pitcherHomeEra"] = ph["era"]
+    # Conservar para empaquetar tras elegir pick
+    juego["_features_away"] = features_away
+    juego["_features_home"] = features_home
 
     dec_away = juego.get("odds_away_decimal")
     dec_home = juego.get("odds_home_decimal")
@@ -884,6 +893,21 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         else:
             juego["motivo_apuesta"] = f"Prob. modelo bajo {min_prob}%"
 
+    # Guardar features reales del lado del pick (para entrenar el RF bien)
+    if HAS_ML and empaquetar_features_del_pick and juego.get("pick"):
+        packed = empaquetar_features_del_pick(
+            juego.get("pick") or "",
+            juego.get("visitante") or "",
+            juego.get("home") or "",
+            juego.get("_features_away"),
+            juego.get("_features_home"),
+            edge=juego.get("edge"),
+        )
+        if packed:
+            juego["ml_features"] = packed
+
+    juego.pop("_features_away", None)
+    juego.pop("_features_home", None)
     return juego
 
 
