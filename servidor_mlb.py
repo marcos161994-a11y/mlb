@@ -2140,6 +2140,9 @@ def api_health():
                 (cfg.get("estrategia") or {}).get("min_estrellas_fuera_lineup", 2)
             ),
         },
+        "xgboost": {
+            "activo": bool(cfg.get("usar_xgboost", True)),
+        },
     }
 
 
