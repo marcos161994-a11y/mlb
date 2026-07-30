@@ -62,6 +62,8 @@
 
   "usar_ia": false,
 
+  "usar_lesiones": true,
+
   "usar_ia_veto": true,
 
   "groq": {

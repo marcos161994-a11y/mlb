@@ -14,6 +14,12 @@ from typing import Any
 
 import requests
 
+try:
+    from lesiones import texto_para_ia
+except ImportError:
+    def texto_para_ia(lesiones, max_len=420):  # type: ignore
+        return "Lesiones: sin modulo"
+
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 DEFAULT_MODEL = "llama-3.1-8b-instant"
 DEFAULT_TIMEOUT = 8.0
@@ -144,19 +150,41 @@ def veto_apuesta(juego: dict[str, Any], cfg: dict | None = None) -> dict[str, An
     pa = juego.get("pitcherAway") or "TBD"
     ph = juego.get("pitcherHome") or "TBD"
     motivo_modelo = juego.get("motivo_apuesta") or ""
+    lesiones = juego.get("lesiones") if isinstance(juego.get("lesiones"), dict) else {}
+    bloque_lesiones = texto_para_ia(lesiones)
+
+    # Regla dura: si el pick es el equipo del starter lesionado → PASAR sin llamar a Groq
+    if lesiones.get("starter_riesgo"):
+        away_hit = lesiones.get("starter_away_lesionado") and visitante in pick
+        home_hit = lesiones.get("starter_home_lesionado") and home in pick
+        if away_hit or home_hit:
+            out = {
+                "ok": True,
+                "decision": "PASAR",
+                "motivo": (lesiones.get("alerta") or "Starter lesionado")[:160],
+                "confianza": 5,
+                "fuente": "lesiones",
+                "modelo": "regla-local",
+            }
+            if gid:
+                _veto_cache[gid] = dict(out)
+            print(f"[IA-VETO] PASAR por lesiones: {out['motivo']}")
+            return out
 
     prompt = (
         "Eres analista de apuestas MLB. El MODELO ya propuso un pick.\n"
         "Tu trabajo: confirmar (APOSTAR) o vetar (PASAR) esa apuesta con dinero.\n"
-        "Veta si hay riesgo claro: pitcher dudoso, bullpen fundido, lineup débil, "
+        "Veta si hay riesgo claro: pitcher dudoso/lesionado, bullpen fundido, lineup débil, "
         "favorito inflado, spot feo, o confianza baja pese al %.\n"
+        "Si hay ALERTA de starter lesionado del lado del pick → PASAR.\n"
         "Confirma si el spot se ve sólido con los datos dados.\n\n"
         f"Partido: {visitante} @ {home}\n"
         f"Pick del modelo: {pick}\n"
         f"Prob modelo: {prob:.1f}%\n"
         f"Edge/conf: {edge}\n"
         f"Pitchers: away={pa} | home={ph}\n"
-        f"Motivo modelo: {motivo_modelo}\n\n"
+        f"Motivo modelo: {motivo_modelo}\n"
+        f"{bloque_lesiones}\n\n"
         "Responde SOLO un JSON válido (sin markdown) con exactamente:\n"
         '{"decision":"APOSTAR"|"PASAR","motivo":"max 12 palabras","confianza":1-5}'
     )
