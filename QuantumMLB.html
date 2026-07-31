@@ -681,10 +681,11 @@ function pintarEstado(data) {
     // Hoy = predicciones en papel (todas). Dinero va aparte en Rendimiento / banca.
     const predsHoy = Array.isArray(dia?.predicciones) ? dia.predicciones : [];
     const apuestasHoy = Array.isArray(dia?.apuestas) ? dia.apuestas : [];
-    const ganadas = predsHoy.filter(p => p.resultado === 'acierto').length;
-    const perdidas = predsHoy.filter(p => p.resultado === 'fallo').length;
+    const predsValidas = predsHoy.filter(p => p.valida_stats !== false && !p.invalida_tarde);
+    const ganadas = predsValidas.filter(p => p.resultado === 'acierto').length;
+    const perdidas = predsValidas.filter(p => p.resultado === 'fallo').length;
     const pendientes = predsHoy.filter(p => p.estado === 'pendiente').length;
-    const profitHoy = predsHoy.reduce((s, p) => {
+    const profitHoy = predsValidas.reduce((s, p) => {
         if (p.profit == null || p.estado === 'pendiente') return s;
         return s + Number(p.profit || 0);
     }, 0);
@@ -1089,6 +1090,10 @@ function pintarJuegos(juegos) {
             apuestaTxt = 'FINAL · sin pick congelado a tiempo (no cuenta en el paper de hoy)';
         } else if (j.estado_apuesta === 'sin_bloquear' && j.hora_bloqueo_txt) {
             apuestaTxt = `Auto-bloqueo ~${j.hora_bloqueo_txt} (juego ${j.hora_inicio_txt})`;
+        } else if (j.estado_apuesta === 'invalida_tarde') {
+            apuestaTxt = `NO CUENTA · pick congelado tarde (${j.resultado_papel || 'resultado'} real, pero sesgado)`;
+        } else if (j.estado === 'EN VIVO' && j.estado_apuesta === 'sin_bloquear') {
+            apuestaTxt = `EN JUEGO · pick orientativo (puede cambiar; no congelado)`;
         } else if (j.estado === 'EN VIVO' && j.estado_apuesta === 'pendiente') {
             apuestaTxt = papel
                 ? `PAPEL · EN JUEGO (${j.scoreAway ?? '—'}-${j.scoreHome ?? '—'}) · pick fijo`
@@ -1131,7 +1136,7 @@ function pintarJuegos(juegos) {
                 <b>${j.scoreHome ?? '—'}</b>
             </div>
             <div class="pick-box" style="font-size:0.85rem">
-                <div style="font-size:0.7rem;color:var(--muted);margin-bottom:6px">PICK DEL MODELO${j.pick_congelado ? ' (fijo)' : ''}</div>
+                <div style="font-size:0.7rem;color:var(--muted);margin-bottom:6px">PICK DEL MODELO${j.pick_congelado ? (j.invalida_tarde ? ' (tardío · no cuenta)' : ' (fijo)') : ' (en vivo · puede cambiar)'}</div>
                 <b style="font-size:1rem;color:var(--green)">→ ${eqPick || '—'}</b>
                 <div style="font-size:0.8rem;margin-top:6px">
                     Confianza: <b style="color:var(--cyan)">${j.probPick != null ? j.probPick.toFixed(1) + '%' : '—'}</b>

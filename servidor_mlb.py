@@ -403,14 +403,70 @@ def calcular_bias_aprendizaje(memoria: dict) -> float:
     return 0.0
 
 
+def _parse_iso_dt(raw: str | None) -> datetime | None:
+    if not raw:
+        return None
+    try:
+        dt = datetime.fromisoformat(str(raw))
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=tz_experimento())
+        return dt
+    except Exception:
+        return None
+
+
+def prediccion_valida_para_stats(pred: dict, gracia_min: float = 5.0) -> bool:
+    """
+    True solo si el pick se congeló ANTES (o casi al) inicio.
+    Excluye EN VIVO / retroactivos / cambios a última hora (ej. Yankees mid-game).
+    """
+    if not isinstance(pred, dict):
+        return False
+    if pred.get("valida_stats") is False or pred.get("invalida_tarde"):
+        return False
+    if pred.get("retroactivo"):
+        return False
+    motivo = (pred.get("motivo_apuesta") or "").upper()
+    if "EN VIVO" in motivo and "GRACIA" not in motivo:
+        # Motivo explícito de freeze tardío
+        return False
+    predicho = _parse_iso_dt(pred.get("predicho_en"))
+    inicio = _parse_iso_dt(pred.get("inicio_juego"))
+    if predicho and inicio:
+        mins = (predicho - inicio).total_seconds() / 60.0
+        if mins > gracia_min:
+            return False
+    return True
+
+
+def marcar_predicciones_tardias(memoria: dict, gracia_min: float = 5.0) -> int:
+    """Marca en memoria los picks congelados después del inicio (no borra el marcador)."""
+    n = 0
+    for dia in memoria.get("dias", []):
+        for p in dia.get("predicciones", []) or []:
+            if p.get("invalida_tarde"):
+                continue
+            if prediccion_valida_para_stats(p, gracia_min=gracia_min):
+                # Asegura flag positivo si faltaba
+                if "valida_stats" not in p:
+                    p["valida_stats"] = True
+                continue
+            p["invalida_tarde"] = True
+            p["valida_stats"] = False
+            n += 1
+    return n
+
+
 def calcular_estadisticas_modelo(memoria: dict) -> dict:
     """
     Calcula aciertos/fallos del modelo.
     Si un juego tiene apuesta, no se cuenta también su predicción (evita doble conteo).
+    Ignora picks congelados en vivo / después del inicio.
     """
     total_predicciones = 0
     aciertos = 0
     fallos = 0
+    excluidas_tarde = 0
     
     for dia in memoria.get("dias", []):
         apostados = {
@@ -429,12 +485,16 @@ def calcular_estadisticas_modelo(memoria: dict) -> dict:
         for prediccion in dia.get("predicciones", []):
             if prediccion.get("game_id") in apostados:
                 continue
-            if prediccion.get("estado") == "liquidado":
-                total_predicciones += 1
-                if prediccion.get("resultado") == "acierto":
-                    aciertos += 1
-                else:
-                    fallos += 1
+            if prediccion.get("estado") != "liquidado":
+                continue
+            if not prediccion_valida_para_stats(prediccion):
+                excluidas_tarde += 1
+                continue
+            total_predicciones += 1
+            if prediccion.get("resultado") == "acierto":
+                aciertos += 1
+            else:
+                fallos += 1
     
     win_rate = (aciertos / total_predicciones * 100) if total_predicciones > 0 else 0
     
@@ -442,7 +502,8 @@ def calcular_estadisticas_modelo(memoria: dict) -> dict:
         "total_predicciones": total_predicciones,
         "aciertos": aciertos,
         "fallos": fallos,
-        "win_rate": round(win_rate, 1)
+        "win_rate": round(win_rate, 1),
+        "excluidas_tarde": excluidas_tarde,
     }
 
 
@@ -1031,11 +1092,9 @@ def guardar_prediccion(
 
 def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     """
-    Registra un pick en PAPEL para los juegos del día.
-    - PROGRAMADO: cuando ya pasó la hora de bloqueo (o forzar).
-    - EN VIVO: solo si aún no había predicción (alcanzar juegos que ya empezaron).
-    - FINALIZADO: NO se inventa pick a posteriori (sesga el historial hacia el ganador).
-    No registra POSPUESTO. La apuesta con dinero es aparte.
+    Registra un pick en PAPEL solo para juegos PROGRAMADOS (tras T-60).
+    Nunca congela EN VIVO: el pick en vivo cambia (lineup/scratch/marcador) y sesga.
+    FINALIZADO: no se inventa pick a posteriori.
     """
     memoria = cargar_memoria()
     hoy = fecha_str()
@@ -1045,32 +1104,45 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     stake_v = stake_virtual_prediccion(memoria)
     ya = {str(p.get("game_id")) for p in dia.get("predicciones", [])}
     nuevas = 0
+    omitidas_vivo = 0
 
     for juego in juegos:
         estado = juego.get("estado")
         gid = str(juego.get("id") or "")
-        # Nunca congelar pick cuando el juego ya terminó: el modelo post-partido
-        # tiende a "acertar" y falsea el paper.
-        if estado not in ("PROGRAMADO", "EN VIVO"):
+        if estado == "EN VIVO":
+            if gid not in ya:
+                omitidas_vivo += 1
+            continue
+        if estado != "PROGRAMADO":
             continue
         if not (juego.get("pick") or "").strip():
             continue
         if gid in ya and not forzar:
             continue
-        if estado == "PROGRAMADO":
-            try:
-                hb = datetime.fromisoformat(juego["hora_bloqueo"])
-            except Exception:
-                continue
-            if not forzar and hb > ahora:
-                continue
+        try:
+            hb = datetime.fromisoformat(juego["hora_bloqueo"])
+        except Exception:
+            continue
+        if not forzar and hb > ahora:
+            continue
         if guardar_prediccion(dia, juego, con_dinero=False, stake_virtual=stake_v):
+            # Marca validez: solo PROGRAMADO pre-inicio
+            pred = next(p for p in dia["predicciones"] if str(p.get("game_id")) == gid)
+            pred["valida_stats"] = True
+            pred["invalida_tarde"] = False
             nuevas += 1
             ya.add(gid)
 
     if nuevas:
         guardar_memoria(memoria)
-    return {"ok": True, "predicciones_nuevas": nuevas, "fecha": hoy}
+    if omitidas_vivo:
+        print(f"[PREDICCIONES] Omitidas {omitidas_vivo} EN VIVO (no se congela pick a mitad).")
+    return {
+        "ok": True,
+        "predicciones_nuevas": nuevas,
+        "omitidas_en_vivo": omitidas_vivo,
+        "fecha": hoy,
+    }
 
 
 def rellenar_predicciones_fecha(memoria: dict, fecha: str) -> int:
@@ -1097,9 +1169,13 @@ def rellenar_predicciones_fecha(memoria: dict, fecha: str) -> int:
             continue
         if juego["id"] in ya:
             continue
+        # Solo rellenar si el juego aún no había empezado al "congelar" ahora sería tarde:
+        # marcar siempre como retroactivo e inválido para stats.
         if guardar_prediccion(dia, juego, con_dinero=False, stake_virtual=stake_v):
             pred = next(p for p in dia["predicciones"] if p["game_id"] == juego["id"])
             pred["retroactivo"] = True
+            pred["valida_stats"] = False
+            pred["invalida_tarde"] = True
             nuevas += 1
 
     return nuevas
@@ -1137,6 +1213,7 @@ def resumen_predicciones_y_dinero(memoria: dict) -> dict:
     """
     pred_aciertos = pred_fallos = 0
     pred_ganado = pred_perdido = 0.0
+    pred_excluidas = 0
     din_ganadas = din_perdidas = 0
     din_ganado = din_perdido = 0.0
     mutado = False
@@ -1164,6 +1241,9 @@ def resumen_predicciones_y_dinero(memoria: dict) -> dict:
                 p["stake_virtual"] = stake_v
                 mutado = True
             profit = float(profit or 0)
+            if not prediccion_valida_para_stats(p):
+                pred_excluidas += 1
+                continue
             if p.get("resultado") == "acierto":
                 pred_aciertos += 1
                 if profit > 0:
@@ -1195,6 +1275,7 @@ def resumen_predicciones_y_dinero(memoria: dict) -> dict:
             "ganado": round(pred_ganado, 2),
             "perdido": round(pred_perdido, 2),
             "neto": round(pred_ganado - pred_perdido, 2),
+            "excluidas_tarde": pred_excluidas,
         },
         "dinero": {
             "total": din_total,
@@ -1709,16 +1790,28 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
             copia["motivo_apuesta"] = pred.get("motivo_apuesta", copia.get("motivo_apuesta", ""))
             copia["pick_congelado"] = True
             copia["resultado_papel"] = pred.get("resultado")
+            copia["invalida_tarde"] = bool(
+                pred.get("invalida_tarde") or not prediccion_valida_para_stats(pred)
+            )
             if pred.get("estado") == "liquidado" and pred.get("resultado") in (
                 "acierto",
                 "fallo",
             ):
                 # Para el panel: acierto/fallo en papel (no es banca real)
-                copia["estado_apuesta"] = (
-                    "ganada" if pred["resultado"] == "acierto" else "perdida"
-                )
-                copia["profit"] = pred.get("profit")
-                copia["solo_papel"] = True
+                if copia["invalida_tarde"]:
+                    copia["estado_apuesta"] = "invalida_tarde"
+                    copia["profit"] = pred.get("profit")
+                    copia["solo_papel"] = True
+                    copia["motivo_apuesta"] = (
+                        (copia.get("motivo_apuesta") or "")
+                        + " · Pick tardío (no cuenta en precisión)"
+                    ).strip(" ·")
+                else:
+                    copia["estado_apuesta"] = (
+                        "ganada" if pred["resultado"] == "acierto" else "perdida"
+                    )
+                    copia["profit"] = pred.get("profit")
+                    copia["solo_papel"] = True
             else:
                 copia["estado_apuesta"] = "pendiente"
                 copia["profit"] = None
@@ -1728,11 +1821,19 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
             copia["estado_apuesta"] = "sin_bloquear"
             copia["profit"] = None
             copia["pick_congelado"] = False
+            if copia.get("estado") == "EN VIVO":
+                copia["motivo_apuesta"] = (
+                    (copia.get("motivo_apuesta") or "")
+                    + " · Pick en vivo (puede cambiar; no cuenta hasta T-60)"
+                ).strip(" ·")
             if copia.get("estado") == "FINALIZADO":
                 copia["motivo_apuesta"] = (
                     (copia.get("motivo_apuesta") or "")
                     + " · Final sin pick congelado (no cuenta en papel)"
                 ).strip(" ·")
+            # Sin pick congelado: el panel no debe tratar el pick vivo como resultado
+            if copia.get("estado") in ("EN VIVO", "FINALIZADO"):
+                copia["solo_orientativo"] = True
         copia["apostable"] = copia.get("apostable", False)
         if not copia.get("motivo_apuesta"):
             copia["motivo_apuesta"] = ""
@@ -1902,6 +2003,15 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
     except Exception as e:
         print(f"Error cargando juegos: {e}")
 
+    # Marcar historial tardío (Yankees mid-game, etc.) sin borrar marcadores
+    try:
+        n_tarde = marcar_predicciones_tardias(memoria)
+        if n_tarde:
+            guardar_memoria(memoria)
+            print(f"[PREDICCIONES] Marcadas {n_tarde} como inválidas (congeladas tras el inicio).")
+    except Exception as e:
+        print(f"[PREDICCIONES] marcar tardías: {e}")
+
     # Calcular estadísticas del modelo
     stats_modelo = calcular_estadisticas_modelo(memoria)
     pl_split = resumen_predicciones_y_dinero(memoria)
@@ -1917,16 +2027,30 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
         "profit_dia": 0.0, "capital_arriesgado": 0.0, "total_apostado": 0.0,
     }
     preds_hoy = (dia or {}).get("predicciones") or []
-    pred_aciertos = sum(1 for p in preds_hoy if p.get("resultado") == "acierto")
-    pred_fallos = sum(1 for p in preds_hoy if p.get("resultado") == "fallo")
+    pred_aciertos = sum(
+        1
+        for p in preds_hoy
+        if p.get("resultado") == "acierto" and prediccion_valida_para_stats(p)
+    )
+    pred_fallos = sum(
+        1
+        for p in preds_hoy
+        if p.get("resultado") == "fallo" and prediccion_valida_para_stats(p)
+    )
     pred_pend = sum(1 for p in preds_hoy if p.get("estado") == "pendiente")
+    pred_excl = sum(1 for p in preds_hoy if not prediccion_valida_para_stats(p) and p.get("estado") == "liquidado")
     pred_neto = round(
-        sum(float(p.get("profit") or 0) for p in preds_hoy if p.get("profit") is not None),
+        sum(
+            float(p.get("profit") or 0)
+            for p in preds_hoy
+            if p.get("profit") is not None and prediccion_valida_para_stats(p)
+        ),
         2,
     )
     resumen_hoy["pred_aciertos"] = pred_aciertos
     resumen_hoy["pred_fallos"] = pred_fallos
     resumen_hoy["pred_pendientes"] = pred_pend
+    resumen_hoy["pred_excluidas_tarde"] = pred_excl
     resumen_hoy["pred_neto"] = pred_neto
     resumen_hoy["pred_total"] = len(preds_hoy)
     if dia:
