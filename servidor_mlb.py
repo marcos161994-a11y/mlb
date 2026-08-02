@@ -1147,38 +1147,13 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
 
 def rellenar_predicciones_fecha(memoria: dict, fecha: str) -> int:
     """
-    Si faltaron predicciones (servidor apagado), las crea para esa fecha
-    usando el modelo actual y los resultados de MLB.
+    Ya NO inventa picks a posteriori.
+
+    Antes rellenaba días pasados con el modelo actual + resultado ya conocido,
+    lo que fabricaba "8✓/7✗" falsos (ej. día 25 rellenado el 2 ago a las 19:26).
+    Esos picks contaminaban el historial del panel.
     """
-    dia = dia_por_fecha(memoria, fecha)
-    if not dia:
-        dia = asegurar_dia_operativo(memoria, fecha)
-
-    juegos = obtener_juegos_fecha(fecha, solo_resultados=False)
-    if not juegos:
-        return 0
-
-    stake_v = stake_virtual_prediccion(memoria)
-    ya = {p.get("game_id") for p in dia.get("predicciones", [])}
-    nuevas = 0
-
-    for juego in juegos:
-        if juego.get("estado") == "POSPUESTO":
-            continue
-        if not (juego.get("pick") or "").strip():
-            continue
-        if juego["id"] in ya:
-            continue
-        # Solo rellenar si el juego aún no había empezado al "congelar" ahora sería tarde:
-        # marcar siempre como retroactivo e inválido para stats.
-        if guardar_prediccion(dia, juego, con_dinero=False, stake_virtual=stake_v):
-            pred = next(p for p in dia["predicciones"] if p["game_id"] == juego["id"])
-            pred["retroactivo"] = True
-            pred["valida_stats"] = False
-            pred["invalida_tarde"] = True
-            nuevas += 1
-
-    return nuevas
+    return 0
 
 
 def rellenar_predicciones_recientes(memoria: dict, dias_atras: int = 7) -> int:
