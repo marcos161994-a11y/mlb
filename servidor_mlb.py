@@ -642,13 +642,29 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
             _lineas_meta_cache = {
                 "ok": True,
                 "fuente": "modelo",
-                "mensaje": "Modo solo modelo (sin BetMGM / sin Odds API)",
+                "mensaje": "Modo solo modelo (sin cuotas de mercado)",
                 "partidos": len(juegos),
             }
+            bias = calcular_bias_aprendizaje(memoria)
+            juegos = evaluar_juegos(juegos, cfg, bias)
         else:
             juegos, _lineas_meta_cache = aplicar_lineas_a_juegos(juegos, cfg)
-        bias = calcular_bias_aprendizaje(memoria)
-        juegos = evaluar_juegos(juegos, cfg, bias)
+            bias = calcular_bias_aprendizaje(memoria)
+            cfg_eval = cfg
+            # Si OddsPapi/API falla: degradar a solo modelo (no tumbar el día)
+            if not (_lineas_meta_cache or {}).get("ok") and (cfg.get("estrategia") or {}).get(
+                "fallback_solo_modelo", True
+            ):
+                cfg_eval = {**cfg, "modo_solo_modelo": True}
+                _lineas_meta_cache = {
+                    **(_lineas_meta_cache or {}),
+                    "fallback_solo_modelo": True,
+                    "mensaje": (
+                        f"{(_lineas_meta_cache or {}).get('mensaje') or 'Sin cuotas'} "
+                        "· fallback solo modelo"
+                    ),
+                }
+            juegos = evaluar_juegos(juegos, cfg_eval, bias)
     else:
         print(f"[INFO] Modo solo_resultados activo para {fecha or 'hoy'}. Saltando IA y Cuotas.")
         
@@ -1500,13 +1516,28 @@ def _bloquear_juego_locked(
         except Exception as e:
             print(f"[SCRATCH] refresh bloqueo: {e}")
 
-    # Con Odds API: exigir edge de mercado vigente para dinero
+    # Con mercado: exigir edge. Si no hay cuotas y hay fallback → solo % modelo.
     if not cfg.get("modo_solo_modelo") and (cfg.get("estrategia") or {}).get("requiere_betmgm", True):
         min_edge = float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0))
+        min_prob = float((cfg.get("estrategia") or {}).get("min_prob_modelo", 58.0))
         edge_now = juego.get("edge")
-        tiene_cuota = bool(juego.get("odds_away_decimal") or juego.get("odds_home_decimal") or juego.get("odds"))
-        if not tiene_cuota or edge_now is None or float(edge_now) < min_edge:
-            motivo = "Sin valor vs mercado ahora"
+        tiene_cuota_mkt = bool(
+            juego.get("odds_away_decimal") or juego.get("odds_home_decimal")
+        ) and (juego.get("lineas_fuente") not in (None, "", "modelo"))
+        if tiene_cuota_mkt:
+            if edge_now is None or float(edge_now) < min_edge:
+                motivo = "Sin valor vs mercado ahora"
+                if pred_existente is not None:
+                    pred_existente["apostable"] = False
+                guardar_memoria(memoria)
+                return {
+                    "ok": False,
+                    "motivo": motivo,
+                    "juego": juego["visitante"] + " vs " + juego["home"],
+                    "prediccion_guardada": True,
+                }
+        elif not (cfg.get("estrategia") or {}).get("fallback_solo_modelo", True):
+            motivo = "Sin cuota de mercado ahora"
             if pred_existente is not None:
                 pred_existente["apostable"] = False
             guardar_memoria(memoria)
@@ -1516,6 +1547,23 @@ def _bloquear_juego_locked(
                 "juego": juego["visitante"] + " vs " + juego["home"],
                 "prediccion_guardada": True,
             }
+        else:
+            # Fallback: dinero solo si el % del modelo alcanza el umbral
+            if pred_existente and pred_existente.get("probPick") is not None:
+                prob_now = float(pred_existente.get("probPick") or 0)
+            else:
+                prob_now = float(juego.get("probPick") or 0)
+            if prob_now < min_prob:
+                motivo = f"Sin mercado · modelo bajo {min_prob}%"
+                if pred_existente is not None:
+                    pred_existente["apostable"] = False
+                guardar_memoria(memoria)
+                return {
+                    "ok": False,
+                    "motivo": motivo,
+                    "juego": juego["visitante"] + " vs " + juego["home"],
+                    "prediccion_guardada": True,
+                }
 
     # Modelo propone → Groq veta/confirma → solo entonces dinero.
     # Si no hay key/timeout/error (SKIP): se sigue con el modelo.
@@ -2250,11 +2298,17 @@ def api_health():
         },
         "odds": {
             "activo": not bool(cfg.get("modo_solo_modelo")),
+            "proveedor": (cfg.get("lineas") or {}).get("proveedor") or "oddspapi",
             "requiere_mercado": bool((cfg.get("estrategia") or {}).get("requiere_betmgm", True)),
-            "bookmakers": (cfg.get("lineas") or {}).get("bookmakers") or "betmgm",
+            "fallback_solo_modelo": bool(
+                (cfg.get("estrategia") or {}).get("fallback_solo_modelo", True)
+            ),
+            "bookmakers": (cfg.get("lineas") or {}).get("bookmakers") or "draftkings",
             "min_edge_pct": float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0)),
             "key_presente": bool(
-                os.environ.get("ODDS_API_KEY", "").strip()
+                os.environ.get("ODDSPAPI_API_KEY", "").strip()
+                or os.environ.get("ODDS_PAPI_KEY", "").strip()
+                or os.environ.get("ODDS_API_KEY", "").strip()
                 or ((cfg.get("lineas") or {}).get("api_key") or "").strip()
             ),
         },
@@ -2313,25 +2367,57 @@ def api_lesiones_status():
 
 @app.get("/api/odds-status")
 def api_odds_status():
-    """Ping The Odds API (sin exponer la key). Dinero exige edge vs mercado."""
+    """Estado del proveedor de cuotas (OddsPapi / The Odds API)."""
     cfg = cargar_config()
     solo = bool(cfg.get("modo_solo_modelo"))
     requiere = bool((cfg.get("estrategia") or {}).get("requiere_betmgm", True))
+    proveedor = str((cfg.get("lineas") or {}).get("proveedor") or "oddspapi").lower()
     base = {
         "activo": not solo,
-        "requiere_mercado": requiere,
+        "requiere_mercado": requiere and not solo,
         "modo_solo_modelo": solo,
-        "bookmakers": (cfg.get("lineas") or {}).get("bookmakers") or "betmgm",
+        "bookmakers": (cfg.get("lineas") or {}).get("bookmakers") or "draftkings",
         "min_edge_pct": float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0)),
-        "proveedor": (cfg.get("lineas") or {}).get("proveedor") or "the-odds-api",
+        "proveedor": proveedor,
+        "fallback_solo_modelo": bool(
+            (cfg.get("estrategia") or {}).get("fallback_solo_modelo", True)
+        ),
     }
     if solo or not requiere:
         return {
             **base,
             "ok": True,
-            "motivo": "Modo solo modelo (dinero sin exigir Odds API)",
+            "desactivado": True,
+            "motivo": "Cuotas desactivadas (modo solo modelo)",
         }
     try:
+        if proveedor in ("oddspapi", "odds-papi", "odds_papi"):
+            from lineas_oddspapi import cargar_api_key, obtener_lineas_oddspapi
+
+            key = cargar_api_key(cfg)
+            if not key:
+                return {
+                    **base,
+                    "ok": False,
+                    "key_presente": False,
+                    "motivo": "Falta ODDSPAPI_API_KEY en Render (oddspapi.io)",
+                }
+            _, meta = obtener_lineas_oddspapi(cfg)
+            return {
+                **base,
+                "ok": bool(meta.get("ok")),
+                "key_presente": True,
+                "partidos": meta.get("partidos"),
+                "fixtures_mlb": meta.get("fixtures_mlb"),
+                "mensaje": meta.get("mensaje"),
+                "cache": meta.get("cache"),
+                "ayuda": (
+                    None
+                    if meta.get("ok")
+                    else "Crea key en https://oddspapi.io → Render ODDSPAPI_API_KEY → Save + Deploy"
+                ),
+            }
+
         from lineas_betmgm import cargar_api_key, obtener_lineas_betmgm
 
         key = cargar_api_key(cfg)
@@ -2340,7 +2426,7 @@ def api_odds_status():
                 **base,
                 "ok": False,
                 "key_presente": False,
-                "motivo": "Falta ODDS_API_KEY en Render (the-odds-api.com)",
+                "motivo": "Falta ODDS_API_KEY en Render",
             }
         _, meta = obtener_lineas_betmgm(cfg)
         return {
