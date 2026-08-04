@@ -2249,8 +2249,10 @@ def api_health():
             "metricas": ["fip", "xfip", "k_pct", "bb_pct"],
         },
         "odds": {
-            "activo": not bool(cfg.get("modo_solo_modelo")),
-            "requiere_mercado": bool((cfg.get("estrategia") or {}).get("requiere_betmgm", True)),
+            "activo": False,
+            "desactivado": True,
+            "motivo": "modo_solo_modelo=true (sin Odds API)",
+            "requiere_mercado": False,
             "bookmakers": (cfg.get("lineas") or {}).get("bookmakers") or "betmgm",
             "min_edge_pct": float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0)),
             "key_presente": bool(
@@ -2313,13 +2315,13 @@ def api_lesiones_status():
 
 @app.get("/api/odds-status")
 def api_odds_status():
-    """Ping The Odds API (sin exponer la key). Dinero exige edge vs mercado."""
+    """Estado Odds API. Con modo_solo_modelo no se usa ni se exige."""
     cfg = cargar_config()
     solo = bool(cfg.get("modo_solo_modelo"))
     requiere = bool((cfg.get("estrategia") or {}).get("requiere_betmgm", True))
     base = {
-        "activo": not solo,
-        "requiere_mercado": requiere,
+        "activo": False if solo else (not solo and requiere),
+        "requiere_mercado": requiere and not solo,
         "modo_solo_modelo": solo,
         "bookmakers": (cfg.get("lineas") or {}).get("bookmakers") or "betmgm",
         "min_edge_pct": float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0)),
@@ -2329,7 +2331,8 @@ def api_odds_status():
         return {
             **base,
             "ok": True,
-            "motivo": "Modo solo modelo (dinero sin exigir Odds API)",
+            "desactivado": True,
+            "motivo": "Odds API desactivada: dinero solo con % del modelo (≥ min_prob)",
         }
     try:
         from lineas_betmgm import cargar_api_key, obtener_lineas_betmgm
