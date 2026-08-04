@@ -236,6 +236,13 @@ def buscar_lineas_partido(
 
 
 def aplicar_lineas_a_juegos(juegos: list[dict], cfg: dict) -> tuple[list[dict], dict]:
+    """Enruta al proveedor configurado (oddspapi | the-odds-api)."""
+    proveedor = str((cfg.get("lineas") or {}).get("proveedor") or "oddspapi").lower()
+    if proveedor in ("oddspapi", "odds-papi", "odds_papi"):
+        from lineas_oddspapi import aplicar_lineas_oddspapi
+
+        return aplicar_lineas_oddspapi(juegos, cfg)
+
     mapa, meta = obtener_lineas_betmgm(cfg)
     for juego in juegos:
         lineas = buscar_lineas_partido(mapa, juego["visitante"], juego["home"])

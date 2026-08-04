@@ -18,15 +18,19 @@
 
   "lineas": {
 
-    "casa": "betmgm",
+    "casa": "draftkings",
 
-    "bookmakers": "betmgm,draftkings,fanduel",
+    "bookmakers": "draftkings,fanduel,betmgm,pinnacle",
 
-    "proveedor": "the-odds-api",
+    "proveedor": "oddspapi",
 
     "region": "us",
 
     "mercado": "h2h",
+
+    "sport_id": 13,
+
+    "tournament_id": 109,
 
     "api_key": ""
 
@@ -41,6 +45,8 @@
     "min_prob_modelo": 58.0,
 
     "requiere_betmgm": true,
+
+    "fallback_solo_modelo": true,
 
     "gestion_bankroll_dinamica": true,
 
