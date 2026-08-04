@@ -1049,7 +1049,8 @@ def guardar_prediccion(
         dia["predicciones"] = []
 
     stake_v = float(stake_virtual if stake_virtual is not None else stake_virtual_prediccion())
-    ahora = datetime.now(tz_experimento()).isoformat()
+    ahora_dt = datetime.now(tz_experimento())
+    ahora = ahora_dt.isoformat()
     existente = next((p for p in dia["predicciones"] if p.get("game_id") == juego["id"]), None)
     if existente:
         # No cambiar pick ya congelado; solo marcar si hubo dinero
@@ -1060,6 +1061,16 @@ def guardar_prediccion(
         # Backfill features reales si el pick se congeló antes del fix
         if not existente.get("ml_features") and isinstance(juego.get("ml_features"), dict):
             existente["ml_features"] = juego["ml_features"]
+        return False
+
+    # Seguridad: no crear pick nuevo si el juego ya empezó (o está EN VIVO/FINAL)
+    estado = juego.get("estado")
+    if estado in ("EN VIVO", "FINALIZADO", "POSPUESTO"):
+        print(f"[PREDICCIONES] No se congela pick nuevo en estado {estado} ({juego.get('visitante')}@{juego.get('home')})")
+        return False
+    inicio = _parse_iso_dt(juego.get("inicio_juego"))
+    if inicio and (ahora_dt - inicio).total_seconds() > 5 * 60:
+        print(f"[PREDICCIONES] No se congela pick post-inicio ({juego.get('visitante')}@{juego.get('home')})")
         return False
 
     prob = float(juego.get("probPick") or 50)
@@ -1097,6 +1108,8 @@ def guardar_prediccion(
             "stake_virtual": stake_v,
             "con_dinero": bool(con_dinero),
             "predicho_en": ahora,
+            "valida_stats": True,
+            "invalida_tarde": False,
             "clima": juego.get("clima") if isinstance(juego.get("clima"), dict) else None,
             "lesiones": juego.get("lesiones") if isinstance(juego.get("lesiones"), dict) else None,
             "scratch_lineup": juego.get("scratch_lineup") if isinstance(juego.get("scratch_lineup"), dict) else None,
@@ -1401,7 +1414,10 @@ def _bloquear_juego_locked(
         }
 
     stake_v = stake_virtual_prediccion(memoria)
-    guardar_prediccion(dia, juego, con_dinero=False, stake_virtual=stake_v)
+    # Solo congelar papel en PROGRAMADO. EN VIVO (gracia) no debe crear pick nuevo
+    # — eso fue el caso Yankees / Twins de hoy (cambia a mitad y sesga).
+    if juego.get("estado") == "PROGRAMADO":
+        guardar_prediccion(dia, juego, con_dinero=False, stake_virtual=stake_v)
 
     # Si ya había predicción congelada, la apuesta con dinero debe usar ESE pick
     pred_existente = next(

@@ -53,3 +53,21 @@ def test_marcar_memoria():
     assert n == 1
     assert mem["dias"][0]["predicciones"][0]["invalida_tarde"] is True
     assert mem["dias"][0]["predicciones"][0]["valida_stats"] is False
+
+
+def test_guardar_no_crea_en_vivo():
+    from servidor_mlb import guardar_prediccion
+
+    dia = {"predicciones": []}
+    juego = {
+        "id": "999",
+        "estado": "EN VIVO",
+        "visitante": "Twins",
+        "home": "Mariners",
+        "pick": "Twins ML",
+        "probPick": 63.4,
+        "odds": 2.0,
+        "inicio_juego": "2026-08-01T16:10:00-04:00",
+    }
+    assert guardar_prediccion(dia, juego) is False
+    assert dia["predicciones"] == []
