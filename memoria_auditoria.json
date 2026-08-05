@@ -2,7 +2,7 @@
   "modo": "simulacion",
   "capital": 96.0,
   "capital_inicial": 100.0,
-  "dia_actual": 28,
+  "dia_actual": 29,
   "dias_totales": 200,
   "stake_por_juego": 5.0,
   "experimento_activo": true,
@@ -166,7 +166,9 @@
           "marcador_final": "Athletics 1 - Detroit Tigers 4",
           "liquidado_en": "2026-07-09T21:09:33.648732-04:00",
           "profit": 0.05,
-          "stake_virtual": 5.0
+          "stake_virtual": 5.0,
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823846",
@@ -187,7 +189,9 @@
           "marcador_final": "Seattle Mariners 4 - Miami Marlins 8",
           "liquidado_en": "2026-07-09T21:09:33.648923-04:00",
           "profit": 0.05,
-          "stake_virtual": 5.0
+          "stake_virtual": 5.0,
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824494",
@@ -208,7 +212,9 @@
           "marcador_final": "Philadelphia Phillies 1 - Cincinnati Reds 0",
           "liquidado_en": "2026-07-09T21:09:33.649066-04:00",
           "profit": -5.0,
-          "stake_virtual": 5.0
+          "stake_virtual": 5.0,
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823034",
@@ -229,7 +235,9 @@
           "marcador_final": "Milwaukee Brewers 6 - St. Louis Cardinals 1",
           "liquidado_en": "2026-07-09T21:09:33.649210-04:00",
           "profit": 0.1,
-          "stake_virtual": 5.0
+          "stake_virtual": 5.0,
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "822877",
@@ -250,7 +258,9 @@
           "marcador_final": "Los Angeles Angels 1 - Texas Rangers 2",
           "liquidado_en": "2026-07-09T21:09:33.649345-04:00",
           "profit": 1.82,
-          "stake_virtual": 5.0
+          "stake_virtual": 5.0,
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823277",
@@ -271,7 +281,8 @@
           "marcador_final": "Arizona Diamondbacks 3 - San Diego Padres 1",
           "liquidado_en": "2026-07-09T23:51:36.251549-04:00",
           "profit": -5.0,
-          "stake_virtual": 5.0
+          "stake_virtual": 5.0,
+          "valida_stats": true
         },
         {
           "game_id": "823201",
@@ -292,7 +303,8 @@
           "marcador_final": "Colorado Rockies 2 - San Francisco Giants 4",
           "liquidado_en": "2026-07-09T23:51:36.251746-04:00",
           "profit": 3.84,
-          "stake_virtual": 5.0
+          "stake_virtual": 5.0,
+          "valida_stats": true
         }
       ],
       "resumen": {
@@ -459,7 +471,9 @@
           "con_dinero": false,
           "predicho_en": "2026-07-18T23:31:37.104173-04:00",
           "marcador_final": "Washington Nationals 1 - Athletics 15",
-          "liquidado_en": "2026-07-26T14:55:42.310429-04:00"
+          "liquidado_en": "2026-07-26T14:55:42.310429-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824008",
@@ -481,7 +495,9 @@
           "con_dinero": false,
           "predicho_en": "2026-07-18T23:31:37.104212-04:00",
           "marcador_final": "Detroit Tigers 7 - Los Angeles Angels 0",
-          "liquidado_en": "2026-07-26T14:55:42.310564-04:00"
+          "liquidado_en": "2026-07-26T14:55:42.310564-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         }
       ],
       "resumen": {
@@ -521,7 +537,9 @@
           "predicho_en": "2026-07-26T14:55:32.563960-04:00",
           "retroactivo": true,
           "marcador_final": "Chicago White Sox 3 - Toronto Blue Jays 0",
-          "liquidado_en": "2026-07-26T14:55:43.469986-04:00"
+          "liquidado_en": "2026-07-26T14:55:43.469986-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823523",
@@ -545,7 +563,9 @@
           "predicho_en": "2026-07-26T14:55:32.564035-04:00",
           "retroactivo": true,
           "marcador_final": "Los Angeles Dodgers 8 - New York Yankees 2",
-          "liquidado_en": "2026-07-26T14:55:43.470120-04:00"
+          "liquidado_en": "2026-07-26T14:55:43.470120-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823521",
@@ -569,7 +589,9 @@
           "predicho_en": "2026-07-26T14:55:32.564097-04:00",
           "retroactivo": true,
           "marcador_final": "Los Angeles Dodgers 1 - New York Yankees 2",
-          "liquidado_en": "2026-07-26T14:55:43.470231-04:00"
+          "liquidado_en": "2026-07-26T14:55:43.470231-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824739",
@@ -593,7 +615,9 @@
           "predicho_en": "2026-07-26T14:55:32.564155-04:00",
           "retroactivo": true,
           "marcador_final": "Tampa Bay Rays 1 - Boston Red Sox 6",
-          "liquidado_en": "2026-07-26T14:55:43.470339-04:00"
+          "liquidado_en": "2026-07-26T14:55:43.470339-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823439",
@@ -617,7 +641,9 @@
           "predicho_en": "2026-07-26T14:55:32.564213-04:00",
           "retroactivo": true,
           "marcador_final": "New York Mets 6 - Philadelphia Phillies 1",
-          "liquidado_en": "2026-07-26T14:55:43.470442-04:00"
+          "liquidado_en": "2026-07-26T14:55:43.470442-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824897",
@@ -641,7 +667,9 @@
           "predicho_en": "2026-07-26T14:55:32.564270-04:00",
           "retroactivo": true,
           "marcador_final": "Texas Rangers 5 - Atlanta Braves 8",
-          "liquidado_en": "2026-07-26T14:55:43.470547-04:00"
+          "liquidado_en": "2026-07-26T14:55:43.470547-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824411",
@@ -665,7 +693,9 @@
           "predicho_en": "2026-07-26T14:55:32.564328-04:00",
           "retroactivo": true,
           "marcador_final": "Pittsburgh Pirates 7 - Cleveland Guardians 1",
-          "liquidado_en": "2026-07-26T14:55:43.470644-04:00"
+          "liquidado_en": "2026-07-26T14:55:43.470644-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824168",
@@ -689,7 +719,9 @@
           "predicho_en": "2026-07-26T14:55:32.564386-04:00",
           "retroactivo": true,
           "marcador_final": "Baltimore Orioles 5 - Houston Astros 2",
-          "liquidado_en": "2026-07-26T14:55:43.470767-04:00"
+          "liquidado_en": "2026-07-26T14:55:43.470767-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824086",
@@ -713,7 +745,9 @@
           "predicho_en": "2026-07-26T14:55:32.564443-04:00",
           "retroactivo": true,
           "marcador_final": "San Diego Padres 19 - Kansas City Royals 2",
-          "liquidado_en": "2026-07-26T14:55:43.470850-04:00"
+          "liquidado_en": "2026-07-26T14:55:43.470850-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823764",
@@ -737,7 +771,9 @@
           "predicho_en": "2026-07-26T14:55:32.564499-04:00",
           "retroactivo": true,
           "marcador_final": "Miami Marlins 1 - Milwaukee Brewers 3",
-          "liquidado_en": "2026-07-26T14:55:43.470920-04:00"
+          "liquidado_en": "2026-07-26T14:55:43.470920-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824653",
@@ -761,7 +797,9 @@
           "predicho_en": "2026-07-26T14:55:32.564553-04:00",
           "retroactivo": true,
           "marcador_final": "Minnesota Twins 1 - Chicago Cubs 10",
-          "liquidado_en": "2026-07-26T14:55:43.471005-04:00"
+          "liquidado_en": "2026-07-26T14:55:43.471005-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824330",
@@ -785,7 +823,9 @@
           "predicho_en": "2026-07-26T14:55:32.564608-04:00",
           "retroactivo": true,
           "marcador_final": "Cincinnati Reds 9 - Colorado Rockies 6",
-          "liquidado_en": "2026-07-26T14:55:43.471078-04:00"
+          "liquidado_en": "2026-07-26T14:55:43.471078-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824978",
@@ -809,7 +849,9 @@
           "predicho_en": "2026-07-26T14:55:32.564663-04:00",
           "retroactivo": true,
           "marcador_final": "Washington Nationals 5 - Athletics 2",
-          "liquidado_en": "2026-07-26T14:55:43.471143-04:00"
+          "liquidado_en": "2026-07-26T14:55:43.471143-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824007",
@@ -833,7 +875,9 @@
           "predicho_en": "2026-07-26T14:55:32.564739-04:00",
           "retroactivo": true,
           "marcador_final": "Detroit Tigers 2 - Los Angeles Angels 3",
-          "liquidado_en": "2026-07-26T14:55:43.471228-04:00"
+          "liquidado_en": "2026-07-26T14:55:43.471228-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823113",
@@ -857,7 +901,9 @@
           "predicho_en": "2026-07-26T14:55:32.564800-04:00",
           "retroactivo": true,
           "marcador_final": "San Francisco Giants 3 - Seattle Mariners 6",
-          "liquidado_en": "2026-07-26T14:55:43.471309-04:00"
+          "liquidado_en": "2026-07-26T14:55:43.471309-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "825057",
@@ -881,7 +927,9 @@
           "predicho_en": "2026-07-26T14:55:32.564855-04:00",
           "retroactivo": true,
           "marcador_final": "St. Louis Cardinals 7 - Arizona Diamondbacks 8",
-          "liquidado_en": "2026-07-26T14:55:43.471392-04:00"
+          "liquidado_en": "2026-07-26T14:55:43.471392-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         }
       ],
       "bloqueado_en": null,
@@ -922,7 +970,9 @@
           "predicho_en": "2026-07-26T14:55:29.675225-04:00",
           "retroactivo": true,
           "marcador_final": "Minnesota Twins 4 - Cleveland Guardians 13",
-          "liquidado_en": "2026-07-26T14:55:46.270821-04:00"
+          "liquidado_en": "2026-07-26T14:55:46.270821-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823522",
@@ -946,7 +996,9 @@
           "predicho_en": "2026-07-26T14:55:29.675304-04:00",
           "retroactivo": true,
           "marcador_final": "Pittsburgh Pirates 5 - New York Yankees 8",
-          "liquidado_en": "2026-07-26T14:55:46.270946-04:00"
+          "liquidado_en": "2026-07-26T14:55:46.270946-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "822788",
@@ -970,7 +1022,9 @@
           "predicho_en": "2026-07-26T14:55:29.675365-04:00",
           "retroactivo": true,
           "marcador_final": "Tampa Bay Rays 7 - Toronto Blue Jays 1",
-          "liquidado_en": "2026-07-26T14:55:46.271038-04:00"
+          "liquidado_en": "2026-07-26T14:55:46.271038-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824736",
@@ -994,7 +1048,9 @@
           "predicho_en": "2026-07-26T14:55:29.675423-04:00",
           "retroactivo": true,
           "marcador_final": "Baltimore Orioles 5 - Boston Red Sox 6",
-          "liquidado_en": "2026-07-26T14:55:46.271127-04:00"
+          "liquidado_en": "2026-07-26T14:55:46.271127-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823436",
@@ -1018,7 +1074,9 @@
           "predicho_en": "2026-07-26T14:55:29.675479-04:00",
           "retroactivo": true,
           "marcador_final": "Los Angeles Dodgers 7 - Philadelphia Phillies 10",
-          "liquidado_en": "2026-07-26T14:55:46.271210-04:00"
+          "liquidado_en": "2026-07-26T14:55:46.271210-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824898",
@@ -1042,7 +1100,9 @@
           "predicho_en": "2026-07-26T14:55:29.675534-04:00",
           "retroactivo": true,
           "marcador_final": "San Diego Padres 2 - Atlanta Braves 3",
-          "liquidado_en": "2026-07-26T14:55:46.271297-04:00"
+          "liquidado_en": "2026-07-26T14:55:46.271297-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824087",
@@ -1066,7 +1126,9 @@
           "predicho_en": "2026-07-26T14:55:29.675590-04:00",
           "retroactivo": true,
           "marcador_final": "San Francisco Giants 3 - Kansas City Royals 4",
-          "liquidado_en": "2026-07-26T14:55:46.271380-04:00"
+          "liquidado_en": "2026-07-26T14:55:46.271380-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823762",
@@ -1090,7 +1152,9 @@
           "predicho_en": "2026-07-26T14:55:29.675645-04:00",
           "retroactivo": true,
           "marcador_final": "New York Mets 3 - Milwaukee Brewers 8",
-          "liquidado_en": "2026-07-26T14:55:46.271501-04:00"
+          "liquidado_en": "2026-07-26T14:55:46.271501-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824654",
@@ -1114,7 +1178,9 @@
           "predicho_en": "2026-07-26T14:55:29.760985-04:00",
           "retroactivo": true,
           "marcador_final": "Detroit Tigers 8 - Chicago Cubs 6",
-          "liquidado_en": "2026-07-26T14:55:46.271654-04:00"
+          "liquidado_en": "2026-07-26T14:55:46.271654-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "822874",
@@ -1138,7 +1204,9 @@
           "predicho_en": "2026-07-26T14:55:29.761175-04:00",
           "retroactivo": true,
           "marcador_final": "Chicago White Sox 10 - Texas Rangers 3",
-          "liquidado_en": "2026-07-26T14:55:46.271802-04:00"
+          "liquidado_en": "2026-07-26T14:55:46.271802-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824167",
@@ -1162,7 +1230,9 @@
           "predicho_en": "2026-07-26T14:55:29.761270-04:00",
           "retroactivo": true,
           "marcador_final": "Miami Marlins 5 - Houston Astros 8",
-          "liquidado_en": "2026-07-26T14:55:46.271899-04:00"
+          "liquidado_en": "2026-07-26T14:55:46.271899-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824328",
@@ -1186,7 +1256,9 @@
           "predicho_en": "2026-07-26T14:55:29.761359-04:00",
           "retroactivo": true,
           "marcador_final": "Washington Nationals 7 - Colorado Rockies 3",
-          "liquidado_en": "2026-07-26T14:55:46.272006-04:00"
+          "liquidado_en": "2026-07-26T14:55:46.272006-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "825058",
@@ -1210,7 +1282,9 @@
           "predicho_en": "2026-07-26T14:55:29.761441-04:00",
           "retroactivo": true,
           "marcador_final": "Athletics 5 - Arizona Diamondbacks 2",
-          "liquidado_en": "2026-07-26T14:55:46.272159-04:00"
+          "liquidado_en": "2026-07-26T14:55:46.272159-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823112",
@@ -1234,7 +1308,9 @@
           "predicho_en": "2026-07-26T14:55:29.761516-04:00",
           "retroactivo": true,
           "marcador_final": "Cincinnati Reds 0 - Seattle Mariners 8",
-          "liquidado_en": "2026-07-26T14:55:46.272247-04:00"
+          "liquidado_en": "2026-07-26T14:55:46.272247-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824006",
@@ -1258,7 +1334,9 @@
           "predicho_en": "2026-07-26T14:55:29.761591-04:00",
           "retroactivo": true,
           "marcador_final": "St. Louis Cardinals 2 - Los Angeles Angels 3",
-          "liquidado_en": "2026-07-26T14:55:46.272323-04:00"
+          "liquidado_en": "2026-07-26T14:55:46.272323-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         }
       ],
       "bloqueado_en": null,
@@ -1299,7 +1377,9 @@
           "predicho_en": "2026-07-26T14:55:26.769866-04:00",
           "retroactivo": true,
           "marcador_final": "Minnesota Twins 2 - Cleveland Guardians 5",
-          "liquidado_en": "2026-07-26T14:55:48.661584-04:00"
+          "liquidado_en": "2026-07-26T14:55:48.661584-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823437",
@@ -1323,7 +1403,9 @@
           "predicho_en": "2026-07-26T14:55:26.769942-04:00",
           "retroactivo": true,
           "marcador_final": "Los Angeles Dodgers 2 - Philadelphia Phillies 1",
-          "liquidado_en": "2026-07-26T14:55:48.663434-04:00"
+          "liquidado_en": "2026-07-26T14:55:48.663434-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "822787",
@@ -1347,7 +1429,9 @@
           "predicho_en": "2026-07-26T14:55:26.770002-04:00",
           "retroactivo": true,
           "marcador_final": "Tampa Bay Rays 12 - Toronto Blue Jays 2",
-          "liquidado_en": "2026-07-26T14:55:48.663549-04:00"
+          "liquidado_en": "2026-07-26T14:55:48.663549-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824895",
@@ -1371,7 +1455,9 @@
           "predicho_en": "2026-07-26T14:55:26.770064-04:00",
           "retroactivo": true,
           "marcador_final": "San Diego Padres 8 - Atlanta Braves 3",
-          "liquidado_en": "2026-07-26T14:55:48.663655-04:00"
+          "liquidado_en": "2026-07-26T14:55:48.663655-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824085",
@@ -1395,7 +1481,9 @@
           "predicho_en": "2026-07-26T14:55:26.770123-04:00",
           "retroactivo": true,
           "marcador_final": "San Francisco Giants 2 - Kansas City Royals 3",
-          "liquidado_en": "2026-07-26T14:55:48.663815-04:00"
+          "liquidado_en": "2026-07-26T14:55:48.663815-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823760",
@@ -1419,7 +1507,9 @@
           "predicho_en": "2026-07-26T14:55:26.770182-04:00",
           "retroactivo": true,
           "marcador_final": "New York Mets 4 - Milwaukee Brewers 0",
-          "liquidado_en": "2026-07-26T14:55:48.663902-04:00"
+          "liquidado_en": "2026-07-26T14:55:48.663902-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824652",
@@ -1443,7 +1533,9 @@
           "predicho_en": "2026-07-26T14:55:26.770240-04:00",
           "retroactivo": true,
           "marcador_final": "Detroit Tigers 2 - Chicago Cubs 11",
-          "liquidado_en": "2026-07-26T14:55:48.663997-04:00"
+          "liquidado_en": "2026-07-26T14:55:48.663997-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "822871",
@@ -1467,7 +1559,9 @@
           "predicho_en": "2026-07-26T14:55:26.770297-04:00",
           "retroactivo": true,
           "marcador_final": "Chicago White Sox 0 - Texas Rangers 10",
-          "liquidado_en": "2026-07-26T14:55:48.664090-04:00"
+          "liquidado_en": "2026-07-26T14:55:48.664090-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824165",
@@ -1491,7 +1585,9 @@
           "predicho_en": "2026-07-26T14:55:26.770355-04:00",
           "retroactivo": true,
           "marcador_final": "Miami Marlins 3 - Houston Astros 5",
-          "liquidado_en": "2026-07-26T14:55:48.664195-04:00"
+          "liquidado_en": "2026-07-26T14:55:48.664195-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824329",
@@ -1515,7 +1611,9 @@
           "predicho_en": "2026-07-26T14:55:26.770413-04:00",
           "retroactivo": true,
           "marcador_final": "Washington Nationals 7 - Colorado Rockies 8",
-          "liquidado_en": "2026-07-26T14:55:48.664289-04:00"
+          "liquidado_en": "2026-07-26T14:55:48.664289-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824005",
@@ -1539,7 +1637,9 @@
           "predicho_en": "2026-07-26T14:55:26.770470-04:00",
           "retroactivo": true,
           "marcador_final": "St. Louis Cardinals 1 - Los Angeles Angels 5",
-          "liquidado_en": "2026-07-26T14:55:48.664381-04:00"
+          "liquidado_en": "2026-07-26T14:55:48.664381-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "825056",
@@ -1563,7 +1663,9 @@
           "predicho_en": "2026-07-26T14:55:26.770546-04:00",
           "retroactivo": true,
           "marcador_final": "Athletics 5 - Arizona Diamondbacks 6",
-          "liquidado_en": "2026-07-26T14:55:48.664487-04:00"
+          "liquidado_en": "2026-07-26T14:55:48.664487-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823114",
@@ -1587,7 +1689,9 @@
           "predicho_en": "2026-07-26T14:55:26.770604-04:00",
           "retroactivo": true,
           "marcador_final": "Cincinnati Reds 4 - Seattle Mariners 2",
-          "liquidado_en": "2026-07-26T14:55:48.664580-04:00"
+          "liquidado_en": "2026-07-26T14:55:48.664580-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         }
       ],
       "bloqueado_en": null,
@@ -1628,7 +1732,9 @@
           "predicho_en": "2026-07-26T14:55:23.464771-04:00",
           "retroactivo": true,
           "marcador_final": "Pittsburgh Pirates 5 - New York Yankees 3",
-          "liquidado_en": "2026-07-26T14:55:51.075900-04:00"
+          "liquidado_en": "2026-07-26T14:55:51.075900-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823519",
@@ -1652,7 +1758,9 @@
           "predicho_en": "2026-07-26T14:55:23.464848-04:00",
           "retroactivo": true,
           "marcador_final": "Pittsburgh Pirates 0 - New York Yankees 2",
-          "liquidado_en": "2026-07-26T14:55:51.076001-04:00"
+          "liquidado_en": "2026-07-26T14:55:51.076001-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824735",
@@ -1676,7 +1784,9 @@
           "predicho_en": "2026-07-26T14:55:23.464910-04:00",
           "retroactivo": true,
           "marcador_final": "Baltimore Orioles 3 - Boston Red Sox 6",
-          "liquidado_en": "2026-07-26T14:55:51.076076-04:00"
+          "liquidado_en": "2026-07-26T14:55:51.076076-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824732",
@@ -1700,7 +1810,9 @@
           "predicho_en": "2026-07-26T14:55:23.464969-04:00",
           "retroactivo": true,
           "marcador_final": "Baltimore Orioles 5 - Boston Red Sox 1",
-          "liquidado_en": "2026-07-26T14:55:51.076144-04:00"
+          "liquidado_en": "2026-07-26T14:55:51.076144-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824083",
@@ -1724,7 +1836,9 @@
           "predicho_en": "2026-07-26T14:55:23.465026-04:00",
           "retroactivo": true,
           "marcador_final": "San Francisco Giants 4 - Kansas City Royals 5",
-          "liquidado_en": "2026-07-26T14:55:51.076210-04:00"
+          "liquidado_en": "2026-07-26T14:55:51.076210-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823761",
@@ -1748,7 +1862,9 @@
           "predicho_en": "2026-07-26T14:55:23.465081-04:00",
           "retroactivo": true,
           "marcador_final": "New York Mets 3 - Milwaukee Brewers 4",
-          "liquidado_en": "2026-07-26T14:55:51.076296-04:00"
+          "liquidado_en": "2026-07-26T14:55:51.076296-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824327",
@@ -1772,7 +1888,9 @@
           "predicho_en": "2026-07-26T14:55:23.465137-04:00",
           "retroactivo": true,
           "marcador_final": "Washington Nationals 8 - Colorado Rockies 0",
-          "liquidado_en": "2026-07-26T14:55:51.076403-04:00"
+          "liquidado_en": "2026-07-26T14:55:51.076403-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "825055",
@@ -1796,7 +1914,9 @@
           "predicho_en": "2026-07-26T14:55:23.465194-04:00",
           "retroactivo": true,
           "marcador_final": "Athletics 5 - Arizona Diamondbacks 15",
-          "liquidado_en": "2026-07-26T14:55:51.076485-04:00"
+          "liquidado_en": "2026-07-26T14:55:51.076485-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823110",
@@ -1820,7 +1940,9 @@
           "predicho_en": "2026-07-26T14:55:23.465250-04:00",
           "retroactivo": true,
           "marcador_final": "Cincinnati Reds 5 - Seattle Mariners 3",
-          "liquidado_en": "2026-07-26T14:55:51.076551-04:00"
+          "liquidado_en": "2026-07-26T14:55:51.076551-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824004",
@@ -1844,7 +1966,9 @@
           "predicho_en": "2026-07-26T14:55:23.465306-04:00",
           "retroactivo": true,
           "marcador_final": "St. Louis Cardinals 1 - Los Angeles Angels 0",
-          "liquidado_en": "2026-07-26T14:55:51.076618-04:00"
+          "liquidado_en": "2026-07-26T14:55:51.076618-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824408",
@@ -1868,7 +1992,9 @@
           "predicho_en": "2026-07-26T14:55:23.465361-04:00",
           "retroactivo": true,
           "marcador_final": "Minnesota Twins 10 - Cleveland Guardians 6",
-          "liquidado_en": "2026-07-26T14:55:51.076683-04:00"
+          "liquidado_en": "2026-07-26T14:55:51.076683-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823438",
@@ -1892,7 +2018,9 @@
           "predicho_en": "2026-07-26T14:55:23.465416-04:00",
           "retroactivo": true,
           "marcador_final": "Los Angeles Dodgers 9 - Philadelphia Phillies 5",
-          "liquidado_en": "2026-07-26T14:55:51.160596-04:00"
+          "liquidado_en": "2026-07-26T14:55:51.160596-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "822784",
@@ -1916,7 +2044,9 @@
           "predicho_en": "2026-07-26T14:55:23.465472-04:00",
           "retroactivo": true,
           "marcador_final": "Tampa Bay Rays 4 - Toronto Blue Jays 2",
-          "liquidado_en": "2026-07-26T14:55:51.162681-04:00"
+          "liquidado_en": "2026-07-26T14:55:51.162681-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824896",
@@ -1940,7 +2070,9 @@
           "predicho_en": "2026-07-26T14:55:23.465528-04:00",
           "retroactivo": true,
           "marcador_final": "San Diego Padres 6 - Atlanta Braves 7",
-          "liquidado_en": "2026-07-26T14:55:51.162814-04:00"
+          "liquidado_en": "2026-07-26T14:55:51.162814-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "822873",
@@ -1964,7 +2096,9 @@
           "predicho_en": "2026-07-26T14:55:23.465585-04:00",
           "retroactivo": true,
           "marcador_final": "Chicago White Sox 4 - Texas Rangers 2",
-          "liquidado_en": "2026-07-26T14:55:51.162905-04:00"
+          "liquidado_en": "2026-07-26T14:55:51.162905-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824650",
@@ -1988,7 +2122,9 @@
           "predicho_en": "2026-07-26T14:55:23.465642-04:00",
           "retroactivo": true,
           "marcador_final": "Detroit Tigers 5 - Chicago Cubs 1",
-          "liquidado_en": "2026-07-26T14:55:51.162997-04:00"
+          "liquidado_en": "2026-07-26T14:55:51.162997-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824166",
@@ -2012,7 +2148,9 @@
           "predicho_en": "2026-07-26T14:55:23.465697-04:00",
           "retroactivo": true,
           "marcador_final": "Miami Marlins 2 - Houston Astros 5",
-          "liquidado_en": "2026-07-26T14:55:51.163091-04:00"
+          "liquidado_en": "2026-07-26T14:55:51.163091-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         }
       ],
       "bloqueado_en": null,
@@ -2052,7 +2190,9 @@
           "predicho_en": "2026-07-23T21:04:49.967088-04:00",
           "retroactivo": true,
           "marcador_final": "San Diego Padres 5 - Atlanta Braves 6",
-          "liquidado_en": "2026-07-23T21:09:08.161764-04:00"
+          "liquidado_en": "2026-07-23T21:09:08.161764-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824406",
@@ -2075,7 +2215,9 @@
           "predicho_en": "2026-07-23T21:04:49.967743-04:00",
           "retroactivo": true,
           "marcador_final": "Minnesota Twins 3 - Cleveland Guardians 1",
-          "liquidado_en": "2026-07-23T21:09:08.161950-04:00"
+          "liquidado_en": "2026-07-23T21:09:08.161950-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "822785",
@@ -2098,7 +2240,9 @@
           "predicho_en": "2026-07-23T21:04:49.969224-04:00",
           "retroactivo": true,
           "marcador_final": "Tampa Bay Rays 1 - Toronto Blue Jays 3",
-          "liquidado_en": "2026-07-23T21:09:08.162042-04:00"
+          "liquidado_en": "2026-07-23T21:09:08.162042-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823042",
@@ -2121,7 +2265,9 @@
           "predicho_en": "2026-07-23T21:04:49.969443-04:00",
           "retroactivo": true,
           "marcador_final": "Arizona Diamondbacks 10 - St. Louis Cardinals 6",
-          "liquidado_en": "2026-07-23T21:09:08.162166-04:00"
+          "liquidado_en": "2026-07-23T21:09:08.162166-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824247",
@@ -2144,7 +2290,9 @@
           "predicho_en": "2026-07-23T21:04:50.071068-04:00",
           "retroactivo": true,
           "marcador_final": "Kansas City Royals 3 - Detroit Tigers 4",
-          "liquidado_en": "2026-07-26T14:55:53.563810-04:00"
+          "liquidado_en": "2026-07-26T14:55:53.563810-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         }
       ],
       "bloqueado_en": null,
@@ -2186,7 +2334,9 @@
           "predicho_en": "2026-07-26T14:55:09.669496-04:00",
           "retroactivo": true,
           "marcador_final": "Colorado Rockies 5 - Milwaukee Brewers 2",
-          "liquidado_en": "2026-07-26T14:55:55.968035-04:00"
+          "liquidado_en": "2026-07-26T14:55:55.968035-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824248",
@@ -2210,7 +2360,9 @@
           "predicho_en": "2026-07-26T14:55:09.670227-04:00",
           "retroactivo": true,
           "marcador_final": "Kansas City Royals 1 - Detroit Tigers 2",
-          "liquidado_en": "2026-07-26T14:55:55.968338-04:00"
+          "liquidado_en": "2026-07-26T14:55:55.968338-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823352",
@@ -2234,7 +2386,9 @@
           "predicho_en": "2026-07-26T14:55:09.670345-04:00",
           "retroactivo": true,
           "marcador_final": "Chicago Cubs 3 - Pittsburgh Pirates 2",
-          "liquidado_en": "2026-07-26T14:55:55.968458-04:00"
+          "liquidado_en": "2026-07-26T14:55:55.968458-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "822707",
@@ -2258,7 +2412,9 @@
           "predicho_en": "2026-07-26T14:55:09.670891-04:00",
           "retroactivo": true,
           "marcador_final": "Arizona Diamondbacks 3 - Washington Nationals 2",
-          "liquidado_en": "2026-07-26T14:55:55.968587-04:00"
+          "liquidado_en": "2026-07-26T14:55:55.968587-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823434",
@@ -2282,7 +2438,9 @@
           "predicho_en": "2026-07-26T14:55:09.671173-04:00",
           "retroactivo": true,
           "marcador_final": "New York Yankees 1 - Philadelphia Phillies 0",
-          "liquidado_en": "2026-07-26T14:55:55.968690-04:00"
+          "liquidado_en": "2026-07-26T14:55:55.968690-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824812",
@@ -2306,7 +2464,9 @@
           "predicho_en": "2026-07-26T14:55:09.671318-04:00",
           "retroactivo": true,
           "marcador_final": "Atlanta Braves 7 - Baltimore Orioles 6",
-          "liquidado_en": "2026-07-26T14:55:55.968822-04:00"
+          "liquidado_en": "2026-07-26T14:55:55.968822-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823601",
@@ -2330,7 +2490,9 @@
           "predicho_en": "2026-07-26T14:55:09.671406-04:00",
           "retroactivo": true,
           "marcador_final": "Los Angeles Dodgers 4 - New York Mets 2",
-          "liquidado_en": "2026-07-26T14:55:55.968953-04:00"
+          "liquidado_en": "2026-07-26T14:55:55.968953-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "822952",
@@ -2354,7 +2516,9 @@
           "predicho_en": "2026-07-26T14:55:09.672916-04:00",
           "retroactivo": true,
           "marcador_final": "Cleveland Guardians 3 - Tampa Bay Rays 11",
-          "liquidado_en": "2026-07-26T14:55:55.969061-04:00"
+          "liquidado_en": "2026-07-26T14:55:55.969061-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823843",
@@ -2378,7 +2542,9 @@
           "predicho_en": "2026-07-26T14:55:09.673018-04:00",
           "retroactivo": true,
           "marcador_final": "San Diego Padres 4 - Miami Marlins 2",
-          "liquidado_en": "2026-07-26T14:55:55.969164-04:00"
+          "liquidado_en": "2026-07-26T14:55:55.969164-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824733",
@@ -2402,7 +2568,9 @@
           "predicho_en": "2026-07-26T14:55:09.673107-04:00",
           "retroactivo": true,
           "marcador_final": "Toronto Blue Jays 4 - Boston Red Sox 6",
-          "liquidado_en": "2026-07-26T14:55:55.969255-04:00"
+          "liquidado_en": "2026-07-26T14:55:55.969255-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824573",
@@ -2426,7 +2594,9 @@
           "predicho_en": "2026-07-26T14:55:09.673194-04:00",
           "retroactivo": true,
           "marcador_final": "Houston Astros 9 - Chicago White Sox 5",
-          "liquidado_en": "2026-07-26T14:55:55.969355-04:00"
+          "liquidado_en": "2026-07-26T14:55:55.969355-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "822872",
@@ -2450,7 +2620,9 @@
           "predicho_en": "2026-07-26T14:55:09.673283-04:00",
           "retroactivo": true,
           "marcador_final": "Seattle Mariners 4 - Texas Rangers 5",
-          "liquidado_en": "2026-07-26T14:55:55.969547-04:00"
+          "liquidado_en": "2026-07-26T14:55:55.969547-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823680",
@@ -2474,7 +2646,9 @@
           "predicho_en": "2026-07-26T14:55:09.673373-04:00",
           "retroactivo": true,
           "marcador_final": "Athletics 2 - Minnesota Twins 0",
-          "liquidado_en": "2026-07-26T14:55:55.969663-04:00"
+          "liquidado_en": "2026-07-26T14:55:55.969663-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823031",
@@ -2498,7 +2672,9 @@
           "predicho_en": "2026-07-26T14:55:09.673457-04:00",
           "retroactivo": true,
           "marcador_final": "Cincinnati Reds 4 - St. Louis Cardinals 2",
-          "liquidado_en": "2026-07-26T14:55:55.969794-04:00"
+          "liquidado_en": "2026-07-26T14:55:55.969794-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823196",
@@ -2522,7 +2698,9 @@
           "predicho_en": "2026-07-26T14:55:09.673539-04:00",
           "retroactivo": true,
           "marcador_final": "Los Angeles Angels 6 - San Francisco Giants 7",
-          "liquidado_en": "2026-07-26T14:55:55.969898-04:00"
+          "liquidado_en": "2026-07-26T14:55:55.969898-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         }
       ],
       "resumen": {
@@ -2563,7 +2741,9 @@
           "predicho_en": "2026-07-26T14:54:55.063917-04:00",
           "retroactivo": true,
           "marcador_final": "Kansas City Royals 3 - Detroit Tigers 2",
-          "liquidado_en": "2026-07-26T14:55:58.465092-04:00"
+          "liquidado_en": "2026-07-26T14:55:58.465092-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "822704",
@@ -2587,7 +2767,9 @@
           "predicho_en": "2026-07-26T14:54:55.063991-04:00",
           "retroactivo": true,
           "marcador_final": "Arizona Diamondbacks 3 - Washington Nationals 5",
-          "liquidado_en": "2026-07-26T14:55:58.466823-04:00"
+          "liquidado_en": "2026-07-26T14:55:58.466823-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823197",
@@ -2611,7 +2793,9 @@
           "predicho_en": "2026-07-26T14:54:55.064050-04:00",
           "retroactivo": true,
           "marcador_final": "Los Angeles Angels 2 - San Francisco Giants 9",
-          "liquidado_en": "2026-07-26T14:55:58.466912-04:00"
+          "liquidado_en": "2026-07-26T14:55:58.466912-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824734",
@@ -2635,7 +2819,9 @@
           "predicho_en": "2026-07-26T14:54:55.064106-04:00",
           "retroactivo": true,
           "marcador_final": "Toronto Blue Jays 6 - Boston Red Sox 0",
-          "liquidado_en": "2026-07-26T14:55:58.466985-04:00"
+          "liquidado_en": "2026-07-26T14:55:58.466985-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823841",
@@ -2659,7 +2845,9 @@
           "predicho_en": "2026-07-26T14:54:55.064161-04:00",
           "retroactivo": true,
           "marcador_final": "San Diego Padres 7 - Miami Marlins 2",
-          "liquidado_en": "2026-07-26T14:55:58.467072-04:00"
+          "liquidado_en": "2026-07-26T14:55:58.467072-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823435",
@@ -2683,7 +2871,9 @@
           "predicho_en": "2026-07-26T14:54:55.064221-04:00",
           "retroactivo": true,
           "marcador_final": "New York Yankees 3 - Philadelphia Phillies 1",
-          "liquidado_en": "2026-07-26T14:55:58.467169-04:00"
+          "liquidado_en": "2026-07-26T14:55:58.467169-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "822948",
@@ -2707,7 +2897,9 @@
           "predicho_en": "2026-07-26T14:54:55.064278-04:00",
           "retroactivo": true,
           "marcador_final": "Cleveland Guardians 0 - Tampa Bay Rays 3",
-          "liquidado_en": "2026-07-26T14:55:58.467275-04:00"
+          "liquidado_en": "2026-07-26T14:55:58.467275-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823355",
@@ -2731,7 +2923,9 @@
           "predicho_en": "2026-07-26T14:54:55.064336-04:00",
           "retroactivo": true,
           "marcador_final": "Chicago Cubs 11 - Pittsburgh Pirates 0",
-          "liquidado_en": "2026-07-26T14:55:58.467383-04:00"
+          "liquidado_en": "2026-07-26T14:55:58.467383-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824811",
@@ -2755,7 +2949,9 @@
           "predicho_en": "2026-07-26T14:54:55.064397-04:00",
           "retroactivo": true,
           "marcador_final": "Atlanta Braves 2 - Baltimore Orioles 3",
-          "liquidado_en": "2026-07-26T14:55:58.467462-04:00"
+          "liquidado_en": "2026-07-26T14:55:58.467462-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823679",
@@ -2779,7 +2975,9 @@
           "predicho_en": "2026-07-26T14:54:55.064457-04:00",
           "retroactivo": true,
           "marcador_final": "Athletics 0 - Minnesota Twins 2",
-          "liquidado_en": "2026-07-26T14:55:58.467555-04:00"
+          "liquidado_en": "2026-07-26T14:55:58.467555-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824571",
@@ -2803,7 +3001,9 @@
           "predicho_en": "2026-07-26T14:54:55.064512-04:00",
           "retroactivo": true,
           "marcador_final": "Houston Astros 4 - Chicago White Sox 1",
-          "liquidado_en": "2026-07-26T14:55:58.467646-04:00"
+          "liquidado_en": "2026-07-26T14:55:58.467646-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823758",
@@ -2827,7 +3027,9 @@
           "predicho_en": "2026-07-26T14:54:55.064565-04:00",
           "retroactivo": true,
           "marcador_final": "Colorado Rockies 5 - Milwaukee Brewers 8",
-          "liquidado_en": "2026-07-26T14:55:58.467779-04:00"
+          "liquidado_en": "2026-07-26T14:55:58.467779-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823600",
@@ -2851,7 +3053,9 @@
           "predicho_en": "2026-07-26T14:54:55.064617-04:00",
           "retroactivo": true,
           "marcador_final": "Los Angeles Dodgers 4 - New York Mets 3",
-          "liquidado_en": "2026-07-26T14:55:58.467876-04:00"
+          "liquidado_en": "2026-07-26T14:55:58.467876-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823027",
@@ -2875,7 +3079,9 @@
           "predicho_en": "2026-07-26T14:54:55.064669-04:00",
           "retroactivo": true,
           "marcador_final": "Cincinnati Reds 0 - St. Louis Cardinals 7",
-          "liquidado_en": "2026-07-26T14:55:58.468008-04:00"
+          "liquidado_en": "2026-07-26T14:55:58.468008-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "822869",
@@ -2899,7 +3105,9 @@
           "predicho_en": "2026-07-26T14:54:55.064745-04:00",
           "retroactivo": true,
           "marcador_final": "Seattle Mariners 1 - Texas Rangers 7",
-          "liquidado_en": "2026-07-26T14:55:58.468184-04:00"
+          "liquidado_en": "2026-07-26T14:55:58.468184-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         }
       ],
       "resumen": {
@@ -2964,7 +3172,9 @@
           "con_dinero": false,
           "predicho_en": "2026-07-26T14:55:37.468533-04:00",
           "marcador_final": "Arizona Diamondbacks 7 - Washington Nationals 10",
-          "liquidado_en": "2026-07-29T15:32:53.089845-04:00"
+          "liquidado_en": "2026-07-29T15:32:53.089845-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823354",
@@ -2987,7 +3197,9 @@
           "con_dinero": false,
           "predicho_en": "2026-07-26T14:55:37.468604-04:00",
           "marcador_final": "Chicago Cubs 7 - Pittsburgh Pirates 8",
-          "liquidado_en": "2026-07-29T15:32:53.089942-04:00"
+          "liquidado_en": "2026-07-29T15:32:53.089942-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824730",
@@ -3010,7 +3222,9 @@
           "con_dinero": false,
           "predicho_en": "2026-07-26T14:55:37.468674-04:00",
           "marcador_final": "Toronto Blue Jays 1 - Boston Red Sox 6",
-          "liquidado_en": "2026-07-29T15:32:53.090027-04:00"
+          "liquidado_en": "2026-07-29T15:32:53.090027-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824810",
@@ -3033,7 +3247,9 @@
           "con_dinero": false,
           "predicho_en": "2026-07-26T14:55:37.468757-04:00",
           "marcador_final": "Atlanta Braves 3 - Baltimore Orioles 2",
-          "liquidado_en": "2026-07-29T15:32:53.090098-04:00"
+          "liquidado_en": "2026-07-29T15:32:53.090098-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824246",
@@ -3056,7 +3272,9 @@
           "con_dinero": false,
           "predicho_en": "2026-07-26T14:55:37.468844-04:00",
           "marcador_final": "Kansas City Royals 5 - Detroit Tigers 4",
-          "liquidado_en": "2026-07-29T15:32:53.090164-04:00"
+          "liquidado_en": "2026-07-29T15:32:53.090164-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823599",
@@ -3079,7 +3297,9 @@
           "con_dinero": false,
           "predicho_en": "2026-07-26T14:55:37.468943-04:00",
           "marcador_final": "Los Angeles Dodgers 3 - New York Mets 8",
-          "liquidado_en": "2026-07-29T15:32:53.090284-04:00"
+          "liquidado_en": "2026-07-29T15:32:53.090284-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823840",
@@ -3102,7 +3322,9 @@
           "con_dinero": false,
           "predicho_en": "2026-07-26T14:55:37.469037-04:00",
           "marcador_final": "San Diego Padres 5 - Miami Marlins 3",
-          "liquidado_en": "2026-07-29T15:32:53.090359-04:00"
+          "liquidado_en": "2026-07-29T15:32:53.090359-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823678",
@@ -3125,7 +3347,9 @@
           "con_dinero": false,
           "predicho_en": "2026-07-26T14:55:37.469096-04:00",
           "marcador_final": "Athletics 8 - Minnesota Twins 11",
-          "liquidado_en": "2026-07-29T15:32:53.090424-04:00"
+          "liquidado_en": "2026-07-29T15:32:53.090424-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824572",
@@ -3148,7 +3372,9 @@
           "con_dinero": false,
           "predicho_en": "2026-07-26T14:55:37.469150-04:00",
           "marcador_final": "Houston Astros 3 - Chicago White Sox 12",
-          "liquidado_en": "2026-07-29T15:32:53.090490-04:00"
+          "liquidado_en": "2026-07-29T15:32:53.090490-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823755",
@@ -3171,7 +3397,9 @@
           "con_dinero": false,
           "predicho_en": "2026-07-26T14:55:37.469202-04:00",
           "marcador_final": "Colorado Rockies 2 - Milwaukee Brewers 11",
-          "liquidado_en": "2026-07-29T15:32:53.090577-04:00"
+          "liquidado_en": "2026-07-29T15:32:53.090577-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823028",
@@ -3194,7 +3422,9 @@
           "con_dinero": false,
           "predicho_en": "2026-07-26T14:55:37.469254-04:00",
           "marcador_final": "Cincinnati Reds 5 - St. Louis Cardinals 3",
-          "liquidado_en": "2026-07-29T15:32:53.090644-04:00"
+          "liquidado_en": "2026-07-29T15:32:53.090644-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "822870",
@@ -3217,7 +3447,9 @@
           "con_dinero": false,
           "predicho_en": "2026-07-26T14:55:37.469305-04:00",
           "marcador_final": "Seattle Mariners 6 - Texas Rangers 4",
-          "liquidado_en": "2026-07-29T15:32:53.090706-04:00"
+          "liquidado_en": "2026-07-29T15:32:53.090706-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823194",
@@ -3248,7 +3480,8 @@
             "modelo": null
           },
           "marcador_final": "Los Angeles Angels 4 - San Francisco Giants 3",
-          "liquidado_en": "2026-07-29T15:32:53.090768-04:00"
+          "liquidado_en": "2026-07-29T15:32:53.090768-04:00",
+          "valida_stats": true
         },
         {
           "game_id": "822950",
@@ -3272,7 +3505,9 @@
           "predicho_en": "2026-07-29T15:32:21.856200-04:00",
           "retroactivo": true,
           "marcador_final": "Cleveland Guardians 0 - Tampa Bay Rays 1",
-          "liquidado_en": "2026-07-29T15:32:53.090833-04:00"
+          "liquidado_en": "2026-07-29T15:32:53.090833-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823433",
@@ -3296,7 +3531,9 @@
           "predicho_en": "2026-07-29T15:32:21.856285-04:00",
           "retroactivo": true,
           "marcador_final": "New York Yankees 4 - Philadelphia Phillies 11",
-          "liquidado_en": "2026-07-29T15:32:53.090895-04:00"
+          "liquidado_en": "2026-07-29T15:32:53.090895-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         }
       ],
       "resumen": {
@@ -3337,7 +3574,9 @@
           "predicho_en": "2026-07-29T15:32:16.756418-04:00",
           "retroactivo": true,
           "marcador_final": "Seattle Mariners 3 - Texas Rangers 7",
-          "liquidado_en": "2026-07-29T15:32:54.445287-04:00"
+          "liquidado_en": "2026-07-29T15:32:54.445287-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824245",
@@ -3361,7 +3600,9 @@
           "predicho_en": "2026-07-29T15:32:16.756494-04:00",
           "retroactivo": true,
           "marcador_final": "Baltimore Orioles 8 - Detroit Tigers 5",
-          "liquidado_en": "2026-07-29T15:32:54.445404-04:00"
+          "liquidado_en": "2026-07-29T15:32:54.445404-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823353",
@@ -3385,7 +3626,9 @@
           "predicho_en": "2026-07-29T15:32:16.756556-04:00",
           "retroactivo": true,
           "marcador_final": "Arizona Diamondbacks 2 - Pittsburgh Pirates 3",
-          "liquidado_en": "2026-07-29T15:32:54.445482-04:00"
+          "liquidado_en": "2026-07-29T15:32:54.445482-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823839",
@@ -3409,7 +3652,9 @@
           "predicho_en": "2026-07-29T15:32:16.756614-04:00",
           "retroactivo": true,
           "marcador_final": "Philadelphia Phillies 7 - Miami Marlins 8",
-          "liquidado_en": "2026-07-29T15:32:54.445553-04:00"
+          "liquidado_en": "2026-07-29T15:32:54.445553-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "822705",
@@ -3433,7 +3678,9 @@
           "predicho_en": "2026-07-29T15:32:16.756669-04:00",
           "retroactivo": true,
           "marcador_final": "Toronto Blue Jays 3 - Washington Nationals 2",
-          "liquidado_en": "2026-07-29T15:32:54.445620-04:00"
+          "liquidado_en": "2026-07-29T15:32:54.445620-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823597",
@@ -3457,7 +3704,9 @@
           "predicho_en": "2026-07-29T15:32:16.756726-04:00",
           "retroactivo": true,
           "marcador_final": "Atlanta Braves 3 - New York Mets 14",
-          "liquidado_en": "2026-07-29T15:32:54.445688-04:00"
+          "liquidado_en": "2026-07-29T15:32:54.445688-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824570",
@@ -3481,7 +3730,9 @@
           "predicho_en": "2026-07-29T15:32:16.756782-04:00",
           "retroactivo": true,
           "marcador_final": "New York Yankees 9 - Chicago White Sox 5",
-          "liquidado_en": "2026-07-29T15:32:54.445754-04:00"
+          "liquidado_en": "2026-07-29T15:32:54.445754-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823025",
@@ -3505,7 +3756,9 @@
           "predicho_en": "2026-07-29T15:32:16.756834-04:00",
           "retroactivo": true,
           "marcador_final": "Chicago Cubs 7 - St. Louis Cardinals 3",
-          "liquidado_en": "2026-07-29T15:32:54.445821-04:00"
+          "liquidado_en": "2026-07-29T15:32:54.445821-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824001",
@@ -3529,7 +3782,9 @@
           "predicho_en": "2026-07-29T15:32:16.756888-04:00",
           "retroactivo": true,
           "marcador_final": "Houston Astros 6 - Los Angeles Angels 4",
-          "liquidado_en": "2026-07-29T15:32:54.445886-04:00"
+          "liquidado_en": "2026-07-29T15:32:54.445886-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824977",
@@ -3553,7 +3808,9 @@
           "predicho_en": "2026-07-29T15:32:16.756970-04:00",
           "retroactivo": true,
           "marcador_final": "Boston Red Sox 4 - Athletics 2",
-          "liquidado_en": "2026-07-29T15:32:54.445974-04:00"
+          "liquidado_en": "2026-07-29T15:32:54.445974-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823195",
@@ -3577,7 +3834,9 @@
           "predicho_en": "2026-07-29T15:32:16.757030-04:00",
           "retroactivo": true,
           "marcador_final": "Milwaukee Brewers 0 - San Francisco Giants 3",
-          "liquidado_en": "2026-07-29T15:32:54.446066-04:00"
+          "liquidado_en": "2026-07-29T15:32:54.446066-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         }
       ],
       "resumen": {
@@ -3618,7 +3877,9 @@
           "predicho_en": "2026-07-29T15:32:10.950509-04:00",
           "retroactivo": true,
           "marcador_final": "Cleveland Guardians 6 - Cincinnati Reds 5",
-          "liquidado_en": "2026-07-29T15:32:55.826738-04:00"
+          "liquidado_en": "2026-07-29T15:32:55.826738-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824489",
@@ -3642,7 +3903,9 @@
           "predicho_en": "2026-07-29T15:32:10.950608-04:00",
           "retroactivo": true,
           "marcador_final": "Cleveland Guardians 0 - Cincinnati Reds 2",
-          "liquidado_en": "2026-07-29T15:32:55.826829-04:00"
+          "liquidado_en": "2026-07-29T15:32:55.826829-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824243",
@@ -3666,7 +3929,9 @@
           "predicho_en": "2026-07-29T15:32:10.950688-04:00",
           "retroactivo": true,
           "marcador_final": "Baltimore Orioles 0 - Detroit Tigers 14",
-          "liquidado_en": "2026-07-29T15:32:55.826899-04:00"
+          "liquidado_en": "2026-07-29T15:32:55.826899-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823350",
@@ -3690,7 +3955,9 @@
           "predicho_en": "2026-07-29T15:32:10.950766-04:00",
           "retroactivo": true,
           "marcador_final": "Arizona Diamondbacks 8 - Pittsburgh Pirates 7",
-          "liquidado_en": "2026-07-29T15:32:55.827004-04:00"
+          "liquidado_en": "2026-07-29T15:32:55.827004-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "822949",
@@ -3714,7 +3981,9 @@
           "predicho_en": "2026-07-29T15:32:10.950846-04:00",
           "retroactivo": true,
           "marcador_final": "Texas Rangers 4 - Tampa Bay Rays 1",
-          "liquidado_en": "2026-07-29T15:32:55.827074-04:00"
+          "liquidado_en": "2026-07-29T15:32:55.827074-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823838",
@@ -3738,7 +4007,9 @@
           "predicho_en": "2026-07-29T15:32:10.950949-04:00",
           "retroactivo": true,
           "marcador_final": "Philadelphia Phillies 0 - Miami Marlins 1",
-          "liquidado_en": "2026-07-29T15:32:55.827139-04:00"
+          "liquidado_en": "2026-07-29T15:32:55.827139-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "822703",
@@ -3762,7 +4033,9 @@
           "predicho_en": "2026-07-29T15:32:10.951031-04:00",
           "retroactivo": true,
           "marcador_final": "Toronto Blue Jays 6 - Washington Nationals 8",
-          "liquidado_en": "2026-07-29T15:32:55.827202-04:00"
+          "liquidado_en": "2026-07-29T15:32:55.827202-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823676",
@@ -3786,7 +4059,9 @@
           "predicho_en": "2026-07-29T15:32:10.951111-04:00",
           "retroactivo": true,
           "marcador_final": "Kansas City Royals 2 - Minnesota Twins 3",
-          "liquidado_en": "2026-07-29T15:32:55.827264-04:00"
+          "liquidado_en": "2026-07-29T15:32:55.827264-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824569",
@@ -3810,7 +4085,9 @@
           "predicho_en": "2026-07-29T15:32:10.951188-04:00",
           "retroactivo": true,
           "marcador_final": "New York Yankees 3 - Chicago White Sox 2",
-          "liquidado_en": "2026-07-29T15:32:55.827328-04:00"
+          "liquidado_en": "2026-07-29T15:32:55.827328-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823026",
@@ -3834,7 +4111,9 @@
           "predicho_en": "2026-07-29T15:32:10.951263-04:00",
           "retroactivo": true,
           "marcador_final": "Chicago Cubs 10 - St. Louis Cardinals 2",
-          "liquidado_en": "2026-07-29T15:32:55.827392-04:00"
+          "liquidado_en": "2026-07-29T15:32:55.827392-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824003",
@@ -3858,7 +4137,9 @@
           "predicho_en": "2026-07-29T15:32:10.951335-04:00",
           "retroactivo": true,
           "marcador_final": "Houston Astros 3 - Los Angeles Angels 2",
-          "liquidado_en": "2026-07-29T15:32:55.827454-04:00"
+          "liquidado_en": "2026-07-29T15:32:55.827454-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824976",
@@ -3882,7 +4163,9 @@
           "predicho_en": "2026-07-29T15:32:10.951408-04:00",
           "retroactivo": true,
           "marcador_final": "Boston Red Sox 3 - Athletics 4",
-          "liquidado_en": "2026-07-29T15:32:55.827517-04:00"
+          "liquidado_en": "2026-07-29T15:32:55.827517-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823275",
@@ -3906,7 +4189,9 @@
           "predicho_en": "2026-07-29T15:32:10.951479-04:00",
           "retroactivo": true,
           "marcador_final": "Colorado Rockies 7 - San Diego Padres 8",
-          "liquidado_en": "2026-07-29T15:32:55.827609-04:00"
+          "liquidado_en": "2026-07-29T15:32:55.827609-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823193",
@@ -3930,7 +4215,9 @@
           "predicho_en": "2026-07-29T15:32:10.951550-04:00",
           "retroactivo": true,
           "marcador_final": "Milwaukee Brewers 8 - San Francisco Giants 2",
-          "liquidado_en": "2026-07-29T15:32:55.827708-04:00"
+          "liquidado_en": "2026-07-29T15:32:55.827708-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823923",
@@ -3954,7 +4241,9 @@
           "predicho_en": "2026-07-29T15:32:10.951622-04:00",
           "retroactivo": true,
           "marcador_final": "Seattle Mariners 7 - Los Angeles Dodgers 6",
-          "liquidado_en": "2026-07-29T15:32:55.827799-04:00"
+          "liquidado_en": "2026-07-29T15:32:55.827799-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         }
       ],
       "resumen": {
@@ -4019,7 +4308,9 @@
           "con_dinero": false,
           "predicho_en": "2026-07-29T15:32:42.655526-04:00",
           "marcador_final": "Toronto Blue Jays 5 - Washington Nationals 2",
-          "liquidado_en": "2026-07-30T15:37:09.272497-04:00"
+          "liquidado_en": "2026-07-30T15:37:09.272497-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824242",
@@ -4042,7 +4333,9 @@
           "con_dinero": false,
           "predicho_en": "2026-07-29T15:32:42.655600-04:00",
           "marcador_final": "Baltimore Orioles 10 - Detroit Tigers 9",
-          "liquidado_en": "2026-07-30T15:37:09.272574-04:00"
+          "liquidado_en": "2026-07-30T15:37:09.272574-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823596",
@@ -4065,7 +4358,9 @@
           "con_dinero": false,
           "predicho_en": "2026-07-29T15:32:42.655657-04:00",
           "marcador_final": "Atlanta Braves 2 - New York Mets 3",
-          "liquidado_en": "2026-07-30T15:37:09.272645-04:00"
+          "liquidado_en": "2026-07-30T15:37:09.272645-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823192",
@@ -4088,7 +4383,8 @@
           "con_dinero": false,
           "predicho_en": "2026-07-29T15:32:42.655717-04:00",
           "marcador_final": "Milwaukee Brewers 3 - San Francisco Giants 16",
-          "liquidado_en": "2026-07-30T15:37:09.272714-04:00"
+          "liquidado_en": "2026-07-30T15:37:09.272714-04:00",
+          "valida_stats": true
         },
         {
           "game_id": "823273",
@@ -4119,7 +4415,8 @@
             "modelo": null
           },
           "marcador_final": "Colorado Rockies 1 - San Diego Padres 3",
-          "liquidado_en": "2026-07-30T15:37:09.272782-04:00"
+          "liquidado_en": "2026-07-30T15:37:09.272782-04:00",
+          "valida_stats": true
         },
         {
           "game_id": "823837",
@@ -4305,7 +4602,9 @@
           },
           "retroactivo": true,
           "marcador_final": "Philadelphia Phillies 6 - Miami Marlins 8",
-          "liquidado_en": "2026-07-30T15:37:09.272851-04:00"
+          "liquidado_en": "2026-07-30T15:37:09.272851-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823351",
@@ -4482,7 +4781,9 @@
           },
           "retroactivo": true,
           "marcador_final": "Arizona Diamondbacks 3 - Pittsburgh Pirates 0",
-          "liquidado_en": "2026-07-30T15:37:09.272919-04:00"
+          "liquidado_en": "2026-07-30T15:37:09.272919-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823598",
@@ -4668,7 +4969,9 @@
           },
           "retroactivo": true,
           "marcador_final": "Atlanta Braves 1 - New York Mets 0",
-          "liquidado_en": "2026-07-30T15:37:09.272984-04:00"
+          "liquidado_en": "2026-07-30T15:37:09.272984-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "822947",
@@ -4863,7 +5166,9 @@
           },
           "retroactivo": true,
           "marcador_final": "Texas Rangers 0 - Tampa Bay Rays 3",
-          "liquidado_en": "2026-07-30T15:37:09.273050-04:00"
+          "liquidado_en": "2026-07-30T15:37:09.273050-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824487",
@@ -4977,7 +5282,9 @@
           },
           "retroactivo": true,
           "marcador_final": "Cleveland Guardians 6 - Cincinnati Reds 1",
-          "liquidado_en": "2026-07-30T15:37:09.273115-04:00"
+          "liquidado_en": "2026-07-30T15:37:09.273115-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823677",
@@ -5172,7 +5479,9 @@
           },
           "retroactivo": true,
           "marcador_final": "Kansas City Royals 4 - Minnesota Twins 0",
-          "liquidado_en": "2026-07-30T15:37:09.273180-04:00"
+          "liquidado_en": "2026-07-30T15:37:09.273180-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824567",
@@ -5340,7 +5649,9 @@
           },
           "retroactivo": true,
           "marcador_final": "New York Yankees 5 - Chicago White Sox 6",
-          "liquidado_en": "2026-07-30T15:37:09.273244-04:00"
+          "liquidado_en": "2026-07-30T15:37:09.273244-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823022",
@@ -5490,7 +5801,9 @@
           },
           "retroactivo": true,
           "marcador_final": "Chicago Cubs 2 - St. Louis Cardinals 3",
-          "liquidado_en": "2026-07-30T15:37:09.273347-04:00"
+          "liquidado_en": "2026-07-30T15:37:09.273347-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824002",
@@ -5658,7 +5971,9 @@
           },
           "retroactivo": true,
           "marcador_final": "Houston Astros 7 - Los Angeles Angels 4",
-          "liquidado_en": "2026-07-30T15:37:09.273415-04:00"
+          "liquidado_en": "2026-07-30T15:37:09.273415-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824973",
@@ -5853,7 +6168,9 @@
           },
           "retroactivo": true,
           "marcador_final": "Boston Red Sox 4 - Athletics 2",
-          "liquidado_en": "2026-07-30T15:37:09.273481-04:00"
+          "liquidado_en": "2026-07-30T15:37:09.273481-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823924",
@@ -6030,7 +6347,9 @@
           },
           "retroactivo": true,
           "marcador_final": "Seattle Mariners 2 - Los Angeles Dodgers 4",
-          "liquidado_en": "2026-07-30T15:37:09.273546-04:00"
+          "liquidado_en": "2026-07-30T15:37:09.273546-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         }
       ],
       "resumen": {
@@ -6241,7 +6560,9 @@
             "alerta": ""
           },
           "marcador_final": "Kansas City Royals 3 - Minnesota Twins 4",
-          "liquidado_en": "2026-07-31T15:32:28.010358-04:00"
+          "liquidado_en": "2026-07-31T15:32:28.010358-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824568",
@@ -6408,7 +6729,9 @@
             "alerta": ""
           },
           "marcador_final": "New York Yankees 1 - Chicago White Sox 2",
-          "liquidado_en": "2026-07-31T15:32:28.010528-04:00"
+          "liquidado_en": "2026-07-31T15:32:28.010528-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823023",
@@ -6557,7 +6880,9 @@
             "alerta": ""
           },
           "marcador_final": "Chicago Cubs 4 - St. Louis Cardinals 2",
-          "liquidado_en": "2026-07-31T15:32:28.010641-04:00"
+          "liquidado_en": "2026-07-31T15:32:28.010641-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "822946",
@@ -6807,7 +7132,9 @@
           },
           "retroactivo": true,
           "marcador_final": "Texas Rangers 2 - Tampa Bay Rays 3",
-          "liquidado_en": "2026-07-31T15:32:28.010748-04:00"
+          "liquidado_en": "2026-07-31T15:32:28.010748-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824488",
@@ -7007,7 +7334,9 @@
           },
           "retroactivo": true,
           "marcador_final": "Pittsburgh Pirates 2 - Cincinnati Reds 3",
-          "liquidado_en": "2026-07-31T15:32:28.010843-04:00"
+          "liquidado_en": "2026-07-31T15:32:28.010843-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823595",
@@ -7263,7 +7592,9 @@
           },
           "retroactivo": true,
           "marcador_final": "Miami Marlins 2 - New York Mets 4",
-          "liquidado_en": "2026-07-31T15:32:28.010936-04:00"
+          "liquidado_en": "2026-07-31T15:32:28.010936-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824894",
@@ -7506,7 +7837,9 @@
           },
           "retroactivo": true,
           "marcador_final": "Washington Nationals 4 - Atlanta Braves 5",
-          "liquidado_en": "2026-07-31T15:32:28.011080-04:00"
+          "liquidado_en": "2026-07-31T15:32:28.011080-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "824974",
@@ -7749,7 +8082,9 @@
           },
           "retroactivo": true,
           "marcador_final": "Boston Red Sox 5 - Athletics 4",
-          "liquidado_en": "2026-07-31T15:32:28.011176-04:00"
+          "liquidado_en": "2026-07-31T15:32:28.011176-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823271",
@@ -7999,7 +8334,9 @@
           },
           "retroactivo": true,
           "marcador_final": "San Francisco Giants 4 - San Diego Padres 1",
-          "liquidado_en": "2026-07-31T15:32:28.011263-04:00"
+          "liquidado_en": "2026-07-31T15:32:28.011263-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         },
         {
           "game_id": "823921",
@@ -8217,7 +8554,9 @@
           },
           "retroactivo": true,
           "marcador_final": "Seattle Mariners 2 - Los Angeles Dodgers 6",
-          "liquidado_en": "2026-07-31T15:32:28.011349-04:00"
+          "liquidado_en": "2026-07-31T15:32:28.011349-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         }
       ],
       "resumen": {
@@ -8252,9 +8591,9 @@
           "pitcher_away_id": 701542,
           "pitcher_home_id": 684007,
           "inicio_juego": "2026-07-31T14:20:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-07-31T15:32:16.968138-04:00",
@@ -8466,7 +8805,11 @@
             "xfip_pitcher": 3.08,
             "k_pct_pitcher": 23.2,
             "bb_pct_pitcher": 7.7
-          }
+          },
+          "marcador_final": "New York Yankees 2 - Chicago Cubs 0",
+          "liquidado_en": "2026-08-04T20:19:28.424407-04:00",
+          "invalida_tarde": true,
+          "valida_stats": false
         }
       ],
       "resumen": {
@@ -8532,6 +8875,523 @@
       "fecha": "2026-08-04",
       "bloqueado_en": null,
       "apuestas": [],
+      "predicciones": [
+        {
+          "game_id": "823108",
+          "visitante": "Detroit Tigers",
+          "home": "Seattle Mariners",
+          "pick": "Detroit Tigers ML",
+          "odds": 2.0,
+          "odds_american": 100,
+          "edge": 0,
+          "probPick": 50.0,
+          "apostable": false,
+          "motivo_apuesta": "Prob. modelo bajo 58.0%",
+          "pitcherAway": "Troy Melton",
+          "pitcherHome": "Emerson Hancock",
+          "pitcher_away_id": 675512,
+          "pitcher_home_id": 676106,
+          "inicio_juego": "2026-08-04T21:40:00-04:00",
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 5.0,
+          "stake_virtual": 5.0,
+          "con_dinero": false,
+          "predicho_en": "2026-08-04T20:40:17.147977-04:00",
+          "valida_stats": true,
+          "invalida_tarde": false,
+          "clima": {
+            "ok": true,
+            "fuente": "open-meteo",
+            "temp_f": 61.5,
+            "viento_mph": 5.2,
+            "humedad": 65,
+            "run_env": -0.4,
+            "motivo": "62°F · viento 5 mph · clima neutro",
+            "estadio": "T-Mobile Park",
+            "es_domo": false
+          },
+          "lesiones": {
+            "ok": true,
+            "fuente": "espn",
+            "motivo": "266 bajas indexadas",
+            "away": [
+              {
+                "jugador": "Jackson Jobe",
+                "apellido": "jobe",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Jobe (elbow) will return from the injured list during Detroit's weekend series against the Giants, Jason Beck of MLB.com reports.",
+                "severidad": 5,
+                "equipo": "Detroit Tigers"
+              },
+              {
+                "jugador": "Justin Verlander",
+                "apellido": "verlander",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Verlander (hamstring/hip) has been playing catch daily, but he has yet to be cleared to resume throwing off a mound, Chris McCosky of The De",
+                "severidad": 5,
+                "equipo": "Detroit Tigers"
+              },
+              {
+                "jugador": "Wenceel Perez",
+                "apellido": "perez",
+                "pos": "RF",
+                "status": "60-Day-IL",
+                "comentario": "Perez (orbital) will embark on a rehab assignment with Single-A Lakeland on Friday, Evan Woodbery of MLive.com reports.",
+                "severidad": 5,
+                "equipo": "Detroit Tigers"
+              },
+              {
+                "jugador": "Will Vest",
+                "apellido": "vest",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Vest underwent elbow surgery Wednesday and will also undergo hip surgery, which will result in the 31-year-old reliever missing the rest of ",
+                "severidad": 5,
+                "equipo": "Detroit Tigers"
+              },
+              {
+                "jugador": "Jack Flaherty",
+                "apellido": "flaherty",
+                "pos": "SP",
+                "status": "15-Day-IL",
+                "comentario": "Manager A.J. Hinch said Tuesday that he expects Flaherty (forearm) to be on the injured list beyond the 15-day minimum, Cody Stavenhagen of ",
+                "severidad": 5,
+                "equipo": "Detroit Tigers"
+              },
+              {
+                "jugador": "Brant Hurter",
+                "apellido": "hurter",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Hurter (spine) threw a bullpen session Friday, MLB.com reports.",
+                "severidad": 5,
+                "equipo": "Detroit Tigers"
+              },
+              {
+                "jugador": "Burch Smith",
+                "apellido": "smith",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Smith is being evaluated after exiting a rehab appearance with Triple-A Toledo on Thursday with right shoulder/lat discomfort, Cody Stavenha",
+                "severidad": 5,
+                "equipo": "Detroit Tigers"
+              },
+              {
+                "jugador": "Bailey Horn",
+                "apellido": "horn",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Horn (elbow) will undergo season-ending Tommy John surgery, Chris McCosky of The Detroit News reports.",
+                "severidad": 5,
+                "equipo": "Detroit Tigers"
+              }
+            ],
+            "home": [
+              {
+                "jugador": "Carlos Vargas",
+                "apellido": "vargas",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Vargas (lat) is scheduled to throw a bullpen session Saturday and is nearing a rehab assignment, Daniel Kramer of MLB.com reports.",
+                "severidad": 5,
+                "equipo": "Seattle Mariners"
+              },
+              {
+                "jugador": "Cooper Criswell",
+                "apellido": "criswell",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Seattle transferred Criswell (shoulder) to the 60-day injured list Friday.",
+                "severidad": 5,
+                "equipo": "Seattle Mariners"
+              },
+              {
+                "jugador": "Will Wilson",
+                "apellido": "wilson",
+                "pos": "3B",
+                "status": "60-Day-IL",
+                "comentario": "Wilson (thumb) has gone 3-for-9 with two RBI and a 1:2 BB:K in his first three rehab games between High-A Everett and Triple-A Tacoma.",
+                "severidad": 5,
+                "equipo": "Seattle Mariners"
+              },
+              {
+                "jugador": "Logan Evans",
+                "apellido": "evans",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "The Mariners placed Evans (elbow) on the 60-day injured list Monday.",
+                "severidad": 5,
+                "equipo": "Seattle Mariners"
+              },
+              {
+                "jugador": "Luke Raley",
+                "apellido": "raley",
+                "pos": "RF",
+                "status": "10-Day-IL",
+                "comentario": "Raley (elbow) isn't in the lineup for Saturday's game against the Twins.",
+                "severidad": 4,
+                "equipo": "Seattle Mariners"
+              },
+              {
+                "jugador": "J.P. Crawford",
+                "apellido": "crawford",
+                "pos": "SS",
+                "status": "10-Day-IL",
+                "comentario": "The Mariners placed Crawford on the 10-day injured list Friday, retroactive to Thursday, due to left wrist inflammation.",
+                "severidad": 4,
+                "equipo": "Seattle Mariners"
+              },
+              {
+                "jugador": "Matt Brash",
+                "apellido": "brash",
+                "pos": "RP",
+                "status": "15-Day-IL",
+                "comentario": "General manager Justin Hollander said Tuesday that Brash was diagnosed with a Grade 1 strain in his right lat, Shannon Drayer of SeattleSpor",
+                "severidad": 4,
+                "equipo": "Seattle Mariners"
+              }
+            ],
+            "resumen": "Detroit Tigers: Jackson Jobe(SP/60-Day-IL), Justin Verlander(SP/60-Day-IL), Wenceel Perez(RF/60-Day-IL), Will Vest(RP/60-Day-IL) | Seattle Mariners: Carlos Vargas(RP/60-Day-IL), Cooper Criswell(RP/60-Day-IL), Will Wilson(3B/60-Day-IL), Logan Evans(SP/60-Day-IL)",
+            "ajuste_away": -3.7,
+            "ajuste_home": -3.25,
+            "starter_riesgo": false,
+            "starter_away_lesionado": false,
+            "starter_home_lesionado": false,
+            "alerta": ""
+          },
+          "scratch_lineup": {
+            "ok": true,
+            "lineup_confirmado": true,
+            "scratch_away": false,
+            "scratch_home": false,
+            "estrellas_fuera_away": [
+              {
+                "id": 680664,
+                "nombre": "Eduardo Valencia",
+                "ops": 1.404,
+                "pa": 32
+              }
+            ],
+            "estrellas_fuera_home": [],
+            "ajuste_away": 0.0,
+            "ajuste_home": 0.0,
+            "min_estrellas_fuera": 2,
+            "riesgo": false,
+            "alerta": "",
+            "resumen": "Lineup OK"
+          },
+          "ml_features": {
+            "era_pitcher": 1.75,
+            "whip_pitcher": 0.93,
+            "k9_pitcher": 8.06,
+            "woba_equipo": 0.332,
+            "ops_equipo": 0.727,
+            "win_pct_equipo": 0.482,
+            "es_local": 0.0,
+            "park_factor": 0.93,
+            "fatiga_bullpen": 0.4,
+            "matchup_zurdo_diestro": 0.8200000000000007,
+            "edge_estadistico": 0.0,
+            "bb9_pitcher": 2.82,
+            "hr9_pitcher": 1.07,
+            "racha_equipo": 3.0,
+            "diferencia_run": 0.0,
+            "vs_pitcher_hand": 0.0,
+            "temp_f": 61.5,
+            "viento_mph": 5.2,
+            "run_env": -0.4,
+            "fip_pitcher": 3.89,
+            "xfip_pitcher": 3.31,
+            "k_pct_pitcher": 23.1,
+            "bb_pct_pitcher": 8.1
+          },
+          "marcador_final": "Detroit Tigers 8 - Seattle Mariners 0",
+          "liquidado_en": "2026-08-05T00:10:01.134940-04:00"
+        },
+        {
+          "game_id": "825054",
+          "visitante": "San Diego Padres",
+          "home": "Arizona Diamondbacks",
+          "pick": "Arizona Diamondbacks ML",
+          "odds": 1.608,
+          "odds_american": -164,
+          "edge": 12.2,
+          "probPick": 62.2,
+          "apostable": true,
+          "motivo_apuesta": "Modelo 62% (solo stats+ML, sin mercado) · IA PASAR: ALERTA scratch Luis Campusano y Gavin Sheets · IA PASAR: ALERTA scratch Luis Campusano y Gavin Sheets · IA PASAR: ALERTA scratch Luis Campusano y Gavin Sheets · IA PASAR: ALERTA scratch Luis Campusano y Gavin Sheets · IA PASAR: ALERTA scratch Luis Campusano y Gavin Sheets · IA PASAR: ALERTA scratch Luis Campusano y Gavin Sheets · IA PASAR: ALERTA scratch Luis Campusano y Gavin Sheets · IA PASAR: ALERTA scratch Luis Campusano y Gavin Sheets · IA PASAR: ALERTA scratch Luis Campusano y Gavin Sheets · IA PASAR: ALERTA scratch Luis Campusano y Gavin Sheets · IA PASAR: ALERTA scratch Luis Campusano y Gavin Sheets · IA PASAR: ALERTA scratch Luis Campusano y Gavin Sheets · IA PASAR: ALERTA scratch Luis Campusano y Gavin Sheets · IA PASAR: ALERTA scratch Luis Campusano y Gavin Sheets · IA PASAR: ALERTA scratch Luis Campusano y Gavin Sheets · IA PASAR: ALERTA scratch Luis Campusano y Gavin Sheets · IA PASAR: ALERTA scratch Luis Campusano y Gavin Sheets · IA PASAR: ALERTA scratch Luis Campusano y Gavin Sheets · IA PASAR: ALERTA scratch Luis Campusano y Gavin Sheets",
+          "pitcherAway": "Randy Vásquez",
+          "pitcherHome": "Eduardo Rodriguez",
+          "pitcher_away_id": 681190,
+          "pitcher_home_id": 593958,
+          "inicio_juego": "2026-08-04T21:40:00-04:00",
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
+          "stake_virtual": 5.0,
+          "con_dinero": false,
+          "predicho_en": "2026-08-04T20:40:22.135544-04:00",
+          "valida_stats": true,
+          "invalida_tarde": false,
+          "clima": {
+            "ok": true,
+            "fuente": "domo",
+            "temp_f": null,
+            "viento_mph": null,
+            "humedad": null,
+            "run_env": 0.0,
+            "motivo": "Estadio techado — clima neutro",
+            "estadio": "Chase Field",
+            "es_domo": true
+          },
+          "lesiones": {
+            "ok": true,
+            "fuente": "espn",
+            "motivo": "266 bajas indexadas",
+            "away": [
+              {
+                "jugador": "Nick Pivetta",
+                "apellido": "pivetta",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Pivetta (forearm) exited Tuesday's rehab start with Single-A Lake Elsinore due to elbow tightness, but he threw in the bullpen after leaving",
+                "severidad": 5,
+                "equipo": "San Diego Padres"
+              },
+              {
+                "jugador": "Jason Adam",
+                "apellido": "adam",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "The Padres transferred Adam (shoulder) to the 60-day injured list Monday.",
+                "severidad": 5,
+                "equipo": "San Diego Padres"
+              },
+              {
+                "jugador": "Joe Musgrove",
+                "apellido": "musgrove",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Musgrove (elbow) is slated to make a rehab appearance for Single-A Lake Elsinore on Tuesday.",
+                "severidad": 5,
+                "equipo": "San Diego Padres"
+              },
+              {
+                "jugador": "Lucas Giolito",
+                "apellido": "giolito",
+                "pos": "SP",
+                "status": "15-Day-IL",
+                "comentario": "Giolito (elbow) has been throwing at San Diego's team complex in Arizona and may be close to facing hitters, MLB.com reports.",
+                "severidad": 5,
+                "equipo": "San Diego Padres"
+              },
+              {
+                "jugador": "Ramon Laureano",
+                "apellido": "laureano",
+                "pos": "LF",
+                "status": "60-Day-IL",
+                "comentario": "Laureano underwent surgery Friday to repair his torn right labrum, Kevin Acee of The San Diego Union-Tribune reports.",
+                "severidad": 5,
+                "equipo": "San Diego Padres"
+              },
+              {
+                "jugador": "Bryan Hoeing",
+                "apellido": "hoeing",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "The Padres transferred Hoeing (elbow) from the 15-day injured list to the 60-day IL on Wednesday.",
+                "severidad": 5,
+                "equipo": "San Diego Padres"
+              },
+              {
+                "jugador": "Samad Taylor",
+                "apellido": "taylor",
+                "pos": "LF",
+                "status": "10-Day-IL",
+                "comentario": "Taylor (oblique) has been taking light swings and rehabbing at the Padres' spring complex in Arizona, MLB.com reports.",
+                "severidad": 4,
+                "equipo": "San Diego Padres"
+              },
+              {
+                "jugador": "David Morgan",
+                "apellido": "morgan",
+                "pos": "RP",
+                "status": "15-Day-IL",
+                "comentario": "Morgan (knee) made a rehab appearance Sunday at Triple-A El Paso, allowing one hit and no walks over an inning of relief.",
+                "severidad": 4,
+                "equipo": "San Diego Padres"
+              }
+            ],
+            "home": [
+              {
+                "jugador": "Blake Walston",
+                "apellido": "walston",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Walston (elbow) will begin a rehab assignment Tuesday, Jack Sommers of SI.com reports.",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              },
+              {
+                "jugador": "Corbin Burnes",
+                "apellido": "burnes",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Burnes (elbow/teres major) will throw a bullpen session Tuesday, Jack Sommers of SI.com reports.",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              },
+              {
+                "jugador": "Zac Gallen",
+                "apellido": "gallen",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "The Diamondbacks transferred Gallen (elbow) from the 15-day injured list to the 60-day IL on Monday.",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              },
+              {
+                "jugador": "Justin Martinez",
+                "apellido": "martinez",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Martinez (elbow) will begin a rehab assignment at Single-A Visalia on Tuesday, MLB.com reports.",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              },
+              {
+                "jugador": "Michael Soroka",
+                "apellido": "soroka",
+                "pos": "SP",
+                "status": "15-Day-IL",
+                "comentario": "Soroka (glute) will begin a rehab assignment with Triple-A Reno on Tuesday, John Gambadoro of Arizona Sports 98.7 FM reports.",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              },
+              {
+                "jugador": "A.J. Puk",
+                "apellido": "puk",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Manager Torey Lovullo said Saturday that MRI results on Puk's left shoulder revealed that his shoulder capsule hasn't fully healed, Steve Gi",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              },
+              {
+                "jugador": "Ryne Nelson",
+                "apellido": "nelson",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Nelson (elbow) will begin a throwing program Saturday or Sunday, Alex D'Agostino of SI.com reports.",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              },
+              {
+                "jugador": "Andrew Saalfrank",
+                "apellido": "saalfrank",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Saalfrank (shoulder) has begun a throwing program, Alex Weiner of Arizona Sports reports.",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              }
+            ],
+            "resumen": "San Diego Padres: Nick Pivetta(SP/60-Day-IL), Jason Adam(RP/60-Day-IL), Joe Musgrove(SP/60-Day-IL), Lucas Giolito(SP/15-Day-IL) | Arizona Diamondbacks: Blake Walston(SP/60-Day-IL), Corbin Burnes(SP/60-Day-IL), Zac Gallen(SP/60-Day-IL), Justin Martinez(RP/60-Day-IL)",
+            "ajuste_away": -3.8,
+            "ajuste_home": -4.0,
+            "starter_riesgo": false,
+            "starter_away_lesionado": false,
+            "starter_home_lesionado": false,
+            "alerta": ""
+          },
+          "scratch_lineup": {
+            "ok": true,
+            "lineup_confirmado": true,
+            "scratch_away": false,
+            "scratch_home": false,
+            "estrellas_fuera_away": [
+              {
+                "id": 669134,
+                "nombre": "Luis Campusano",
+                "ops": 0.924,
+                "pa": 122
+              },
+              {
+                "id": 657757,
+                "nombre": "Gavin Sheets",
+                "ops": 0.711,
+                "pa": 365
+              }
+            ],
+            "estrellas_fuera_home": [
+              {
+                "id": 682988,
+                "nombre": "Tyler Locklear",
+                "ops": 0.755,
+                "pa": 31
+              }
+            ],
+            "ajuste_away": -2.4,
+            "ajuste_home": 0.0,
+            "min_estrellas_fuera": 2,
+            "riesgo": true,
+            "alerta": "Estrellas out visitante: Luis Campusano, Gavin Sheets",
+            "resumen": "Estrellas out visitante: Luis Campusano, Gavin Sheets"
+          },
+          "ml_features": {
+            "era_pitcher": 2.48,
+            "whip_pitcher": 1.21,
+            "k9_pitcher": 6.06,
+            "woba_equipo": 0.323,
+            "ops_equipo": 0.706,
+            "win_pct_equipo": 0.531,
+            "es_local": 1.0,
+            "park_factor": 1.05,
+            "fatiga_bullpen": 0.4,
+            "matchup_zurdo_diestro": -2.0,
+            "edge_estadistico": 12.2,
+            "bb9_pitcher": 3.1,
+            "hr9_pitcher": 0.9,
+            "racha_equipo": 1.0,
+            "diferencia_run": 0.0,
+            "vs_pitcher_hand": 0.0,
+            "temp_f": 0.0,
+            "viento_mph": 0.0,
+            "run_env": 0.0,
+            "fip_pitcher": 4.08,
+            "xfip_pitcher": 3.8,
+            "k_pct_pitcher": 16.5,
+            "bb_pct_pitcher": 8.4
+          },
+          "ia_veto": {
+            "ok": true,
+            "decision": "PASAR",
+            "motivo": "ALERTA scratch Luis Campusano y Gavin Sheets",
+            "confianza": 3,
+            "fuente": "groq",
+            "modelo": "llama-3.1-8b-instant"
+          },
+          "marcador_final": "San Diego Padres 9 - Arizona Diamondbacks 4",
+          "liquidado_en": "2026-08-05T00:30:01.293899-04:00"
+        }
+      ],
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
+    },
+    {
+      "dia": 29,
+      "fecha": "2026-08-05",
+      "bloqueado_en": null,
+      "apuestas": [],
       "predicciones": [],
       "resumen": {
         "jugadas": 0,
@@ -8546,22 +9406,22 @@
   ],
   "ml_meta": {
     "ok": true,
-    "muestras": 176,
-    "muestras_reales": 7,
+    "muestras": 179,
+    "muestras_reales": 10,
     "schema": 3,
-    "mensaje": "Reentrenado con 176 muestras (7 reales, RF acc 84.7%, RF holdout 69.4%, XGB acc 78.4%, XGB holdout 63.9%)",
-    "accuracy_train": 0.847,
-    "accuracy_holdout": 0.694,
-    "accuracy_xgb_train": 0.784,
-    "accuracy_xgb_holdout": 0.639,
-    "ultimo_entreno": "2026-07-31T19:32:30.867711",
+    "mensaje": "Reentrenado con 179 muestras (10 reales, RF acc 84.9%, RF holdout 61.1%, XGB acc 78.8%, XGB holdout 61.1%)",
+    "accuracy_train": 0.849,
+    "accuracy_holdout": 0.611,
+    "accuracy_xgb_train": 0.788,
+    "accuracy_xgb_holdout": 0.611,
+    "ultimo_entreno": "2026-08-05T04:30:04.935623",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 170,
+    "muestras": 173,
     "metodo": "isotonic",
-    "mensaje": "Calibrado isotonic con 170 muestras (ECE≈0.09)",
-    "ece": 0.091
+    "mensaje": "Calibrado isotonic con 173 muestras (ECE≈0.09)",
+    "ece": 0.092
   }
 }
