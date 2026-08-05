@@ -18,9 +18,9 @@
 
   "lineas": {
 
-    "casa": "draftkings",
+    "casa": "pinnacle",
 
-    "bookmakers": "draftkings,fanduel,betmgm,pinnacle",
+    "bookmakers": "pinnacle,draftkings",
 
     "proveedor": "oddspapi",
 
