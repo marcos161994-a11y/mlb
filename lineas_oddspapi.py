@@ -33,7 +33,7 @@ MARKET_MONEYLINE = "131"
 
 _cache: dict[tuple[str, str], dict[str, Any]] | None = None
 _cache_ts: datetime | None = None
-CACHE_MINUTES = 5  # conservar créditos del free tier
+CACHE_MINUTES = 10  # free tier ~250 req/mes: ~2 req por refresco
 
 
 def _norm(nombre: str) -> str:
@@ -207,55 +207,85 @@ def obtener_lineas_oddspapi(cfg: dict) -> tuple[dict[tuple[str, str], dict], dic
         if fid and p1 and p2:
             names_by_id[fid] = (p1, p2)
 
-    try:
-        params_odds: dict[str, Any] = {
-            "apiKey": api_key,
-            "tournamentIds": str(tournament_id),
-            "oddsFormat": "decimal",
-        }
-        # Algunas cuentas aceptan bookmakers (plural); si falla reintentamos sin filtro
-        if book_keys:
-            params_odds["bookmakers"] = ",".join(book_keys)
-        r_odds = requests.get(
-            f"{BASE_URL}/odds-by-tournaments",
-            params=params_odds,
-            timeout=35,
-        )
-        if r_odds.status_code >= 400 and book_keys:
-            params_odds.pop("bookmakers", None)
-            params_odds["bookmaker"] = book_keys[0]
+    # OddsPapi exige EXACTAMENTE un bookmaker por request (no 'bookmakers' plural).
+    # Para no quemar el free tier: 1 book principal (+ opcional 2º si el 1º viene vacío).
+    casa = str(lineas_cfg.get("casa") or (book_keys[0] if book_keys else "pinnacle")).lower()
+    extras = [b for b in book_keys if b.lower() != casa]
+    books_a_probar = [casa] + extras[:1]
+
+    odds_by_fid: dict[str, dict] = {}
+    books_ok: list[str] = []
+    ultimo_error = ""
+    import time
+
+    for bi, book in enumerate(books_a_probar):
+        if bi > 0:
+            time.sleep(1.1)  # rate limit del endpoint
+        try:
             r_odds = requests.get(
                 f"{BASE_URL}/odds-by-tournaments",
-                params=params_odds,
+                params={
+                    "apiKey": api_key,
+                    "tournamentIds": str(tournament_id),
+                    "oddsFormat": "decimal",
+                    "bookmaker": book,
+                },
                 timeout=35,
             )
-        if r_odds.status_code in (401, 403):
-            meta["mensaje"] = "API key OddsPapi inválida (odds)"
-            meta["http_status"] = r_odds.status_code
-            return {}, meta
-        r_odds.raise_for_status()
-        odds_list = r_odds.json()
-        if not isinstance(odds_list, list):
-            odds_list = odds_list.get("fixtures") or odds_list.get("data") or []
-    except requests.RequestException as e:
-        meta["mensaje"] = f"Error OddsPapi odds: {e}"
+            if r_odds.status_code in (401, 403):
+                meta["mensaje"] = "API key OddsPapi inválida (odds)"
+                meta["http_status"] = r_odds.status_code
+                return {}, meta
+            if r_odds.status_code == 429:
+                ultimo_error = "rate limit OddsPapi"
+                time.sleep(1.5)
+                continue
+            if r_odds.status_code >= 400:
+                try:
+                    ultimo_error = str((r_odds.json().get("error") or {}).get("message") or r_odds.text)[:120]
+                except Exception:
+                    ultimo_error = r_odds.text[:120]
+                continue
+            odds_list = r_odds.json()
+            if not isinstance(odds_list, list):
+                odds_list = odds_list.get("fixtures") or odds_list.get("data") or []
+            n_add = 0
+            for row in odds_list or []:
+                if not isinstance(row, dict):
+                    continue
+                fid = str(row.get("fixtureId") or "")
+                if not fid:
+                    continue
+                prev = odds_by_fid.get(fid) or {"bookmakerOdds": {}}
+                merged_books = dict(prev.get("bookmakerOdds") or {})
+                merged_books.update(row.get("bookmakerOdds") or {})
+                odds_by_fid[fid] = {**row, "bookmakerOdds": merged_books}
+                n_add += 1
+            if n_add:
+                books_ok.append(book)
+            # Con 1 book con datos ya basta para operar
+            if books_ok and bi == 0:
+                break
+        except requests.RequestException as e:
+            ultimo_error = str(e)[:120]
+            continue
+
+    if not odds_by_fid:
+        meta["mensaje"] = ultimo_error or "OddsPapi sin cuotas MLB"
         return {}, meta
 
     mapa: dict[tuple[str, str], dict] = {}
-    for row in odds_list or []:
-        if not isinstance(row, dict):
-            continue
-        fid = str(row.get("fixtureId") or "")
+    for fid, row in odds_by_fid.items():
         p1, p2 = names_by_id.get(fid, ("", ""))
         p1 = row.get("participant1Name") or p1
         p2 = row.get("participant2Name") or p2
         if not p1 or not p2:
             continue
-        ml = _mejor_ml_fixture(row.get("bookmakerOdds") or {}, book_keys)
+        ml = _mejor_ml_fixture(row.get("bookmakerOdds") or {}, books_ok or book_keys)
         if not ml:
             continue
-        # Convención: participant1 = home, participant2 = away (venue).
-        # Clave del mapa = (away, home) como en The Odds API.
+        # Fixtures OddsPapi: participant1 vs participant2; moneyline home/away = venue.
+        # Empíricamente participant1 ≈ home en este feed.
         n_home = normalizar_nombre_equipo(p1)
         n_away = normalizar_nombre_equipo(p2)
         mapa[(n_away, n_home)] = {
@@ -267,8 +297,11 @@ def obtener_lineas_oddspapi(cfg: dict) -> tuple[dict[tuple[str, str], dict], dic
     _cache_ts = ahora
     meta["ok"] = True
     meta["partidos"] = len(mapa)
-    meta["mensaje"] = f"{len(mapa)} partidos OddsPapi MLB (fixtures {len(names_by_id)})"
-    meta["bookmakers"] = book_keys
+    meta["mensaje"] = (
+        f"{len(mapa)} partidos OddsPapi MLB · books {','.join(books_ok) or casa} "
+        f"· fixtures {len(names_by_id)}"
+    )
+    meta["bookmakers"] = books_ok or [casa]
     meta["fixtures_mlb"] = len(names_by_id)
     return mapa, meta
 
