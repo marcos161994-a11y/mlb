@@ -2,7 +2,7 @@
   "modo": "simulacion",
   "capital": 100.0,
   "capital_inicial": 100.0,
-  "dia_actual": 2,
+  "dia_actual": 3,
   "dias_totales": 200,
   "stake_por_juego": 5.0,
   "experimento_activo": true,
@@ -3329,9 +3329,9 @@
           "pitcher_away_id": 571945,
           "pitcher_home_id": 650911,
           "inicio_juego": "2026-08-06T18:05:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.69,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-06T17:05:08.860913-04:00",
@@ -3565,7 +3565,9 @@
             "confianza": 3,
             "fuente": "groq",
             "modelo": "llama-3.1-8b-instant"
-          }
+          },
+          "marcador_final": "Washington Nationals 3 - Philadelphia Phillies 7",
+          "liquidado_en": "2026-08-06T21:00:00.574001-04:00"
         },
         {
           "game_id": "824729",
@@ -3583,9 +3585,9 @@
           "pitcher_away_id": 622491,
           "pitcher_home_id": 624133,
           "inicio_juego": "2026-08-06T19:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 3.48,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-06T18:10:09.158459-04:00",
@@ -3828,7 +3830,9 @@
             "confianza": 3,
             "fuente": "groq",
             "modelo": "llama-3.1-8b-instant"
-          }
+          },
+          "marcador_final": "Chicago White Sox 11 - Boston Red Sox 12",
+          "liquidado_en": "2026-08-06T23:38:56.770402-04:00"
         },
         {
           "game_id": "824885",
@@ -3846,9 +3850,9 @@
           "pitcher_away_id": 676083,
           "pitcher_home_id": 527048,
           "inicio_juego": "2026-08-06T19:15:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 3.31,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-06T18:15:08.948287-04:00",
@@ -4067,7 +4071,9 @@
             "confianza": 1,
             "fuente": "groq",
             "modelo": "llama-3.1-8b-instant"
-          }
+          },
+          "marcador_final": "Miami Marlins 3 - Atlanta Braves 11",
+          "liquidado_en": "2026-08-06T23:10:00.576835-04:00"
         },
         {
           "game_id": "824080",
@@ -4085,9 +4091,9 @@
           "pitcher_away_id": 641927,
           "pitcher_home_id": 608379,
           "inicio_juego": "2026-08-06T19:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-06T18:40:09.953886-04:00",
@@ -4328,9 +4334,284 @@
             "xfip_pitcher": 3.45,
             "k_pct_pitcher": 19.7,
             "bb_pct_pitcher": 6.7
-          }
+          },
+          "marcador_final": "Minnesota Twins 4 - Kansas City Royals 3",
+          "liquidado_en": "2026-08-06T22:40:00.471779-04:00"
+        },
+        {
+          "game_id": "825053",
+          "visitante": "San Diego Padres",
+          "home": "Arizona Diamondbacks",
+          "pick": "San Diego Padres ML",
+          "odds": 1.908,
+          "odds_american": -110,
+          "edge": 0,
+          "probPick": 52.4,
+          "apostable": false,
+          "motivo_apuesta": "Prob. modelo bajo 58.0%",
+          "pitcherAway": "Walker Buehler",
+          "pitcherHome": "Kohl Drake",
+          "pitcher_away_id": 621111,
+          "pitcher_home_id": 684442,
+          "inicio_juego": "2026-08-06T21:40:00-04:00",
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.54,
+          "stake_virtual": 5.0,
+          "con_dinero": false,
+          "predicho_en": "2026-08-06T20:40:11.077310-04:00",
+          "valida_stats": true,
+          "invalida_tarde": false,
+          "clima": {
+            "ok": true,
+            "fuente": "domo",
+            "temp_f": null,
+            "viento_mph": null,
+            "humedad": null,
+            "run_env": 0.0,
+            "motivo": "Estadio techado — clima neutro",
+            "estadio": "Chase Field",
+            "es_domo": true
+          },
+          "lesiones": {
+            "ok": true,
+            "fuente": "espn",
+            "motivo": "272 bajas indexadas",
+            "away": [
+              {
+                "jugador": "Nick Pivetta",
+                "apellido": "pivetta",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Pivetta (forearm) exited Tuesday's rehab start with Single-A Lake Elsinore due to elbow tightness, but he threw in the bullpen after leaving",
+                "severidad": 5,
+                "equipo": "San Diego Padres"
+              },
+              {
+                "jugador": "Jason Adam",
+                "apellido": "adam",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "The Padres transferred Adam (shoulder) to the 60-day injured list Monday.",
+                "severidad": 5,
+                "equipo": "San Diego Padres"
+              },
+              {
+                "jugador": "Joe Musgrove",
+                "apellido": "musgrove",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Musgrove (elbow) is slated to make a rehab appearance for Single-A Lake Elsinore on Tuesday.",
+                "severidad": 5,
+                "equipo": "San Diego Padres"
+              },
+              {
+                "jugador": "Lucas Giolito",
+                "apellido": "giolito",
+                "pos": "SP",
+                "status": "15-Day-IL",
+                "comentario": "Giolito (elbow) has been throwing at San Diego's team complex in Arizona and may be close to facing hitters, MLB.com reports.",
+                "severidad": 5,
+                "equipo": "San Diego Padres"
+              },
+              {
+                "jugador": "Ramon Laureano",
+                "apellido": "laureano",
+                "pos": "LF",
+                "status": "60-Day-IL",
+                "comentario": "Laureano underwent surgery Friday to repair his torn right labrum, Kevin Acee of The San Diego Union-Tribune reports.",
+                "severidad": 5,
+                "equipo": "San Diego Padres"
+              },
+              {
+                "jugador": "Bryan Hoeing",
+                "apellido": "hoeing",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "The Padres transferred Hoeing (elbow) from the 15-day injured list to the 60-day IL on Wednesday.",
+                "severidad": 5,
+                "equipo": "San Diego Padres"
+              },
+              {
+                "jugador": "Samad Taylor",
+                "apellido": "taylor",
+                "pos": "LF",
+                "status": "10-Day-IL",
+                "comentario": "Taylor (oblique) has been taking light swings and rehabbing at the Padres' spring complex in Arizona, MLB.com reports.",
+                "severidad": 4,
+                "equipo": "San Diego Padres"
+              },
+              {
+                "jugador": "David Morgan",
+                "apellido": "morgan",
+                "pos": "RP",
+                "status": "15-Day-IL",
+                "comentario": "Morgan (knee) made a rehab appearance Sunday at Triple-A El Paso, allowing one hit and no walks over an inning of relief.",
+                "severidad": 4,
+                "equipo": "San Diego Padres"
+              }
+            ],
+            "home": [
+              {
+                "jugador": "Michael Soroka",
+                "apellido": "soroka",
+                "pos": "SP",
+                "status": "15-Day-IL",
+                "comentario": "Soroka (lower body) allowed one run on three hits and two walks while striking out one over four innings for Triple-A Reno on Tuesday.",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              },
+              {
+                "jugador": "Justin Martinez",
+                "apellido": "martinez",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Martinez (elbow) did not allow a hit or a walk and struck out two over a scoreless inning for Single-A Visalia on Tuesday.",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              },
+              {
+                "jugador": "Blake Walston",
+                "apellido": "walston",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Walston (elbow) will begin a rehab assignment Tuesday, Jack Sommers of SI.com reports.",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              },
+              {
+                "jugador": "Corbin Burnes",
+                "apellido": "burnes",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Burnes (elbow/teres major) will throw a bullpen session Tuesday, Jack Sommers of SI.com reports.",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              },
+              {
+                "jugador": "Zac Gallen",
+                "apellido": "gallen",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "The Diamondbacks transferred Gallen (elbow) from the 15-day injured list to the 60-day IL on Monday.",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              },
+              {
+                "jugador": "A.J. Puk",
+                "apellido": "puk",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Manager Torey Lovullo said Saturday that MRI results on Puk's left shoulder revealed that his shoulder capsule hasn't fully healed, Steve Gi",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              },
+              {
+                "jugador": "Ryne Nelson",
+                "apellido": "nelson",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Nelson (elbow) will begin a throwing program Saturday or Sunday, Alex D'Agostino of SI.com reports.",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              },
+              {
+                "jugador": "Andrew Saalfrank",
+                "apellido": "saalfrank",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Saalfrank (shoulder) has begun a throwing program, Alex Weiner of Arizona Sports reports.",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              }
+            ],
+            "resumen": "San Diego Padres: Nick Pivetta(SP/60-Day-IL), Jason Adam(RP/60-Day-IL), Joe Musgrove(SP/60-Day-IL), Lucas Giolito(SP/15-Day-IL) | Arizona Diamondbacks: Michael Soroka(SP/15-Day-IL), Justin Martinez(RP/60-Day-IL), Blake Walston(SP/60-Day-IL), Corbin Burnes(SP/60-Day-IL)",
+            "ajuste_away": -3.8,
+            "ajuste_home": -4.0,
+            "starter_riesgo": false,
+            "starter_away_lesionado": false,
+            "starter_home_lesionado": false,
+            "alerta": ""
+          },
+          "scratch_lineup": {
+            "ok": true,
+            "lineup_confirmado": true,
+            "scratch_away": false,
+            "scratch_home": false,
+            "estrellas_fuera_away": [
+              {
+                "id": 669134,
+                "nombre": "Luis Campusano",
+                "ops": 0.892,
+                "pa": 126
+              }
+            ],
+            "estrellas_fuera_home": [
+              {
+                "id": 682988,
+                "nombre": "Tyler Locklear",
+                "ops": 0.819,
+                "pa": 35
+              },
+              {
+                "id": 543510,
+                "nombre": "James McCann",
+                "ops": 0.799,
+                "pa": 104
+              }
+            ],
+            "ajuste_away": 0.0,
+            "ajuste_home": -2.4,
+            "min_estrellas_fuera": 2,
+            "riesgo": true,
+            "alerta": "Estrellas out local: Tyler Locklear, James McCann",
+            "resumen": "Estrellas out local: Tyler Locklear, James McCann"
+          },
+          "ml_features": {
+            "era_pitcher": 5.18,
+            "whip_pitcher": 1.45,
+            "k9_pitcher": 7.94,
+            "woba_equipo": 0.317,
+            "ops_equipo": 0.694,
+            "win_pct_equipo": 0.513,
+            "es_local": 0.0,
+            "park_factor": 1.05,
+            "fatiga_bullpen": 0.4,
+            "matchup_zurdo_diestro": -0.7799999999999985,
+            "edge_estadistico": 0.0,
+            "bb9_pitcher": 3.8,
+            "hr9_pitcher": 1.21,
+            "racha_equipo": -1.0,
+            "diferencia_run": 0.0,
+            "vs_pitcher_hand": 0.0,
+            "temp_f": 0.0,
+            "viento_mph": 0.0,
+            "run_env": 0.0,
+            "fip_pitcher": 4.46,
+            "xfip_pitcher": 3.61,
+            "k_pct_pitcher": 20.2,
+            "bb_pct_pitcher": 9.7
+          },
+          "marcador_final": "San Diego Padres 5 - Arizona Diamondbacks 1",
+          "liquidado_en": "2026-08-07T00:30:00.571800-04:00"
         }
       ],
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
+    },
+    {
+      "dia": 3,
+      "fecha": "2026-08-07",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
       "resumen": {
         "jugadas": 0,
         "ganadas": 0,
@@ -4344,21 +4625,21 @@
   ],
   "calib_meta": {
     "ok": false,
-    "muestras": 14,
+    "muestras": 19,
     "metodo": null,
-    "mensaje": "Esperando más liquidaciones (14/30)"
+    "mensaje": "Esperando más liquidaciones (19/30)"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 14,
-    "muestras_reales": 14,
+    "muestras": 19,
+    "muestras_reales": 19,
     "schema": 3,
-    "mensaje": "Reentrenado con 14 muestras (14 reales, RF acc 100.0%, XGB acc 57.1%)",
+    "mensaje": "Reentrenado con 19 muestras (19 reales, RF acc 100.0%, XGB acc 78.9%)",
     "accuracy_train": 1.0,
     "accuracy_holdout": null,
-    "accuracy_xgb_train": 0.571,
+    "accuracy_xgb_train": 0.789,
     "accuracy_xgb_holdout": null,
-    "ultimo_entreno": "2026-08-06T23:00:02.248189",
+    "ultimo_entreno": "2026-08-07T04:30:02.270487",
     "xgb": true
   }
 }
