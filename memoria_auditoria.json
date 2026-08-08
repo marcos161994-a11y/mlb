@@ -287,9 +287,9 @@
           "pitcher_away_id": 669854,
           "pitcher_home_id": 592662,
           "inicio_juego": "2026-08-07T21:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-07T20:40:15.274908-04:00",
@@ -490,7 +490,9 @@
             "confianza": 3,
             "fuente": "groq",
             "modelo": "llama-3.1-8b-instant"
-          }
+          },
+          "marcador_final": "Houston Astros 6 - San Diego Padres 3",
+          "liquidado_en": "2026-08-08T00:40:00.259472-04:00"
         },
         {
           "game_id": "823103",
@@ -752,9 +754,9 @@
           "pitcher_away_id": 672456,
           "pitcher_home_id": 664141,
           "inicio_juego": "2026-08-07T22:15:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-07T21:15:08.071562-04:00",
@@ -976,7 +978,9 @@
             "xfip_pitcher": 3.57,
             "k_pct_pitcher": 17.4,
             "bb_pct_pitcher": 5.4
-          }
+          },
+          "marcador_final": "Detroit Tigers 2 - San Francisco Giants 5",
+          "liquidado_en": "2026-08-08T00:50:00.348282-04:00"
         }
       ],
       "resumen": {
@@ -1008,8 +1012,8 @@
   ],
   "calib_meta": {
     "ok": false,
-    "muestras": 2,
+    "muestras": 4,
     "metodo": null,
-    "mensaje": "Esperando más liquidaciones (2/30)"
+    "mensaje": "Esperando más liquidaciones (4/30)"
   }
 }
