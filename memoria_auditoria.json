@@ -998,7 +998,214 @@
       "fecha": "2026-08-08",
       "bloqueado_en": null,
       "apuestas": [],
-      "predicciones": [],
+      "predicciones": [
+        {
+          "game_id": "823514",
+          "visitante": "Atlanta Braves",
+          "home": "New York Yankees",
+          "pick": "New York Yankees ML",
+          "odds": 1.984,
+          "odds_american": -102,
+          "edge": 0,
+          "probPick": 50.4,
+          "apostable": false,
+          "motivo_apuesta": "Prob. modelo bajo 58.0%",
+          "pitcherAway": "Chris Sale",
+          "pitcherHome": "Gerrit Cole",
+          "pitcher_away_id": 519242,
+          "pitcher_home_id": 543037,
+          "inicio_juego": "2026-08-08T15:05:00-04:00",
+          "estado": "pendiente",
+          "resultado": null,
+          "profit": null,
+          "stake_virtual": 5.0,
+          "con_dinero": false,
+          "predicho_en": "2026-08-08T14:05:14.150843-04:00",
+          "valida_stats": true,
+          "invalida_tarde": false,
+          "clima": {
+            "ok": true,
+            "fuente": "open-meteo",
+            "temp_f": 86.2,
+            "viento_mph": 14.9,
+            "humedad": 54,
+            "run_env": 1.15,
+            "motivo": "86°F · viento 15 mph · calor/viento → favorece bateo",
+            "estadio": "Yankee Stadium",
+            "es_domo": false
+          },
+          "lesiones": {
+            "ok": true,
+            "fuente": "espn",
+            "motivo": "273 bajas indexadas",
+            "away": [
+              {
+                "jugador": "Spencer Strider",
+                "apellido": "strider",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Strider (elbow) appears unlikely to pitch again in 2026, Mark Bowman of MLB.com reports.",
+                "severidad": 5,
+                "equipo": "Atlanta Braves"
+              },
+              {
+                "jugador": "Spencer Schwellenbach",
+                "apellido": "schwellenbach",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Schwellenbach (elbow) will likely throw a few more bullpen sessions before being cleared to face live hitters, and he hasn't yet regained hi",
+                "severidad": 5,
+                "equipo": "Atlanta Braves"
+              },
+              {
+                "jugador": "Joe Jimenez",
+                "apellido": "jimenez",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Atlanta manager Walt Weiss revealed Wednesday that Jimenez underwent another surgery on his left knee 3-to-4 weeks ago, Grant McAuley of the",
+                "severidad": 5,
+                "equipo": "Atlanta Braves"
+              },
+              {
+                "jugador": "Joey Wentz",
+                "apellido": "wentz",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Atlanta placed Wentz (knee) on the 60-day injured list Tuesday.",
+                "severidad": 5,
+                "equipo": "Atlanta Braves"
+              },
+              {
+                "jugador": "Robert Suarez",
+                "apellido": "suarez",
+                "pos": "RP",
+                "status": "15-Day-IL",
+                "comentario": "Suarez (forearm) has yet to increase the intensity of his throwing program as Atlanta takes a cautious approach with his recovery, Gabriel B",
+                "severidad": 4,
+                "equipo": "Atlanta Braves"
+              },
+              {
+                "jugador": "Reynaldo Lopez",
+                "apellido": "lopez",
+                "pos": "RP",
+                "status": "15-Day-IL",
+                "comentario": "Lopez (knee) underwent an MRI on Sunday that showed no structural damage, Mark Bowman of MLB.com reports.",
+                "severidad": 4,
+                "equipo": "Atlanta Braves"
+              },
+              {
+                "jugador": "Jurickson Profar",
+                "apellido": "profar",
+                "pos": "LF",
+                "status": "suspension",
+                "comentario": "Profar will miss the full 2026 season after the appeal of his 162-game PED suspension was denied Thursday, Jeff Passan of ESPN.com reports.",
+                "severidad": 2,
+                "equipo": "Atlanta Braves"
+              }
+            ],
+            "home": [
+              {
+                "jugador": "Clarke Schmidt",
+                "apellido": "schmidt",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Manager Aaron Boone said Wednesday that he expects Schmidt (elbow/forearm) to play catch Thursday, Jorge Castillo of ESPN.com reports.",
+                "severidad": 5,
+                "equipo": "New York Yankees"
+              },
+              {
+                "jugador": "Aaron Judge",
+                "apellido": "judge",
+                "pos": "RF",
+                "status": "60-Day-IL",
+                "comentario": "Yankees manager Aaron Boone said Wednesday that Judge (rib) has been cleared to begin light activities, which includes outdoor running and u",
+                "severidad": 5,
+                "equipo": "New York Yankees"
+              },
+              {
+                "jugador": "Carlos Rodon",
+                "apellido": "rodon",
+                "pos": "SP",
+                "status": "15-Day-IL",
+                "comentario": "Manager Aaron Boone said Rodon (elbow) is scheduled to begin a rehab assignment Saturday, likely with Triple-A Scranton/Wilkes-Barre, Gary P",
+                "severidad": 5,
+                "equipo": "New York Yankees"
+              },
+              {
+                "jugador": "Cody Bellinger",
+                "apellido": "bellinger",
+                "pos": "LF",
+                "status": "10-Day-IL",
+                "comentario": "Bellinger (hamstring) has been doing some outdoor running while also hitting and throwing, per MLB.com.",
+                "severidad": 4,
+                "equipo": "New York Yankees"
+              },
+              {
+                "jugador": "Giancarlo Stanton",
+                "apellido": "stanton",
+                "pos": "DH",
+                "status": "10-Day-IL",
+                "comentario": "Stanton (calf) took swings against Carlos Rodon (elbow) on Monday, MLB.com reports.",
+                "severidad": 3,
+                "equipo": "New York Yankees"
+              }
+            ],
+            "resumen": "Atlanta Braves: Spencer Strider(SP/60-Day-IL), Spencer Schwellenbach(SP/60-Day-IL), Joe Jimenez(RP/60-Day-IL), Joey Wentz(RP/60-Day-IL) | New York Yankees: Clarke Schmidt(SP/60-Day-IL), Aaron Judge(RF/60-Day-IL), Carlos Rodon(SP/15-Day-IL), Cody Bellinger(LF/10-Day-IL)",
+            "ajuste_away": -3.25,
+            "ajuste_home": -2.95,
+            "starter_riesgo": false,
+            "starter_away_lesionado": false,
+            "starter_home_lesionado": false,
+            "alerta": ""
+          },
+          "scratch_lineup": {
+            "ok": true,
+            "lineup_confirmado": true,
+            "scratch_away": false,
+            "scratch_home": false,
+            "estrellas_fuera_away": [],
+            "estrellas_fuera_home": [
+              {
+                "id": 671277,
+                "nombre": "Luis García Jr.",
+                "ops": 0.871,
+                "pa": 391
+              }
+            ],
+            "ajuste_away": 0.0,
+            "ajuste_home": 0.0,
+            "min_estrellas_fuera": 2,
+            "riesgo": false,
+            "alerta": "",
+            "resumen": "Lineup OK"
+          },
+          "ml_features": {
+            "era_pitcher": 3.42,
+            "whip_pitcher": 1.1,
+            "k9_pitcher": 9.53,
+            "woba_equipo": 0.329,
+            "ops_equipo": 0.721,
+            "win_pct_equipo": 0.56,
+            "es_local": 1.0,
+            "park_factor": 1.08,
+            "fatiga_bullpen": 0.4,
+            "matchup_zurdo_diestro": 0.040000000000000036,
+            "edge_estadistico": 0.0,
+            "bb9_pitcher": 2.08,
+            "hr9_pitcher": 1.34,
+            "racha_equipo": 1.0,
+            "diferencia_run": 0.0,
+            "vs_pitcher_hand": 0.0,
+            "temp_f": 86.2,
+            "viento_mph": 14.9,
+            "run_env": 1.15,
+            "fip_pitcher": 3.66,
+            "xfip_pitcher": 2.84,
+            "k_pct_pitcher": 25.8,
+            "bb_pct_pitcher": 5.6
+          }
+        }
+      ],
       "resumen": {
         "jugadas": 0,
         "ganadas": 0,
