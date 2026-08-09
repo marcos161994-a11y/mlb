@@ -2383,7 +2383,7 @@ def api_odds_status():
         }
     try:
         if proveedor in ("oddspapi", "odds-papi", "odds_papi"):
-            from lineas_oddspapi import cargar_api_key, obtener_lineas_oddspapi
+            from lineas_oddspapi import cargar_api_key, fingerprint_key, obtener_lineas_oddspapi
 
             key = cargar_api_key(cfg)
             if not key:
@@ -2392,20 +2392,32 @@ def api_odds_status():
                     "ok": False,
                     "key_presente": False,
                     "motivo": "Falta ODDSPAPI_API_KEY en Render (oddspapi.io)",
+                    "ayuda": "Crea key en https://oddspapi.io → Render ODDSPAPI_API_KEY → Save + Deploy",
                 }
             _, meta = obtener_lineas_oddspapi(cfg)
             return {
                 **base,
                 "ok": bool(meta.get("ok")),
                 "key_presente": True,
+                "key_fingerprint": meta.get("key_fingerprint") or fingerprint_key(key),
+                "key_source": meta.get("key_source"),
+                "api_version": meta.get("api_version"),
+                "http_status": meta.get("http_status"),
+                "error_api": meta.get("error_api"),
+                "tournament_id": meta.get("tournament_id"),
                 "partidos": meta.get("partidos"),
                 "fixtures_mlb": meta.get("fixtures_mlb"),
                 "mensaje": meta.get("mensaje"),
                 "cache": meta.get("cache"),
+                "intentos": meta.get("intentos"),
                 "ayuda": (
                     None
                     if meta.get("ok")
-                    else "Crea key en https://oddspapi.io → Render ODDSPAPI_API_KEY → Save + Deploy"
+                    else (
+                        "Key rechazada por OddsPapi. Regenera en https://oddspapi.io → "
+                        "Render ODDSPAPI_API_KEY (sin comillas) → Save + Manual Deploy. "
+                        "El servicio intenta v5 y luego v4."
+                    )
                 ),
             }
 
