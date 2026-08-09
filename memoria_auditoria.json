@@ -2,7 +2,7 @@
   "modo": "simulacion",
   "capital": 100.0,
   "capital_inicial": 100.0,
-  "dia_actual": 2,
+  "dia_actual": 3,
   "dias_totales": 200,
   "stake_por_juego": 5.0,
   "experimento_activo": true,
@@ -1015,9 +1015,9 @@
           "pitcher_away_id": 519242,
           "pitcher_home_id": 543037,
           "inicio_juego": "2026-08-08T15:05:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.92,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-08T14:05:14.150843-04:00",
@@ -1203,9 +1203,27 @@
             "xfip_pitcher": 2.84,
             "k_pct_pitcher": 25.8,
             "bb_pct_pitcher": 5.6
-          }
+          },
+          "marcador_final": "Atlanta Braves 4 - New York Yankees 5",
+          "liquidado_en": "2026-08-08T23:53:18.943384-04:00"
         }
       ],
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
+    },
+    {
+      "dia": 3,
+      "fecha": "2026-08-09",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
       "resumen": {
         "jugadas": 0,
         "ganadas": 0,
@@ -1219,8 +1237,21 @@
   ],
   "calib_meta": {
     "ok": false,
-    "muestras": 4,
+    "muestras": 5,
     "metodo": null,
-    "mensaje": "Esperando más liquidaciones (4/30)"
+    "mensaje": "Esperando más liquidaciones (5/30)"
+  },
+  "ml_meta": {
+    "ok": true,
+    "muestras": 5,
+    "muestras_reales": 5,
+    "schema": 3,
+    "mensaje": "Reentrenado con 5 muestras (5 reales, RF acc 60.0%, XGB acc 60.0%)",
+    "accuracy_train": 0.6,
+    "accuracy_holdout": null,
+    "accuracy_xgb_train": 0.6,
+    "accuracy_xgb_holdout": null,
+    "ultimo_entreno": "2026-08-09T03:53:20.041829",
+    "xgb": true
   }
 }
