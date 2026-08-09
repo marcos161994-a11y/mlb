@@ -24,6 +24,8 @@
 
     "proveedor": "oddspapi",
 
+    "api_version": "v5",
+
     "region": "us",
 
     "mercado": "h2h",
