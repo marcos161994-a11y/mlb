@@ -27,7 +27,9 @@ from lineas_betmgm import (
 BASE_URL_V5 = "https://v5.oddspapi.io/en"
 BASE_URL_V4 = "https://api.oddspapi.io/v4"
 BASE_DIR = Path(__file__).resolve().parent
+DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
 KEY_FILE = BASE_DIR / "oddspapi_api_key.txt"
+KEY_FILE_DATA = DATA_DIR / "oddspapi_api_key.txt"
 
 SPORT_ID_BASEBALL = 13
 TOURNAMENT_MLB = 109
@@ -35,10 +37,19 @@ TOURNAMENT_MLB = 109
 MARKET_MONEYLINE = 131
 OUTCOME_HOME = {131, "131", "1", "home", "h", "participant1"}
 OUTCOME_AWAY = {132, "132", "2", "away", "a", "participant2"}
+_UUID_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
 
 _cache: dict[tuple[str, str], dict[str, Any]] | None = None
 _cache_ts: datetime | None = None
 CACHE_MINUTES = 10
+
+
+def invalidar_cache_oddspapi() -> None:
+    global _cache, _cache_ts
+    _cache = None
+    _cache_ts = None
 
 
 def _norm(nombre: str) -> str:
@@ -66,8 +77,49 @@ def fingerprint_key(key: str | None) -> str | None:
         return None
     k = key.strip()
     if len(k) <= 8:
-        return "***"
+        return f"*** (len={len(k)})"
     return f"{k[:4]}…{k[-4:]} (len={len(k)})"
+
+
+def _score_key(key: str) -> int:
+    """Prioriza UUID completa / keys largas; penaliza pegados truncados."""
+    if not key:
+        return -1
+    if key.upper() in ("YOUR_API_KEY", "APIKEY", "XXX", "CHANGEME"):
+        return -1
+    if _UUID_RE.match(key):
+        return 100
+    n = len(key)
+    if n >= 32:
+        return 80
+    if n >= 20:
+        return 50
+    if n >= 12:
+        return 20
+    return 5  # probablemente truncada (ej. solo primer bloque de UUID)
+
+
+def guardar_api_key(key: str) -> dict[str, Any]:
+    """Guarda key en disco persistente (DATA_DIR) y limpia cache."""
+    limpia = _limpiar_key(key)
+    if _score_key(limpia) < 50:
+        raise ValueError(
+            f"Key demasiado corta o incompleta (len={len(limpia)}). "
+            "Una key OddsPapi suele tener 36 caracteres (UUID con guiones)."
+        )
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    KEY_FILE_DATA.write_text(limpia + "\n", encoding="utf-8")
+    try:
+        KEY_FILE.write_text(limpia + "\n", encoding="utf-8")
+    except OSError:
+        pass
+    invalidar_cache_oddspapi()
+    return {
+        "ok": True,
+        "key_fingerprint": fingerprint_key(limpia),
+        "key_length": len(limpia),
+        "path": str(KEY_FILE_DATA),
+    }
 
 
 def cargar_api_key(cfg: dict) -> str | None:
@@ -75,24 +127,36 @@ def cargar_api_key(cfg: dict) -> str | None:
     candidates = (
         ("ODDSPAPI_API_KEY", os.environ.get("ODDSPAPI_API_KEY")),
         ("ODDS_PAPI_KEY", os.environ.get("ODDS_PAPI_KEY")),
+        ("oddspapi_api_key.txt (DATA_DIR)", KEY_FILE_DATA.read_text(encoding="utf-8") if KEY_FILE_DATA.exists() else None),
         ("ODDS_API_KEY", os.environ.get("ODDS_API_KEY")),  # nombre en docs v5
         ("lineas.api_key", lineas.get("api_key")),
         ("oddspapi_api_key.txt", KEY_FILE.read_text(encoding="utf-8") if KEY_FILE.exists() else None),
     )
+    scored: list[tuple[int, str, str]] = []
     for source, candidate in candidates:
         if candidate is None:
             continue
         key = _limpiar_key(str(candidate))
-        if key and key.upper() not in ("YOUR_API_KEY", "APIKEY", "XXX", "CHANGEME"):
-            # Adjuntamos fuente en atributo no serializado vía nonlocal? devolvemos solo key;
-            # la fuente se resuelve aparte.
-            cargar_api_key.last_source = source  # type: ignore[attr-defined]
-            return key
-    cargar_api_key.last_source = None  # type: ignore[attr-defined]
-    return None
+        sc = _score_key(key)
+        if sc < 0:
+            continue
+        scored.append((sc, source, key))
+
+    if not scored:
+        cargar_api_key.last_source = None  # type: ignore[attr-defined]
+        cargar_api_key.last_score = None  # type: ignore[attr-defined]
+        return None
+
+    scored.sort(key=lambda x: (-x[0], x[1]))
+    best_score, source, key = scored[0]
+    cargar_api_key.last_source = source  # type: ignore[attr-defined]
+    cargar_api_key.last_score = best_score  # type: ignore[attr-defined]
+    # Si Render tiene una key truncada pero hay otra mejor, ya elegimos la mejor.
+    return key
 
 
 cargar_api_key.last_source = None  # type: ignore[attr-defined]
+cargar_api_key.last_score = None  # type: ignore[attr-defined]
 
 
 def _parse_api_error(resp: requests.Response) -> str:
@@ -553,6 +617,16 @@ def obtener_lineas_oddspapi(cfg: dict) -> tuple[dict[tuple[str, str], dict], dic
 
     meta["key_fingerprint"] = fingerprint_key(api_key)
     meta["key_source"] = getattr(cargar_api_key, "last_source", None)
+    meta["key_length"] = len(api_key)
+    meta["key_score"] = getattr(cargar_api_key, "last_score", None)
+    if (meta["key_score"] or 0) < 50:
+        meta["mensaje"] = (
+            f"ODDSPAPI_API_KEY incompleta (len={len(api_key)}). "
+            "Debe ser la UUID completa (~36 caracteres). "
+            "Usa GitHub Action 'Configurar OddsPapi' o pégala entera en Render."
+        )
+        meta["http_status"] = 400
+        return {}, meta
 
     ahora = datetime.now()
     if _cache is not None and _cache_ts and ahora - _cache_ts < timedelta(minutes=CACHE_MINUTES):
