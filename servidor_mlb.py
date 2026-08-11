@@ -22,7 +22,7 @@ import uvicorn
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from lineas_betmgm import aplicar_lineas_a_juegos
@@ -2401,6 +2401,8 @@ def api_odds_status():
                 "key_presente": True,
                 "key_fingerprint": meta.get("key_fingerprint") or fingerprint_key(key),
                 "key_source": meta.get("key_source"),
+                "key_length": meta.get("key_length") or len(key),
+                "key_score": meta.get("key_score"),
                 "api_version": meta.get("api_version"),
                 "http_status": meta.get("http_status"),
                 "error_api": meta.get("error_api"),
@@ -2414,9 +2416,9 @@ def api_odds_status():
                     None
                     if meta.get("ok")
                     else (
-                        "Key rechazada por OddsPapi. Regenera en https://oddspapi.io → "
-                        "Render ODDSPAPI_API_KEY (sin comillas) → Save + Manual Deploy. "
-                        "El servicio intenta v5 y luego v4."
+                        "Key incompleta o rechazada. Opción fácil: GitHub → Actions → "
+                        "'Configurar OddsPapi' → Run workflow → pega la UUID completa. "
+                        "O en Render ODDSPAPI_API_KEY (36 caracteres) + Manual Deploy."
                     )
                 ),
             }
@@ -2584,6 +2586,46 @@ def _cron_externo_en_fondo() -> None:
         print(f"[CRON] Error en trabajo externo: {e}")
     finally:
         _cron_externo_activo = False
+
+
+@app.post("/api/configurar-oddspapi")
+@app.get("/api/configurar-oddspapi")
+async def api_configurar_oddspapi(request: Request, secret: str | None = None, key: str | None = None):
+    """
+    Guarda ODDSPAPI key en disco persistente (DATA_DIR).
+    Requiere CRON_SECRET. Body JSON {"key":"..."} o ?key=
+    """
+    _verificar_cron_secreto(secret)
+    raw = key
+    if request.method == "POST":
+        try:
+            body = await request.json()
+        except Exception:
+            body = None
+        if isinstance(body, dict):
+            raw = raw or body.get("key") or body.get("api_key") or body.get("apiKey")
+    if not raw:
+        raise HTTPException(status_code=400, detail="Falta key (body JSON o ?key=)")
+    try:
+        from lineas_oddspapi import guardar_api_key, obtener_lineas_oddspapi
+
+        info = guardar_api_key(str(raw))
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e)[:160]) from e
+
+    cfg = cargar_config()
+    _, meta = obtener_lineas_oddspapi(cfg)
+    return {
+        "ok": bool(meta.get("ok")),
+        "guardado": info,
+        "partidos": meta.get("partidos"),
+        "api_version": meta.get("api_version"),
+        "mensaje": meta.get("mensaje"),
+        "key_fingerprint": meta.get("key_fingerprint") or info.get("key_fingerprint"),
+        "key_source": meta.get("key_source"),
+    }
 
 
 @app.get("/api/auto-bloqueo-externo")

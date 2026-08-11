@@ -135,3 +135,4 @@ def test_limpiar_key_pegada_en_url():
     assert _limpiar_key('apiKey=abc123XYZ') == "abc123XYZ"
     assert _limpiar_key('  "abc123XYZ"  ') == "abc123XYZ"
     assert fingerprint_key("abcdefghijklmnop") == "abcd…mnop (len=16)"
+    assert fingerprint_key("6f1f173c") == "*** (len=8)"
