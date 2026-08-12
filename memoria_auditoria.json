@@ -10834,7 +10834,1408 @@
       "fecha": "2026-08-12",
       "bloqueado_en": null,
       "apuestas": [],
-      "predicciones": [],
+      "predicciones": [
+        {
+          "game_id": "823672",
+          "visitante": "Baltimore Orioles",
+          "home": "Minnesota Twins",
+          "pick": "Baltimore Orioles ML",
+          "odds": 1.786,
+          "odds_american": -127,
+          "edge": 0,
+          "probPick": 56.0,
+          "apostable": false,
+          "motivo_apuesta": "Prob. modelo bajo 58.0%",
+          "pitcherAway": "Shane Baz",
+          "pitcherHome": "Zebby Matthews",
+          "pitcher_away_id": 669358,
+          "pitcher_home_id": 805673,
+          "inicio_juego": "2026-08-12T13:40:00-04:00",
+          "estado": "pendiente",
+          "resultado": null,
+          "profit": null,
+          "stake_virtual": 5.0,
+          "con_dinero": false,
+          "predicho_en": "2026-08-12T12:40:15.784102-04:00",
+          "valida_stats": true,
+          "invalida_tarde": false,
+          "clima": {
+            "ok": true,
+            "fuente": "open-meteo",
+            "temp_f": 91.6,
+            "viento_mph": 5.5,
+            "humedad": 27,
+            "run_env": 0.8,
+            "motivo": "92°F · viento 6 mph · clima neutro",
+            "estadio": "Target Field",
+            "es_domo": false
+          },
+          "lesiones": {
+            "ok": true,
+            "fuente": "espn",
+            "motivo": "277 bajas indexadas",
+            "away": [
+              {
+                "jugador": "Chris Bassitt",
+                "apellido": "bassitt",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Bassitt (back) struck out five and allowed three hits and two walks across six scoreless innings Friday in a rehab start with Triple-A Norfo",
+                "severidad": 5,
+                "equipo": "Baltimore Orioles"
+              },
+              {
+                "jugador": "Ryan Helsley",
+                "apellido": "helsley",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Helsley (elbow) said Sunday that he's about a week into his throwing program but is likely a couple of weeks away from getting back on a mou",
+                "severidad": 5,
+                "equipo": "Baltimore Orioles"
+              },
+              {
+                "jugador": "Felix Bautista",
+                "apellido": "bautista",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Bautista (shoulder) threw live batting practice Tuesday, Matt Weyrich of The Baltimore Sun reports.",
+                "severidad": 5,
+                "equipo": "Baltimore Orioles"
+              },
+              {
+                "jugador": "Colin Selby",
+                "apellido": "selby",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Orioles president of baseball operations Mike Elias said Friday that Selby underwent right shoulder surgery Tuesday to repair his labrum and",
+                "severidad": 5,
+                "equipo": "Baltimore Orioles"
+              },
+              {
+                "jugador": "Keegan Akin",
+                "apellido": "akin",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Akin (elbow) underwent Tommy John surgery Wednesday, Jake Rill of MLB.com  reports.",
+                "severidad": 5,
+                "equipo": "Baltimore Orioles"
+              },
+              {
+                "jugador": "Jordan Westburg",
+                "apellido": "westburg",
+                "pos": "3B",
+                "status": "60-Day-IL",
+                "comentario": "Westburg (elbow) underwent Tommy John surgery Wednesday, Andrew Golden of TheBanner.com reports.",
+                "severidad": 5,
+                "equipo": "Baltimore Orioles"
+              },
+              {
+                "jugador": "Blaze Alexander",
+                "apellido": "alexander",
+                "pos": "3B",
+                "status": "10-Day-IL",
+                "comentario": "Alexander played catch Friday for the first time since sustaining a fractured left hand before the All-Star break, Andy Kostka of TheBanner.",
+                "severidad": 4,
+                "equipo": "Baltimore Orioles"
+              },
+              {
+                "jugador": "Samuel Basallo",
+                "apellido": "basallo",
+                "pos": "C",
+                "status": "10-Day-IL",
+                "comentario": "Manager Craig Albernaz said Tuesday that Basallo (shoulder) is close to participating in both his catching and hitting progressions and coul",
+                "severidad": 4,
+                "equipo": "Baltimore Orioles"
+              }
+            ],
+            "home": [
+              {
+                "jugador": "Joe Ryan",
+                "apellido": "ryan",
+                "pos": "SP",
+                "status": "15-Day-IL",
+                "comentario": "Ryan (glute) threw on flat ground Monday, Aaron Gleeman of AaronGleeman.com reports.",
+                "severidad": 5,
+                "equipo": "Minnesota Twins"
+              },
+              {
+                "jugador": "Mike Paredes",
+                "apellido": "paredes",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "The Twins transferred Paredes (oblique) from the 15-day injured list to the 60-day IL on Saturday.",
+                "severidad": 5,
+                "equipo": "Minnesota Twins"
+              },
+              {
+                "jugador": "Cole Sands",
+                "apellido": "sands",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Sands will undergo arthroscopic surgery Tuesday to remove loose bodies and bone spurs from his right elbow, Jack Azoulay-Haron of ElEmergent",
+                "severidad": 5,
+                "equipo": "Minnesota Twins"
+              },
+              {
+                "jugador": "David Festa",
+                "apellido": "festa",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Festa (shoulder) will undergo a season-ending double surgery Wednesday, Dan Hayes of The Athletic reports.",
+                "severidad": 5,
+                "equipo": "Minnesota Twins"
+              },
+              {
+                "jugador": "Mick Abel",
+                "apellido": "abel",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "The Twins plan to re-evaluate Abel (elbow) on Sept. 1, Dan Hayes of The Athletic reports.",
+                "severidad": 5,
+                "equipo": "Minnesota Twins"
+              },
+              {
+                "jugador": "Pablo Lopez",
+                "apellido": "lopez",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "The Twins placed Lopez (elbow) on the 60-day injured list Thursday.",
+                "severidad": 5,
+                "equipo": "Minnesota Twins"
+              },
+              {
+                "jugador": "Byron Buxton",
+                "apellido": "buxton",
+                "pos": "CF",
+                "status": "10-Day-IL",
+                "comentario": "Buxton (hip) went through a full workout at Target Field on Monday, MLB.com reports.",
+                "severidad": 4,
+                "equipo": "Minnesota Twins"
+              },
+              {
+                "jugador": "Anthony Banda",
+                "apellido": "banda",
+                "pos": "RP",
+                "status": "15-Day-IL",
+                "comentario": "Banda underwent surgery to repair his left lat strain and will miss the remainder of the 2026 season, Dan Hayes of The Athletic reports.",
+                "severidad": 4,
+                "equipo": "Minnesota Twins"
+              }
+            ],
+            "resumen": "Baltimore Orioles: Chris Bassitt(SP/60-Day-IL), Ryan Helsley(RP/60-Day-IL), Felix Bautista(RP/60-Day-IL), Colin Selby(RP/60-Day-IL) | Minnesota Twins: Joe Ryan(SP/15-Day-IL), Mike Paredes(SP/60-Day-IL), Cole Sands(RP/60-Day-IL), David Festa(SP/60-Day-IL)",
+            "ajuste_away": -3.5,
+            "ajuste_home": -4.1,
+            "starter_riesgo": false,
+            "starter_away_lesionado": false,
+            "starter_home_lesionado": false,
+            "alerta": ""
+          },
+          "scratch_lineup": {
+            "ok": true,
+            "lineup_confirmado": true,
+            "scratch_away": false,
+            "scratch_home": false,
+            "estrellas_fuera_away": [
+              {
+                "id": 691723,
+                "nombre": "Coby Mayo",
+                "ops": 0.714,
+                "pa": 306
+              }
+            ],
+            "estrellas_fuera_home": [
+              {
+                "id": 680777,
+                "nombre": "Ryan Jeffers",
+                "ops": 0.878,
+                "pa": 240
+              },
+              {
+                "id": 656577,
+                "nombre": "Alex Jackson",
+                "ops": 0.742,
+                "pa": 69
+              }
+            ],
+            "ajuste_away": 0.0,
+            "ajuste_home": -2.4,
+            "min_estrellas_fuera": 2,
+            "riesgo": true,
+            "alerta": "Estrellas out local: Ryan Jeffers, Alex Jackson",
+            "resumen": "Estrellas out local: Ryan Jeffers, Alex Jackson"
+          },
+          "ml_features": {
+            "era_pitcher": 3.76,
+            "whip_pitcher": 1.32,
+            "k9_pitcher": 7.92,
+            "woba_equipo": 0.327,
+            "ops_equipo": 0.715,
+            "win_pct_equipo": 0.483,
+            "es_local": 0.0,
+            "park_factor": 1.03,
+            "fatiga_bullpen": 0.4,
+            "matchup_zurdo_diestro": 0.040000000000000036,
+            "edge_estadistico": 0.0,
+            "bb9_pitcher": 3.04,
+            "hr9_pitcher": 0.66,
+            "racha_equipo": 1.0,
+            "diferencia_run": 0.0,
+            "vs_pitcher_hand": 0.0,
+            "temp_f": 91.6,
+            "viento_mph": 5.5,
+            "run_env": 0.8,
+            "fip_pitcher": 3.37,
+            "xfip_pitcher": 3.35,
+            "k_pct_pitcher": 20.7,
+            "bb_pct_pitcher": 7.9
+          }
+        },
+        {
+          "game_id": "823017",
+          "visitante": "Philadelphia Phillies",
+          "home": "St. Louis Cardinals",
+          "pick": "St. Louis Cardinals ML",
+          "odds": 1.876,
+          "odds_american": -114,
+          "edge": 0,
+          "probPick": 53.3,
+          "apostable": false,
+          "motivo_apuesta": "Prob. modelo bajo 58.0%",
+          "pitcherAway": "Zack Wheeler",
+          "pitcherHome": "Kyle Leahy",
+          "pitcher_away_id": 554430,
+          "pitcher_home_id": 681517,
+          "inicio_juego": "2026-08-12T14:15:00-04:00",
+          "estado": "pendiente",
+          "resultado": null,
+          "profit": null,
+          "stake_virtual": 5.0,
+          "con_dinero": false,
+          "predicho_en": "2026-08-12T13:15:14.591319-04:00",
+          "valida_stats": true,
+          "invalida_tarde": false,
+          "clima": {
+            "ok": true,
+            "fuente": "open-meteo",
+            "temp_f": 75.0,
+            "viento_mph": 6.0,
+            "humedad": 86,
+            "run_env": 0.0,
+            "motivo": "75°F · viento 6 mph · clima neutro",
+            "estadio": "Busch Stadium",
+            "es_domo": false
+          },
+          "lesiones": {
+            "ok": true,
+            "fuente": "espn",
+            "motivo": "278 bajas indexadas",
+            "away": [
+              {
+                "jugador": "Brad Keller",
+                "apellido": "keller",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Keller underwent right elbow UCL reconstruction surgery with internal brace and flexor tendon repair Tuesday, Lochlahn March of The Philadel",
+                "severidad": 5,
+                "equipo": "Philadelphia Phillies"
+              },
+              {
+                "jugador": "Tanner Banks",
+                "apellido": "banks",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "The Phillies placed Banks on the 15-day injured list Thursday with a left forearm strain.",
+                "severidad": 5,
+                "equipo": "Philadelphia Phillies"
+              },
+              {
+                "jugador": "Johan Rojas",
+                "apellido": "rojas",
+                "pos": "CF",
+                "status": "60-Day-IL",
+                "comentario": "Rojas (suspension) underwent surgery Friday to repair the UCL in his right elbow and will face an expected recovery timeline of 6-to-8 month",
+                "severidad": 5,
+                "equipo": "Philadelphia Phillies"
+              },
+              {
+                "jugador": "Adolis Garcia",
+                "apellido": "garcia",
+                "pos": "RF",
+                "status": "60-Day-IL",
+                "comentario": "The Phillies announced that Garcia underwent successful surgery Wednesday to repair a torn right lat, Lochlahn March of The Philadelphia Inq",
+                "severidad": 5,
+                "equipo": "Philadelphia Phillies"
+              },
+              {
+                "jugador": "Caleb Kilian",
+                "apellido": "kilian",
+                "pos": "RP",
+                "status": "15-Day-IL",
+                "comentario": "Phillies interim manager Don Mattingly said that Kilian suffered a right side injury during his relief appearance in Sunday's 7-6 victory ov",
+                "severidad": 4,
+                "equipo": "Philadelphia Phillies"
+              },
+              {
+                "jugador": "Rafael Marchan",
+                "apellido": "marchan",
+                "pos": "C",
+                "status": "10-Day-IL",
+                "comentario": "The Phillies placed Marchan (knee) on the 10-day injured list Friday, retroactive to July 23.",
+                "severidad": 4,
+                "equipo": "Philadelphia Phillies"
+              }
+            ],
+            "home": [
+              {
+                "jugador": "Ramon Urias",
+                "apellido": "urias",
+                "pos": "3B",
+                "status": "60-Day-IL",
+                "comentario": "Urias (elbows) has been sent to Triple-A Memphis to resume a rehab assignment, John Denton of Roundtable.io reports.",
+                "severidad": 5,
+                "equipo": "St. Louis Cardinals"
+              },
+              {
+                "jugador": "Max Rajcic",
+                "apellido": "rajcic",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Rajcic revealed on his Instagram account Thursday that he recently underwent a right elbow UCL reconstruction.",
+                "severidad": 5,
+                "equipo": "St. Louis Cardinals"
+              }
+            ],
+            "resumen": "Philadelphia Phillies: Brad Keller(RP/60-Day-IL), Tanner Banks(RP/60-Day-IL), Johan Rojas(CF/60-Day-IL), Adolis Garcia(RF/60-Day-IL) | St. Louis Cardinals: Ramon Urias(3B/60-Day-IL), Max Rajcic(RP/60-Day-IL)",
+            "ajuste_away": -2.8,
+            "ajuste_home": -1.6,
+            "starter_riesgo": false,
+            "starter_away_lesionado": false,
+            "starter_home_lesionado": false,
+            "alerta": ""
+          },
+          "scratch_lineup": {
+            "ok": true,
+            "lineup_confirmado": true,
+            "scratch_away": false,
+            "scratch_home": false,
+            "estrellas_fuera_away": [
+              {
+                "id": 650559,
+                "nombre": "Bryan De La Cruz",
+                "ops": 1.021,
+                "pa": 32
+              }
+            ],
+            "estrellas_fuera_home": [
+              {
+                "id": 677592,
+                "nombre": "Everson Pereira",
+                "ops": 0.754,
+                "pa": 95
+              }
+            ],
+            "ajuste_away": 0.0,
+            "ajuste_home": 0.0,
+            "min_estrellas_fuera": 2,
+            "riesgo": false,
+            "alerta": "",
+            "resumen": "Lineup OK"
+          },
+          "ml_features": {
+            "era_pitcher": 3.45,
+            "whip_pitcher": 1.34,
+            "k9_pitcher": 7.93,
+            "woba_equipo": 0.318,
+            "ops_equipo": 0.695,
+            "win_pct_equipo": 0.5,
+            "es_local": 1.0,
+            "park_factor": 1.02,
+            "fatiga_bullpen": 0.4,
+            "matchup_zurdo_diestro": 0.08000000000000007,
+            "edge_estadistico": 0.0,
+            "bb9_pitcher": 2.8,
+            "hr9_pitcher": 0.96,
+            "racha_equipo": 1.0,
+            "diferencia_run": 0.0,
+            "vs_pitcher_hand": 0.0,
+            "temp_f": 75.0,
+            "viento_mph": 6.0,
+            "run_env": 0.0,
+            "fip_pitcher": 3.79,
+            "xfip_pitcher": 3.24,
+            "k_pct_pitcher": 20.7,
+            "bb_pct_pitcher": 7.3
+          }
+        },
+        {
+          "game_id": "824967",
+          "visitante": "Tampa Bay Rays",
+          "home": "Athletics",
+          "pick": "Tampa Bay Rays ML",
+          "odds": 1.464,
+          "odds_american": -216,
+          "edge": 18.3,
+          "probPick": 68.3,
+          "apostable": true,
+          "motivo_apuesta": "Modelo 68% (solo stats+ML, sin mercado) · IA PASAR: Alerta scratch Shane McClanahan en el lineup de Tampa Bay · IA PASAR: Alerta scratch Shane McClanahan en el lineup de Tampa Bay · IA PASAR: Alerta scratch Shane McClanahan en el lineup de Tampa Bay · IA PASAR: Alerta scratch Shane McClanahan en el lineup de Tampa Bay · IA PASAR: Alerta scratch Shane McClanahan en el lineup de Tampa Bay · IA PASAR: Alerta scratch Shane McClanahan en el lineup de Tampa Bay · IA PASAR: Alerta scratch Shane McClanahan en el lineup de Tampa Bay · IA PASAR: Alerta scratch Shane McClanahan en el lineup de Tampa Bay · IA PASAR: Alerta scratch Shane McClanahan en el lineup de Tampa Bay · IA PASAR: Alerta scratch Shane McClanahan en el lineup de Tampa Bay · IA PASAR: Alerta scratch Shane McClanahan en el lineup de Tampa Bay · IA PASAR: Alerta scratch Shane McClanahan en el lineup de Tampa Bay · IA PASAR: Alerta scratch Shane McClanahan en el lineup de Tampa Bay · IA PASAR: Alerta scratch Shane McClanahan en el lineup de Tampa Bay · IA PASAR: Alerta scratch Shane McClanahan en el lineup de Tampa Bay",
+          "pitcherAway": "Drew Rasmussen",
+          "pitcherHome": "Jack Perkins",
+          "pitcher_away_id": 656876,
+          "pitcher_home_id": 678022,
+          "inicio_juego": "2026-08-12T15:05:00-04:00",
+          "estado": "pendiente",
+          "resultado": null,
+          "profit": null,
+          "stake_virtual": 5.0,
+          "con_dinero": false,
+          "predicho_en": "2026-08-12T14:05:12.689824-04:00",
+          "valida_stats": true,
+          "invalida_tarde": false,
+          "clima": {
+            "ok": true,
+            "fuente": "open-meteo",
+            "temp_f": 77.8,
+            "viento_mph": 12.5,
+            "humedad": 42,
+            "run_env": 0.35,
+            "motivo": "78°F · viento 12 mph · clima neutro",
+            "estadio": "Sutter Health Park",
+            "es_domo": false
+          },
+          "lesiones": {
+            "ok": true,
+            "fuente": "espn",
+            "motivo": "273 bajas indexadas",
+            "away": [
+              {
+                "jugador": "Shane McClanahan",
+                "apellido": "mcclanahan",
+                "pos": "SP",
+                "status": "15-Day-IL",
+                "comentario": "McClanahan (back) threw three perfect innings in a rehab start for Triple-A Durham on Tuesday. He struck out two.",
+                "severidad": 5,
+                "equipo": "Tampa Bay Rays"
+              },
+              {
+                "jugador": "Griffin Jax",
+                "apellido": "jax",
+                "pos": "SP",
+                "status": "15-Day-IL",
+                "comentario": "Jax (elbow) received an injection in right elbow after visiting with Dr. Keith Meister in Dallas, Ryan Bass of Rays.tv reports.",
+                "severidad": 5,
+                "equipo": "Tampa Bay Rays"
+              },
+              {
+                "jugador": "Gavin Lux",
+                "apellido": "lux",
+                "pos": "LF",
+                "status": "60-Day IL",
+                "comentario": "Lux (shoulder) is unlikely to return this season, per MLB.com.",
+                "severidad": 5,
+                "equipo": "Tampa Bay Rays"
+              },
+              {
+                "jugador": "Jake Fraley",
+                "apellido": "fraley",
+                "pos": "RF",
+                "status": "60-Day-IL",
+                "comentario": "The Rays transferred Fraley (hernia) from the 10-day injured list to the 60-day IL on Sunday.",
+                "severidad": 5,
+                "equipo": "Tampa Bay Rays"
+              },
+              {
+                "jugador": "Manuel Rodriguez",
+                "apellido": "rodriguez",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Rodriguez (elbow) began a rehab assignment in the rookie-level Florida Complex League on Thursday, giving up a solo home run and striking ou",
+                "severidad": 5,
+                "equipo": "Tampa Bay Rays"
+              },
+              {
+                "jugador": "Edwin Uceta",
+                "apellido": "uceta",
+                "pos": "RP",
+                "status": "60-Day IL",
+                "comentario": "Rays manager Kevin Cash said Monday that Uceta has yet to resume throwing and will meet with a doctor to have his nagging right shoulder inj",
+                "severidad": 5,
+                "equipo": "Tampa Bay Rays"
+              },
+              {
+                "jugador": "Jonathan Heasley",
+                "apellido": "heasley",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Heasley was returned to the major-league roster and placed on the 15-day injured list Tuesday with a right elbow stress reaction.",
+                "severidad": 5,
+                "equipo": "Tampa Bay Rays"
+              },
+              {
+                "jugador": "Ryan Pepiot",
+                "apellido": "pepiot",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Pepiot will undergo surgery on his right hip May 13 and miss the rest of the 2026 season, Ryan Bass of Rays.tv reports.",
+                "severidad": 5,
+                "equipo": "Tampa Bay Rays"
+              }
+            ],
+            "home": [
+              {
+                "jugador": "Jeffrey Springs",
+                "apellido": "springs",
+                "pos": "SP",
+                "status": "15-Day-IL",
+                "comentario": "Springs (hip) was able to restart a throwing program Wednesday after landing on the 15-day injured list Tuesday, MLB.com reports.",
+                "severidad": 5,
+                "equipo": "Athletics"
+              },
+              {
+                "jugador": "Mark Leiter Jr.",
+                "apellido": "jr",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Leiter will undergo surgery Tuesday to address a right hip impingement and is expected to miss the remainder of the season, Martin Gallegos ",
+                "severidad": 5,
+                "equipo": "Athletics"
+              },
+              {
+                "jugador": "Luis Severino",
+                "apellido": "severino",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Severino (shoulder) began a throwing progression Saturday, per MLB.com.",
+                "severidad": 5,
+                "equipo": "Athletics"
+              },
+              {
+                "jugador": "Denzel Clarke",
+                "apellido": "clarke",
+                "pos": "CF",
+                "status": "60-Day-IL",
+                "comentario": "Manager Mark Kotsay said Saturday that Clarke (hamstring) is nearing a rehab assignment, Jason Burke of Roundtable.io reports.",
+                "severidad": 5,
+                "equipo": "Athletics"
+              },
+              {
+                "jugador": "Brooks Kriske",
+                "apellido": "kriske",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Kriske (shoulder) began a throwing progression Thursday, MLB.com reports.",
+                "severidad": 5,
+                "equipo": "Athletics"
+              },
+              {
+                "jugador": "Gunnar Hoglund",
+                "apellido": "hoglund",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Hoglund (knee/back) will be sidelined for the rest of the 2026 season after undergoing surgery on his left hip Monday.",
+                "severidad": 5,
+                "equipo": "Athletics"
+              },
+              {
+                "jugador": "Jose Suarez",
+                "apellido": "suarez",
+                "pos": "RP",
+                "status": "15-Day-IL",
+                "comentario": "Suarez will serve as the Athletics' opening pitcher during Thursday's game against the Tigers, Martin Gallegos of MLB.com reports.",
+                "severidad": 4,
+                "equipo": "Athletics"
+              },
+              {
+                "jugador": "Justin Sterner",
+                "apellido": "sterner",
+                "pos": "RP",
+                "status": "15-Day-IL",
+                "comentario": "Sterner (knee) will see a knee specialist at Stanford this week, per MLB.com.",
+                "severidad": 4,
+                "equipo": "Athletics"
+              }
+            ],
+            "resumen": "Tampa Bay Rays: Shane McClanahan(SP/15-Day-IL), Griffin Jax(SP/15-Day-IL), Gavin Lux(LF/60-Day IL), Jake Fraley(RF/60-Day-IL) | Athletics: Jeffrey Springs(SP/15-Day-IL), Mark Leiter Jr.(RP/60-Day-IL), Luis Severino(SP/60-Day-IL), Denzel Clarke(CF/60-Day-IL)",
+            "ajuste_away": -3.8,
+            "ajuste_home": -3.7,
+            "starter_riesgo": false,
+            "starter_away_lesionado": false,
+            "starter_home_lesionado": false,
+            "alerta": ""
+          },
+          "scratch_lineup": {
+            "ok": true,
+            "lineup_confirmado": true,
+            "scratch_away": false,
+            "scratch_home": false,
+            "estrellas_fuera_away": [
+              {
+                "id": 668723,
+                "nombre": "Ryan Vilade",
+                "ops": 0.759,
+                "pa": 196
+              }
+            ],
+            "estrellas_fuera_home": [],
+            "ajuste_away": 0.0,
+            "ajuste_home": 0.0,
+            "min_estrellas_fuera": 2,
+            "riesgo": false,
+            "alerta": "",
+            "resumen": "Lineup OK"
+          },
+          "ml_features": {
+            "era_pitcher": 2.75,
+            "whip_pitcher": 0.91,
+            "k9_pitcher": 9.41,
+            "woba_equipo": 0.337,
+            "ops_equipo": 0.737,
+            "win_pct_equipo": 0.613,
+            "es_local": 0.0,
+            "park_factor": 0.92,
+            "fatiga_bullpen": 0.4,
+            "matchup_zurdo_diestro": 1.459999999999999,
+            "edge_estadistico": 18.3,
+            "bb9_pitcher": 1.59,
+            "hr9_pitcher": 0.87,
+            "racha_equipo": 8.0,
+            "diferencia_run": 0.0,
+            "vs_pitcher_hand": 0.0,
+            "temp_f": 77.8,
+            "viento_mph": 12.5,
+            "run_env": 0.35,
+            "fip_pitcher": 2.94,
+            "xfip_pitcher": 2.51,
+            "k_pct_pitcher": 26.8,
+            "bb_pct_pitcher": 4.5
+          },
+          "ia_veto": {
+            "ok": true,
+            "decision": "PASAR",
+            "motivo": "Alerta scratch Shane McClanahan en el lineup de Tampa Bay",
+            "confianza": 3,
+            "fuente": "groq",
+            "modelo": "llama-3.1-8b-instant"
+          }
+        },
+        {
+          "game_id": "825047",
+          "visitante": "Colorado Rockies",
+          "home": "Arizona Diamondbacks",
+          "pick": "Colorado Rockies ML",
+          "odds": 1.835,
+          "odds_american": -120,
+          "edge": 0,
+          "probPick": 54.5,
+          "apostable": false,
+          "motivo_apuesta": "Prob. modelo bajo 58.0%",
+          "pitcherAway": "Ryan Feltner",
+          "pitcherHome": "Merrill Kelly",
+          "pitcher_away_id": 663372,
+          "pitcher_home_id": 518876,
+          "inicio_juego": "2026-08-12T15:40:00-04:00",
+          "estado": "pendiente",
+          "resultado": null,
+          "profit": null,
+          "stake_virtual": 5.0,
+          "con_dinero": false,
+          "predicho_en": "2026-08-12T14:40:14.282771-04:00",
+          "valida_stats": true,
+          "invalida_tarde": false,
+          "clima": {
+            "ok": true,
+            "fuente": "domo",
+            "temp_f": null,
+            "viento_mph": null,
+            "humedad": null,
+            "run_env": 0.0,
+            "motivo": "Estadio techado — clima neutro",
+            "estadio": "Chase Field",
+            "es_domo": true
+          },
+          "lesiones": {
+            "ok": true,
+            "fuente": "espn",
+            "motivo": "274 bajas indexadas",
+            "away": [
+              {
+                "jugador": "Jose Quintana",
+                "apellido": "quintana",
+                "pos": "SP",
+                "status": "60-Day IL",
+                "comentario": "Quintana (elbow) is scheduled to throw a bullpen session Wednesday, MLB.com reports.",
+                "severidad": 5,
+                "equipo": "Colorado Rockies"
+              },
+              {
+                "jugador": "Chase Dollander",
+                "apellido": "dollander",
+                "pos": "SP",
+                "status": "60-Day IL",
+                "comentario": "Dollander underwent an internal brace procedure on his right elbow Monday, Kevin Henry of The Denver Gazette reports.",
+                "severidad": 5,
+                "equipo": "Colorado Rockies"
+              },
+              {
+                "jugador": "Welinton Herrera",
+                "apellido": "herrera",
+                "pos": "RP",
+                "status": "60-Day IL",
+                "comentario": "Rockies manager Warren Schaeffer announced Monday that Herrera (elbow) has been diagnosed with a torn UCL and will miss the remainder of the",
+                "severidad": 5,
+                "equipo": "Colorado Rockies"
+              },
+              {
+                "jugador": "McCade Brown",
+                "apellido": "brown",
+                "pos": "SP",
+                "status": "60-Day IL",
+                "comentario": "Brown (shoulder) had been scheduled to throw a live bullpen session this weekend, MLB.com reports.",
+                "severidad": 5,
+                "equipo": "Colorado Rockies"
+              },
+              {
+                "jugador": "RJ Petit",
+                "apellido": "petit",
+                "pos": "RP",
+                "status": "60-day il",
+                "comentario": "The Rockies transferred Petit (elbow) to the 60-day injured list Thursday, Thomas Harding of MLB.com reports.",
+                "severidad": 5,
+                "equipo": "Colorado Rockies"
+              },
+              {
+                "jugador": "Pierson Ohl",
+                "apellido": "ohl",
+                "pos": "RP",
+                "status": "60-day il",
+                "comentario": "The Rockies placed Ohl (elbow) on the 60-day injured list Wednesday.",
+                "severidad": 5,
+                "equipo": "Colorado Rockies"
+              },
+              {
+                "jugador": "Kyle Karros",
+                "apellido": "karros",
+                "pos": "3B",
+                "status": "7-day il",
+                "comentario": "Karros went 1-for-3 with a two-run home run in Tuesday's 3-2 win over the Diamondbacks.",
+                "severidad": 4,
+                "equipo": "Colorado Rockies"
+              },
+              {
+                "jugador": "Tyler Freeman",
+                "apellido": "freeman",
+                "pos": "RF",
+                "status": "10-Day IL",
+                "comentario": "The Rockies placed Freeman on the 10-day injured list Monday due to lumbar pain.",
+                "severidad": 4,
+                "equipo": "Colorado Rockies"
+              }
+            ],
+            "home": [
+              {
+                "jugador": "Zac Gallen",
+                "apellido": "gallen",
+                "pos": "SP",
+                "status": "60-Day IL",
+                "comentario": "Gallen (elbow) completed a 33-pitch bullpen session in Arizona on Tuesday, Alex Weiner of ArizonaSports.com reports.",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              },
+              {
+                "jugador": "Corbin Burnes",
+                "apellido": "burnes",
+                "pos": "SP",
+                "status": "60-Day IL",
+                "comentario": "Burnes (elbow/teres major) threw a 30-pitch bullpen session in Arizona on Tuesday, Alex Weiner of ArizonaSports.com reports.",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              },
+              {
+                "jugador": "Justin Martinez",
+                "apellido": "martinez",
+                "pos": "RP",
+                "status": "60-Day IL",
+                "comentario": "Martinez (elbow) is expected to make up to two more rehab appearances before being reinstated from the 60-day injured list, John Gambadoro o",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              },
+              {
+                "jugador": "Ryne Nelson",
+                "apellido": "nelson",
+                "pos": "SP",
+                "status": "60-Day IL",
+                "comentario": "Nelson (elbow) is expected to begin a bullpen progression within the next 7-to-10 days, Alex Weiner of ArizonaSports.com reports.",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              },
+              {
+                "jugador": "A.J. Puk",
+                "apellido": "puk",
+                "pos": "RP",
+                "status": "60-Day IL",
+                "comentario": "Manager Torey Lovullo said Friday that Puk (elbow/shoulder) will remain shut down for the remainder of the season, Nick Piecoro of The Arizo",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              },
+              {
+                "jugador": "Blake Walston",
+                "apellido": "walston",
+                "pos": "SP",
+                "status": "60-Day IL",
+                "comentario": "Walston (elbow) will begin a rehab assignment Tuesday, Jack Sommers of SI.com reports.",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              },
+              {
+                "jugador": "Andrew Saalfrank",
+                "apellido": "saalfrank",
+                "pos": "RP",
+                "status": "60-Day IL",
+                "comentario": "Saalfrank (shoulder) has begun a throwing program, Alex Weiner of Arizona Sports reports.",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              },
+              {
+                "jugador": "Cristian Mena",
+                "apellido": "mena",
+                "pos": "RP",
+                "status": "60-Day IL",
+                "comentario": "Diamondbacks manager Torey Lovullo told reporters Monday that Mena underwent surgery on his right shoulder and will be sidelined for the res",
+                "severidad": 5,
+                "equipo": "Arizona Diamondbacks"
+              }
+            ],
+            "resumen": "Colorado Rockies: Jose Quintana(SP/60-Day IL), Chase Dollander(SP/60-Day IL), Welinton Herrera(RP/60-Day IL), McCade Brown(SP/60-Day IL) | Arizona Diamondbacks: Zac Gallen(SP/60-Day IL), Corbin Burnes(SP/60-Day IL), Justin Martinez(RP/60-Day IL), Ryne Nelson(SP/60-Day IL)",
+            "ajuste_away": -3.8,
+            "ajuste_home": -3.8,
+            "starter_riesgo": false,
+            "starter_away_lesionado": false,
+            "starter_home_lesionado": false,
+            "alerta": ""
+          },
+          "scratch_lineup": {
+            "ok": true,
+            "lineup_confirmado": true,
+            "scratch_away": false,
+            "scratch_home": false,
+            "estrellas_fuera_away": [],
+            "estrellas_fuera_home": [
+              {
+                "id": 682988,
+                "nombre": "Tyler Locklear",
+                "ops": 0.814,
+                "pa": 39
+              },
+              {
+                "id": 543510,
+                "nombre": "James McCann",
+                "ops": 0.777,
+                "pa": 113
+              }
+            ],
+            "ajuste_away": 0.0,
+            "ajuste_home": -2.4,
+            "min_estrellas_fuera": 2,
+            "riesgo": true,
+            "alerta": "Estrellas out local: Tyler Locklear, James McCann",
+            "resumen": "Estrellas out local: Tyler Locklear, James McCann"
+          },
+          "ml_features": {
+            "era_pitcher": 5.71,
+            "whip_pitcher": 1.45,
+            "k9_pitcher": 6.48,
+            "woba_equipo": 0.34,
+            "ops_equipo": 0.744,
+            "win_pct_equipo": 0.392,
+            "es_local": 0.0,
+            "park_factor": 1.05,
+            "fatiga_bullpen": 0.4,
+            "matchup_zurdo_diestro": 0.9800000000000009,
+            "edge_estadistico": 0.0,
+            "bb9_pitcher": 3.62,
+            "hr9_pitcher": 1.98,
+            "racha_equipo": 1.0,
+            "diferencia_run": 0.0,
+            "vs_pitcher_hand": 0.0,
+            "temp_f": 0.0,
+            "viento_mph": 0.0,
+            "run_env": 0.0,
+            "fip_pitcher": 5.76,
+            "xfip_pitcher": 4.01,
+            "k_pct_pitcher": 16.5,
+            "bb_pct_pitcher": 9.2
+          }
+        },
+        {
+          "game_id": "823187",
+          "visitante": "Houston Astros",
+          "home": "San Francisco Giants",
+          "pick": "San Francisco Giants ML",
+          "odds": 1.912,
+          "odds_american": -110,
+          "edge": 0,
+          "probPick": 52.3,
+          "apostable": false,
+          "motivo_apuesta": "Prob. modelo bajo 58.0%",
+          "pitcherAway": "Bryan King",
+          "pitcherHome": "Adrian Houser",
+          "pitcher_away_id": 687911,
+          "pitcher_home_id": 605288,
+          "inicio_juego": "2026-08-12T15:45:00-04:00",
+          "estado": "pendiente",
+          "resultado": null,
+          "profit": null,
+          "stake_virtual": 5.0,
+          "con_dinero": false,
+          "predicho_en": "2026-08-12T14:45:08.587640-04:00",
+          "valida_stats": true,
+          "invalida_tarde": false,
+          "clima": {
+            "ok": false,
+            "fuente": "none",
+            "temp_f": null,
+            "viento_mph": null,
+            "humedad": null,
+            "run_env": 0.0,
+            "motivo": "429 Client Error: Too Many Requests for url: https://api.open-meteo.com/v1/forecast?latitude=37.7786&longitude=-122.3893",
+            "estadio": "Oracle Park",
+            "es_domo": false
+          },
+          "lesiones": {
+            "ok": true,
+            "fuente": "espn",
+            "motivo": "274 bajas indexadas",
+            "away": [
+              {
+                "jugador": "Carlos Correa",
+                "apellido": "correa",
+                "pos": "SS",
+                "status": "60-Day IL",
+                "comentario": "Correa (ankle) has been cleared to hit off a tee, Matt Kawahara of the Houston Chronicle reports.",
+                "severidad": 5,
+                "equipo": "Houston Astros"
+              },
+              {
+                "jugador": "Mike Burrows",
+                "apellido": "burrows",
+                "pos": "SP",
+                "status": "15-Day IL",
+                "comentario": "Burrows (elbow) will make a rehab start for Triple-A Sugar Land on Friday, Brian McTaggart of MLB.com reports.",
+                "severidad": 5,
+                "equipo": "Houston Astros"
+              },
+              {
+                "jugador": "Brandon Walter",
+                "apellido": "walter",
+                "pos": "SP",
+                "status": "60-Day IL",
+                "comentario": "The Astros announced Friday that Walter (elbow) is in the midst of a throwing progression at the team's complex in West Palm Beach, Fla., Ch",
+                "severidad": 5,
+                "equipo": "Houston Astros"
+              },
+              {
+                "jugador": "Brice Matthews",
+                "apellido": "matthews",
+                "pos": "CF",
+                "status": "10-Day IL",
+                "comentario": "General manager Dana Brown said Sunday that the Astros are targeting \"mid-August, potentially the third week of August\" for Matthews' (knee)",
+                "severidad": 4,
+                "equipo": "Houston Astros"
+              },
+              {
+                "jugador": "Jose Altuve",
+                "apellido": "altuve",
+                "pos": "2B",
+                "status": "Day-To-Day",
+                "comentario": "Altuve (foot) is not in the lineup for Wednesday's tilt in San Francisco.",
+                "severidad": 2,
+                "equipo": "Houston Astros"
+              }
+            ],
+            "home": [
+              {
+                "jugador": "Joel Peguero",
+                "apellido": "peguero",
+                "pos": "RP",
+                "status": "60-Day IL",
+                "comentario": "Peguero (hamstring) began a rehab assignment with Triple-A Sacramento on Tuesday, walking all three batters he faced and getting charged wit",
+                "severidad": 5,
+                "equipo": "San Francisco Giants"
+              },
+              {
+                "jugador": "Matt Gage",
+                "apellido": "gage",
+                "pos": "RP",
+                "status": "60-Day IL",
+                "comentario": "Gage (elbow) threw a bullpen session Monday, Susan Slusser of the San Francisco Chronicle reports.",
+                "severidad": 5,
+                "equipo": "San Francisco Giants"
+              },
+              {
+                "jugador": "Trevor McDonald",
+                "apellido": "mcdonald",
+                "pos": "SP",
+                "status": "15-Day IL",
+                "comentario": "McDonald is scheduled to undergo UCL reconstruction surgery in early August, Alex Pavlovic of NBC Sports Bay Area reports.",
+                "severidad": 5,
+                "equipo": "San Francisco Giants"
+              },
+              {
+                "jugador": "Rowan Wick",
+                "apellido": "wick",
+                "pos": "RP",
+                "status": "60-day il",
+                "comentario": "The Giants placed Wick (elbow) on the 60-day injured list Sunday, Justice delos Santos of The San Jose Mercury News reports.",
+                "severidad": 5,
+                "equipo": "San Francisco Giants"
+              },
+              {
+                "jugador": "Hayden Birdsong",
+                "apellido": "birdsong",
+                "pos": "RP",
+                "status": "60-day il",
+                "comentario": "Birdsong underwent successful UCL reconstruction surgery on his right elbow Wednesday, Susan Slusser of the San Francisco Chronicle reports.",
+                "severidad": 5,
+                "equipo": "San Francisco Giants"
+              },
+              {
+                "jugador": "Randy Rodriguez",
+                "apellido": "rodriguez",
+                "pos": "RP",
+                "status": "60-day il",
+                "comentario": "The Giants placed Rodriguez (elbow) on the 60-day injured list Tuesday, Justice delos Santos of The San Jose Mercury News reports.",
+                "severidad": 5,
+                "equipo": "San Francisco Giants"
+              },
+              {
+                "jugador": "Jose Butto",
+                "apellido": "butto",
+                "pos": "RP",
+                "status": "60-day il",
+                "comentario": "The Giants transferred Butto (arm) to the 60-day injured list Tuesday.",
+                "severidad": 5,
+                "equipo": "San Francisco Giants"
+              },
+              {
+                "jugador": "Daniel Susac",
+                "apellido": "susac",
+                "pos": "C",
+                "status": "10-Day IL",
+                "comentario": "Susac (knee) was placed on the 10-day injured list Monday.",
+                "severidad": 4,
+                "equipo": "San Francisco Giants"
+              }
+            ],
+            "resumen": "Houston Astros: Carlos Correa(SS/60-Day IL), Mike Burrows(SP/15-Day IL), Brandon Walter(SP/60-Day IL), Brice Matthews(CF/10-Day IL) | San Francisco Giants: Joel Peguero(RP/60-Day IL), Matt Gage(RP/60-Day IL), Trevor McDonald(SP/15-Day IL), Rowan Wick(RP/60-day il)",
+            "ajuste_away": -2.95,
+            "ajuste_home": -3.0,
+            "starter_riesgo": false,
+            "starter_away_lesionado": false,
+            "starter_home_lesionado": false,
+            "alerta": ""
+          },
+          "scratch_lineup": {
+            "ok": true,
+            "lineup_confirmado": true,
+            "scratch_away": false,
+            "scratch_home": false,
+            "estrellas_fuera_away": [
+              {
+                "id": 572233,
+                "nombre": "Christian Walker",
+                "ops": 0.765,
+                "pa": 484
+              }
+            ],
+            "estrellas_fuera_home": [],
+            "ajuste_away": 0.0,
+            "ajuste_home": 0.0,
+            "min_estrellas_fuera": 2,
+            "riesgo": false,
+            "alerta": "",
+            "resumen": "Lineup OK"
+          },
+          "ml_features": {
+            "era_pitcher": 4.55,
+            "whip_pitcher": 1.37,
+            "k9_pitcher": 6.03,
+            "woba_equipo": 0.326,
+            "ops_equipo": 0.714,
+            "win_pct_equipo": 0.417,
+            "es_local": 1.0,
+            "park_factor": 0.94,
+            "fatiga_bullpen": 0.4,
+            "matchup_zurdo_diestro": -1.279999999999999,
+            "edge_estadistico": 0.0,
+            "bb9_pitcher": 2.88,
+            "hr9_pitcher": 1.39,
+            "racha_equipo": 1.0,
+            "diferencia_run": 0.0,
+            "vs_pitcher_hand": 0.0,
+            "temp_f": 72.0,
+            "viento_mph": 5.0,
+            "run_env": 0.0,
+            "fip_pitcher": 4.85,
+            "xfip_pitcher": 3.88,
+            "k_pct_pitcher": 15.3,
+            "bb_pct_pitcher": 7.3
+          }
+        },
+        {
+          "game_id": "823263",
+          "visitante": "Milwaukee Brewers",
+          "home": "San Diego Padres",
+          "pick": "San Diego Padres ML",
+          "odds": 1.869,
+          "odds_american": -115,
+          "edge": 0,
+          "probPick": 53.5,
+          "apostable": false,
+          "motivo_apuesta": "Prob. modelo bajo 58.0%",
+          "pitcherAway": "Dustin May",
+          "pitcherHome": "Robbie Ray",
+          "pitcher_away_id": 669160,
+          "pitcher_home_id": 592662,
+          "inicio_juego": "2026-08-12T16:10:00-04:00",
+          "estado": "pendiente",
+          "resultado": null,
+          "profit": null,
+          "stake_virtual": 5.0,
+          "con_dinero": false,
+          "predicho_en": "2026-08-12T15:10:14.280499-04:00",
+          "valida_stats": true,
+          "invalida_tarde": false,
+          "clima": {
+            "ok": true,
+            "fuente": "open-meteo",
+            "temp_f": 71.1,
+            "viento_mph": 4.5,
+            "humedad": 89,
+            "run_env": 0.0,
+            "motivo": "71°F · viento 4 mph · clima neutro",
+            "estadio": "Petco Park",
+            "es_domo": false
+          },
+          "lesiones": {
+            "ok": true,
+            "fuente": "espn",
+            "motivo": "274 bajas indexadas",
+            "away": [
+              {
+                "jugador": "Brandon Woodruff",
+                "apellido": "woodruff",
+                "pos": "SP",
+                "status": "60-Day IL",
+                "comentario": "Woodruff announced Saturday that he will undergo season-ending capsule repair surgery on his right shoulder, Adam McCalvy of MLB.com reports",
+                "severidad": 5,
+                "equipo": "Milwaukee Brewers"
+              },
+              {
+                "jugador": "Rob Zastryzny",
+                "apellido": "zastryzny",
+                "pos": "RP",
+                "status": "60-Day IL",
+                "comentario": "The Brewers transferred Zastryzny (shoulder) to the 60-day injured list Wednesday.",
+                "severidad": 5,
+                "equipo": "Milwaukee Brewers"
+              },
+              {
+                "jugador": "Brian Fitzpatrick",
+                "apellido": "fitzpatrick",
+                "pos": "RP",
+                "status": "60-Day IL",
+                "comentario": "Fitzpatrick (elbow) underwent Tommy John surgery over the past week, Curt Hogg of the Milwaukee Journal Sentinel reports.",
+                "severidad": 5,
+                "equipo": "Milwaukee Brewers"
+              },
+              {
+                "jugador": "Quinn Priester",
+                "apellido": "priester",
+                "pos": "SP",
+                "status": "60-Day IL",
+                "comentario": "Priester will undergo thoracic outlet compression surgery on Monday and is expected to be sidelined 8-to-10 months, Curt Hogg of the Milwauk",
+                "severidad": 5,
+                "equipo": "Milwaukee Brewers"
+              },
+              {
+                "jugador": "Angel Zerpa",
+                "apellido": "zerpa",
+                "pos": "RP",
+                "status": "60-Day IL",
+                "comentario": "The Brewers transferred Zerpa (elbow) to the 60-day injured list Sunday.",
+                "severidad": 5,
+                "equipo": "Milwaukee Brewers"
+              },
+              {
+                "jugador": "Cooper Pratt",
+                "apellido": "pratt",
+                "pos": "SS",
+                "status": "10-Day IL",
+                "comentario": "Pratt (hamstring) is expected to return from the injured list sometime in late August, Adam McCalvy of MLB.com reports.",
+                "severidad": 4,
+                "equipo": "Milwaukee Brewers"
+              },
+              {
+                "jugador": "JoJo Romero",
+                "apellido": "romero",
+                "pos": "RP",
+                "status": "15-Day IL",
+                "comentario": "Romero (abdomen) is expected to be activated from the 15-day injured list before the end of August, Adam McCalvy of MLB.com reports.",
+                "severidad": 4,
+                "equipo": "Milwaukee Brewers"
+              },
+              {
+                "jugador": "Sal Frelick",
+                "apellido": "frelick",
+                "pos": "RF",
+                "status": "10-Day IL",
+                "comentario": "Brewers manager Pat Murphy said Friday that Frelick (shoulder) will begin a rehab assignment soon, Casey Drottar of MLB.com reports.",
+                "severidad": 4,
+                "equipo": "Milwaukee Brewers"
+              }
+            ],
+            "home": [
+              {
+                "jugador": "Nick Pivetta",
+                "apellido": "pivetta",
+                "pos": "SP",
+                "status": "60-Day IL",
+                "comentario": "Pivetta (forearm) threw off a mound Monday, Jeff Sanders of The San Diego Union-Tribune reports.",
+                "severidad": 5,
+                "equipo": "San Diego Padres"
+              },
+              {
+                "jugador": "Lucas Giolito",
+                "apellido": "giolito",
+                "pos": "SP",
+                "status": "15-Day IL",
+                "comentario": "Giolito (elbow) has been throwing at the Padres' team complex in Arizona, but his timeline to return is unclear, MLB.com reports.",
+                "severidad": 5,
+                "equipo": "San Diego Padres"
+              },
+              {
+                "jugador": "Joe Musgrove",
+                "apellido": "musgrove",
+                "pos": "SP",
+                "status": "60-Day IL",
+                "comentario": "Musgrove (elbow) completed 3.1 innings in a minor-league rehab appearance with Triple-A El Paso on Sunday, allowing one run on six hits and ",
+                "severidad": 5,
+                "equipo": "San Diego Padres"
+              },
+              {
+                "jugador": "Jason Adam",
+                "apellido": "adam",
+                "pos": "RP",
+                "status": "60-Day IL",
+                "comentario": "The Padres transferred Adam (shoulder) to the 60-day injured list Monday.",
+                "severidad": 5,
+                "equipo": "San Diego Padres"
+              },
+              {
+                "jugador": "Ramon Laureano",
+                "apellido": "laureano",
+                "pos": "LF",
+                "status": "60-day il",
+                "comentario": "Laureano underwent surgery Friday to repair his torn right labrum, Kevin Acee of The San Diego Union-Tribune reports.",
+                "severidad": 5,
+                "equipo": "San Diego Padres"
+              },
+              {
+                "jugador": "Bryan Hoeing",
+                "apellido": "hoeing",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "The Padres transferred Hoeing (elbow) from the 15-day injured list to the 60-day IL on Wednesday.",
+                "severidad": 5,
+                "equipo": "San Diego Padres"
+              },
+              {
+                "jugador": "Samad Taylor",
+                "apellido": "taylor",
+                "pos": "LF",
+                "status": "10-Day IL",
+                "comentario": "Taylor (oblique) has been taking light swings and rehabbing at the Padres' spring complex in Arizona, MLB.com reports.",
+                "severidad": 4,
+                "equipo": "San Diego Padres"
+              },
+              {
+                "jugador": "David Morgan",
+                "apellido": "morgan",
+                "pos": "RP",
+                "status": "15-Day IL",
+                "comentario": "Morgan (knee) made a rehab appearance Sunday at Triple-A El Paso, allowing one hit and no walks over an inning of relief.",
+                "severidad": 4,
+                "equipo": "San Diego Padres"
+              }
+            ],
+            "resumen": "Milwaukee Brewers: Brandon Woodruff(SP/60-Day IL), Rob Zastryzny(RP/60-Day IL), Brian Fitzpatrick(RP/60-Day IL), Quinn Priester(SP/60-Day IL) | San Diego Padres: Nick Pivetta(SP/60-Day IL), Lucas Giolito(SP/15-Day IL), Joe Musgrove(SP/60-Day IL), Jason Adam(RP/60-Day IL)",
+            "ajuste_away": -3.6,
+            "ajuste_home": -3.8,
+            "starter_riesgo": false,
+            "starter_away_lesionado": false,
+            "starter_home_lesionado": false,
+            "alerta": ""
+          },
+          "scratch_lineup": {
+            "ok": true,
+            "lineup_confirmado": true,
+            "scratch_away": false,
+            "scratch_home": false,
+            "estrellas_fuera_away": [
+              {
+                "id": 678225,
+                "nombre": "Jihwan Bae",
+                "ops": 1.167,
+                "pa": 4
+              }
+            ],
+            "estrellas_fuera_home": [
+              {
+                "id": 669134,
+                "nombre": "Luis Campusano",
+                "ops": 0.923,
+                "pa": 139
+              },
+              {
+                "id": 665487,
+                "nombre": "Fernando Tatis Jr.",
+                "ops": 0.77,
+                "pa": 526
+              }
+            ],
+            "ajuste_away": 0.0,
+            "ajuste_home": -2.4,
+            "min_estrellas_fuera": 2,
+            "riesgo": true,
+            "alerta": "Estrellas out local: Luis Campusano, Fernando Tatis Jr.",
+            "resumen": "Estrellas out local: Luis Campusano, Fernando Tatis Jr."
+          },
+          "ml_features": {
+            "era_pitcher": 3.24,
+            "whip_pitcher": 1.33,
+            "k9_pitcher": 7.68,
+            "woba_equipo": 0.321,
+            "ops_equipo": 0.703,
+            "win_pct_equipo": 0.529,
+            "es_local": 1.0,
+            "park_factor": 0.96,
+            "fatiga_bullpen": 0.4,
+            "matchup_zurdo_diestro": 0.41999999999999815,
+            "edge_estadistico": 0.0,
+            "bb9_pitcher": 4.37,
+            "hr9_pitcher": 1.13,
+            "racha_equipo": 4.0,
+            "diferencia_run": 0.0,
+            "vs_pitcher_hand": 0.0,
+            "temp_f": 71.1,
+            "viento_mph": 4.5,
+            "run_env": 0.0,
+            "fip_pitcher": 4.5,
+            "xfip_pitcher": 3.96,
+            "k_pct_pitcher": 20.3,
+            "bb_pct_pitcher": 11.5
+          }
+        }
+      ],
       "resumen": {
         "jugadas": 0,
         "ganadas": 0,
