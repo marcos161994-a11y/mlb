@@ -132,15 +132,17 @@ def cargar_api_key(cfg: dict) -> str | None:
         ("lineas.api_key", lineas.get("api_key")),
         ("oddspapi_api_key.txt", KEY_FILE.read_text(encoding="utf-8") if KEY_FILE.exists() else None),
     )
-    scored: list[tuple[int, str, str]] = []
-    for source, candidate in candidates:
+    # (score, orden_preferencia, source, key) — a igual score gana el primero de la lista
+    # (antes el sort alfabético hacía que ODDS_API_KEY vieja ganara al archivo bueno).
+    scored: list[tuple[int, int, str, str]] = []
+    for idx, (source, candidate) in enumerate(candidates):
         if candidate is None:
             continue
         key = _limpiar_key(str(candidate))
         sc = _score_key(key)
         if sc < 0:
             continue
-        scored.append((sc, source, key))
+        scored.append((sc, idx, source, key))
 
     if not scored:
         cargar_api_key.last_source = None  # type: ignore[attr-defined]
@@ -148,7 +150,7 @@ def cargar_api_key(cfg: dict) -> str | None:
         return None
 
     scored.sort(key=lambda x: (-x[0], x[1]))
-    best_score, source, key = scored[0]
+    best_score, _idx, source, key = scored[0]
     cargar_api_key.last_source = source  # type: ignore[attr-defined]
     cargar_api_key.last_score = best_score  # type: ignore[attr-defined]
     # Si Render tiene una key truncada pero hay otra mejor, ya elegimos la mejor.
