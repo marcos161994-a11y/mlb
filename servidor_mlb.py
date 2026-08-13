@@ -893,6 +893,18 @@ def _liquidar_dia_con_juegos(memoria: dict, dia: dict, juegos: list) -> int:
                 f"[PREDICCIÓN] {prediccion['pick']} -> {resultado.upper()} "
                 f"({marcador}) P/L papel {profit_v:+.2f}"
             )
+            try:
+                from ia_lecciones import registrar_experiencias_tras_liquidar
+
+                registrar_experiencias_tras_liquidar(
+                    memoria,
+                    prediccion,
+                    cfg=cargar_config(),
+                    juego=juego,
+                    cuando=dia.get("fecha"),
+                )
+            except Exception as e:
+                print(f"[LECCIONES] aviso: {e}")
     
     if cambios:
         print(f"[DEBUG LIQ DIA] Se realizaron {cambios} cambios para el día {dia['fecha']}. Recalculando y guardando.")
@@ -1568,7 +1580,7 @@ def _bloquear_juego_locked(
                 }
 
     # Modelo propone → MENTE concluye (APOSTAR/PASAR/ESPERAR) → solo entonces dinero.
-    # Si mente off: cae al veto Groq legacy.
+    # Si mente off: cae al veto Groq legacy (con lecciones en memoria).
     mente = None
     veto = {"ok": False, "decision": "SKIP", "motivo": "", "confianza": 0}
     if cfg.get("usar_mente", True):
@@ -1603,7 +1615,7 @@ def _bloquear_juego_locked(
             "fuente": "mente",
         }
     else:
-        veto = veto_apuesta(juego, cfg)
+        veto = veto_apuesta(juego, cfg, memoria=memoria)
         if pred_existente is not None:
             pred_existente["ia_veto"] = veto
         if veto.get("ok") and veto.get("decision") == "PASAR":
@@ -2173,6 +2185,24 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
     resumen_hoy["pred_total"] = len(preds_hoy)
     if dia:
         dia["resumen"] = resumen_hoy
+
+    # Backfill heurístico: fallos + experiencias negativas (planes 2/5).
+    lecciones_meta = {"total": 0, "por_patron": {}, "recientes": []}
+    try:
+        from ia_lecciones import (
+            backfill_lecciones_si_vacio,
+            backfill_negativas_si_falta,
+            resumen_lecciones,
+        )
+
+        n_bf = backfill_lecciones_si_vacio(memoria)
+        n_neg = backfill_negativas_si_falta(memoria)
+        if n_bf or n_neg:
+            guardar_memoria(memoria)
+            print(f"[LECCIONES] Backfill: fallos={n_bf} total_scan={n_neg}")
+        lecciones_meta = resumen_lecciones(memoria)
+    except Exception as e:
+        print(f"[LECCIONES] aviso estado: {e}")
     
     return {
         "memoria": memoria,
@@ -2190,10 +2220,12 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
         "pl_split": pl_split,
         "ml_meta": memoria.get("ml_meta"),
         "calib_meta": memoria.get("calib_meta"),
+        "lecciones": lecciones_meta,
         "ia_veto": {
             "activo": bool(cfg.get("usar_ia_veto")),
             "listo": ia_veto_disponible(cfg),
             "modelo": (cfg.get("groq") or {}).get("model") or "llama-3.1-8b-instant",
+            "lecciones": lecciones_meta.get("total", 0),
         },
         "mente": {
             "activo": bool(cfg.get("usar_mente", True)),
@@ -2719,10 +2751,18 @@ def api_pitcher_demo():
 def api_ia_status():
     """Comprueba config + ping Groq (sin exponer la key)."""
     cfg = cargar_config()
+    lecciones_n = 0
+    try:
+        from ia_lecciones import asegurar_lista_lecciones
+
+        lecciones_n = len(asegurar_lista_lecciones(cargar_memoria()))
+    except Exception:
+        pass
     base = {
         "activo": bool(cfg.get("usar_ia_veto")),
         "key_presente": ia_veto_disponible(cfg),
         "modelo": (cfg.get("groq") or {}).get("model") or "llama-3.1-8b-instant",
+        "lecciones": lecciones_n,
     }
     if not base["activo"]:
         return {**base, "ok": False, "motivo": "usar_ia_veto=false en config"}
@@ -2834,18 +2874,125 @@ def api_exportar_memoria(secret: str | None = None):
 
 
 @app.post("/api/subir-memoria")
-def api_subir_memoria(payload: dict, secret: str | None = None):
-    """Sube memoria_auditoria.json desde la PC local a Render (requiere CRON_SECRET)."""
+def api_subir_memoria(
+    payload: dict,
+    secret: str | None = None,
+    modo: str | None = None,
+):
+    """Sube memoria_auditoria.json desde la PC local a Render (requiere CRON_SECRET).
+
+    modo=replace (default) | aprendizaje (fusiona como paper retroactivo, plan 4)
+    """
     _verificar_cron_secreto(secret)
     if not isinstance(payload, dict) or "capital" not in payload:
         raise HTTPException(status_code=400, detail="JSON de memoria invalido")
+    if (modo or "replace").lower() in ("aprendizaje", "merge", "import"):
+        from ia_importar import importar_dump_aprendizaje
+        from ia_lecciones import escanear_experiencias_negativas
+
+        memoria = cargar_memoria()
+        stats = importar_dump_aprendizaje(memoria, payload)
+        n_lec = escanear_experiencias_negativas(memoria)
+        try:
+            auto_entrenar_ml(memoria)
+        except Exception as e:
+            print(f"[ML] import: {e}")
+        guardar_memoria(memoria)
+        return {
+            "ok": True,
+            "modo": "aprendizaje",
+            "import": stats,
+            "lecciones_nuevas": n_lec,
+            "capital": memoria.get("capital"),
+            "dias": len(memoria.get("dias", [])),
+        }
     guardar_memoria(payload)
     memoria = cargar_memoria()
     return {
         "ok": True,
+        "modo": "replace",
         "capital": memoria.get("capital"),
         "dia_actual": memoria.get("dia_actual"),
         "dias": len(memoria.get("dias", [])),
+    }
+
+
+@app.post("/api/importar-aprendizaje")
+def api_importar_aprendizaje(payload: dict, secret: str | None = None):
+    """
+    Plan 4: importa pasado para aprender (no infla WR del panel).
+
+    Body:
+      - dump completo de memoria, o
+      - {"memoria": {...}} dump, o
+      - {"experiencias": [ {...}, ... ]}
+    Requiere CRON_SECRET.
+    """
+    _verificar_cron_secreto(secret)
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="JSON invalido")
+
+    from ia_importar import importar_dump_aprendizaje, importar_experiencias_lista
+    from ia_lecciones import escanear_experiencias_negativas, resumen_lecciones
+
+    memoria = cargar_memoria()
+    stats: dict = {}
+    dump = payload.get("memoria") if isinstance(payload.get("memoria"), dict) else None
+    if dump is None and "capital" in payload and "dias" in payload:
+        dump = payload
+    if dump is not None:
+        stats["dump"] = importar_dump_aprendizaje(memoria, dump)
+    if isinstance(payload.get("experiencias"), list):
+        stats["lista"] = importar_experiencias_lista(memoria, payload["experiencias"])
+    if not stats:
+        raise HTTPException(
+            status_code=400,
+            detail="Envía memoria dump o {'experiencias': [...]}",
+        )
+
+    n_lec = escanear_experiencias_negativas(memoria)
+    try:
+        ml = auto_entrenar_ml(memoria)
+    except Exception as e:
+        ml = {"ok": False, "mensaje": str(e)}
+    guardar_memoria(memoria)
+    return {
+        "ok": True,
+        "import": stats,
+        "lecciones_procesadas": n_lec,
+        "lecciones": resumen_lecciones(memoria),
+        "ml_meta": ml,
+        "dias": len(memoria.get("dias") or []),
+    }
+
+
+@app.post("/api/procesar-experiencias")
+@app.get("/api/procesar-experiencias")
+def api_procesar_experiencias(forzar: bool = False):
+    """
+    Plan 5: escanea histórico y genera lecciones negativas
+    (oportunidad_perdida, veto_acertado, sin cuota).
+    forzar=1 ignora el flag de backfill previo.
+    """
+    from ia_lecciones import (
+        escanear_experiencias_negativas,
+        resumen_lecciones,
+    )
+
+    memoria = cargar_memoria()
+    if forzar:
+        memoria.pop("experiencias_negativas_backfill_hecho", None)
+        memoria.pop("lecciones_backfill_hecho", None)
+    n = escanear_experiencias_negativas(memoria)
+    memoria["experiencias_negativas_backfill_hecho"] = True
+    memoria["lecciones_backfill_hecho"] = True
+    guardar_memoria(memoria)
+    meta = resumen_lecciones(memoria)
+    return {
+        "ok": True,
+        "nuevas": n,
+        "lecciones": meta,
+        "por_patron": meta.get("por_patron") or {},
     }
 
 
@@ -2871,6 +3018,12 @@ def api_restaurar_backup(secret: str | None = None):
             "historial": {"apuestas": ap, "preds": pr},
         }
     merged = _fusionar_memoria(bundled, disk)
+    try:
+        from ia_lecciones import escanear_experiencias_negativas
+
+        escanear_experiencias_negativas(merged)
+    except Exception as e:
+        print(f"[LECCIONES] restore: {e}")
     guardar_memoria(merged)
     sincronizar_experimento_a_hoy(merged)
     memoria = cargar_memoria()
@@ -2881,6 +3034,7 @@ def api_restaurar_backup(secret: str | None = None):
         "dia_actual": memoria.get("dia_actual"),
         "dias": len(memoria.get("dias", [])),
         "historial": {"apuestas": ap, "preds": pr},
+        "lecciones": len(memoria.get("lecciones") or []),
     }
 
 

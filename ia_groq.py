@@ -121,7 +121,7 @@ def _parse_respuesta(texto: str) -> dict[str, Any] | None:
     return None
 
 
-def veto_apuesta(juego: dict[str, Any], cfg: dict | None = None) -> dict[str, Any]:
+def veto_apuesta(juego: dict[str, Any], cfg: dict | None = None, memoria: dict | None = None) -> dict[str, Any]:
     """
     Decide APOSTAR o PASAR sobre un pick ya propuesto por el modelo.
 
@@ -172,6 +172,13 @@ def veto_apuesta(juego: dict[str, Any], cfg: dict | None = None) -> dict[str, An
     bloque_scratch = texto_scratch_ia(scratch)
     humanos = juego.get("factores_humanos") if isinstance(juego.get("factores_humanos"), dict) else {}
     bloque_humanos = texto_humanos_ia(humanos)
+
+    try:
+        from ia_lecciones import texto_lecciones_para_prompt
+
+        bloque_lecciones = texto_lecciones_para_prompt(memoria)
+    except Exception:
+        bloque_lecciones = "Lecciones previas: no disponibles."
 
     # Regla dura: si el pick es el equipo del starter lesionado → PASAR sin llamar a Groq
     if lesiones.get("starter_riesgo"):
@@ -234,6 +241,7 @@ def veto_apuesta(juego: dict[str, Any], cfg: dict | None = None) -> dict[str, An
         "bullpen fundido, favorito inflado, spot feo, fatiga de viaje/B2B/cambio de zona, "
         "o confianza baja pese al %.\n"
         "Si hay ALERTA de starter lesionado, scratch del lado del pick, o fatiga de viaje alta → PASAR.\n"
+        "Si el spot se parece a una LECCIÓN de fallos recientes → PASAR.\n"
         "Confirma si el spot se ve sólido con los datos dados.\n\n"
         f"Partido: {visitante} @ {home}\n"
         f"Pick del modelo: {pick}\n"
@@ -243,7 +251,8 @@ def veto_apuesta(juego: dict[str, Any], cfg: dict | None = None) -> dict[str, An
         f"Motivo modelo: {motivo_modelo}\n"
         f"{bloque_lesiones}\n"
         f"{bloque_scratch}\n"
-        f"{bloque_humanos}\n\n"
+        f"{bloque_humanos}\n"
+        f"{bloque_lecciones}\n\n"
         "Responde SOLO un JSON válido (sin markdown) con exactamente:\n"
         '{"decision":"APOSTAR"|"PASAR","motivo":"max 12 palabras","confianza":1-5}'
     )
