@@ -4,7 +4,8 @@ Cuotas MLB vía OddsPapi (https://oddspapi.io).
 Prioriza API v5 (https://v5.oddspapi.io) — keys nuevas del dashboard.
 Fallback a v4 (https://api.oddspapi.io/v4) si v5 falla por auth/plan.
 
-Env: ODDSPAPI_API_KEY (también ODDS_PAPI_KEY / ODDS_API_KEY / lineas.api_key)
+Env: ODDSPAPI_API_KEY (también ODDS_PAPI_KEY / lineas.api_key / archivo en DATA_DIR).
+No usar ODDS_API_KEY (pertenece a The Odds API y rompe OddsPapi).
 """
 
 from __future__ import annotations
@@ -123,24 +124,25 @@ def guardar_api_key(key: str) -> dict[str, Any]:
 
 
 def cargar_api_key(cfg: dict) -> str | None:
+    """Keys de OddsPapi únicamente. NO usa ODDS_API_KEY (era The Odds API y tapa la buena)."""
     lineas = cfg.get("lineas") or {}
     candidates = (
         ("ODDSPAPI_API_KEY", os.environ.get("ODDSPAPI_API_KEY")),
         ("ODDS_PAPI_KEY", os.environ.get("ODDS_PAPI_KEY")),
         ("oddspapi_api_key.txt (DATA_DIR)", KEY_FILE_DATA.read_text(encoding="utf-8") if KEY_FILE_DATA.exists() else None),
-        ("ODDS_API_KEY", os.environ.get("ODDS_API_KEY")),  # nombre en docs v5
         ("lineas.api_key", lineas.get("api_key")),
         ("oddspapi_api_key.txt", KEY_FILE.read_text(encoding="utf-8") if KEY_FILE.exists() else None),
     )
-    scored: list[tuple[int, str, str]] = []
-    for source, candidate in candidates:
+    # (score, orden_preferencia, source, key) — a igual score gana el primero de la lista
+    scored: list[tuple[int, int, str, str]] = []
+    for idx, (source, candidate) in enumerate(candidates):
         if candidate is None:
             continue
         key = _limpiar_key(str(candidate))
         sc = _score_key(key)
         if sc < 0:
             continue
-        scored.append((sc, source, key))
+        scored.append((sc, idx, source, key))
 
     if not scored:
         cargar_api_key.last_source = None  # type: ignore[attr-defined]
@@ -148,10 +150,9 @@ def cargar_api_key(cfg: dict) -> str | None:
         return None
 
     scored.sort(key=lambda x: (-x[0], x[1]))
-    best_score, source, key = scored[0]
+    best_score, _idx, source, key = scored[0]
     cargar_api_key.last_source = source  # type: ignore[attr-defined]
     cargar_api_key.last_score = best_score  # type: ignore[attr-defined]
-    # Si Render tiene una key truncada pero hay otra mejor, ya elegimos la mejor.
     return key
 
 

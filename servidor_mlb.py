@@ -2299,8 +2299,8 @@ def api_health():
             "key_presente": bool(
                 os.environ.get("ODDSPAPI_API_KEY", "").strip()
                 or os.environ.get("ODDS_PAPI_KEY", "").strip()
-                or os.environ.get("ODDS_API_KEY", "").strip()
                 or ((cfg.get("lineas") or {}).get("api_key") or "").strip()
+                or (DATA_DIR / "oddspapi_api_key.txt").exists()
             ),
         },
         "scratch_lineup": {
