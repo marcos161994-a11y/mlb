@@ -16,6 +16,7 @@ WhatsApp opcional: WHATSAPP_PHONE + CALLMEBOT_APIKEY
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from datetime import datetime, timezone
@@ -41,7 +42,15 @@ def _bot_token_file() -> Path:
     return _data_dir() / "telegram_bot_token.txt"
 
 
+def _creds_file() -> Path:
+    """JSON persistente: token + chat_id (sobrevive mejor que txt sueltos)."""
+    return _data_dir() / "telegram_creds.json"
+
+
 def leer_chat_id_guardado() -> str:
+    creds = _leer_creds()
+    if creds.get("chat_id"):
+        return str(creds["chat_id"])
     p = _chat_id_file()
     try:
         if p.exists():
@@ -54,9 +63,15 @@ def leer_chat_id_guardado() -> str:
 def guardar_chat_id(chat_id: str | int) -> None:
     _data_dir().mkdir(parents=True, exist_ok=True)
     _chat_id_file().write_text(str(chat_id).strip(), encoding="utf-8")
+    creds = _leer_creds()
+    creds["chat_id"] = str(chat_id).strip()
+    _guardar_creds(creds)
 
 
 def leer_bot_token_guardado() -> str:
+    creds = _leer_creds()
+    if creds.get("bot_token"):
+        return str(creds["bot_token"])
     p = _bot_token_file()
     try:
         if p.exists():
@@ -69,21 +84,93 @@ def leer_bot_token_guardado() -> str:
 def guardar_bot_token(token: str) -> None:
     _data_dir().mkdir(parents=True, exist_ok=True)
     _bot_token_file().write_text(str(token).strip(), encoding="utf-8")
+    creds = _leer_creds()
+    creds["bot_token"] = str(token).strip()
+    _guardar_creds(creds)
+
+
+def _leer_creds() -> dict[str, Any]:
+    p = _creds_file()
+    try:
+        if p.exists():
+            data = json.loads(p.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                return data
+    except Exception:
+        pass
+    return {}
+
+
+def _guardar_creds(creds: dict[str, Any]) -> None:
+    _data_dir().mkdir(parents=True, exist_ok=True)
+    _creds_file().write_text(
+        json.dumps(creds, indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+
+
+def telegram_a_memoria(memoria: dict | None, *, token: str = "", chat_id: str = "", bot: str = "") -> dict:
+    """Guarda credenciales dentro de memoria_auditoria (backup/repo)."""
+    memoria = memoria if isinstance(memoria, dict) else {}
+    tg = memoria.get("telegram") if isinstance(memoria.get("telegram"), dict) else {}
+    if token:
+        tg["bot_token"] = token
+    if chat_id:
+        tg["chat_id"] = str(chat_id)
+    if bot:
+        tg["bot"] = bot
+    tg["actualizado_en"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+    memoria["telegram"] = tg
+    # también disco
+    if tg.get("bot_token"):
+        guardar_bot_token(str(tg["bot_token"]))
+    if tg.get("chat_id"):
+        guardar_chat_id(str(tg["chat_id"]))
+    return memoria
+
+
+def restaurar_telegram_desde_memoria(memoria: dict | None) -> dict[str, Any]:
+    """Al arrancar: si hay token en memoria y no en disco/env, restaura."""
+    memoria = memoria if isinstance(memoria, dict) else {}
+    tg = memoria.get("telegram") if isinstance(memoria.get("telegram"), dict) else {}
+    token = str(tg.get("bot_token") or "").strip()
+    chat_id = str(tg.get("chat_id") or "").strip()
+    if not token and not chat_id:
+        return {"ok": False, "motivo": "sin telegram en memoria"}
+    if token and not (
+        os.environ.get("TELEGRAM_BOT_TOKEN", "").strip() or leer_bot_token_guardado()
+    ):
+        guardar_bot_token(token)
+    elif token:
+        # refrescar disco por si wipe parcial
+        if not leer_bot_token_guardado():
+            guardar_bot_token(token)
+    if chat_id and not leer_chat_id_guardado():
+        guardar_chat_id(chat_id)
+    return {
+        "ok": True,
+        "restored_token": bool(token),
+        "restored_chat": bool(chat_id),
+        "bot": tg.get("bot"),
+    }
 
 
 def _cfg_telegram(cfg: dict | None) -> dict[str, Any]:
     cfg = cfg or {}
     tg = cfg.get("telegram") if isinstance(cfg.get("telegram"), dict) else {}
+    # Memoria embebida opcional (servidor puede inyectar cfg["_memoria_telegram"])
+    mem_tg = cfg.get("_memoria_telegram") if isinstance(cfg.get("_memoria_telegram"), dict) else {}
     token = (
         str(tg.get("bot_token") or tg.get("token") or "").strip()
         or os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
         or os.environ.get("TELEGRAM_TOKEN", "").strip()
         or leer_bot_token_guardado()
+        or str(mem_tg.get("bot_token") or "").strip()
     )
     chat_id = (
         str(tg.get("chat_id") or "").strip()
         or os.environ.get("TELEGRAM_CHAT_ID", "").strip()
         or leer_chat_id_guardado()
+        or str(mem_tg.get("chat_id") or "").strip()
     )
     user = (
         str(tg.get("user") or tg.get("username") or "").strip()
@@ -92,16 +179,29 @@ def _cfg_telegram(cfg: dict | None) -> dict[str, Any]:
     )
     if user and not user.startswith("@"):
         user = "@" + user.lstrip("@")
-    modo = "bot" if token else ("callmebot" if user else "ninguno")
+    # CallMeBot solo si se pide explícito (está roto / sin cupo a menudo)
+    permitir_cmb = bool(
+        tg.get("permitir_callmebot")
+        or os.environ.get("TELEGRAM_PERMITIR_CALLMEBOT", "").strip() in ("1", "true", "yes")
+    )
+    if token:
+        modo = "bot"
+    elif user and permitir_cmb:
+        modo = "callmebot"
+    elif user and not token:
+        modo = "pendiente_bot"  # tiene TELEGRAM_USER pero necesitamos BotFather
+    else:
+        modo = "ninguno"
     activo = tg.get("activo")
     if activo is None:
-        activo = bool(token or user)
+        activo = bool(token) or (permitir_cmb and bool(user))
     return {
         "activo": bool(activo),
         "modo": modo,
         "bot_token": token,
         "chat_id": chat_id,
         "user": user,
+        "permitir_callmebot": permitir_cmb,
         "solo_apostables": bool(tg.get("solo_apostables", False)),
         "incluir_mente": bool(tg.get("incluir_mente", True)),
         "timeout_sec": float(tg.get("timeout_sec") or 12),
@@ -115,8 +215,9 @@ def _telegram_listo(t: dict[str, Any]) -> bool:
     if t.get("modo") == "bot":
         return bool(t.get("bot_token") and t.get("chat_id"))
     if t.get("modo") == "callmebot":
-        return bool(t.get("user"))
+        return bool(t.get("user") and t.get("permitir_callmebot"))
     return False
+
 
 
 def _cfg_whatsapp(cfg: dict | None) -> dict[str, Any]:
@@ -183,49 +284,58 @@ def _cfg_alertas(cfg: dict | None) -> dict[str, Any]:
 
 def telegram_disponible(cfg: dict | None = None) -> dict[str, Any]:
     t = _cfg_telegram(cfg)
-    if not t["activo"]:
+    if not t["activo"] and t.get("modo") != "pendiente_bot":
         return {"ok": False, "motivo": "telegram.activo=false"}
     if t["modo"] == "bot":
         if not t["bot_token"]:
             return {
                 "ok": False,
-                "motivo": "Falta TELEGRAM_BOT_TOKEN (BotFather → /newbot)",
+                "motivo": "Falta token del bot. Pégalo en el panel 📱 Telegram",
                 "modo": "bot",
                 "setup": (
-                    "1) Telegram → @BotFather → /newbot\n"
-                    "2) Render: TELEGRAM_BOT_TOKEN=...\n"
-                    "3) Ábrele chat a TU bot y escribe hola\n"
-                    "4) Abre /api/telegram-vincular\n"
-                    "5) /api/telegram-test"
+                    "1) @BotFather → /newbot o /token\n"
+                    "2) Panel → Guardar token\n"
+                    "3) Escribe hola a tu bot\n"
+                    "4) Vincular"
                 ),
             }
         if not t["chat_id"]:
             return {
                 "ok": False,
-                "motivo": "Falta vincular: escribe hola a tu bot y abre /api/telegram-vincular",
+                "motivo": "Falta vincular: escribe hola a tu bot y pulsa Vincular",
                 "modo": "bot",
                 "tiene_token": True,
-                "setup": "Abre tu bot en Telegram → envía hola → GET /api/telegram-vincular",
+                "setup": "Abre tu bot → hola → /api/telegram-vincular",
             }
         return {
             "ok": True,
             "canal": "telegram",
             "modo": "bot",
             "chat_id": str(t["chat_id"]),
-            "setup": "Bot oficial listo",
+            "setup": "Bot oficial listo (persistente)",
         }
-    if not t["user"]:
+    if t["modo"] == "pendiente_bot":
         return {
             "ok": False,
-            "motivo": "Configura TELEGRAM_BOT_TOKEN (recomendado) o TELEGRAM_USER",
-            "setup": "Usa @BotFather → /newbot (más fácil que CallMeBot)",
+            "motivo": "TELEGRAM_USER solo no basta. Usa el bot del panel (BotFather)",
+            "modo": "pendiente_bot",
+            "user": t.get("user"),
+            "setup": "Panel → 📱 Telegram → pega token de @BotFather → Guardar → Vincular",
+        }
+    if t["modo"] == "callmebot":
+        if not t["user"]:
+            return {"ok": False, "motivo": "Falta TELEGRAM_USER"}
+        return {
+            "ok": True,
+            "canal": "telegram",
+            "modo": "callmebot",
+            "user": t["user"],
+            "setup": "CallMeBot (legacy)",
         }
     return {
-        "ok": True,
-        "canal": "telegram",
-        "modo": "callmebot",
-        "user": t["user"],
-        "setup": "CallMeBot legacy — si falla, usa BotFather",
+        "ok": False,
+        "motivo": "Configura el bot en el panel (📱 Telegram)",
+        "setup": "Usa @BotFather → /newbot → Guardar token en el panel",
     }
 
 
@@ -382,7 +492,7 @@ def enviar_telegram_bot(
 
 
 def configurar_bot_token(token: str, cfg: dict | None = None) -> dict[str, Any]:
-    """Guarda el token del bot (archivo en DATA_DIR) y verifica con getMe."""
+    """Guarda el token del bot (archivo + memoria) y verifica con getMe."""
     tok = (token or "").strip()
     if not tok or ":" not in tok:
         return {
@@ -398,15 +508,17 @@ def configurar_bot_token(token: str, cfg: dict | None = None) -> dict[str, Any]:
                 "motivo": str(data.get("description") or f"Token rechazado HTTP {r.status_code}")[:160],
             }
         bot = data.get("result") or {}
+        bot_name = (bot.get("username") and f"@{bot['username']}") or bot.get("first_name")
         guardar_bot_token(tok)
         return {
             "ok": True,
-            "bot": bot.get("username") and f"@{bot['username']}" or bot.get("first_name"),
+            "bot": bot_name,
             "bot_id": bot.get("id"),
+            "bot_token": tok,  # para que el servidor lo meta en memoria
             "siguiente": (
                 f"1) Abre @{bot.get('username') or 'tu_bot'} en Telegram\n"
                 "2) Escribe: hola\n"
-                "3) Abre /api/telegram-vincular"
+                "3) Pulsa Vincular en el panel"
             ),
         }
     except Exception as e:

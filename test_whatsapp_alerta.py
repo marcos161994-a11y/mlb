@@ -39,11 +39,38 @@ def test_formatear_incluye_equipo():
 
 def test_bot_sin_chat_id_no_listo(tmp_path, monkeypatch):
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.delenv("TELEGRAM_USER", raising=False)
     d = telegram_disponible(
         {"telegram": {"activo": True, "bot_token": "123:ABC", "chat_id": ""}}
     )
     assert d["ok"] is False
     assert "vincular" in (d.get("motivo") or "").lower() or "hola" in (d.get("motivo") or "").lower()
+
+
+def test_user_solo_no_cuenta_como_listo(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.setenv("TELEGRAM_USER", "@Marquitos053")
+    d = telegram_disponible({"telegram": {"activo": True}})
+    assert d["ok"] is False
+    assert d.get("modo") in ("pendiente_bot", "ninguno") or "BotFather" in str(d.get("setup") or "")
+
+
+def test_persist_memoria_roundtrip(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    from whatsapp_alerta import telegram_a_memoria, restaurar_telegram_desde_memoria, leer_bot_token_guardado
+
+    mem = telegram_a_memoria({}, token="999:AAA", chat_id="42", bot="@x_bot")
+    assert mem["telegram"]["bot_token"] == "999:AAA"
+    # wipe files and restore
+    for name in ("telegram_bot_token.txt", "telegram_chat_id.txt", "telegram_creds.json"):
+        p = tmp_path / name
+        if p.exists():
+            p.unlink()
+    r = restaurar_telegram_desde_memoria(mem)
+    assert r["ok"]
+    assert leer_bot_token_guardado() == "999:AAA"
 
 
 def test_bot_con_token_y_chat_listo(tmp_path, monkeypatch):
