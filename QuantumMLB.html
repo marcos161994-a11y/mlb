@@ -493,6 +493,7 @@
 <div class="controls">
     <button onclick="bloquearHoy()">Forzar bloqueos pendientes ahora</button>
     <button onclick="liquidar()">Actualizar resultados</button>
+    <button onclick="procesarExperiencias()">Procesar lecciones (4/5)</button>
     <button class="warn" onclick="reiniciar()">Reiniciar experimento</button>
 </div>
 
@@ -874,12 +875,14 @@ function pintarLecciones(meta) {
         ' · se inyectan en el veto Groq</p>';
     for (const item of recientes.slice(0, 10)) {
         const patron = (item.patron || 'otro').replace(/</g, '');
+        const tipo = (item.tipo || '').replace(/</g, '');
         const texto = (item.leccion || item.motivo || '').replace(/</g, '');
         const pick = (item.pick || '?').replace(/</g, '');
         const fecha = (item.fecha || '').replace(/</g, '');
         html += '<div class="leccion-fila">';
         html += '<span class="patron">' + patron + '</span>' + texto;
         html += '<div class="meta">' + pick + (fecha ? ' · ' + fecha : '') +
+            (tipo ? ' · ' + tipo : '') +
             (item.fuente ? ' · ' + item.fuente : '') + '</div>';
         html += '</div>';
     }
@@ -1259,6 +1262,23 @@ async function liquidar() {
     const d = await r.json();
     toast(`${d.liquidaciones} juegos liquidados · Banca $${d.capital.toFixed(2)}`);
     cargarEstado();
+}
+
+async function procesarExperiencias() {
+    try {
+        const r = await fetch(API + '/api/procesar-experiencias?forzar=1', { method: 'POST' });
+        const d = await r.json();
+        if (!d.ok) {
+            toast(d.motivo || 'No se pudieron procesar experiencias');
+            return;
+        }
+        const por = d.por_patron || {};
+        const bits = Object.keys(por).slice(0, 4).map(k => k + '×' + por[k]).join(' · ');
+        toast(`Lecciones +${d.nuevas || 0} · total ${d.lecciones?.total || 0}` + (bits ? ' · ' + bits : ''));
+        cargarEstado();
+    } catch (e) {
+        toast(e.message || 'Error procesando experiencias');
+    }
 }
 
 async function reiniciar() {
