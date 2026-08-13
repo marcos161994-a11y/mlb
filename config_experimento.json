@@ -89,10 +89,10 @@
   "usar_mente": true,
 
   "mente": {
-    "modo": "normal",
+    "modo": "shadow",
     "min_confianza": 3,
     "requiere_mercado": true,
-    "shadow": false
+    "shadow": true
   },
 
   "groq": {
