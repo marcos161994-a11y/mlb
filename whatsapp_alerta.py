@@ -279,11 +279,18 @@ def enviar_telegram(
             or "sent" in low
             or ("ok" in low and "error" not in low and "denied" not in low)
         )
+        motivo = None
+        if "permission denied" in low or "authorize" in low:
+            ok = False
+            motivo = (
+                "Falta autorizar CallMeBot: en Telegram busca @CallMeBot_txtbot → Start, "
+                "o abre https://api2.callmebot.com/txt/login.php"
+            )
         if "denied" in low or "permission" in low or "invalid" in low or "error:" in low:
             ok = False
         if r.status_code == 200 and not body.strip():
             ok = True
-        return {
+        out = {
             "ok": bool(ok),
             "http": r.status_code,
             "canal": "telegram",
@@ -291,6 +298,9 @@ def enviar_telegram(
             "detalle": body[:140],
             "enviado_en": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         }
+        if motivo:
+            out["motivo"] = motivo
+        return out
     except Exception as e:
         return {"ok": False, "motivo": str(e)[:120], "canal": "telegram"}
 
