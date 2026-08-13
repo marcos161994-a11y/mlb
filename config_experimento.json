@@ -106,6 +106,8 @@
 
   "telegram": {
     "activo": true,
+    "bot_token": "",
+    "chat_id": "",
     "user": "",
     "solo_apostables": false,
     "incluir_mente": true
