@@ -37,6 +37,10 @@ def _chat_id_file() -> Path:
     return _data_dir() / "telegram_chat_id.txt"
 
 
+def _bot_token_file() -> Path:
+    return _data_dir() / "telegram_bot_token.txt"
+
+
 def leer_chat_id_guardado() -> str:
     p = _chat_id_file()
     try:
@@ -52,6 +56,21 @@ def guardar_chat_id(chat_id: str | int) -> None:
     _chat_id_file().write_text(str(chat_id).strip(), encoding="utf-8")
 
 
+def leer_bot_token_guardado() -> str:
+    p = _bot_token_file()
+    try:
+        if p.exists():
+            return p.read_text(encoding="utf-8").strip()
+    except Exception:
+        pass
+    return ""
+
+
+def guardar_bot_token(token: str) -> None:
+    _data_dir().mkdir(parents=True, exist_ok=True)
+    _bot_token_file().write_text(str(token).strip(), encoding="utf-8")
+
+
 def _cfg_telegram(cfg: dict | None) -> dict[str, Any]:
     cfg = cfg or {}
     tg = cfg.get("telegram") if isinstance(cfg.get("telegram"), dict) else {}
@@ -59,6 +78,7 @@ def _cfg_telegram(cfg: dict | None) -> dict[str, Any]:
         str(tg.get("bot_token") or tg.get("token") or "").strip()
         or os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
         or os.environ.get("TELEGRAM_TOKEN", "").strip()
+        or leer_bot_token_guardado()
     )
     chat_id = (
         str(tg.get("chat_id") or "").strip()
@@ -359,6 +379,38 @@ def enviar_telegram_bot(
         }
     except Exception as e:
         return {"ok": False, "motivo": str(e)[:120], "canal": "telegram", "modo": "bot"}
+
+
+def configurar_bot_token(token: str, cfg: dict | None = None) -> dict[str, Any]:
+    """Guarda el token del bot (archivo en DATA_DIR) y verifica con getMe."""
+    tok = (token or "").strip()
+    if not tok or ":" not in tok:
+        return {
+            "ok": False,
+            "motivo": "Token inválido. Debe verse como 123456:AA.... (lo da @BotFather)",
+        }
+    try:
+        r = requests.get(f"{TG_API}/bot{tok}/getMe", timeout=12)
+        data = r.json() if r.content else {}
+        if not (r.ok and data.get("ok")):
+            return {
+                "ok": False,
+                "motivo": str(data.get("description") or f"Token rechazado HTTP {r.status_code}")[:160],
+            }
+        bot = data.get("result") or {}
+        guardar_bot_token(tok)
+        return {
+            "ok": True,
+            "bot": bot.get("username") and f"@{bot['username']}" or bot.get("first_name"),
+            "bot_id": bot.get("id"),
+            "siguiente": (
+                f"1) Abre @{bot.get('username') or 'tu_bot'} en Telegram\n"
+                "2) Escribe: hola\n"
+                "3) Abre /api/telegram-vincular"
+            ),
+        }
+    except Exception as e:
+        return {"ok": False, "motivo": str(e)[:120]}
 
 
 def vincular_telegram_chat(cfg: dict | None = None) -> dict[str, Any]:

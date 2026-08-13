@@ -2890,6 +2890,43 @@ def api_telegram_vincular():
     return vincular_telegram_chat(cfg)
 
 
+@app.get("/api/telegram-guardar-token")
+def api_telegram_guardar_token(token: str = "", secret: str = ""):
+    """
+    Guarda el token del bot en disco (DATA_DIR), sin Environment de Render.
+    Si ya existe CRON_SECRET en Render, pásalo: &secret=...
+    Primera vez (sin token aún): secret opcional.
+    """
+    from whatsapp_alerta import configurar_bot_token, leer_bot_token_guardado
+
+    ya_hay = bool(
+        os.environ.get("TELEGRAM_BOT_TOKEN", "").strip() or leer_bot_token_guardado()
+    )
+    # Primera configuración: no exigir secret. Cambiar token después: sí.
+    if ya_hay:
+        _verificar_cron_secreto(secret or None)
+    return configurar_bot_token(token, cargar_config())
+
+
+@app.post("/api/telegram-guardar-token")
+async def api_telegram_guardar_token_post(request: Request):
+    """JSON: {"token":"123:AA...","secret":"..."}."""
+    from whatsapp_alerta import configurar_bot_token, leer_bot_token_guardado
+
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    secret = str((body or {}).get("secret") or "")
+    ya_hay = bool(
+        os.environ.get("TELEGRAM_BOT_TOKEN", "").strip() or leer_bot_token_guardado()
+    )
+    if ya_hay:
+        _verificar_cron_secreto(secret or None)
+    return configurar_bot_token(str((body or {}).get("token") or ""), cargar_config())
+
+
 @app.get("/api/alertas-status")
 def api_alertas_status():
     """Canal de alerta activo (Telegram preferido, WhatsApp fallback)."""

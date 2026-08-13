@@ -497,6 +497,26 @@
     <button class="warn" onclick="reiniciar()">Reiniciar experimento</button>
 </div>
 
+<details class="rendimiento" id="telegram-setup" open>
+    <summary>📱 Telegram — avisos 1h antes</summary>
+    <div class="rendimiento-body" style="display:flex;flex-direction:column;gap:8px;">
+        <p style="color:var(--muted);font-size:0.85rem;margin:0;">
+            Pega aquí el token que te dio <b>@BotFather</b> (se ve como <code>123456:AA...</code>).
+            No va en el nombre de la variable: va en el valor.
+        </p>
+        <input id="tg-token" type="text" placeholder="Token del bot (123456:AA...)" 
+            style="width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#111;color:#eee;font-size:0.9rem;" />
+        <input id="tg-secret" type="text" placeholder="CRON_SECRET de Render (si lo pide)" 
+            style="width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#111;color:#eee;font-size:0.9rem;" />
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button onclick="guardarTokenTelegram()">1) Guardar token</button>
+            <button onclick="vincularTelegram()">2) Vincular (después de escribir hola al bot)</button>
+            <button onclick="probarTelegram()">3) Probar mensaje</button>
+        </div>
+        <p id="tg-status" style="color:var(--muted);font-size:0.8rem;margin:0;">Estado: —</p>
+    </div>
+</details>
+
 <div class="historial" id="historial-dias">
     <h3 onclick="toggleHistorialBanca()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
         <span>💰 Banca real (solo apuestas con dinero)</span>
@@ -541,6 +561,84 @@ function toast(msg) {
     t.textContent = msg;
     t.style.display = 'block';
     setTimeout(() => t.style.display = 'none', 4000);
+}
+
+async function guardarTokenTelegram() {
+    const token = (document.getElementById('tg-token').value || '').trim();
+    const secret = (document.getElementById('tg-secret').value || '').trim();
+    const st = document.getElementById('tg-status');
+    if (!token || token.indexOf(':') < 0) {
+        st.style.color = '#ff4466';
+        st.textContent = 'Token inválido. Debe tener dos partes separadas por :';
+        return;
+    }
+    st.textContent = 'Guardando...';
+    try {
+        const r = await fetch(API + '/api/telegram-guardar-token', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ token, secret }),
+        });
+        const d = await r.json();
+        if (!r.ok || !d.ok) {
+            st.style.color = '#ff4466';
+            st.textContent = d.motivo || d.detail || ('Error ' + r.status);
+            if (String(d.detail || '').includes('secret') || r.status === 403) {
+                st.textContent += ' · Copia CRON_SECRET desde Render → Environment';
+            }
+            return;
+        }
+        st.style.color = 'var(--green)';
+        st.textContent = 'Token OK · bot ' + (d.bot || '') + ' · ahora escribe hola a ese bot y pulsa Vincular';
+        toast('Token guardado');
+    } catch (e) {
+        st.style.color = '#ff4466';
+        st.textContent = String(e.message || e);
+    }
+}
+
+async function vincularTelegram() {
+    const st = document.getElementById('tg-status');
+    st.textContent = 'Vinculando...';
+    try {
+        const r = await fetch(API + '/api/telegram-vincular', { cache: 'no-store' });
+        const d = await r.json();
+        if (!d.ok) {
+            st.style.color = '#ffaa00';
+            st.textContent = d.motivo || d.ayuda || 'No vinculado';
+            return;
+        }
+        st.style.color = 'var(--green)';
+        st.textContent = 'Vinculado · chat ' + d.chat_id + (d.confirmacion_enviada ? ' · mensaje enviado' : '');
+        toast('Telegram vinculado');
+    } catch (e) {
+        st.style.color = '#ff4466';
+        st.textContent = String(e.message || e);
+    }
+}
+
+async function probarTelegram() {
+    const st = document.getElementById('tg-status');
+    st.textContent = 'Enviando prueba...';
+    try {
+        const r = await fetch(API + '/api/telegram-test', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: '{}',
+        });
+        const d = await r.json();
+        if (!d.ok && !d.enviado) {
+            st.style.color = '#ff4466';
+            st.textContent = d.motivo || d.detalle || 'No se envió';
+            return;
+        }
+        st.style.color = 'var(--green)';
+        st.textContent = 'Prueba enviada. Mira Telegram.';
+        toast('Mensaje de prueba enviado');
+    } catch (e) {
+        st.style.color = '#ff4466';
+        st.textContent = String(e.message || e);
+    }
 }
 
 function togglePredicciones() {
