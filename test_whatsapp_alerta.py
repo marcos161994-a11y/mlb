@@ -1,10 +1,12 @@
-"""Tests de alertas WhatsApp T-60."""
+"""Tests de alertas T-60 (Telegram / WhatsApp)."""
 
 from whatsapp_alerta import (
     equipo_del_pick,
     formatear_mensaje_pick,
     notificar_pick_t60,
     whatsapp_disponible,
+    telegram_disponible,
+    alerta_disponible,
 )
 
 
@@ -26,7 +28,10 @@ def test_formatear_incluye_equipo_y_partido():
             "hora_inicio_txt": "07:05 PM",
             "ia_mente": {"decision": "APOSTAR", "confianza": 4, "razones": ["Edge sólido"]},
         },
-        cfg={"mente": {"shadow": True}, "whatsapp": {"incluir_mente": True}},
+        cfg={
+            "mente": {"shadow": True},
+            "telegram": {"activo": True, "user": "@test", "incluir_mente": True},
+        },
         fase="t60",
     )
     assert "Yankees" in txt
@@ -39,23 +44,33 @@ def test_formatear_incluye_equipo_y_partido():
 def test_disponible_sin_credenciales():
     d = whatsapp_disponible({"whatsapp": {"activo": True, "phone": "", "apikey": ""}})
     assert d["ok"] is False
+    t = telegram_disponible({"telegram": {"activo": True, "user": ""}})
+    assert t["ok"] is False
 
 
-def test_notificar_dedup(monkeypatch):
+def test_alerta_prefiere_telegram():
+    cfg = {
+        "telegram": {"activo": True, "user": "@marcos"},
+        "whatsapp": {"activo": True, "phone": "+1787", "apikey": "1"},
+        "alertas": {"canal": "telegram"},
+    }
+    a = alerta_disponible(cfg)
+    assert a["ok"] is True
+    assert a["canal"] == "telegram"
+    assert a["user"] == "@marcos"
+
+
+def test_notificar_telegram_dedup(monkeypatch):
     enviados = []
 
     def fake_enviar(texto, cfg=None, forzar=False):
         enviados.append(texto)
-        return {"ok": True, "enviado_en": "2026-08-13T00:00:00Z"}
+        return {"ok": True, "canal": "telegram", "user": "@x", "enviado_en": "2026-08-13T00:00:00Z"}
 
-    monkeypatch.setattr("whatsapp_alerta.enviar_whatsapp", fake_enviar)
+    monkeypatch.setattr("whatsapp_alerta.enviar_alerta", fake_enviar)
     cfg = {
-        "whatsapp": {
-            "activo": True,
-            "phone": "+17875551212",
-            "apikey": "999",
-            "incluir_mente": True,
-        }
+        "telegram": {"activo": True, "user": "@x", "incluir_mente": True},
+        "alertas": {"canal": "telegram"},
     }
     juego = {
         "visitante": "A",
@@ -71,15 +86,15 @@ def test_notificar_dedup(monkeypatch):
     assert r1["ok"] is True
     assert r2.get("omitido") is True
     assert len(enviados) == 1
-    assert pred.get("whatsapp_enviado") is True
+    assert pred.get("alerta_enviado") is True
     assert "B" in enviados[0]
 
 
 def test_omitir_sin_pick(monkeypatch):
     monkeypatch.setattr(
-        "whatsapp_alerta.enviar_whatsapp",
+        "whatsapp_alerta.enviar_alerta",
         lambda *a, **k: (_ for _ in ()).throw(AssertionError("no debe enviar")),
     )
-    cfg = {"whatsapp": {"activo": True, "phone": "+1", "apikey": "x"}}
+    cfg = {"telegram": {"activo": True, "user": "@x"}}
     r = notificar_pick_t60({"visitante": "A", "home": "B"}, {}, cfg)
     assert r.get("omitido") is True

@@ -39,8 +39,12 @@ from mente_mlb import (
 from whatsapp_alerta import (
     notificar_pick_t60,
     whatsapp_disponible,
+    telegram_disponible,
+    alerta_disponible,
     formatear_mensaje_pick,
     enviar_whatsapp,
+    enviar_telegram,
+    enviar_alerta,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -2531,6 +2535,8 @@ def api_health():
             "shadow": bool((cfg.get("mente") or {}).get("shadow", False)),
         },
         "whatsapp": whatsapp_disponible(cfg),
+        "telegram": telegram_disponible(cfg),
+        "alertas": alerta_disponible(cfg),
         "xgboost": {
             "activo": bool(cfg.get("usar_xgboost", True)),
         },
@@ -2793,26 +2799,51 @@ def api_mente_status():
 
 @app.get("/api/whatsapp-status")
 def api_whatsapp_status():
-    """Estado de alertas WhatsApp (CallMeBot)."""
+    """Estado de alertas WhatsApp (CallMeBot). Preferir Telegram si WhatsApp está lleno."""
     cfg = cargar_config()
     wa = cfg.get("whatsapp") if isinstance(cfg.get("whatsapp"), dict) else {}
     disp = whatsapp_disponible(cfg)
     return {
         **disp,
-        "activo_config": bool(wa.get("activo", True)),
+        "activo_config": bool(wa.get("activo", False)),
         "proveedor": wa.get("proveedor") or "callmebot",
         "solo_apostables": bool(wa.get("solo_apostables", False)),
+        "nota": "Si CallMeBot WhatsApp está lleno, usa /api/telegram-status",
         "setup": (
             "1) Agrega el bot CallMeBot en WhatsApp. "
             "2) Envía: I allow callmebot to send me messages. "
-            "3) Pon phone+apikey en Render (WHATSAPP_PHONE, CALLMEBOT_APIKEY) o config."
+            "3) Pon phone+apikey en Render (WHATSAPP_PHONE, CALLMEBOT_APIKEY)."
         ),
     }
 
 
+@app.get("/api/telegram-status")
+def api_telegram_status():
+    """Estado de alertas Telegram (CallMeBot txtbot)."""
+    cfg = cargar_config()
+    tg = cfg.get("telegram") if isinstance(cfg.get("telegram"), dict) else {}
+    disp = telegram_disponible(cfg)
+    return {
+        **disp,
+        "activo_config": bool(tg.get("activo", True)),
+        "setup": (
+            "1) Abre Telegram y busca @CallMeBot_txtbot. "
+            "2) Pulsa Start o envía /start. "
+            "3) En Render pon TELEGRAM_USER=@tuusuario (el de Telegram, con @)."
+        ),
+    }
+
+
+@app.get("/api/alertas-status")
+def api_alertas_status():
+    """Canal de alerta activo (Telegram preferido, WhatsApp fallback)."""
+    cfg = cargar_config()
+    return alerta_disponible(cfg)
+
+
 @app.post("/api/whatsapp-test")
 async def api_whatsapp_test(request: Request):
-    """Envía un mensaje de prueba al WhatsApp configurado."""
+    """Envía un mensaje de prueba por WhatsApp."""
     cfg = cargar_config()
     disp = whatsapp_disponible(cfg)
     if not disp.get("ok"):
@@ -2840,6 +2871,69 @@ async def api_whatsapp_test(request: Request):
             fase="test",
         )
     res = enviar_whatsapp(texto, cfg, forzar=True)
+    return {**res, "enviado": bool(res.get("ok")), "preview": texto[:200]}
+
+
+@app.post("/api/telegram-test")
+async def api_telegram_test(request: Request):
+    """Envía un mensaje de prueba por Telegram."""
+    cfg = cargar_config()
+    disp = telegram_disponible(cfg)
+    if not disp.get("ok"):
+        return {**disp, "enviado": False}
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    texto = str((body or {}).get("texto") or "").strip()
+    if not texto:
+        texto = formatear_mensaje_pick(
+            {
+                "visitante": "Away Test",
+                "home": "Home Test",
+                "pick": "Home Test ML",
+                "probPick": 61,
+                "edge": 8.0,
+                "odds": 1.95,
+                "odds_american": -105,
+                "hora_inicio_txt": "07:05 PM",
+                "ia_mente": {"decision": "APOSTAR", "confianza": 4, "razones": ["Prueba Telegram"]},
+            },
+            cfg=cfg,
+            fase="test",
+        )
+    res = enviar_telegram(texto, cfg, forzar=True)
+    return {**res, "enviado": bool(res.get("ok")), "preview": texto[:200]}
+
+
+@app.post("/api/alerta-test")
+async def api_alerta_test(request: Request):
+    """Prueba el canal activo (Telegram o WhatsApp)."""
+    cfg = cargar_config()
+    disp = alerta_disponible(cfg)
+    if not disp.get("ok"):
+        return {**disp, "enviado": False}
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    texto = str((body or {}).get("texto") or "").strip() or formatear_mensaje_pick(
+        {
+            "visitante": "Away Test",
+            "home": "Home Test",
+            "pick": "Home Test ML",
+            "probPick": 61,
+            "edge": 8.0,
+            "odds": 1.95,
+            "hora_inicio_txt": "07:05 PM",
+            "ia_mente": {"decision": "APOSTAR", "confianza": 4, "razones": ["Prueba alerta"]},
+        },
+        cfg=cfg,
+        fase="test",
+    )
+    res = enviar_alerta(texto, cfg, forzar=True)
     return {**res, "enviado": bool(res.get("ok")), "preview": texto[:200]}
 
 

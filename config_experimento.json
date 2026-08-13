@@ -96,12 +96,23 @@
   },
 
   "whatsapp": {
-    "activo": true,
+    "activo": false,
     "proveedor": "callmebot",
     "phone": "",
     "apikey": "",
     "solo_apostables": false,
     "incluir_mente": true
+  },
+
+  "telegram": {
+    "activo": true,
+    "user": "",
+    "solo_apostables": false,
+    "incluir_mente": true
+  },
+
+  "alertas": {
+    "canal": "telegram"
   },
 
   "groq": {

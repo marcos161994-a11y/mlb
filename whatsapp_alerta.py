@@ -1,18 +1,17 @@
 """
-Alertas WhatsApp (T-60): avisa el equipo/pick elegido 1 hora antes del juego.
+Alertas T-60: avisa el equipo/pick elegido 1 hora antes del juego.
 
-Proveedor por defecto: CallMeBot (uso personal).
-  1) Agregar el bot de CallMeBot en WhatsApp
-  2) Enviar: I allow callmebot to send me messages
-  3) Guardar el apikey y tu teléfono (con código país) en config o env
+Canales (CallMeBot):
+  1) Telegram (recomendado, fácil):
+       - Abre Telegram → busca @CallMeBot_txtbot → /start
+       - Env: TELEGRAM_USER=@tuusuario
+  2) WhatsApp (si hay cupo del bot):
+       - Env: WHATSAPP_PHONE + CALLMEBOT_APIKEY
 
-Env:
-  WHATSAPP_PHONE=+1787...
-  CALLMEBOT_APIKEY=123456
-  (o WHATSAPP_APIKEY)
-
-Config (config_experimento.json → "whatsapp"):
-  activo, phone, apikey, proveedor=callmebot
+Config:
+  "telegram": { "activo": true, "user": "@tuusuario" }
+  "whatsapp": { "activo": false, "phone": "", "apikey": "" }
+  Preferencia: telegram si está listo; si no, WhatsApp.
 """
 
 from __future__ import annotations
@@ -21,9 +20,34 @@ import os
 import re
 from datetime import datetime, timezone
 from typing import Any
+
 import requests
 
-CALLMEBOT_URL = "https://api.callmebot.com/whatsapp.php"
+CALLMEBOT_WA_URL = "https://api.callmebot.com/whatsapp.php"
+CALLMEBOT_TG_URL = "https://api.callmebot.com/text.php"
+
+
+def _cfg_telegram(cfg: dict | None) -> dict[str, Any]:
+    cfg = cfg or {}
+    tg = cfg.get("telegram") if isinstance(cfg.get("telegram"), dict) else {}
+    user = (
+        str(tg.get("user") or tg.get("username") or "").strip()
+        or os.environ.get("TELEGRAM_USER", "").strip()
+        or os.environ.get("CALLMEBOT_TELEGRAM_USER", "").strip()
+    )
+    if user and not user.startswith("@"):
+        user = "@" + user.lstrip("@")
+    activo = tg.get("activo")
+    if activo is None:
+        activo = bool(user)
+    return {
+        "activo": bool(activo),
+        "user": user,
+        "solo_apostables": bool(tg.get("solo_apostables", False)),
+        "incluir_mente": bool(tg.get("incluir_mente", True)),
+        "timeout_sec": float(tg.get("timeout_sec") or 12),
+        "html": bool(tg.get("html", False)),
+    }
 
 
 def _cfg_whatsapp(cfg: dict | None) -> dict[str, Any]:
@@ -53,6 +77,55 @@ def _cfg_whatsapp(cfg: dict | None) -> dict[str, Any]:
     }
 
 
+def _cfg_alertas(cfg: dict | None) -> dict[str, Any]:
+    """Canal activo preferido + flags comunes."""
+    tg = _cfg_telegram(cfg)
+    wa = _cfg_whatsapp(cfg)
+    # Preferencia explícita o auto
+    prefer = str(
+        ((cfg or {}).get("alertas") or {}).get("canal")
+        or os.environ.get("ALERTA_CANAL", "")
+        or ""
+    ).lower()
+    if prefer in ("telegram", "tg") and tg["activo"] and tg["user"]:
+        canal = "telegram"
+    elif prefer in ("whatsapp", "wa") and wa["activo"] and wa["phone"] and wa["apikey"]:
+        canal = "whatsapp"
+    elif tg["activo"] and tg["user"]:
+        canal = "telegram"
+    elif wa["activo"] and wa["phone"] and wa["apikey"]:
+        canal = "whatsapp"
+    else:
+        canal = None
+    return {
+        "canal": canal,
+        "telegram": tg,
+        "whatsapp": wa,
+        "solo_apostables": bool(
+            (tg.get("solo_apostables") if canal == "telegram" else wa.get("solo_apostables"))
+        ),
+        "incluir_mente": bool(
+            (tg.get("incluir_mente") if canal == "telegram" else wa.get("incluir_mente"))
+            if canal
+            else True
+        ),
+    }
+
+
+def telegram_disponible(cfg: dict | None = None) -> dict[str, Any]:
+    t = _cfg_telegram(cfg)
+    if not t["activo"]:
+        return {"ok": False, "motivo": "telegram.activo=false"}
+    if not t["user"]:
+        return {"ok": False, "motivo": "Falta TELEGRAM_USER / telegram.user (@usuario)"}
+    return {
+        "ok": True,
+        "canal": "telegram",
+        "user": t["user"],
+        "setup": "Telegram → @CallMeBot_txtbot → /start → TELEGRAM_USER=@tuusuario en Render",
+    }
+
+
 def whatsapp_disponible(cfg: dict | None = None) -> dict[str, Any]:
     w = _cfg_whatsapp(cfg)
     if not w["activo"]:
@@ -63,8 +136,26 @@ def whatsapp_disponible(cfg: dict | None = None) -> dict[str, Any]:
         return {"ok": False, "motivo": "Falta CALLMEBOT_APIKEY / whatsapp.apikey"}
     return {
         "ok": True,
+        "canal": "whatsapp",
         "proveedor": w["proveedor"],
         "phone_mascara": _enmascarar_phone(w["phone"]),
+    }
+
+
+def alerta_disponible(cfg: dict | None = None) -> dict[str, Any]:
+    a = _cfg_alertas(cfg)
+    if a["canal"] == "telegram":
+        return telegram_disponible(cfg)
+    if a["canal"] == "whatsapp":
+        return whatsapp_disponible(cfg)
+    tg = telegram_disponible(cfg)
+    wa = whatsapp_disponible(cfg)
+    return {
+        "ok": False,
+        "motivo": "Sin canal listo (configura TELEGRAM_USER o WhatsApp)",
+        "telegram": tg,
+        "whatsapp": wa,
+        "recomendado": "telegram",
     }
 
 
@@ -76,8 +167,7 @@ def _enmascarar_phone(phone: str) -> str:
 
 
 def _normalizar_phone(phone: str) -> str:
-    digits = re.sub(r"\D", "", phone or "")
-    return digits  # CallMeBot acepta con o sin +; usamos dígitos
+    return re.sub(r"\D", "", phone or "")
 
 
 def equipo_del_pick(pick: str, visitante: str = "", home: str = "") -> str:
@@ -99,7 +189,7 @@ def formatear_mensaje_pick(
     cfg: dict | None = None,
     fase: str = "t60",
 ) -> str:
-    """Texto WhatsApp: equipo elegido 1h antes."""
+    """Texto de alerta: equipo elegido 1h antes."""
     visitante = str(juego.get("visitante") or "?")
     home = str(juego.get("home") or "?")
     pick = str(juego.get("pick") or "").strip()
@@ -123,13 +213,13 @@ def formatear_mensaje_pick(
             hora = str(juego.get("inicio_juego"))[:16]
 
     mente = juego.get("ia_mente") if isinstance(juego.get("ia_mente"), dict) else {}
-    wa = _cfg_whatsapp(cfg)
+    a = _cfg_alertas(cfg)
     shadow = bool(((cfg or {}).get("mente") or {}).get("shadow"))
 
     lineas = [
-        "*Quantum MLB — Pick T-60*",
+        "Quantum MLB — Pick T-60",
         f"{visitante} @ {home}",
-        f"Equipo: *{equipo}*",
+        f"Equipo: {equipo}",
     ]
     if pick and pick != equipo:
         lineas.append(f"Mercado: {pick}")
@@ -147,7 +237,7 @@ def formatear_mensaje_pick(
         lineas.append(f"Cuota: {cuota}")
     if hora:
         lineas.append(f"Inicio: {hora}")
-    if wa.get("incluir_mente") and mente.get("decision"):
+    if a.get("incluir_mente") and mente.get("decision"):
         lineas.append(
             f"Mente: {mente.get('decision')}"
             + (f" (conf {mente.get('confianza')})" if mente.get("confianza") else "")
@@ -156,9 +246,53 @@ def formatear_mensaje_pick(
         if razones:
             lineas.append(f"Motivo: {razones[0]}")
     if shadow:
-        lineas.append("_Modo shadow: aviso sin mover dinero_")
+        lineas.append("Modo shadow: aviso sin mover dinero")
     lineas.append(f"Fase: {fase}")
     return "\n".join(lineas)
+
+
+def enviar_telegram(
+    texto: str,
+    cfg: dict | None = None,
+    *,
+    forzar: bool = False,
+) -> dict[str, Any]:
+    t = _cfg_telegram(cfg)
+    if not forzar and not t["activo"]:
+        return {"ok": False, "motivo": "Telegram desactivado"}
+    if not t["user"]:
+        return {"ok": False, "motivo": "Falta telegram.user"}
+
+    try:
+        params: dict[str, Any] = {
+            "user": t["user"],
+            "text": texto,
+        }
+        if t.get("html"):
+            params["html"] = "yes"
+        r = requests.get(CALLMEBOT_TG_URL, params=params, timeout=t["timeout_sec"])
+        body = (r.text or "")[:240]
+        low = body.lower()
+        ok = r.status_code == 200 and (
+            "queued" in low
+            or "message" in low
+            or "sent" in low
+            or ("ok" in low and "error" not in low and "denied" not in low)
+        )
+        if "denied" in low or "permission" in low or "invalid" in low or "error:" in low:
+            ok = False
+        if r.status_code == 200 and not body.strip():
+            ok = True
+        return {
+            "ok": bool(ok),
+            "http": r.status_code,
+            "canal": "telegram",
+            "user": t["user"],
+            "detalle": body[:140],
+            "enviado_en": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        }
+    except Exception as e:
+        return {"ok": False, "motivo": str(e)[:120], "canal": "telegram"}
 
 
 def enviar_whatsapp(
@@ -167,7 +301,7 @@ def enviar_whatsapp(
     *,
     forzar: bool = False,
 ) -> dict[str, Any]:
-    """Envía texto por CallMeBot. No expone apikey en la respuesta."""
+    """Envía texto por CallMeBot WhatsApp. No expone apikey."""
     w = _cfg_whatsapp(cfg)
     if not forzar and not w["activo"]:
         return {"ok": False, "motivo": "WhatsApp desactivado"}
@@ -180,7 +314,7 @@ def enviar_whatsapp(
 
     try:
         r = requests.get(
-            CALLMEBOT_URL,
+            CALLMEBOT_WA_URL,
             params={
                 "source": "quantummlb",
                 "phone": phone,
@@ -199,29 +333,52 @@ def enviar_whatsapp(
         if "invalid" in low or ("error" in low and "queued" not in low):
             ok = False
         if r.status_code == 200 and not body.strip():
-            ok = True  # algunos entornos responden vacío al encolar
+            ok = True
         return {
             "ok": bool(ok),
             "http": r.status_code,
+            "canal": "whatsapp",
             "proveedor": "callmebot",
             "phone_mascara": _enmascarar_phone(phone),
             "detalle": body[:120],
             "enviado_en": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         }
     except Exception as e:
-        return {"ok": False, "motivo": str(e)[:120]}
+        return {"ok": False, "motivo": str(e)[:120], "canal": "whatsapp"}
+
+
+def enviar_alerta(
+    texto: str,
+    cfg: dict | None = None,
+    *,
+    forzar: bool = False,
+) -> dict[str, Any]:
+    a = _cfg_alertas(cfg)
+    if a["canal"] == "telegram":
+        return enviar_telegram(texto, cfg, forzar=forzar)
+    if a["canal"] == "whatsapp":
+        return enviar_whatsapp(texto, cfg, forzar=forzar)
+    return {"ok": False, "motivo": "Sin canal configurado (Telegram o WhatsApp)"}
 
 
 def ya_enviado(pred_o_juego: dict | None) -> bool:
     if not isinstance(pred_o_juego, dict):
         return False
-    return bool(pred_o_juego.get("whatsapp_enviado"))
+    return bool(
+        pred_o_juego.get("alerta_enviado")
+        or pred_o_juego.get("whatsapp_enviado")
+        or pred_o_juego.get("telegram_enviado")
+    )
 
 
 def marcar_enviado(pred: dict, resultado: dict[str, Any]) -> None:
-    pred["whatsapp_enviado"] = bool(resultado.get("ok"))
+    ok = bool(resultado.get("ok"))
+    pred["alerta_enviado"] = ok
+    pred["alerta_canal"] = resultado.get("canal")
+    pred["whatsapp_enviado"] = ok  # compat
+    pred["telegram_enviado"] = ok and resultado.get("canal") == "telegram"
     pred["whatsapp_enviado_en"] = resultado.get("enviado_en")
-    if not resultado.get("ok"):
+    if not ok:
         pred["whatsapp_error"] = (resultado.get("motivo") or resultado.get("detalle") or "")[:120]
 
 
@@ -233,11 +390,10 @@ def notificar_pick_t60(
     fase: str = "t60",
 ) -> dict[str, Any]:
     """
-    Envía WhatsApp del equipo elegido si aún no se envió.
-    Marca la predicción para no repetir.
+    Envía alerta (Telegram o WhatsApp) del equipo elegido si aún no se envió.
     """
-    w = _cfg_whatsapp(cfg)
-    disp = whatsapp_disponible(cfg)
+    a = _cfg_alertas(cfg)
+    disp = alerta_disponible(cfg)
     if not disp.get("ok"):
         return {"ok": False, "motivo": disp.get("motivo") or "no disponible", "omitido": True}
 
@@ -250,7 +406,7 @@ def notificar_pick_t60(
     if not pick:
         return {"ok": False, "omitido": True, "motivo": "sin pick"}
 
-    if w.get("solo_apostables"):
+    if a.get("solo_apostables"):
         apostable = bool((pred or {}).get("apostable") if pred else juego.get("apostable"))
         if not apostable:
             return {"ok": False, "omitido": True, "motivo": "no apostable"}
@@ -264,13 +420,15 @@ def notificar_pick_t60(
             payload["ia_mente"] = pred["ia_mente"]
 
     texto = formatear_mensaje_pick(payload, cfg=cfg, fase=fase)
-    resultado = enviar_whatsapp(texto, cfg)
+    resultado = enviar_alerta(texto, cfg)
     if pred is not None:
         marcar_enviado(pred, resultado)
+    dest = resultado.get("user") or resultado.get("phone_mascara") or a.get("canal")
     if resultado.get("ok"):
+        juego["alerta_enviado"] = True
         juego["whatsapp_enviado"] = True
-        print(f"[WHATSAPP] Enviado pick T-60: {pick} → {resultado.get('phone_mascara')}")
+        print(f"[ALERTA/{resultado.get('canal')}] Pick T-60: {pick} → {dest}")
     else:
-        print(f"[WHATSAPP] Fallo: {resultado.get('motivo') or resultado.get('detalle')}")
+        print(f"[ALERTA] Fallo: {resultado.get('motivo') or resultado.get('detalle')}")
     resultado["texto_preview"] = texto[:180]
     return resultado
