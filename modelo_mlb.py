@@ -63,11 +63,21 @@ except ImportError:
 try:
     from factores_humanos import (
         analizar_factores_humanos,
-        aplicar_ajustes_fuerza,
+        aplicar_ajustes_fuerza as aplicar_ajustes_humanos,
     )
     HAS_HUMANOS = True
 except ImportError:
     HAS_HUMANOS = False
+
+try:
+    from historico_oficial import (
+        analizar_historico_oficial,
+        aplicar_ajustes_fuerza as aplicar_ajustes_historico,
+        cargar_l10,
+    )
+    HAS_HISTORICO = True
+except ImportError:
+    HAS_HISTORICO = False
 
 try:
     import vertexai
@@ -768,7 +778,7 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
     if usar_humanos:
         try:
             humanos_info = analizar_factores_humanos(juego)
-            f_away, f_home = aplicar_ajustes_fuerza(f_away, f_home, humanos_info)
+            f_away, f_home = aplicar_ajustes_humanos(f_away, f_home, humanos_info)
             if humanos_info.get("ok") and (
                 humanos_info.get("riesgo")
                 or abs(float(humanos_info.get("ajuste_away") or 0)) >= 0.5
@@ -783,6 +793,27 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             humanos_info = {"ok": False, "motivo": str(e)[:80], "resumen": "", "riesgo": False}
     juego["factores_humanos"] = humanos_info
 
+    # Historial oficial: L10 + pitcher vs rival
+    historico_info: dict[str, Any] = {"ok": False, "resumen": "", "riesgo": False}
+    usar_hist = bool(cfg.get("usar_historico_oficial", True)) and HAS_HISTORICO
+    if usar_hist:
+        try:
+            historico_info = analizar_historico_oficial(juego, season=season)
+            f_away, f_home = aplicar_ajustes_historico(f_away, f_home, historico_info)
+            if historico_info.get("ok") and (
+                historico_info.get("riesgo")
+                or abs(float(historico_info.get("ajuste_away") or 0)) >= 0.4
+                or abs(float(historico_info.get("ajuste_home") or 0)) >= 0.4
+            ):
+                print(
+                    f"[HISTORICO] {juego.get('visitante')}@{juego.get('home')}: "
+                    f"{historico_info.get('resumen')[:180]}"
+                )
+        except Exception as e:
+            print(f"[HISTORICO] Error: {e}")
+            historico_info = {"ok": False, "motivo": str(e)[:80], "resumen": "", "riesgo": False}
+    juego["historico_oficial"] = historico_info
+
     prob_away, prob_home = prob_logistica(f_away, f_home)
     prob_est_away, prob_est_home = prob_away, prob_home
 
@@ -795,10 +826,26 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             park = PARK_FACTORS.get(home_id, 1.0)
             rec_away = cargar_records(season).get(away_id, {"win_pct": 0.5})
             rec_home = cargar_records(season).get(home_id, {"win_pct": 0.5})
-            racha_away = cargar_rachas(season).get(away_id, 0)
-            racha_home = cargar_rachas(season).get(home_id, 0)
-            ba_ml = {**ba, "win_pct": rec_away.get("win_pct", 0.5), "racha_ultimos_10": racha_away}
-            bh_ml = {**bh, "win_pct": rec_home.get("win_pct", 0.5), "racha_ultimos_10": racha_home}
+            # Preferir L10 oficial (0-1); fallback a racha de standings escalada
+            l10_pct_away = None
+            l10_pct_home = None
+            if HAS_HISTORICO:
+                try:
+                    l10m = cargar_l10(season)
+                    if away_id in l10m and l10m[away_id].get("ok"):
+                        l10_pct_away = float(l10m[away_id].get("pct") or 0.5)
+                    if home_id in l10m and l10m[home_id].get("ok"):
+                        l10_pct_home = float(l10m[home_id].get("pct") or 0.5)
+                except Exception:
+                    pass
+            if l10_pct_away is None:
+                racha_away = cargar_rachas(season).get(away_id, 0) if away_id else 0
+                l10_pct_away = max(0.0, min(1.0, 0.5 + float(racha_away) * 0.05))
+            if l10_pct_home is None:
+                racha_home = cargar_rachas(season).get(home_id, 0) if home_id else 0
+                l10_pct_home = max(0.0, min(1.0, 0.5 + float(racha_home) * 0.05))
+            ba_ml = {**ba, "win_pct": rec_away.get("win_pct", 0.5), "racha_ultimos_10": l10_pct_away}
+            bh_ml = {**bh, "win_pct": rec_home.get("win_pct", 0.5), "racha_ultimos_10": l10_pct_home}
             clima_feats = {
                 "temp_f": clima_info.get("temp_f") if clima_info.get("ok") else 72.0,
                 "viento_mph": clima_info.get("viento_mph") if clima_info.get("ok") else 5.0,

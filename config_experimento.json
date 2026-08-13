@@ -84,6 +84,8 @@
 
   "usar_factores_humanos": true,
 
+  "usar_historico_oficial": true,
+
   "usar_ia_veto": true,
 
   "usar_mente": true,

@@ -105,6 +105,7 @@ def construir_briefing(juego: dict[str, Any], memoria: dict | None = None) -> di
     lesiones = juego.get("lesiones") if isinstance(juego.get("lesiones"), dict) else {}
     scratch = juego.get("scratch_lineup") if isinstance(juego.get("scratch_lineup"), dict) else {}
     humanos = juego.get("factores_humanos") if isinstance(juego.get("factores_humanos"), dict) else {}
+    historico = juego.get("historico_oficial") if isinstance(juego.get("historico_oficial"), dict) else {}
     feats = juego.get("ml_features") if isinstance(juego.get("ml_features"), dict) else {}
 
     pilares = {
@@ -138,6 +139,15 @@ def construir_briefing(juego: dict[str, Any], memoria: dict | None = None) -> di
             "fatiga_away": (humanos.get("away") or {}).get("fatiga_viaje"),
             "fatiga_home": (humanos.get("home") or {}).get("fatiga_viaje"),
         },
+        "historico": {
+            "ok": bool(historico.get("ok")),
+            "riesgo": bool(historico.get("riesgo")),
+            "resumen": (historico.get("resumen") or "")[:200],
+            "l10_away": (historico.get("l10_away") or {}).get("marca"),
+            "l10_home": (historico.get("l10_home") or {}).get("marca"),
+            "pvr_away": (historico.get("pitcher_vs_rival_away") or {}).get("calidad"),
+            "pvr_home": (historico.get("pitcher_vs_rival_home") or {}).get("calidad"),
+        },
         "pitchers": {
             "away": juego.get("pitcherAway"),
             "home": juego.get("pitcherHome"),
@@ -153,6 +163,11 @@ def construir_briefing(juego: dict[str, Any], memoria: dict | None = None) -> di
         alertas.append("scratch")
     if pilares["humanos"]["riesgo"]:
         alertas.append("humanos")
+    if pilares["historico"]["riesgo"]:
+        alertas.append("historico")
+    for a in historico.get("alertas") or []:
+        if a not in alertas:
+            alertas.append(str(a))
     fuente = str(pilares["modelo"]["fuente_cuotas"] or "").lower()
     if fuente in ("modelo", "", "none"):
         alertas.append("sin_mercado")
@@ -162,9 +177,11 @@ def construir_briefing(juego: dict[str, Any], memoria: dict | None = None) -> di
         f"cuotas={fuente or 'n/a'}",
     ]
     if alertas:
-        resumen_bits.append("alertas=" + ",".join(alertas))
+        resumen_bits.append("alertas=" + ",".join(alertas[:8]))
     if humanos.get("resumen"):
         resumen_bits.append(str(humanos["resumen"])[:80])
+    if historico.get("resumen"):
+        resumen_bits.append(str(historico["resumen"])[:100])
 
     return {
         "ok": True,
@@ -314,6 +331,45 @@ def _reglas_duras(juego: dict, briefing: dict, modo: dict) -> dict[str, Any] | N
                 briefing=briefing,
             )
 
+    # Historial oficial: forma fría del pick o SP castigado vs rival
+    historico = juego.get("historico_oficial") if isinstance(juego.get("historico_oficial"), dict) else {}
+    if historico.get("ok"):
+        try:
+            edge_h = float(juego.get("edge") or 0)
+        except (TypeError, ValueError):
+            edge_h = 0.0
+        l10_key = "l10_away" if lado == "away" else ("l10_home" if lado == "home" else None)
+        pvr_key = (
+            "pitcher_vs_rival_away"
+            if lado == "away"
+            else ("pitcher_vs_rival_home" if lado == "home" else None)
+        )
+        if l10_key:
+            forma = str((historico.get(l10_key) or {}).get("forma") or "")
+            marca = (historico.get(l10_key) or {}).get("marca")
+            if forma == "fria" and edge_h < 10:
+                return _pack(
+                    "PASAR",
+                    0,
+                    [f"Pick en L10 fría ({marca or '≤2-8'})"],
+                    4,
+                    ["forma_fria"],
+                    fuente="regla-local",
+                    briefing=briefing,
+                )
+        if pvr_key:
+            pvr = historico.get(pvr_key) if isinstance(historico.get(pvr_key), dict) else {}
+            if pvr.get("calidad") == "malo" and edge_h < 12:
+                return _pack(
+                    "PASAR",
+                    0,
+                    [f"SP del pick malo vs rival ({(pvr.get('motivo') or '')[:50]})"],
+                    4,
+                    ["pitcher_vs_rival"],
+                    fuente="regla-local",
+                    briefing=briefing,
+                )
+
     fuente = str(juego.get("lineas_fuente") or "modelo").lower()
     sin_mercado = fuente in ("modelo", "", "none", "import")
     if modo.get("requiere_mercado") and sin_mercado:
@@ -425,8 +481,9 @@ def _conclusion_groq(
     prompt = (
         "Eres la MENTE de un sistema de apuestas MLB. El modelo ya propuso un pick.\n"
         "Debes concluir UNA decisión con dinero en mente: APOSTAR, PASAR o ESPERAR.\n"
-        "Sé estricto: sin cuota real, scratch del pick, starter en riesgo, fatiga alta o "
-        "parecido a lecciones de fallos → PASAR. Edge sólido + contexto limpio → APOSTAR.\n"
+        "Sé estricto: sin cuota real, scratch del pick, starter en riesgo, fatiga alta, "
+        "L10 fría del pick, pitcher malo vs rival o parecido a lecciones de fallos → PASAR. "
+        "Edge sólido + contexto limpio + forma/historial a favor → APOSTAR.\n"
         "ESPERAR solo si faltan datos clave (pitcher TBD, lineup vacío).\n\n"
         f"Partido: {juego.get('visitante')} @ {juego.get('home')}\n"
         f"Pick: {juego.get('pick')} | prob={juego.get('probPick')} edge={juego.get('edge')} "
@@ -511,12 +568,36 @@ def _heuristica_conclusion(juego: dict, briefing: dict, modo: dict) -> dict[str,
         return _pack("PASAR", 0, ["Alerta de roster/scratch"], 4, lec_ids[:2], fuente="heuristica", briefing=briefing)
     if "humanos" in alertas and edge < 8:
         return _pack("PASAR", 0, ["Contexto humano feo y edge justo"], 3, lec_ids[:2], fuente="heuristica", briefing=briefing)
+
+    lado = _lado_del_pick(juego)
+    contra_pick = False
+    a_favor = False
+    if lado == "away":
+        contra_pick = any(a in alertas for a in ("l10_fria_away", "pvr_malo_away"))
+        a_favor = any(a in alertas for a in ("l10_caliente_away", "pvr_bueno_away", "l10_fria_home", "pvr_malo_home"))
+    elif lado == "home":
+        contra_pick = any(a in alertas for a in ("l10_fria_home", "pvr_malo_home"))
+        a_favor = any(a in alertas for a in ("l10_caliente_home", "pvr_bueno_home", "l10_fria_away", "pvr_malo_away"))
+
+    if contra_pick and edge < 10:
+        return _pack(
+            "PASAR",
+            0,
+            ["Historial oficial en contra del pick"],
+            4,
+            ["historico_oficial"],
+            fuente="heuristica",
+            briefing=briefing,
+        )
     if "sin_mercado" in alertas and modo.get("requiere_mercado"):
         return _pack("PASAR", 0, ["Sin mercado"], 5, ["sin_cuota_real"], fuente="heuristica", briefing=briefing)
+
+    conf_bonus = 1 if a_favor else 0
 
     if edge >= 6 and prob >= 55 and "sin_mercado" not in alertas:
         stake = 2.0 if edge < 8 else (3.0 if edge < 12 else 4.0)
         conf = 3 if edge < 8 else (4 if edge < 12 else 5)
+        conf = min(5, conf + conf_bonus)
         return _pack(
             "APOSTAR",
             stake,

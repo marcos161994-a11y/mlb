@@ -36,6 +36,12 @@ except ImportError:
     def texto_humanos_ia(info, max_len=360):  # type: ignore
         return "Factores humanos: sin modulo"
 
+try:
+    from historico_oficial import texto_para_ia as texto_historico_ia
+except ImportError:
+    def texto_historico_ia(info, max_len=360):  # type: ignore
+        return "Historial oficial: sin modulo"
+
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 DEFAULT_MODEL = "llama-3.1-8b-instant"
 DEFAULT_TIMEOUT = 8.0
@@ -172,6 +178,8 @@ def veto_apuesta(juego: dict[str, Any], cfg: dict | None = None, memoria: dict |
     bloque_scratch = texto_scratch_ia(scratch)
     humanos = juego.get("factores_humanos") if isinstance(juego.get("factores_humanos"), dict) else {}
     bloque_humanos = texto_humanos_ia(humanos)
+    historico = juego.get("historico_oficial") if isinstance(juego.get("historico_oficial"), dict) else {}
+    bloque_historico = texto_historico_ia(historico)
 
     try:
         from ia_lecciones import texto_lecciones_para_prompt
@@ -234,13 +242,52 @@ def veto_apuesta(juego: dict[str, Any], cfg: dict | None = None, memoria: dict |
             print(f"[IA-VETO] PASAR por fatiga viaje ({lado}={fatiga})")
             return out
 
+    # Historial oficial: L10 fría o SP malo vs rival del lado del pick
+    if historico.get("ok") and lado:
+        try:
+            edge_h = float(juego.get("edge") or 0)
+        except (TypeError, ValueError):
+            edge_h = 0.0
+        l10 = historico.get("l10_away" if lado == "away" else "l10_home") or {}
+        pvr = historico.get(
+            "pitcher_vs_rival_away" if lado == "away" else "pitcher_vs_rival_home"
+        ) or {}
+        if isinstance(l10, dict) and l10.get("forma") == "fria" and edge_h < 10:
+            out = {
+                "ok": True,
+                "decision": "PASAR",
+                "motivo": f"L10 fría del pick ({l10.get('marca') or '≤2-8'})",
+                "confianza": 4,
+                "fuente": "historico_oficial",
+                "modelo": "regla-local",
+            }
+            if gid:
+                _veto_cache[gid] = dict(out)
+            print(f"[IA-VETO] PASAR por L10 fría: {out['motivo']}")
+            return out
+        if isinstance(pvr, dict) and pvr.get("calidad") == "malo" and edge_h < 12:
+            out = {
+                "ok": True,
+                "decision": "PASAR",
+                "motivo": f"SP malo vs rival ({(pvr.get('motivo') or '')[:60]})",
+                "confianza": 4,
+                "fuente": "historico_oficial",
+                "modelo": "regla-local",
+            }
+            if gid:
+                _veto_cache[gid] = dict(out)
+            print(f"[IA-VETO] PASAR por pitcher vs rival: {out['motivo']}")
+            return out
+
     prompt = (
         "Eres analista de apuestas MLB. El MODELO ya propuso un pick.\n"
         "Tu trabajo: confirmar (APOSTAR) o vetar (PASAR) esa apuesta con dinero.\n"
         "Veta si hay riesgo claro: pitcher dudoso/lesionado, scratch, lineup sin estrellas, "
         "bullpen fundido, favorito inflado, spot feo, fatiga de viaje/B2B/cambio de zona, "
+        "L10 fría del pick, historial feo del pitcher vs rival, "
         "o confianza baja pese al %.\n"
-        "Si hay ALERTA de starter lesionado, scratch del lado del pick, o fatiga de viaje alta → PASAR.\n"
+        "Si hay ALERTA de starter lesionado, scratch del lado del pick, fatiga de viaje alta, "
+        "L10 fría o SP castigado vs rival → PASAR.\n"
         "Si el spot se parece a una LECCIÓN de fallos recientes → PASAR.\n"
         "Confirma si el spot se ve sólido con los datos dados.\n\n"
         f"Partido: {visitante} @ {home}\n"
@@ -252,6 +299,7 @@ def veto_apuesta(juego: dict[str, Any], cfg: dict | None = None, memoria: dict |
         f"{bloque_lesiones}\n"
         f"{bloque_scratch}\n"
         f"{bloque_humanos}\n"
+        f"{bloque_historico}\n"
         f"{bloque_lecciones}\n\n"
         "Responde SOLO un JSON válido (sin markdown) con exactamente:\n"
         '{"decision":"APOSTAR"|"PASAR","motivo":"max 12 palabras","confianza":1-5}'
