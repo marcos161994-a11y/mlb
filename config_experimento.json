@@ -82,6 +82,8 @@
 
   "usar_scratch_lineup": true,
 
+  "usar_factores_humanos": true,
+
   "usar_ia_veto": true,
 
   "groq": {

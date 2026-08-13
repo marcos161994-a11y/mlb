@@ -30,6 +30,12 @@ except ImportError:
     def pick_afectado_por_scratch(pick, visitante, home, info):  # type: ignore
         return False
 
+try:
+    from factores_humanos import texto_para_ia as texto_humanos_ia
+except ImportError:
+    def texto_humanos_ia(info, max_len=360):  # type: ignore
+        return "Factores humanos: sin modulo"
+
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 DEFAULT_MODEL = "llama-3.1-8b-instant"
 DEFAULT_TIMEOUT = 8.0
@@ -164,6 +170,8 @@ def veto_apuesta(juego: dict[str, Any], cfg: dict | None = None) -> dict[str, An
     bloque_lesiones = texto_para_ia(lesiones)
     scratch = juego.get("scratch_lineup") if isinstance(juego.get("scratch_lineup"), dict) else {}
     bloque_scratch = texto_scratch_ia(scratch)
+    humanos = juego.get("factores_humanos") if isinstance(juego.get("factores_humanos"), dict) else {}
+    bloque_humanos = texto_humanos_ia(humanos)
 
     # Regla dura: si el pick es el equipo del starter lesionado → PASAR sin llamar a Groq
     if lesiones.get("starter_riesgo"):
@@ -197,12 +205,35 @@ def veto_apuesta(juego: dict[str, Any], cfg: dict | None = None) -> dict[str, An
         print(f"[IA-VETO] PASAR por scratch/lineup: {scratch.get('alerta') or out['motivo']}")
         return out
 
+    # Fatiga de viaje extrema del lado del pick → PASAR (regla local)
+    lado = None
+    if visitante and visitante in pick:
+        lado = "away"
+    elif home and home in pick:
+        lado = "home"
+    if lado and isinstance(humanos.get(lado), dict):
+        fatiga = float((humanos[lado] or {}).get("fatiga_viaje") or 0)
+        if fatiga >= 0.75:
+            out = {
+                "ok": True,
+                "decision": "PASAR",
+                "motivo": "Fatiga de viaje extrema",
+                "confianza": 4,
+                "fuente": "factores_humanos",
+                "modelo": "regla-local",
+            }
+            if gid:
+                _veto_cache[gid] = dict(out)
+            print(f"[IA-VETO] PASAR por fatiga viaje ({lado}={fatiga})")
+            return out
+
     prompt = (
         "Eres analista de apuestas MLB. El MODELO ya propuso un pick.\n"
         "Tu trabajo: confirmar (APOSTAR) o vetar (PASAR) esa apuesta con dinero.\n"
         "Veta si hay riesgo claro: pitcher dudoso/lesionado, scratch, lineup sin estrellas, "
-        "bullpen fundido, favorito inflado, spot feo, o confianza baja pese al %.\n"
-        "Si hay ALERTA de starter lesionado o scratch del lado del pick → PASAR.\n"
+        "bullpen fundido, favorito inflado, spot feo, fatiga de viaje/B2B/cambio de zona, "
+        "o confianza baja pese al %.\n"
+        "Si hay ALERTA de starter lesionado, scratch del lado del pick, o fatiga de viaje alta → PASAR.\n"
         "Confirma si el spot se ve sólido con los datos dados.\n\n"
         f"Partido: {visitante} @ {home}\n"
         f"Pick del modelo: {pick}\n"
@@ -211,7 +242,8 @@ def veto_apuesta(juego: dict[str, Any], cfg: dict | None = None) -> dict[str, An
         f"Pitchers: away={pa} | home={ph}\n"
         f"Motivo modelo: {motivo_modelo}\n"
         f"{bloque_lesiones}\n"
-        f"{bloque_scratch}\n\n"
+        f"{bloque_scratch}\n"
+        f"{bloque_humanos}\n\n"
         "Responde SOLO un JSON válido (sin markdown) con exactamente:\n"
         '{"decision":"APOSTAR"|"PASAR","motivo":"max 12 palabras","confianza":1-5}'
     )

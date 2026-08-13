@@ -524,7 +524,7 @@ def _score_equipo(linescore_side: dict, team_side: dict) -> int:
 
 def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False) -> list[dict]:
     memoria = cargar_memoria()
-    params = {"sportId": 1, "hydrate": "probablePitcher,lineups,linescore,team"}
+        params = {"sportId": 1, "hydrate": "probablePitcher,lineups,linescore,team,officials"}
     if fecha:
         m, d, y = fecha.split("-")[1], fecha.split("-")[2], fecha.split("-")[0]
         params["date"] = f"{m}/{d}/{y}"
@@ -632,6 +632,12 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
                 "hora_bloqueo_txt": bloqueo.strftime("%I:%M %p"),
                 "logoAway": f"https://www.mlbstatic.com/team-logos/{away['team']['id']}.svg",
                 "logoHome": f"https://www.mlbstatic.com/team-logos/{home['team']['id']}.svg",
+                "series_game_number": juego.get("seriesGameNumber"),
+                "games_in_series": juego.get("gamesInSeries"),
+                "day_night": juego.get("dayNight"),
+                "officials": juego.get("officials") or [],
+                "venue_id": (juego.get("venue") or {}).get("id"),
+                "venue_name": (juego.get("venue") or {}).get("name"),
             })
 
     global _lineas_meta_cache
@@ -1113,6 +1119,9 @@ def guardar_prediccion(
             "clima": juego.get("clima") if isinstance(juego.get("clima"), dict) else None,
             "lesiones": juego.get("lesiones") if isinstance(juego.get("lesiones"), dict) else None,
             "scratch_lineup": juego.get("scratch_lineup") if isinstance(juego.get("scratch_lineup"), dict) else None,
+            "factores_humanos": juego.get("factores_humanos")
+            if isinstance(juego.get("factores_humanos"), dict)
+            else None,
             "ml_features": juego.get("ml_features") if isinstance(juego.get("ml_features"), dict) else None,
         }
     )
@@ -1614,6 +1623,9 @@ def _bloquear_juego_locked(
             "ia_veto": veto if veto.get("ok") else None,
             "clima": juego.get("clima") if isinstance(juego.get("clima"), dict) else None,
             "lesiones": juego.get("lesiones") if isinstance(juego.get("lesiones"), dict) else None,
+            "factores_humanos": juego.get("factores_humanos")
+            if isinstance(juego.get("factores_humanos"), dict)
+            else None,
             "ml_features": juego.get("ml_features") if isinstance(juego.get("ml_features"), dict) else None,
             "pitcherAway": juego.get("pitcherAway"),
             "pitcherHome": juego.get("pitcherHome"),
@@ -2309,6 +2321,10 @@ def api_health():
                 (cfg.get("estrategia") or {}).get("min_estrellas_fuera_lineup", 2)
             ),
         },
+        "factores_humanos": {
+            "activo": bool(cfg.get("usar_factores_humanos", True)),
+            "señales": ["viaje", "descanso", "zona", "serie", "umpire"],
+        },
         "xgboost": {
             "activo": bool(cfg.get("usar_xgboost", True)),
         },
@@ -2485,6 +2501,42 @@ def api_scratch_status():
             "demo_scratch_home": bool(demo.get("scratch_home")),
             "demo_riesgo": bool(demo.get("riesgo")),
             "pick_helper": pick_afectado_por_scratch is not None,
+        }
+    except Exception as e:
+        return {"ok": False, "activo": True, "motivo": str(e)[:120]}
+
+
+@app.get("/api/humanos-status")
+def api_humanos_status():
+    """Ping de factores humanos (viaje / serie / umpire)."""
+    cfg = cargar_config()
+    if not cfg.get("usar_factores_humanos", True):
+        return {"ok": False, "activo": False, "motivo": "usar_factores_humanos=false"}
+    try:
+        from factores_humanos import analizar_factores_humanos
+
+        demo = analizar_factores_humanos(
+            {
+                "away_id": 119,
+                "home_id": 147,
+                "inicio_juego": "2026-08-12T23:05:00+00:00",
+                "series_game_number": 3,
+                "games_in_series": 3,
+                "day_night": "night",
+                "officials": [
+                    {
+                        "official": {"id": 1, "fullName": "Pat Hoberg"},
+                        "officialType": "Home Plate",
+                    }
+                ],
+            }
+        )
+        return {
+            "ok": bool(demo.get("ok")),
+            "activo": True,
+            "señales": ["viaje", "descanso", "zona", "serie", "umpire"],
+            "demo_resumen": (demo.get("resumen") or "")[:160],
+            "demo_umpire": (demo.get("umpire") or {}).get("hp_nombre"),
         }
     except Exception as e:
         return {"ok": False, "activo": True, "motivo": str(e)[:120]}
