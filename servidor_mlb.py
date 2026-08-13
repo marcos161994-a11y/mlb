@@ -886,6 +886,19 @@ def _liquidar_dia_con_juegos(memoria: dict, dia: dict, juegos: list) -> int:
                 f"[PREDICCIÓN] {prediccion['pick']} -> {resultado.upper()} "
                 f"({marcador}) P/L papel {profit_v:+.2f}"
             )
+            if resultado == "fallo":
+                try:
+                    from ia_lecciones import registrar_leccion_desde_fallo
+
+                    registrar_leccion_desde_fallo(
+                        memoria,
+                        prediccion,
+                        cfg=cargar_config(),
+                        juego=juego,
+                        cuando=dia.get("fecha"),
+                    )
+                except Exception as e:
+                    print(f"[LECCIONES] aviso: {e}")
     
     if cambios:
         print(f"[DEBUG LIQ DIA] Se realizaron {cambios} cambios para el día {dia['fecha']}. Recalculando y guardando.")
@@ -1558,7 +1571,8 @@ def _bloquear_juego_locked(
 
     # Modelo propone → Groq veta/confirma → solo entonces dinero.
     # Si no hay key/timeout/error (SKIP): se sigue con el modelo.
-    veto = veto_apuesta(juego, cfg)
+    # memoria aporta lecciones de fallos previos al prompt de veto.
+    veto = veto_apuesta(juego, cfg, memoria=memoria)
     if pred_existente is not None:
         pred_existente["ia_veto"] = veto
     if veto.get("ok") and veto.get("decision") == "PASAR":
@@ -2094,6 +2108,19 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
     resumen_hoy["pred_total"] = len(preds_hoy)
     if dia:
         dia["resumen"] = resumen_hoy
+
+    # Backfill heurístico una vez: fallos ya liquidados → lecciones sin quemar Groq.
+    lecciones_meta = {"total": 0, "por_patron": {}, "recientes": []}
+    try:
+        from ia_lecciones import backfill_lecciones_si_vacio, resumen_lecciones
+
+        n_bf = backfill_lecciones_si_vacio(memoria)
+        if n_bf:
+            guardar_memoria(memoria)
+            print(f"[LECCIONES] Backfill heurístico: {n_bf}")
+        lecciones_meta = resumen_lecciones(memoria)
+    except Exception as e:
+        print(f"[LECCIONES] aviso estado: {e}")
     
     return {
         "memoria": memoria,
@@ -2111,10 +2138,12 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
         "pl_split": pl_split,
         "ml_meta": memoria.get("ml_meta"),
         "calib_meta": memoria.get("calib_meta"),
+        "lecciones": lecciones_meta,
         "ia_veto": {
             "activo": bool(cfg.get("usar_ia_veto")),
             "listo": ia_veto_disponible(cfg),
             "modelo": (cfg.get("groq") or {}).get("model") or "llama-3.1-8b-instant",
+            "lecciones": lecciones_meta.get("total", 0),
         },
     }
 
@@ -2545,10 +2574,18 @@ def api_pitcher_demo():
 def api_ia_status():
     """Comprueba config + ping Groq (sin exponer la key)."""
     cfg = cargar_config()
+    lecciones_n = 0
+    try:
+        from ia_lecciones import asegurar_lista_lecciones
+
+        lecciones_n = len(asegurar_lista_lecciones(cargar_memoria()))
+    except Exception:
+        pass
     base = {
         "activo": bool(cfg.get("usar_ia_veto")),
         "key_presente": ia_veto_disponible(cfg),
         "modelo": (cfg.get("groq") or {}).get("model") or "llama-3.1-8b-instant",
+        "lecciones": lecciones_n,
     }
     if not base["activo"]:
         return {**base, "ok": False, "motivo": "usar_ia_veto=false en config"}

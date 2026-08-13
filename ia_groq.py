@@ -115,7 +115,7 @@ def _parse_respuesta(texto: str) -> dict[str, Any] | None:
     return None
 
 
-def veto_apuesta(juego: dict[str, Any], cfg: dict | None = None) -> dict[str, Any]:
+def veto_apuesta(juego: dict[str, Any], cfg: dict | None = None, memoria: dict | None = None) -> dict[str, Any]:
     """
     Decide APOSTAR o PASAR sobre un pick ya propuesto por el modelo.
 
@@ -165,6 +165,13 @@ def veto_apuesta(juego: dict[str, Any], cfg: dict | None = None) -> dict[str, An
     scratch = juego.get("scratch_lineup") if isinstance(juego.get("scratch_lineup"), dict) else {}
     bloque_scratch = texto_scratch_ia(scratch)
 
+    try:
+        from ia_lecciones import texto_lecciones_para_prompt
+
+        bloque_lecciones = texto_lecciones_para_prompt(memoria)
+    except Exception:
+        bloque_lecciones = "Lecciones previas: no disponibles."
+
     # Regla dura: si el pick es el equipo del starter lesionado → PASAR sin llamar a Groq
     if lesiones.get("starter_riesgo"):
         away_hit = lesiones.get("starter_away_lesionado") and visitante in pick
@@ -203,6 +210,7 @@ def veto_apuesta(juego: dict[str, Any], cfg: dict | None = None) -> dict[str, An
         "Veta si hay riesgo claro: pitcher dudoso/lesionado, scratch, lineup sin estrellas, "
         "bullpen fundido, favorito inflado, spot feo, o confianza baja pese al %.\n"
         "Si hay ALERTA de starter lesionado o scratch del lado del pick → PASAR.\n"
+        "Si el spot se parece a una LECCIÓN de fallos recientes → PASAR.\n"
         "Confirma si el spot se ve sólido con los datos dados.\n\n"
         f"Partido: {visitante} @ {home}\n"
         f"Pick del modelo: {pick}\n"
@@ -211,7 +219,8 @@ def veto_apuesta(juego: dict[str, Any], cfg: dict | None = None) -> dict[str, An
         f"Pitchers: away={pa} | home={ph}\n"
         f"Motivo modelo: {motivo_modelo}\n"
         f"{bloque_lesiones}\n"
-        f"{bloque_scratch}\n\n"
+        f"{bloque_scratch}\n"
+        f"{bloque_lecciones}\n\n"
         "Responde SOLO un JSON válido (sin markdown) con exactamente:\n"
         '{"decision":"APOSTAR"|"PASAR","motivo":"max 12 palabras","confianza":1-5}'
     )
