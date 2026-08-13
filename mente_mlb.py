@@ -100,7 +100,7 @@ def _texto_lecciones(memoria: dict | None, max_n: int = 6) -> tuple[str, list[st
 
 
 def construir_briefing(juego: dict[str, Any], memoria: dict | None = None) -> dict[str, Any]:
-    """Junta todos los pilares en un informe corto para la mente / panel."""
+    """Junta todos los pilares en un informe corto para la mente (uso interno)."""
     clima = juego.get("clima") if isinstance(juego.get("clima"), dict) else {}
     lesiones = juego.get("lesiones") if isinstance(juego.get("lesiones"), dict) else {}
     scratch = juego.get("scratch_lineup") if isinstance(juego.get("scratch_lineup"), dict) else {}
@@ -174,6 +174,69 @@ def construir_briefing(juego: dict[str, Any], memoria: dict | None = None) -> di
         "lecciones_ids": lec_ids,
         "resumen": " · ".join(resumen_bits)[:320],
     }
+
+
+def compactar_briefing_para_memoria(
+    briefing: dict[str, Any],
+    *,
+    fase: str = "t60",
+) -> dict[str, Any]:
+    """
+    Versión persistible del briefing (T-60 / bloqueo).
+    Uso interno de la mente — no se expone en el panel.
+    """
+    from datetime import datetime, timezone
+
+    return {
+        "ok": bool(briefing.get("ok")),
+        "fase": fase,
+        "creado_en": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "alertas": list(briefing.get("alertas") or [])[:12],
+        "resumen": str(briefing.get("resumen") or "")[:320],
+        "pilares": briefing.get("pilares") if isinstance(briefing.get("pilares"), dict) else {},
+        "lecciones_ids": list(briefing.get("lecciones_ids") or [])[:8],
+        # lecciones_txt se regenera al decidir (memoria puede haber crecido)
+    }
+
+
+def generar_briefing_juego(
+    juego: dict[str, Any],
+    memoria: dict | None = None,
+    *,
+    fase: str = "t60",
+) -> dict[str, Any]:
+    """Construye y compacta briefing; lo deja en juego['ia_briefing']."""
+    full = construir_briefing(juego, memoria)
+    compacto = compactar_briefing_para_memoria(full, fase=fase)
+    juego["ia_briefing"] = compacto
+    return compacto
+
+
+def _briefing_para_decision(
+    juego: dict[str, Any],
+    memoria: dict | None,
+) -> dict[str, Any]:
+    """
+    Prefiere briefing congelado en T-60/bloqueo si existe;
+    refresca solo el texto de lecciones actuales.
+    """
+    frozen = juego.get("ia_briefing") if isinstance(juego.get("ia_briefing"), dict) else None
+    if frozen and frozen.get("ok"):
+        briefing = {
+            "ok": True,
+            "pilares": frozen.get("pilares") if isinstance(frozen.get("pilares"), dict) else {},
+            "alertas": list(frozen.get("alertas") or []),
+            "lecciones_ids": list(frozen.get("lecciones_ids") or []),
+            "resumen": frozen.get("resumen") or "",
+            "fase": frozen.get("fase") or "t60",
+            "creado_en": frozen.get("creado_en"),
+        }
+        lec_txt, lec_ids = _texto_lecciones(memoria)
+        briefing["lecciones_txt"] = lec_txt
+        if lec_ids and not briefing["lecciones_ids"]:
+            briefing["lecciones_ids"] = lec_ids
+        return briefing
+    return construir_briefing(juego, memoria)
 
 
 def _lado_del_pick(juego: dict) -> str | None:
@@ -323,7 +386,7 @@ def _pack(
         "lecciones_usadas": list(lecciones_usadas or [])[:8],
         "fuente": fuente,
         "modelo": modelo,
-        "briefing": (briefing or {}).get("resumen") if briefing else None,
+        "briefing": None,  # interno; no se expone en panel
         "alertas": (briefing or {}).get("alertas") if briefing else [],
     }
 
@@ -515,7 +578,7 @@ def mente_conclusion(
         return out
 
     modo = _modo_cfg(cfg)
-    briefing = construir_briefing(juego, memoria)
+    briefing = _briefing_para_decision(juego, memoria)
     # Señales activas del briefing (+ extras)
     senales = list(briefing.get("alertas") or [])
     try:
@@ -563,6 +626,8 @@ def mente_conclusion(
     out["modo"] = modo["nombre"]
     out["min_confianza"] = modo["min_confianza"]
     out["shadow"] = bool(modo.get("shadow"))
+    out["briefing_fase"] = briefing.get("fase")
+    # No filtrar briefing resumen a clientes: se quita en el panel (fusionar).
     # ¿Autoriza dinero?
     autoriza = (
         out.get("decision") == "APOSTAR"
@@ -583,7 +648,8 @@ def mente_conclusion(
         print(
             f"[MENTE] {juego.get('pick')}: {out.get('decision')} "
             f"conf={out.get('confianza')} dinero={'sí' if out.get('autoriza_dinero') else 'no'} "
-            f"({out.get('fuente')}) pen={out.get('penalizacion_aprendizaje')}"
+            f"({out.get('fuente')}) pen={out.get('penalizacion_aprendizaje')} "
+            f"brief={out.get('briefing_fase')}"
         )
     return out
 

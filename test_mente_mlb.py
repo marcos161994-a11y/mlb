@@ -112,3 +112,33 @@ def test_briefing_junta_pilares():
     assert b["ok"]
     assert "sin_mercado" in b["alertas"]
     assert "humanos" in b["alertas"]
+
+
+def test_briefing_congelado_se_reusa():
+    from mente_mlb import generar_briefing_juego, mente_conclusion
+
+    juego = {
+        "id": "br1",
+        "visitante": "A",
+        "home": "B",
+        "pick": "B ML",
+        "probPick": 61,
+        "edge": 9,
+        "odds": 1.9,
+        "lineas_fuente": "oddspapi",
+        "pitcherAway": "X",
+        "pitcherHome": "Y",
+    }
+    cfg = {
+        "usar_mente": True,
+        "mente": {"modo": "normal", "min_confianza": 3, "requiere_mercado": True},
+    }
+    br = generar_briefing_juego(juego, {}, fase="t60")
+    assert br["fase"] == "t60"
+    assert "lecciones_txt" not in br  # compacto, sin texto largo
+    assert juego["ia_briefing"]["resumen"]
+    c = mente_conclusion(juego, cfg, {}, forzar=True, solo_local=True)
+    assert c.get("briefing_fase") == "t60"
+    # Conclusion no expone el resumen del briefing al cliente
+    assert c.get("briefing") in (None, "")
+

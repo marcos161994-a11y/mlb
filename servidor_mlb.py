@@ -30,7 +30,12 @@ from lineas_betmgm import normalizar_nombre_equipo as norm_nombre
 from modelo_mlb import evaluar_juegos, calcular_stake_dinamico, cuota_desde_prob
 from ml_predictor import auto_entrenar_ml
 from ia_groq import ia_veto_disponible, probar_conexion_groq, veto_apuesta
-from mente_mlb import mente_conclusion, mente_disponible, aplicar_stake_mente
+from mente_mlb import (
+    mente_conclusion,
+    mente_disponible,
+    aplicar_stake_mente,
+    generar_briefing_juego,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
@@ -1080,6 +1085,17 @@ def guardar_prediccion(
         # Backfill features reales si el pick se congeló antes del fix
         if not existente.get("ml_features") and isinstance(juego.get("ml_features"), dict):
             existente["ml_features"] = juego["ml_features"]
+        # Briefing T-60 interno si faltaba (no visible en panel)
+        if not isinstance(existente.get("ia_briefing"), dict) or not existente["ia_briefing"].get("ok"):
+            try:
+                if isinstance(juego.get("ia_briefing"), dict) and juego["ia_briefing"].get("ok"):
+                    existente["ia_briefing"] = juego["ia_briefing"]
+                else:
+                    existente["ia_briefing"] = generar_briefing_juego(
+                        juego, cargar_memoria(), fase="t60"
+                    )
+            except Exception as e:
+                print(f"[BRIEFING] backfill: {e}")
         return False
 
     # Seguridad: no crear pick nuevo si el juego ya empezó (o está EN VIVO/FINAL)
@@ -1103,6 +1119,17 @@ def guardar_prediccion(
     cfg = cargar_config()
     min_prob = float((cfg.get("estrategia") or {}).get("min_prob_modelo", 58.0))
     apostable_flag = bool(juego.get("apostable")) or prob >= min_prob
+
+    # Briefing T-60 interno (para la mente). No se muestra en el panel.
+    briefing = None
+    try:
+        mem_tmp = cargar_memoria()
+        if not isinstance(juego.get("ia_briefing"), dict) or not juego["ia_briefing"].get("ok"):
+            briefing = generar_briefing_juego(juego, mem_tmp, fase="t60")
+        else:
+            briefing = juego.get("ia_briefing")
+    except Exception as e:
+        print(f"[BRIEFING] aviso T-60: {e}")
 
     dia["predicciones"].append(
         {
@@ -1135,6 +1162,7 @@ def guardar_prediccion(
             "factores_humanos": juego.get("factores_humanos")
             if isinstance(juego.get("factores_humanos"), dict)
             else None,
+            "ia_briefing": briefing if isinstance(briefing, dict) else None,
             "ia_mente": juego.get("ia_mente") if isinstance(juego.get("ia_mente"), dict) else None,
             "ml_features": juego.get("ml_features") if isinstance(juego.get("ml_features"), dict) else None,
         }
@@ -1584,6 +1612,15 @@ def _bloquear_juego_locked(
     mente = None
     veto = {"ok": False, "decision": "SKIP", "motivo": "", "confianza": 0}
     if cfg.get("usar_mente", True):
+        # Congelar/actualizar briefing interno justo antes de decidir (fase bloqueo)
+        try:
+            if pred_existente and isinstance(pred_existente.get("ia_briefing"), dict):
+                juego["ia_briefing"] = pred_existente["ia_briefing"]
+            generar_briefing_juego(juego, memoria, fase="bloqueo")
+            if pred_existente is not None:
+                pred_existente["ia_briefing"] = juego.get("ia_briefing")
+        except Exception as e:
+            print(f"[BRIEFING] aviso bloqueo: {e}")
         mente = mente_conclusion(juego, cfg, memoria)
         juego["ia_mente"] = mente
         if pred_existente is not None:
@@ -1679,6 +1716,9 @@ def _bloquear_juego_locked(
             "motivo_apuesta": motivo_final,
             "ia_veto": veto if veto.get("ok") else None,
             "ia_mente": mente,
+            "ia_briefing": juego.get("ia_briefing")
+            if isinstance(juego.get("ia_briefing"), dict)
+            else None,
             "clima": juego.get("clima") if isinstance(juego.get("clima"), dict) else None,
             "lesiones": juego.get("lesiones") if isinstance(juego.get("lesiones"), dict) else None,
             "factores_humanos": juego.get("factores_humanos")
@@ -1959,14 +1999,30 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
         elif pred and isinstance(pred.get("ia_mente"), dict):
             mente_guardada = pred["ia_mente"]
         if mente_guardada:
-            copia["ia_mente"] = mente_guardada
+            # Exponer decisión resumida; sin briefing interno ni texto largo
+            copia["ia_mente"] = {
+                "decision": mente_guardada.get("decision"),
+                "confianza": mente_guardada.get("confianza"),
+                "autoriza_dinero": mente_guardada.get("autoriza_dinero"),
+                "razones": list(mente_guardada.get("razones") or [])[:2],
+                "fuente": mente_guardada.get("fuente"),
+                "modo": mente_guardada.get("modo"),
+            }
         elif mente_on and copia.get("pick"):
             try:
-                copia["ia_mente"] = mente_conclusion(
-                    copia, cfg, memoria, solo_local=True
-                )
+                mloc = mente_conclusion(copia, cfg, memoria, solo_local=True)
+                copia["ia_mente"] = {
+                    "decision": mloc.get("decision"),
+                    "confianza": mloc.get("confianza"),
+                    "autoriza_dinero": mloc.get("autoriza_dinero"),
+                    "razones": list(mloc.get("razones") or [])[:2],
+                    "fuente": mloc.get("fuente"),
+                    "modo": mloc.get("modo"),
+                }
             except Exception:
                 pass
+        # Briefing T-60: solo memoria interna — nunca al panel
+        copia.pop("ia_briefing", None)
         resultado.append(copia)
     return resultado
 
