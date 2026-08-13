@@ -2301,6 +2301,7 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
             "listo": mente_disponible(cfg),
             "modo": ((cfg.get("mente") or {}).get("modo") or "normal"),
             "min_confianza": int((cfg.get("mente") or {}).get("min_confianza") or 3),
+            "shadow": bool((cfg.get("mente") or {}).get("shadow", False)),
             "stats": mente_stats_meta,
         },
     }

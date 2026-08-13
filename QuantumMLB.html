@@ -767,8 +767,10 @@ function pintarEstado(data) {
         ? 'SIMULACIÓN · Solo stats+ML'
         : 'SIMULACIÓN · Líneas BetMGM';
     if (cfg.usar_mente !== false) {
+        const modoM = (mente.modo || 'normal').toUpperCase();
+        const shadowOn = mente.shadow === true || modoM === 'SHADOW';
         document.getElementById('modo-badge').textContent +=
-            ` · MENTE ${(mente.modo || 'normal').toUpperCase()}`;
+            shadowOn ? ' · MENTE SHADOW (sin dinero)' : ` · MENTE ${modoM}`;
     }
 
     const mins = data.minutos_antes_juego || 60;
