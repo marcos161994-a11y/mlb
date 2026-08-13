@@ -95,6 +95,26 @@
     "shadow": true
   },
 
+  "whatsapp": {
+    "activo": false,
+    "proveedor": "callmebot",
+    "phone": "",
+    "apikey": "",
+    "solo_apostables": false,
+    "incluir_mente": true
+  },
+
+  "telegram": {
+    "activo": true,
+    "user": "",
+    "solo_apostables": false,
+    "incluir_mente": true
+  },
+
+  "alertas": {
+    "canal": "telegram"
+  },
+
   "groq": {
     "model": "llama-3.1-8b-instant",
     "timeout_sec": 8,
