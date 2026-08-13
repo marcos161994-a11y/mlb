@@ -193,6 +193,24 @@
             margin-bottom: 20px;
         }
         .historial h3 { margin: 0 0 10px; font-size: 0.9rem; }
+        .leccion-fila {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.82rem;
+            line-height: 1.35;
+        }
+        .leccion-fila .patron {
+            display: inline-block;
+            font-size: 0.68rem;
+            color: var(--cyan);
+            border: 1px solid rgba(0, 242, 255, 0.35);
+            padding: 1px 6px;
+            border-radius: 4px;
+            margin-right: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+        .leccion-fila .meta { color: var(--muted); font-size: 0.72rem; margin-top: 3px; }
         .dia-fila {
             display: flex;
             justify-content: space-between;
@@ -475,6 +493,7 @@
 <div class="controls">
     <button onclick="bloquearHoy()">Forzar bloqueos pendientes ahora</button>
     <button onclick="liquidar()">Actualizar resultados</button>
+    <button onclick="procesarExperiencias()">Procesar lecciones (4/5)</button>
     <button class="warn" onclick="reiniciar()">Reiniciar experimento</button>
 </div>
 
@@ -492,6 +511,14 @@
         <span id="predicciones-toggle" style="font-size:1.2rem;">▼</span>
     </h3>
     <div id="lista-predicciones" style="display:none;"><p style="color:var(--muted)">Sin predicciones registradas aún.</p></div>
+</div>
+
+<div class="historial" id="historial-lecciones">
+    <h3 onclick="toggleLecciones()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+        <span>🧠 Lecciones IA (fallos → veto futuro)</span>
+        <span id="lecciones-toggle" style="font-size:1.2rem;">▼</span>
+    </h3>
+    <div id="lista-lecciones" style="display:none;"><p style="color:var(--muted)">Sin lecciones aún. Aparecen al liquidar fallos.</p></div>
 </div>
 
 <div id="contenedor-juegos" class="grid-juegos">
@@ -531,6 +558,18 @@ function togglePredicciones() {
 function toggleHistorialBanca() {
     const lista = document.getElementById('lista-historial');
     const toggle = document.getElementById('historial-toggle');
+    if (lista.style.display === 'none') {
+        lista.style.display = 'block';
+        toggle.textContent = '▲';
+    } else {
+        lista.style.display = 'none';
+        toggle.textContent = '▼';
+    }
+}
+
+function toggleLecciones() {
+    const lista = document.getElementById('lista-lecciones');
+    const toggle = document.getElementById('lecciones-toggle');
     if (lista.style.display === 'none') {
         lista.style.display = 'block';
         toggle.textContent = '▲';
@@ -808,6 +847,46 @@ function pintarEstado(data) {
     }
 
     pintarPredicciones(m, data.pl_split);
+    pintarLecciones(data.lecciones || resumenLeccionesLocal(m));
+}
+
+function resumenLeccionesLocal(memoria) {
+    const lec = Array.isArray(memoria?.lecciones) ? memoria.lecciones : [];
+    return { total: lec.length, por_patron: {}, recientes: [...lec].reverse().slice(0, 12) };
+}
+
+function pintarLecciones(meta) {
+    const lista = document.getElementById('lista-lecciones');
+    if (!lista) return;
+    const recientes = Array.isArray(meta?.recientes) ? meta.recientes : [];
+    const total = meta?.total || recientes.length || 0;
+    const por = meta?.por_patron || {};
+    const topPatrones = Object.entries(por)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .map(([k, v]) => k + '×' + v)
+        .join(' · ');
+    if (!recientes.length) {
+        lista.innerHTML = '<p style="color:var(--muted);font-size:0.82rem;margin:0">Sin lecciones aún. Se crean al liquidar fallos y alimentan el veto IA.</p>';
+        return;
+    }
+    let html = '<p style="color:var(--muted);font-size:0.75rem;margin:0 0 8px">' +
+        total + ' lección(es)' + (topPatrones ? ' · ' + topPatrones : '') +
+        ' · se inyectan en el veto Groq</p>';
+    for (const item of recientes.slice(0, 10)) {
+        const patron = (item.patron || 'otro').replace(/</g, '');
+        const tipo = (item.tipo || '').replace(/</g, '');
+        const texto = (item.leccion || item.motivo || '').replace(/</g, '');
+        const pick = (item.pick || '?').replace(/</g, '');
+        const fecha = (item.fecha || '').replace(/</g, '');
+        html += '<div class="leccion-fila">';
+        html += '<span class="patron">' + patron + '</span>' + texto;
+        html += '<div class="meta">' + pick + (fecha ? ' · ' + fecha : '') +
+            (tipo ? ' · ' + tipo : '') +
+            (item.fuente ? ' · ' + item.fuente : '') + '</div>';
+        html += '</div>';
+    }
+    lista.innerHTML = html;
 }
 
 function nombrePick(pick) {
@@ -1183,6 +1262,23 @@ async function liquidar() {
     const d = await r.json();
     toast(`${d.liquidaciones} juegos liquidados · Banca $${d.capital.toFixed(2)}`);
     cargarEstado();
+}
+
+async function procesarExperiencias() {
+    try {
+        const r = await fetch(API + '/api/procesar-experiencias?forzar=1', { method: 'POST' });
+        const d = await r.json();
+        if (!d.ok) {
+            toast(d.motivo || 'No se pudieron procesar experiencias');
+            return;
+        }
+        const por = d.por_patron || {};
+        const bits = Object.keys(por).slice(0, 4).map(k => k + '×' + por[k]).join(' · ');
+        toast(`Lecciones +${d.nuevas || 0} · total ${d.lecciones?.total || 0}` + (bits ? ' · ' + bits : ''));
+        cargarEstado();
+    } catch (e) {
+        toast(e.message || 'Error procesando experiencias');
+    }
 }
 
 async function reiniciar() {
