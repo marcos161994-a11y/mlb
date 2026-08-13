@@ -45,6 +45,7 @@ from whatsapp_alerta import (
     enviar_whatsapp,
     enviar_telegram,
     enviar_alerta,
+    vincular_telegram_chat,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -2819,19 +2820,32 @@ def api_whatsapp_status():
 
 @app.get("/api/telegram-status")
 def api_telegram_status():
-    """Estado de alertas Telegram (CallMeBot txtbot)."""
+    """Estado de alertas Telegram (BotFather oficial o CallMeBot)."""
     cfg = cargar_config()
     tg = cfg.get("telegram") if isinstance(cfg.get("telegram"), dict) else {}
     disp = telegram_disponible(cfg)
     return {
         **disp,
         "activo_config": bool(tg.get("activo", True)),
-        "setup": (
-            "1) Abre Telegram y busca @CallMeBot_txtbot. "
-            "2) Pulsa Start o envía /start. "
-            "3) En Render pon TELEGRAM_USER=@tuusuario (el de Telegram, con @)."
+        "setup": disp.get("setup")
+        or (
+            "1) Telegram → @BotFather → /newbot\n"
+            "2) Render: TELEGRAM_BOT_TOKEN=...\n"
+            "3) Escribe hola a TU bot\n"
+            "4) Abre /api/telegram-vincular\n"
+            "5) POST /api/telegram-test"
         ),
     }
+
+
+@app.get("/api/telegram-vincular")
+def api_telegram_vincular():
+    """
+    Tras crear el bot y escribirle 'hola', esto guarda tu chat_id
+    y te manda un mensaje de confirmación.
+    """
+    cfg = cargar_config()
+    return vincular_telegram_chat(cfg)
 
 
 @app.get("/api/alertas-status")
