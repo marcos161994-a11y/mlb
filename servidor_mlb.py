@@ -36,6 +36,12 @@ from mente_mlb import (
     aplicar_stake_mente,
     generar_briefing_juego,
 )
+from whatsapp_alerta import (
+    notificar_pick_t60,
+    whatsapp_disponible,
+    formatear_mensaje_pick,
+    enviar_whatsapp,
+)
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
@@ -1210,6 +1216,18 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
             pred = next(p for p in dia["predicciones"] if str(p.get("game_id")) == gid)
             pred["valida_stats"] = True
             pred["invalida_tarde"] = False
+            # Mente local para el aviso (sin Groq) + WhatsApp del equipo elegido
+            try:
+                cfg_wa = cargar_config()
+                if cfg_wa.get("usar_mente", True) and not isinstance(pred.get("ia_mente"), dict):
+                    mente_t60 = mente_conclusion(
+                        juego, cfg_wa, memoria, forzar=True, solo_local=True
+                    )
+                    pred["ia_mente"] = mente_t60
+                    juego["ia_mente"] = mente_t60
+                notificar_pick_t60(juego, pred, cfg_wa, fase="t60")
+            except Exception as e:
+                print(f"[WHATSAPP] aviso T-60: {e}")
             nuevas += 1
             ya.add(gid)
 
@@ -1625,6 +1643,11 @@ def _bloquear_juego_locked(
         juego["ia_mente"] = mente
         if pred_existente is not None:
             pred_existente["ia_mente"] = mente
+            # Si el paper se congeló sin WhatsApp (Render dormido), avisar ahora
+            try:
+                notificar_pick_t60(juego, pred_existente, cfg, fase="bloqueo")
+            except Exception as e:
+                print(f"[WHATSAPP] aviso bloqueo: {e}")
         if not mente.get("autoriza_dinero"):
             motivo_m = (
                 f"MENTE {mente.get('decision')}: "
@@ -2507,6 +2530,7 @@ def api_health():
             "min_confianza": int((cfg.get("mente") or {}).get("min_confianza") or 3),
             "shadow": bool((cfg.get("mente") or {}).get("shadow", False)),
         },
+        "whatsapp": whatsapp_disponible(cfg),
         "xgboost": {
             "activo": bool(cfg.get("usar_xgboost", True)),
         },
@@ -2765,6 +2789,58 @@ def api_mente_status():
         }}
     except Exception as e:
         return {**base, "ok": False, "motivo": str(e)[:120]}
+
+
+@app.get("/api/whatsapp-status")
+def api_whatsapp_status():
+    """Estado de alertas WhatsApp (CallMeBot)."""
+    cfg = cargar_config()
+    wa = cfg.get("whatsapp") if isinstance(cfg.get("whatsapp"), dict) else {}
+    disp = whatsapp_disponible(cfg)
+    return {
+        **disp,
+        "activo_config": bool(wa.get("activo", True)),
+        "proveedor": wa.get("proveedor") or "callmebot",
+        "solo_apostables": bool(wa.get("solo_apostables", False)),
+        "setup": (
+            "1) Agrega el bot CallMeBot en WhatsApp. "
+            "2) Envía: I allow callmebot to send me messages. "
+            "3) Pon phone+apikey en Render (WHATSAPP_PHONE, CALLMEBOT_APIKEY) o config."
+        ),
+    }
+
+
+@app.post("/api/whatsapp-test")
+async def api_whatsapp_test(request: Request):
+    """Envía un mensaje de prueba al WhatsApp configurado."""
+    cfg = cargar_config()
+    disp = whatsapp_disponible(cfg)
+    if not disp.get("ok"):
+        return {**disp, "enviado": False}
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    texto = str((body or {}).get("texto") or "").strip()
+    if not texto:
+        texto = formatear_mensaje_pick(
+            {
+                "visitante": "Away Test",
+                "home": "Home Test",
+                "pick": "Home Test ML",
+                "probPick": 61,
+                "edge": 8.0,
+                "odds": 1.95,
+                "odds_american": -105,
+                "hora_inicio_txt": "07:05 PM",
+                "ia_mente": {"decision": "APOSTAR", "confianza": 4, "razones": ["Prueba WhatsApp"]},
+            },
+            cfg=cfg,
+            fase="test",
+        )
+    res = enviar_whatsapp(texto, cfg, forzar=True)
+    return {**res, "enviado": bool(res.get("ok")), "preview": texto[:200]}
 
 
 @app.get("/api/calib-status")

@@ -95,6 +95,15 @@
     "shadow": true
   },
 
+  "whatsapp": {
+    "activo": true,
+    "proveedor": "callmebot",
+    "phone": "",
+    "apikey": "",
+    "solo_apostables": false,
+    "incluir_mente": true
+  },
+
   "groq": {
     "model": "llama-3.1-8b-instant",
     "timeout_sec": 8,
