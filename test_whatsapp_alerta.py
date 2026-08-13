@@ -80,6 +80,12 @@ def test_notificar_usa_bot(monkeypatch, tmp_path):
     assert len(enviados) == 1
 
 
+def test_guardar_token_invalido():
+    from whatsapp_alerta import configurar_bot_token
+    r = configurar_bot_token("sin_dos_puntos")
+    assert r["ok"] is False
+
+
 def test_whatsapp_off():
     assert whatsapp_disponible({"whatsapp": {"activo": False}})["ok"] is False
 
