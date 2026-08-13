@@ -30,6 +30,7 @@ from lineas_betmgm import normalizar_nombre_equipo as norm_nombre
 from modelo_mlb import evaluar_juegos, calcular_stake_dinamico, cuota_desde_prob
 from ml_predictor import auto_entrenar_ml
 from ia_groq import ia_veto_disponible, probar_conexion_groq, veto_apuesta
+from mente_mlb import mente_conclusion, mente_disponible, aplicar_stake_mente
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
@@ -524,7 +525,7 @@ def _score_equipo(linescore_side: dict, team_side: dict) -> int:
 
 def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False) -> list[dict]:
     memoria = cargar_memoria()
-    params = {"sportId": 1, "hydrate": "probablePitcher,lineups,linescore,team"}
+        params = {"sportId": 1, "hydrate": "probablePitcher,lineups,linescore,team,officials"}
     if fecha:
         m, d, y = fecha.split("-")[1], fecha.split("-")[2], fecha.split("-")[0]
         params["date"] = f"{m}/{d}/{y}"
@@ -632,6 +633,12 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
                 "hora_bloqueo_txt": bloqueo.strftime("%I:%M %p"),
                 "logoAway": f"https://www.mlbstatic.com/team-logos/{away['team']['id']}.svg",
                 "logoHome": f"https://www.mlbstatic.com/team-logos/{home['team']['id']}.svg",
+                "series_game_number": juego.get("seriesGameNumber"),
+                "games_in_series": juego.get("gamesInSeries"),
+                "day_night": juego.get("dayNight"),
+                "officials": juego.get("officials") or [],
+                "venue_id": (juego.get("venue") or {}).get("id"),
+                "venue_name": (juego.get("venue") or {}).get("name"),
             })
 
     global _lineas_meta_cache
@@ -1125,6 +1132,10 @@ def guardar_prediccion(
             "clima": juego.get("clima") if isinstance(juego.get("clima"), dict) else None,
             "lesiones": juego.get("lesiones") if isinstance(juego.get("lesiones"), dict) else None,
             "scratch_lineup": juego.get("scratch_lineup") if isinstance(juego.get("scratch_lineup"), dict) else None,
+            "factores_humanos": juego.get("factores_humanos")
+            if isinstance(juego.get("factores_humanos"), dict)
+            else None,
+            "ia_mente": juego.get("ia_mente") if isinstance(juego.get("ia_mente"), dict) else None,
             "ml_features": juego.get("ml_features") if isinstance(juego.get("ml_features"), dict) else None,
         }
     )
@@ -1568,31 +1579,67 @@ def _bloquear_juego_locked(
                     "prediccion_guardada": True,
                 }
 
-    # Modelo propone → Groq veta/confirma → solo entonces dinero.
-    # Si no hay key/timeout/error (SKIP): se sigue con el modelo.
-    # memoria aporta lecciones de fallos previos al prompt de veto.
-    veto = veto_apuesta(juego, cfg, memoria=memoria)
-    if pred_existente is not None:
-        pred_existente["ia_veto"] = veto
-    if veto.get("ok") and veto.get("decision") == "PASAR":
-        motivo_veto = f"IA PASAR: {veto.get('motivo') or 'veto contextual'}"
+    # Modelo propone → MENTE concluye (APOSTAR/PASAR/ESPERAR) → solo entonces dinero.
+    # Si mente off: cae al veto Groq legacy (con lecciones en memoria).
+    mente = None
+    veto = {"ok": False, "decision": "SKIP", "motivo": "", "confianza": 0}
+    if cfg.get("usar_mente", True):
+        mente = mente_conclusion(juego, cfg, memoria)
+        juego["ia_mente"] = mente
         if pred_existente is not None:
-            pred_existente["motivo_apuesta"] = (
-                f"{pred_existente.get('motivo_apuesta') or ''} · {motivo_veto}"
-            ).strip(" ·")
-        guardar_memoria(memoria)
-        print(f"[IA-VETO] Dinero cancelado para {juego.get('pick')}: {motivo_veto}")
-        return {
-            "ok": False,
-            "motivo": motivo_veto,
-            "juego": juego["visitante"] + " vs " + juego["home"],
-            "prediccion_guardada": True,
-            "ia_veto": veto,
+            pred_existente["ia_mente"] = mente
+        if not mente.get("autoriza_dinero"):
+            motivo_m = (
+                f"MENTE {mente.get('decision')}: "
+                + "; ".join(mente.get("razones") or [mente.get("decision") or "bloqueo"])
+            )
+            if pred_existente is not None:
+                pred_existente["motivo_apuesta"] = (
+                    f"{pred_existente.get('motivo_apuesta') or ''} · {motivo_m}"
+                ).strip(" ·")
+            guardar_memoria(memoria)
+            print(f"[MENTE] Dinero cancelado para {juego.get('pick')}: {motivo_m}")
+            return {
+                "ok": False,
+                "motivo": motivo_m,
+                "juego": juego["visitante"] + " vs " + juego["home"],
+                "prediccion_guardada": True,
+                "ia_mente": mente,
+            }
+        # Compat: mapear a forma de veto para logs antiguos
+        veto = {
+            "ok": True,
+            "decision": "APOSTAR",
+            "motivo": "; ".join(mente.get("razones") or [])[:120],
+            "confianza": mente.get("confianza"),
+            "fuente": "mente",
         }
+    else:
+        veto = veto_apuesta(juego, cfg, memoria=memoria)
+        if pred_existente is not None:
+            pred_existente["ia_veto"] = veto
+        if veto.get("ok") and veto.get("decision") == "PASAR":
+            motivo_veto = f"IA PASAR: {veto.get('motivo') or 'veto contextual'}"
+            if pred_existente is not None:
+                pred_existente["motivo_apuesta"] = (
+                    f"{pred_existente.get('motivo_apuesta') or ''} · {motivo_veto}"
+                ).strip(" ·")
+            guardar_memoria(memoria)
+            print(f"[IA-VETO] Dinero cancelado para {juego.get('pick')}: {motivo_veto}")
+            return {
+                "ok": False,
+                "motivo": motivo_veto,
+                "juego": juego["visitante"] + " vs " + juego["home"],
+                "prediccion_guardada": True,
+                "ia_veto": veto,
+            }
 
     edge = juego.get("edge", 0)
     confianza = min(max((edge - 5.0) / 10.0, 0.5), 1.0)
-    stake = calcular_stake_dinamico(memoria["capital"], edge, confianza, cfg)
+    if mente and mente.get("autoriza_dinero") and float(mente.get("stake_pct") or 0) > 0:
+        stake = aplicar_stake_mente(memoria["capital"], mente, cfg)
+    else:
+        stake = calcular_stake_dinamico(memoria["capital"], edge, confianza, cfg)
 
     riesgo = sum(a["stake"] for a in dia["apuestas"] if a["estado"] == "pendiente")
     print(f"[DEBUG BLOQUEO] Juego {game_id} - Riesgo: {riesgo}, Stake: {stake}, Capital: {memoria['capital']}")
@@ -1606,7 +1653,13 @@ def _bloquear_juego_locked(
 
     ahora = datetime.now(tz_experimento())
     motivo_final = juego.get("motivo_apuesta") or ""
-    if veto.get("ok") and veto.get("decision") == "APOSTAR":
+    if mente and mente.get("autoriza_dinero"):
+        motivo_final = (
+            f"{motivo_final} · MENTE APOSTAR: "
+            + "; ".join(mente.get("razones") or [])
+            + f" (conf {mente.get('confianza')})"
+        ).strip(" ·")
+    elif veto.get("ok") and veto.get("decision") == "APOSTAR":
         motivo_final = (
             f"{motivo_final} · IA APOSTAR: {veto.get('motivo')} "
             f"(conf {veto.get('confianza')})"
@@ -1625,8 +1678,12 @@ def _bloquear_juego_locked(
             "probPick": juego.get("probPick"),
             "motivo_apuesta": motivo_final,
             "ia_veto": veto if veto.get("ok") else None,
+            "ia_mente": mente,
             "clima": juego.get("clima") if isinstance(juego.get("clima"), dict) else None,
             "lesiones": juego.get("lesiones") if isinstance(juego.get("lesiones"), dict) else None,
+            "factores_humanos": juego.get("factores_humanos")
+            if isinstance(juego.get("factores_humanos"), dict)
+            else None,
             "ml_features": juego.get("ml_features") if isinstance(juego.get("ml_features"), dict) else None,
             "pitcherAway": juego.get("pitcherAway"),
             "pitcherHome": juego.get("pitcherHome"),
@@ -1811,6 +1868,13 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
         por_id = {str(a["game_id"]): a for a in dia.get("apuestas", [])}
         preds_por_id = {str(p["game_id"]): p for p in dia.get("predicciones", [])}
 
+    cfg = {}
+    try:
+        cfg = cargar_config()
+    except Exception:
+        cfg = {}
+    mente_on = bool(cfg.get("usar_mente", True))
+
     resultado = []
     for juego in juegos:
         copia = dict(juego)
@@ -1889,6 +1953,20 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
         copia["apostable"] = copia.get("apostable", False)
         if not copia.get("motivo_apuesta"):
             copia["motivo_apuesta"] = ""
+        mente_guardada = None
+        if ap and isinstance(ap.get("ia_mente"), dict):
+            mente_guardada = ap["ia_mente"]
+        elif pred and isinstance(pred.get("ia_mente"), dict):
+            mente_guardada = pred["ia_mente"]
+        if mente_guardada:
+            copia["ia_mente"] = mente_guardada
+        elif mente_on and copia.get("pick"):
+            try:
+                copia["ia_mente"] = mente_conclusion(
+                    copia, cfg, memoria, solo_local=True
+                )
+            except Exception:
+                pass
         resultado.append(copia)
     return resultado
 
@@ -2149,6 +2227,12 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
             "modelo": (cfg.get("groq") or {}).get("model") or "llama-3.1-8b-instant",
             "lecciones": lecciones_meta.get("total", 0),
         },
+        "mente": {
+            "activo": bool(cfg.get("usar_mente", True)),
+            "listo": mente_disponible(cfg),
+            "modo": ((cfg.get("mente") or {}).get("modo") or "normal"),
+            "min_confianza": int((cfg.get("mente") or {}).get("min_confianza") or 3),
+        },
     }
 
 
@@ -2342,6 +2426,16 @@ def api_health():
                 (cfg.get("estrategia") or {}).get("min_estrellas_fuera_lineup", 2)
             ),
         },
+        "factores_humanos": {
+            "activo": bool(cfg.get("usar_factores_humanos", True)),
+            "señales": ["viaje", "descanso", "zona", "serie", "umpire"],
+        },
+        "mente": {
+            "activo": bool(cfg.get("usar_mente", True)),
+            "modo": ((cfg.get("mente") or {}).get("modo") or "normal"),
+            "min_confianza": int((cfg.get("mente") or {}).get("min_confianza") or 3),
+            "shadow": bool((cfg.get("mente") or {}).get("shadow", False)),
+        },
         "xgboost": {
             "activo": bool(cfg.get("usar_xgboost", True)),
         },
@@ -2521,6 +2615,85 @@ def api_scratch_status():
         }
     except Exception as e:
         return {"ok": False, "activo": True, "motivo": str(e)[:120]}
+
+
+@app.get("/api/humanos-status")
+def api_humanos_status():
+    """Ping de factores humanos (viaje / serie / umpire)."""
+    cfg = cargar_config()
+    if not cfg.get("usar_factores_humanos", True):
+        return {"ok": False, "activo": False, "motivo": "usar_factores_humanos=false"}
+    try:
+        from factores_humanos import analizar_factores_humanos
+
+        demo = analizar_factores_humanos(
+            {
+                "away_id": 119,
+                "home_id": 147,
+                "inicio_juego": "2026-08-12T23:05:00+00:00",
+                "series_game_number": 3,
+                "games_in_series": 3,
+                "day_night": "night",
+                "officials": [
+                    {
+                        "official": {"id": 1, "fullName": "Pat Hoberg"},
+                        "officialType": "Home Plate",
+                    }
+                ],
+            }
+        )
+        return {
+            "ok": bool(demo.get("ok")),
+            "activo": True,
+            "señales": ["viaje", "descanso", "zona", "serie", "umpire"],
+            "demo_resumen": (demo.get("resumen") or "")[:160],
+            "demo_umpire": (demo.get("umpire") or {}).get("hp_nombre"),
+        }
+    except Exception as e:
+        return {"ok": False, "activo": True, "motivo": str(e)[:120]}
+
+
+@app.get("/api/mente-status")
+def api_mente_status():
+    """Estado de la mente (director APOSTAR/PASAR/ESPERAR)."""
+    cfg = cargar_config()
+    mente_cfg = cfg.get("mente") if isinstance(cfg.get("mente"), dict) else {}
+    base = {
+        "activo": bool(cfg.get("usar_mente", True)),
+        "modo": mente_cfg.get("modo") or "normal",
+        "min_confianza": int(mente_cfg.get("min_confianza") or 3),
+        "shadow": bool(mente_cfg.get("shadow", False)),
+        "groq": bool(ia_veto_disponible({**cfg, "usar_ia_veto": True}) or os.environ.get("GROQ_API_KEY")),
+    }
+    if not base["activo"]:
+        return {**base, "ok": False, "motivo": "usar_mente=false"}
+    try:
+        demo = mente_conclusion(
+            {
+                "id": "mente-demo",
+                "visitante": "Away Demo",
+                "home": "Home Demo",
+                "pick": "Home Demo ML",
+                "probPick": 62,
+                "edge": 7.5,
+                "odds": 1.9,
+                "lineas_fuente": "oddspapi",
+                "pitcherAway": "A",
+                "pitcherHome": "B",
+            },
+            cfg,
+            {},
+            forzar=True,
+            solo_local=True,
+        )
+        return {**base, "ok": True, "demo": {
+            "decision": demo.get("decision"),
+            "confianza": demo.get("confianza"),
+            "autoriza_dinero": demo.get("autoriza_dinero"),
+            "fuente": demo.get("fuente"),
+        }}
+    except Exception as e:
+        return {**base, "ok": False, "motivo": str(e)[:120]}
 
 
 @app.get("/api/calib-status")

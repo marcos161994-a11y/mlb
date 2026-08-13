@@ -61,6 +61,15 @@ except ImportError:
     HAS_CALIB = False
 
 try:
+    from factores_humanos import (
+        analizar_factores_humanos,
+        aplicar_ajustes_fuerza,
+    )
+    HAS_HUMANOS = True
+except ImportError:
+    HAS_HUMANOS = False
+
+try:
     import vertexai
     from vertexai.generative_models import GenerativeModel
     HAS_VERTEX = True
@@ -753,6 +762,27 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             scratch_info = {"ok": False, "riesgo": False, "motivo": str(e)[:80], "resumen": ""}
     juego["scratch_lineup"] = scratch_info
 
+    # Factores humanos: viaje, descanso, zona, serie, umpire
+    humanos_info: dict[str, Any] = {"ok": False, "resumen": "", "riesgo": False}
+    usar_humanos = bool(cfg.get("usar_factores_humanos", True)) and HAS_HUMANOS
+    if usar_humanos:
+        try:
+            humanos_info = analizar_factores_humanos(juego)
+            f_away, f_home = aplicar_ajustes_fuerza(f_away, f_home, humanos_info)
+            if humanos_info.get("ok") and (
+                humanos_info.get("riesgo")
+                or abs(float(humanos_info.get("ajuste_away") or 0)) >= 0.5
+                or abs(float(humanos_info.get("ajuste_home") or 0)) >= 0.5
+            ):
+                print(
+                    f"[HUMANOS] {juego.get('visitante')}@{juego.get('home')}: "
+                    f"{humanos_info.get('resumen')[:180]}"
+                )
+        except Exception as e:
+            print(f"[HUMANOS] Error: {e}")
+            humanos_info = {"ok": False, "motivo": str(e)[:80], "resumen": "", "riesgo": False}
+    juego["factores_humanos"] = humanos_info
+
     prob_away, prob_home = prob_logistica(f_away, f_home)
     prob_est_away, prob_est_home = prob_away, prob_home
 
@@ -780,6 +810,7 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
                 "fatiga_bullpen": calcular_fatiga_bullpen(away_id, season) if cfg.get("estrategia", {}).get("analizar_bullpen") else 0.3,
                 "matchup_adj": 0.0,
                 **clima_feats,
+                **(humanos_info.get("features_away") or {}),
             }, pa, ba_ml, cfg)
             features_home = extraer_features_ml({
                 "es_local": True,
@@ -787,6 +818,7 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
                 "fatiga_bullpen": calcular_fatiga_bullpen(home_id, season) if cfg.get("estrategia", {}).get("analizar_bullpen") else 0.3,
                 "matchup_adj": 0.0,
                 **clima_feats,
+                **(humanos_info.get("features_home") or {}),
             }, ph, bh_ml, cfg)
             if cfg.get("estrategia", {}).get("analizar_matchups_zurdo_diestro"):
                 pitcher_hand_away = _normalizar_mano(pa.get("hand", "R"))

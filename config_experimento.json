@@ -82,7 +82,18 @@
 
   "usar_scratch_lineup": true,
 
+  "usar_factores_humanos": true,
+
   "usar_ia_veto": true,
+
+  "usar_mente": true,
+
+  "mente": {
+    "modo": "normal",
+    "min_confianza": 3,
+    "requiere_mercado": true,
+    "shadow": false
+  },
 
   "groq": {
     "model": "llama-3.1-8b-instant",
