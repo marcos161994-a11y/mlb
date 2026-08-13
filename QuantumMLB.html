@@ -723,9 +723,14 @@ function pintarEstado(data) {
     const cfg = data.config || {};
     const estr = data.estrategia || {};
     const soloModelo = cfg.modo_solo_modelo || estr.requiere_betmgm === false;
+    const mente = data.mente || cfg.mente || {};
     document.getElementById('modo-badge').textContent = soloModelo
         ? 'SIMULACIÓN · Solo stats+ML'
         : 'SIMULACIÓN · Líneas BetMGM';
+    if (cfg.usar_mente !== false) {
+        document.getElementById('modo-badge').textContent +=
+            ` · MENTE ${(mente.modo || 'normal').toUpperCase()}`;
+    }
 
     const mins = data.minutos_antes_juego || 60;
     document.getElementById('proximo-bloqueo').textContent = soloModelo
@@ -1158,6 +1163,7 @@ function pintarJuegos(juegos) {
                 </div>
                 <div style="font-size:0.7rem;color:#8899aa;margin-top:4px">${j.motivo_apuesta || ''}</div>
                 ${j.factores_humanos && j.factores_humanos.ok ? `<div style="font-size:0.68rem;color:#9ab;margin-top:4px">👤 ${(j.factores_humanos.resumen || '').slice(0, 110)}</div>` : ''}
+                ${j.ia_mente && j.ia_mente.decision ? `<div style="font-size:0.72rem;margin-top:6px;padding:6px 8px;border-radius:6px;border:1px solid ${j.ia_mente.autoriza_dinero ? 'rgba(0,255,136,0.35)' : 'rgba(255,188,0,0.35)'};color:${j.ia_mente.autoriza_dinero ? 'var(--green)' : 'var(--gold)'}">🧠 MENTE <b>${j.ia_mente.decision}</b> · conf ${j.ia_mente.confianza || '?'} · ${(j.ia_mente.razones || []).slice(0,2).join('; ').slice(0,90)}</div>` : ''}
             </div>
             <div class="estado-apuesta ${j.estado_apuesta||''}">${apuestaTxt}</div>
         </div>`;

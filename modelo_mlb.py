@@ -64,7 +64,6 @@ try:
     from factores_humanos import (
         analizar_factores_humanos,
         aplicar_ajustes_fuerza,
-        texto_para_ia as texto_humanos_ia,
     )
     HAS_HUMANOS = True
 except ImportError:
