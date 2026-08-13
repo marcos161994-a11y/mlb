@@ -1162,6 +1162,9 @@ def guardar_prediccion(
             "factores_humanos": juego.get("factores_humanos")
             if isinstance(juego.get("factores_humanos"), dict)
             else None,
+            "historico_oficial": juego.get("historico_oficial")
+            if isinstance(juego.get("historico_oficial"), dict)
+            else None,
             "ia_briefing": briefing if isinstance(briefing, dict) else None,
             "ia_mente": juego.get("ia_mente") if isinstance(juego.get("ia_mente"), dict) else None,
             "ml_features": juego.get("ml_features") if isinstance(juego.get("ml_features"), dict) else None,
@@ -1723,6 +1726,9 @@ def _bloquear_juego_locked(
             "lesiones": juego.get("lesiones") if isinstance(juego.get("lesiones"), dict) else None,
             "factores_humanos": juego.get("factores_humanos")
             if isinstance(juego.get("factores_humanos"), dict)
+            else None,
+            "historico_oficial": juego.get("historico_oficial")
+            if isinstance(juego.get("historico_oficial"), dict)
             else None,
             "ml_features": juego.get("ml_features") if isinstance(juego.get("ml_features"), dict) else None,
             "pitcherAway": juego.get("pitcherAway"),
@@ -2501,6 +2507,10 @@ def api_health():
             "activo": bool(cfg.get("usar_factores_humanos", True)),
             "señales": ["viaje", "descanso", "zona", "serie", "umpire"],
         },
+        "historico_oficial": {
+            "activo": bool(cfg.get("usar_historico_oficial", True)),
+            "señales": ["L10", "pitcher_vs_rival"],
+        },
         "mente": {
             "activo": bool(cfg.get("usar_mente", True)),
             "modo": ((cfg.get("mente") or {}).get("modo") or "normal"),
@@ -2719,6 +2729,38 @@ def api_humanos_status():
             "señales": ["viaje", "descanso", "zona", "serie", "umpire"],
             "demo_resumen": (demo.get("resumen") or "")[:160],
             "demo_umpire": (demo.get("umpire") or {}).get("hp_nombre"),
+        }
+    except Exception as e:
+        return {"ok": False, "activo": True, "motivo": str(e)[:120]}
+
+
+@app.get("/api/historico-status")
+def api_historico_status():
+    """Ping L10 + pitcher vs rival (StatsAPI oficial)."""
+    cfg = cargar_config()
+    if not cfg.get("usar_historico_oficial", True):
+        return {"ok": False, "activo": False, "motivo": "usar_historico_oficial=false"}
+    try:
+        from historico_oficial import cargar_l10, analizar_historico_oficial
+
+        season = int(cfg.get("temporada_mlb") or 2026)
+        l10 = cargar_l10(season)
+        demo = analizar_historico_oficial(
+            {
+                "away_id": 136,
+                "home_id": 147,
+                "pitcher_away_id": 669358,
+                "pitcher_home_id": 543037,
+                "fecha": f"{season}-08-12",
+            },
+            season=season,
+        )
+        return {
+            "ok": bool(demo.get("ok")),
+            "activo": True,
+            "señales": ["L10", "pitcher_vs_rival"],
+            "equipos_l10": len(l10),
+            "demo_resumen": (demo.get("resumen") or "")[:180],
         }
     except Exception as e:
         return {"ok": False, "activo": True, "motivo": str(e)[:120]}
