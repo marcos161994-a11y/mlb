@@ -2,7 +2,7 @@
   "modo": "simulacion",
   "capital": 100.0,
   "capital_inicial": 100.0,
-  "dia_actual": 6,
+  "dia_actual": 7,
   "dias_totales": 200,
   "stake_por_juego": 5.0,
   "experimento_activo": true,
@@ -10851,9 +10851,9 @@
           "pitcher_away_id": 669358,
           "pitcher_home_id": 805673,
           "inicio_juego": "2026-08-12T13:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-12T12:40:15.784102-04:00",
@@ -11088,7 +11088,9 @@
             "xfip_pitcher": 3.35,
             "k_pct_pitcher": 20.7,
             "bb_pct_pitcher": 7.9
-          }
+          },
+          "marcador_final": "Baltimore Orioles 5 - Minnesota Twins 7",
+          "liquidado_en": "2026-08-13T01:12:03.343030-04:00"
         },
         {
           "game_id": "823017",
@@ -11106,9 +11108,9 @@
           "pitcher_away_id": 554430,
           "pitcher_home_id": 681517,
           "inicio_juego": "2026-08-12T14:15:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.38,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-12T13:15:14.591319-04:00",
@@ -11265,7 +11267,9 @@
             "xfip_pitcher": 3.24,
             "k_pct_pitcher": 20.7,
             "bb_pct_pitcher": 7.3
-          }
+          },
+          "marcador_final": "Philadelphia Phillies 1 - St. Louis Cardinals 7",
+          "liquidado_en": "2026-08-13T01:12:03.773401-04:00"
         },
         {
           "game_id": "824967",
@@ -11283,9 +11287,9 @@
           "pitcher_away_id": 656876,
           "pitcher_home_id": 678022,
           "inicio_juego": "2026-08-12T15:05:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.32,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-12T14:05:12.689824-04:00",
@@ -11515,7 +11519,9 @@
             "confianza": 3,
             "fuente": "groq",
             "modelo": "llama-3.1-8b-instant"
-          }
+          },
+          "marcador_final": "Tampa Bay Rays 8 - Athletics 4",
+          "liquidado_en": "2026-08-13T01:12:03.773622-04:00"
         },
         {
           "game_id": "825047",
@@ -11533,9 +11539,9 @@
           "pitcher_away_id": 663372,
           "pitcher_home_id": 518876,
           "inicio_juego": "2026-08-12T15:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.17,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-12T14:40:14.282771-04:00",
@@ -11763,7 +11769,9 @@
             "xfip_pitcher": 4.01,
             "k_pct_pitcher": 16.5,
             "bb_pct_pitcher": 9.2
-          }
+          },
+          "marcador_final": "Colorado Rockies 6 - Arizona Diamondbacks 4",
+          "liquidado_en": "2026-08-13T01:12:03.773828-04:00"
         },
         {
           "game_id": "823187",
@@ -11781,9 +11789,9 @@
           "pitcher_away_id": 687911,
           "pitcher_home_id": 605288,
           "inicio_juego": "2026-08-12T15:45:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-12T14:45:08.587640-04:00",
@@ -11978,7 +11986,9 @@
             "xfip_pitcher": 3.88,
             "k_pct_pitcher": 15.3,
             "bb_pct_pitcher": 7.3
-          }
+          },
+          "marcador_final": "Houston Astros 2 - San Francisco Giants 1",
+          "liquidado_en": "2026-08-13T01:12:03.774005-04:00"
         },
         {
           "game_id": "823263",
@@ -11996,9 +12006,9 @@
           "pitcher_away_id": 669160,
           "pitcher_home_id": 592662,
           "inicio_juego": "2026-08-12T16:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.34,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-12T15:10:14.280499-04:00",
@@ -12233,9 +12243,27 @@
             "xfip_pitcher": 3.96,
             "k_pct_pitcher": 20.3,
             "bb_pct_pitcher": 11.5
-          }
+          },
+          "marcador_final": "Milwaukee Brewers 3 - San Diego Padres 4",
+          "liquidado_en": "2026-08-13T01:12:04.186402-04:00"
         }
       ],
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
+    },
+    {
+      "dia": 7,
+      "fecha": "2026-08-13",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
       "resumen": {
         "jugadas": 0,
         "ganadas": 0,
@@ -12249,22 +12277,212 @@
   ],
   "calib_meta": {
     "ok": true,
-    "muestras": 45,
+    "muestras": 51,
     "metodo": "isotonic",
-    "mensaje": "Calibrado isotonic con 45 muestras (ECE≈0.15)",
-    "ece": 0.154
+    "mensaje": "Calibrado isotonic con 51 muestras (ECE≈0.14)",
+    "ece": 0.14
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 45,
-    "muestras_reales": 45,
-    "schema": 3,
-    "mensaje": "Reentrenado con 45 muestras (45 reales, RF acc 100.0%, RF holdout 44.4%, XGB acc 100.0%, XGB holdout 77.8%)",
+    "muestras": 51,
+    "muestras_reales": 51,
+    "schema": 4,
+    "mensaje": "Reentrenado con 51 muestras (51 reales, RF acc 100.0%, RF holdout 45.5%, XGB acc 98.0%, XGB holdout 63.6%)",
     "accuracy_train": 1.0,
-    "accuracy_holdout": 0.444,
-    "accuracy_xgb_train": 1.0,
-    "accuracy_xgb_holdout": 0.778,
-    "ultimo_entreno": "2026-08-12T05:10:04.923346",
+    "accuracy_holdout": 0.455,
+    "accuracy_xgb_train": 0.98,
+    "accuracy_xgb_holdout": 0.636,
+    "ultimo_entreno": "2026-08-13T05:12:06.909849",
     "xgb": true
+  },
+  "lecciones": [
+    {
+      "id": "lec-fallo_postmortem-823672-1786597923",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-08-12",
+      "game_id": "823672",
+      "visitante": "Baltimore Orioles",
+      "home": "Minnesota Twins",
+      "pick": "Baltimore Orioles ML",
+      "probPick": 56.0,
+      "edge": 0,
+      "lineas_fuente": null,
+      "marcador_final": "Baltimore Orioles 5 - Minnesota Twins 7",
+      "patron": "otro",
+      "leccion": "No confíes solo en la probabilidad del modelo",
+      "motivo": "Bullpen de Minnesota fue más efectivo que esperado",
+      "confianza": 4,
+      "fuente": "groq",
+      "modelo": "llama-3.1-8b-instant",
+      "creada_en": "2026-08-13T05:12:03.770051Z"
+    },
+    {
+      "id": "lec-sin_cuota_real-823672-1786597923",
+      "tipo": "sin_cuota_real",
+      "fecha": "2026-08-12",
+      "game_id": "823672",
+      "visitante": "Baltimore Orioles",
+      "home": "Minnesota Twins",
+      "pick": "Baltimore Orioles ML",
+      "probPick": 56.0,
+      "edge": 0,
+      "lineas_fuente": null,
+      "marcador_final": "Baltimore Orioles 5 - Minnesota Twins 7",
+      "patron": "mala_practica_sin_mercado",
+      "leccion": "No apostar dinero sin cuota real (Pinnacle/DK); paper sin mercado no es edge.",
+      "motivo": "sin cuota de mercado",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-13T05:12:03.770087Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-824967-1786597923",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-12",
+      "game_id": "824967",
+      "visitante": "Tampa Bay Rays",
+      "home": "Athletics",
+      "pick": "Tampa Bay Rays ML",
+      "probPick": 68.3,
+      "edge": 18.3,
+      "lineas_fuente": null,
+      "marcador_final": "Tampa Bay Rays 8 - Athletics 4",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-13T05:12:03.773708Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-823187-1786597924",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-08-12",
+      "game_id": "823187",
+      "visitante": "Houston Astros",
+      "home": "San Francisco Giants",
+      "pick": "San Francisco Giants ML",
+      "probPick": 52.3,
+      "edge": 0,
+      "lineas_fuente": null,
+      "marcador_final": "Houston Astros 2 - San Francisco Giants 1",
+      "patron": "otro",
+      "leccion": "No confíes solo en la probabilidad del modelo",
+      "motivo": "Bullpen de los Astros fue más efectivo que el de los Giants",
+      "confianza": 4,
+      "fuente": "groq",
+      "modelo": "llama-3.1-8b-instant",
+      "creada_en": "2026-08-13T05:12:04.185927Z"
+    },
+    {
+      "id": "lec-sin_cuota_real-823187-1786597924",
+      "tipo": "sin_cuota_real",
+      "fecha": "2026-08-12",
+      "game_id": "823187",
+      "visitante": "Houston Astros",
+      "home": "San Francisco Giants",
+      "pick": "San Francisco Giants ML",
+      "probPick": 52.3,
+      "edge": 0,
+      "lineas_fuente": null,
+      "marcador_final": "Houston Astros 2 - San Francisco Giants 1",
+      "patron": "mala_practica_sin_mercado",
+      "leccion": "No apostar dinero sin cuota real (Pinnacle/DK); paper sin mercado no es edge.",
+      "motivo": "sin cuota de mercado",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-13T05:12:04.185967Z"
+    }
+  ],
+  "mente_stats": {
+    "decisiones": {
+      "APOSTAR": {
+        "n": 0,
+        "aciertos": 0,
+        "fallos": 0
+      },
+      "PASAR": {
+        "n": 1,
+        "evito_fallo": 0,
+        "oportunidad_perdida": 1
+      },
+      "ESPERAR": {
+        "n": 5,
+        "aciertos": 3,
+        "fallos": 2
+      }
+    },
+    "patrones": {
+      "scratch": {
+        "n": 3,
+        "pasar_ok": 1,
+        "pasar_miss": 2,
+        "apostar_ok": 0,
+        "apostar_fail": 0
+      },
+      "starter_riesgo": {
+        "n": 0,
+        "pasar_ok": 0,
+        "pasar_miss": 0,
+        "apostar_ok": 0,
+        "apostar_fail": 0
+      },
+      "humanos": {
+        "n": 0,
+        "pasar_ok": 0,
+        "pasar_miss": 0,
+        "apostar_ok": 0,
+        "apostar_fail": 0
+      },
+      "sin_mercado": {
+        "n": 6,
+        "pasar_ok": 2,
+        "pasar_miss": 4,
+        "apostar_ok": 0,
+        "apostar_fail": 0
+      },
+      "edge_bajo": {
+        "n": 5,
+        "pasar_ok": 2,
+        "pasar_miss": 3,
+        "apostar_ok": 0,
+        "apostar_fail": 0
+      },
+      "favorito_alto": {
+        "n": 1,
+        "pasar_ok": 0,
+        "pasar_miss": 1,
+        "apostar_ok": 0,
+        "apostar_fail": 0
+      },
+      "limpio": {
+        "n": 0,
+        "pasar_ok": 0,
+        "pasar_miss": 0,
+        "apostar_ok": 0,
+        "apostar_fail": 0
+      }
+    },
+    "penalizacion": {
+      "scratch": 0,
+      "starter_riesgo": 0,
+      "humanos": 0,
+      "sin_mercado": -1,
+      "edge_bajo": -1,
+      "favorito_alto": 0,
+      "limpio": 0
+    },
+    "vistos": [
+      "823672:fallo",
+      "823017:acierto",
+      "824967:acierto",
+      "825047:acierto",
+      "823187:fallo",
+      "823263:acierto"
+    ],
+    "actualizado_en": "2026-08-13T05:12:04.186523Z"
   }
 }
