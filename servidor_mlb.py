@@ -2203,6 +2203,19 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
         lecciones_meta = resumen_lecciones(memoria)
     except Exception as e:
         print(f"[LECCIONES] aviso estado: {e}")
+
+    mente_stats_meta = {}
+    try:
+        from mente_aprendizaje import resumen_mente_stats, recomputar_stats_desde_historial
+
+        if not (memoria.get("mente_stats") or {}).get("actualizado_en"):
+            n_ms = recomputar_stats_desde_historial(memoria)
+            if n_ms:
+                guardar_memoria(memoria)
+                print(f"[MENTE-APRENDIZAJE] Backfill stats: {n_ms}")
+        mente_stats_meta = resumen_mente_stats(memoria)
+    except Exception as e:
+        print(f"[MENTE-APRENDIZAJE] aviso estado: {e}")
     
     return {
         "memoria": memoria,
@@ -2232,6 +2245,7 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
             "listo": mente_disponible(cfg),
             "modo": ((cfg.get("mente") or {}).get("modo") or "normal"),
             "min_confianza": int((cfg.get("mente") or {}).get("min_confianza") or 3),
+            "stats": mente_stats_meta,
         },
     }
 
@@ -2970,20 +2984,21 @@ def api_importar_aprendizaje(payload: dict, secret: str | None = None):
 @app.get("/api/procesar-experiencias")
 def api_procesar_experiencias(forzar: bool = False):
     """
-    Plan 5: escanea histórico y genera lecciones negativas
-    (oportunidad_perdida, veto_acertado, sin cuota).
-    forzar=1 ignora el flag de backfill previo.
+    Escanea histórico: lecciones negativas + contadores de aprendizaje de la mente.
+    forzar=1 ignora flags de backfill previo.
     """
     from ia_lecciones import (
         escanear_experiencias_negativas,
         resumen_lecciones,
     )
+    from mente_aprendizaje import recomputar_stats_desde_historial, resumen_mente_stats
 
     memoria = cargar_memoria()
     if forzar:
         memoria.pop("experiencias_negativas_backfill_hecho", None)
         memoria.pop("lecciones_backfill_hecho", None)
     n = escanear_experiencias_negativas(memoria)
+    n_stats = recomputar_stats_desde_historial(memoria)
     memoria["experiencias_negativas_backfill_hecho"] = True
     memoria["lecciones_backfill_hecho"] = True
     guardar_memoria(memoria)
@@ -2991,8 +3006,10 @@ def api_procesar_experiencias(forzar: bool = False):
     return {
         "ok": True,
         "nuevas": n,
+        "mente_stats_recomputados": n_stats,
         "lecciones": meta,
         "por_patron": meta.get("por_patron") or {},
+        "mente_stats": resumen_mente_stats(memoria),
     }
 
 

@@ -516,6 +516,30 @@ def mente_conclusion(
 
     modo = _modo_cfg(cfg)
     briefing = construir_briefing(juego, memoria)
+    # Señales activas del briefing (+ extras)
+    senales = list(briefing.get("alertas") or [])
+    try:
+        edge = float(juego.get("edge") or 0)
+        prob = float(juego.get("probPick") or 0)
+    except (TypeError, ValueError):
+        edge, prob = 0.0, 0.0
+    if edge < 5 and "edge_bajo" not in senales:
+        senales.append("edge_bajo")
+    if prob >= 62 and "favorito_alto" not in senales:
+        senales.append("favorito_alto")
+    if not senales:
+        senales.append("limpio")
+
+    # Inyectar texto de aprendizaje en briefing para Groq
+    try:
+        from mente_aprendizaje import texto_aprendizaje_para_prompt
+
+        aprendizaje_txt = texto_aprendizaje_para_prompt(memoria)
+        briefing["lecciones_txt"] = (
+            (briefing.get("lecciones_txt") or "") + "\n" + aprendizaje_txt
+        ).strip()
+    except Exception:
+        pass
 
     dura = _reglas_duras(juego, briefing, modo)
     if dura:
@@ -526,6 +550,15 @@ def mente_conclusion(
             out = _conclusion_groq(juego, briefing, cfg, briefing.get("lecciones_ids") or [])
         if not out:
             out = _heuristica_conclusion(juego, briefing, modo)
+
+    # V2: ajustar confianza / suavizar PASAR soft según contadores
+    try:
+        from mente_aprendizaje import aplicar_aprendizaje_a_conclusion
+
+        out = aplicar_aprendizaje_a_conclusion(out, memoria, senales)
+    except Exception as e:
+        print(f"[MENTE] aprendizaje aviso: {e}")
+        out["senales"] = senales
 
     out["modo"] = modo["nombre"]
     out["min_confianza"] = modo["min_confianza"]
@@ -550,7 +583,7 @@ def mente_conclusion(
         print(
             f"[MENTE] {juego.get('pick')}: {out.get('decision')} "
             f"conf={out.get('confianza')} dinero={'sí' if out.get('autoriza_dinero') else 'no'} "
-            f"({out.get('fuente')})"
+            f"({out.get('fuente')}) pen={out.get('penalizacion_aprendizaje')}"
         )
     return out
 

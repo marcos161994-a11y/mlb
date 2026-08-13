@@ -852,7 +852,7 @@ function pintarEstado(data) {
     }
 
     pintarPredicciones(m, data.pl_split);
-    pintarLecciones(data.lecciones || resumenLeccionesLocal(m));
+    pintarLecciones(data.lecciones || resumenLeccionesLocal(m), data.mente);
 }
 
 function resumenLeccionesLocal(memoria) {
@@ -860,7 +860,7 @@ function resumenLeccionesLocal(memoria) {
     return { total: lec.length, por_patron: {}, recientes: [...lec].reverse().slice(0, 12) };
 }
 
-function pintarLecciones(meta) {
+function pintarLecciones(meta, mente) {
     const lista = document.getElementById('lista-lecciones');
     if (!lista) return;
     const recientes = Array.isArray(meta?.recientes) ? meta.recientes : [];
@@ -871,11 +871,31 @@ function pintarLecciones(meta) {
         .slice(0, 4)
         .map(([k, v]) => k + '×' + v)
         .join(' · ');
+    const st = (mente && mente.stats) || {};
+    const dec = st.decisiones || {};
+    const ap = dec.APOSTAR || {};
+    const pa = dec.PASAR || {};
+    const pens = st.penalizacion || {};
+    const penTxt = Object.entries(pens)
+        .filter(([, v]) => Number(v) !== 0)
+        .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+        .slice(0, 4)
+        .map(([k, v]) => k + (v > 0 ? '+' : '') + v)
+        .join(' · ');
+    let html = '';
+    if ((ap.n || pa.n || Object.keys(pens).length)) {
+        html += '<p style="color:var(--muted);font-size:0.75rem;margin:0 0 8px">' +
+            '🧠 Aprendizaje · APOSTAR ' + (ap.aciertos || 0) + '✓/' + (ap.fallos || 0) + '✗ · ' +
+            'PASAR evitó ' + (pa.evito_fallo || 0) + ' / perdió ' + (pa.oportunidad_perdida || 0) +
+            (penTxt ? ' · pen ' + penTxt : '') +
+            '</p>';
+    }
     if (!recientes.length) {
-        lista.innerHTML = '<p style="color:var(--muted);font-size:0.82rem;margin:0">Sin lecciones aún. Se crean al liquidar fallos y alimentan el veto IA.</p>';
+        html += '<p style="color:var(--muted);font-size:0.82rem;margin:0">Sin lecciones aún. Se crean al liquidar fallos y alimentan el veto IA.</p>';
+        lista.innerHTML = html;
         return;
     }
-    let html = '<p style="color:var(--muted);font-size:0.75rem;margin:0 0 8px">' +
+    html += '<p style="color:var(--muted);font-size:0.75rem;margin:0 0 8px">' +
         total + ' lección(es)' + (topPatrones ? ' · ' + topPatrones : '') +
         ' · se inyectan en el veto Groq</p>';
     for (const item of recientes.slice(0, 10)) {

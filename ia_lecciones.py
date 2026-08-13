@@ -382,14 +382,20 @@ def registrar_experiencia_negativa(
     game_id = pred.get("game_id")
     resultado = pred.get("resultado")
 
-    if _tuvo_pasar(pred):
+    if _tuvo_pasar(pred) or (
+        isinstance(pred.get("ia_mente"), dict)
+        and (
+            str(pred["ia_mente"].get("decision") or "").upper() in ("PASAR", "ESPERAR")
+            or pred["ia_mente"].get("autoriza_dinero") is False
+        )
+    ):
         if resultado == "acierto" and not _ya_existe_leccion(memoria, game_id, TIPO_OPORTUNIDAD):
             item = _base_item(
                 pred,
                 tipo=TIPO_OPORTUNIDAD,
                 patron="oportunidad_perdida",
-                leccion="PASAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
-                motivo="veto PASAR + acierto",
+                leccion="PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+                motivo="mente bloqueó dinero + acierto",
                 cuando=cuando,
                 confianza=4,
             )
@@ -399,8 +405,8 @@ def registrar_experiencia_negativa(
                 pred,
                 tipo=TIPO_VETO_OK,
                 patron="veto_acertado",
-                leccion="PASAR acertó: el pick falló; mantener veto en señales parecidas.",
-                motivo="veto PASAR + fallo",
+                leccion="Bloqueo de dinero acertó: el pick falló; mantener señales parecidas.",
+                motivo="mente bloqueó dinero + fallo",
                 cuando=cuando,
                 confianza=5,
             )
@@ -433,11 +439,17 @@ def registrar_experiencias_tras_liquidar(
     juego: dict | None = None,
     cuando: str | None = None,
 ) -> dict[str, Any]:
-    """Hook único tras liquidar: post-mortem de fallo + negativas (plan 2+5)."""
-    out: dict[str, Any] = {"fallo": None, "negativas": []}
+    """Hook único tras liquidar: post-mortem de fallo + negativas + stats mente (V2)."""
+    out: dict[str, Any] = {"fallo": None, "negativas": [], "mente_stats": None}
     if pred.get("resultado") == "fallo":
         out["fallo"] = registrar_leccion_desde_fallo(memoria, pred, cfg, juego, cuando)
     out["negativas"] = registrar_experiencia_negativa(memoria, pred, juego, cuando)
+    try:
+        from mente_aprendizaje import actualizar_stats_tras_liquidar
+
+        out["mente_stats"] = actualizar_stats_tras_liquidar(memoria, pred, juego)
+    except Exception as e:
+        print(f"[MENTE-APRENDIZAJE] aviso: {e}")
     return out
 
 
