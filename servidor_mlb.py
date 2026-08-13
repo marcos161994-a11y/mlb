@@ -525,7 +525,7 @@ def _score_equipo(linescore_side: dict, team_side: dict) -> int:
 
 def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False) -> list[dict]:
     memoria = cargar_memoria()
-        params = {"sportId": 1, "hydrate": "probablePitcher,lineups,linescore,team,officials"}
+    params = {"sportId": 1, "hydrate": "probablePitcher,lineups,linescore,team,officials"}
     if fecha:
         m, d, y = fecha.split("-")[1], fecha.split("-")[2], fecha.split("-")[0]
         params["date"] = f"{m}/{d}/{y}"
