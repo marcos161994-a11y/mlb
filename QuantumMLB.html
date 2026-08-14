@@ -880,16 +880,19 @@ function pintarEstado(data) {
 
     const ls = document.getElementById('lineas-status');
     const lin = data.lineas || {};
+    const redactar = (s) => String(s || '')
+        .replace(/api[_-]?key=[^&\s]+/gi, 'apiKey=***')
+        .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '***');
     if (soloModelo) {
         ls.style.color = '#00ff88';
         ls.textContent = '✓ Modo solo modelo (sin Odds API)';
     } else if (lin.ok) {
         ls.style.color = '#00ff88';
         const src = lin.fallback_espn ? 'ESPN/DraftKings' : (lin.fuente || 'mercado');
-        ls.textContent = '✓ Cuotas ' + src + ' · ' + (lin.mensaje || '');
+        ls.textContent = '✓ Cuotas ' + src + ' · ' + redactar(lin.mensaje || '');
     } else {
         ls.style.color = '#ffbc00';
-        ls.textContent = '⚠ ' + (lin.mensaje || 'Sin cuotas de internet');
+        ls.textContent = '⚠ ' + redactar(lin.mensaje || 'Sin cuotas de internet');
     }
 
     const avisoSum = document.querySelector('#aviso-real summary');

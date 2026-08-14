@@ -289,6 +289,16 @@ def aplicar_lineas_a_juegos(juegos: list[dict], cfg: dict) -> tuple[list[dict], 
         except Exception as e:
             meta_e = {"ok": False, "mensaje": f"ESPN fallback: {e}"[:160]}
         n2 = _juegos_con_cuota(juegos)
+        aviso_papi = str((meta or {}).get("mensaje") or "OddsPapi no disponible")
+        # Nunca reenviar la URL/key de OddsPapi al panel.
+        try:
+            from lineas_oddspapi import redactar_secretos
+
+            aviso_papi = redactar_secretos(aviso_papi)
+        except Exception:
+            aviso_papi = "OddsPapi no disponible"
+        if len(aviso_papi) > 80:
+            aviso_papi = "OddsPapi no disponible"
         if meta_e.get("ok") or n2 > n_ok:
             meta = {
                 **(meta or {}),
@@ -298,9 +308,9 @@ def aplicar_lineas_a_juegos(juegos: list[dict], cfg: dict) -> tuple[list[dict], 
                 "partidos": n2,
                 "fuente": "espn" if n_ok == 0 else (meta or {}).get("fuente") or "mixto",
                 "mensaje": (
-                    f"{(meta or {}).get('mensaje') or 'Sin OddsPapi'} · "
-                    f"{meta_e.get('mensaje') or 'ESPN'}"
-                )[:240],
+                    f"ESPN/DraftKings · {n2} partidos con cuota real"
+                    + (f" ({aviso_papi})" if n_ok == 0 else "")
+                ),
             }
         elif n_ok == 0:
             meta = {
@@ -308,8 +318,7 @@ def aplicar_lineas_a_juegos(juegos: list[dict], cfg: dict) -> tuple[list[dict], 
                 "ok": False,
                 "fallback_espn": True,
                 "mensaje": (
-                    f"{(meta or {}).get('mensaje') or 'Sin OddsPapi'} · "
-                    f"{meta_e.get('mensaje') or 'ESPN sin cuotas'}"
-                )[:240],
+                    f"{aviso_papi} · {meta_e.get('mensaje') or 'ESPN sin cuotas'}"
+                )[:200],
             }
     return juegos, meta

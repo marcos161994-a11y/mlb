@@ -82,6 +82,27 @@ def fingerprint_key(key: str | None) -> str | None:
     return f"{k[:4]}…{k[-4:]} (len={len(k)})"
 
 
+_RE_APIKEY_QS = re.compile(r"(api[_-]?key=)([^&\s]+)", re.I)
+_RE_UUID = re.compile(
+    r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}"
+)
+
+
+def redactar_secretos(texto: Any) -> str:
+    """Quita API keys de mensajes/logs (el 429 de requests incluye la URL con apiKey=)."""
+    s = str(texto or "")
+    s = _RE_APIKEY_QS.sub(r"\1***", s)
+    s = _RE_UUID.sub("********-****-****-****-************", s)
+    return s
+
+
+def _http_error_corto(exc: BaseException) -> str:
+    resp = getattr(exc, "response", None)
+    if resp is not None and getattr(resp, "status_code", None):
+        return f"HTTP {resp.status_code}"
+    return redactar_secretos(exc)[:140]
+
+
 def _score_key(key: str) -> int:
     """Prioriza UUID completa / keys largas; penaliza pegados truncados."""
     if not key:
@@ -492,7 +513,13 @@ def _obtener_v4(cfg: dict, api_key: str, meta: dict) -> tuple[dict[tuple[str, st
         meta["mensaje"] = f"API key OddsPapi inválida o sin permiso (v4): {_parse_api_error(r_fix)}"
         meta["error_api"] = _parse_api_error(r_fix)
         return {}, meta
-    r_fix.raise_for_status()
+    if r_fix.status_code == 429:
+        meta["mensaje"] = "OddsPapi v4 saturado (429)"
+        return {}, meta
+    if r_fix.status_code >= 400:
+        meta["mensaje"] = f"OddsPapi v4 HTTP {r_fix.status_code}: {_parse_api_error(r_fix)}"
+        meta["error_api"] = _parse_api_error(r_fix)
+        return {}, meta
     fixtures = r_fix.json()
     if not isinstance(fixtures, list):
         fixtures = fixtures.get("fixtures") or fixtures.get("data") or []
@@ -650,20 +677,23 @@ def obtener_lineas_oddspapi(cfg: dict) -> tuple[dict[tuple[str, str], dict], dic
             else:
                 mapa, meta_try = _obtener_v4(cfg, api_key, dict(meta))
         except requests.RequestException as e:
-            errores.append(f"{ver}: {e}")
+            errores.append(f"{ver}: {_http_error_corto(e)}")
             continue
         if meta_try.get("ok") and mapa:
             _cache = mapa
             _cache_ts = ahora
             return mapa, meta_try
-        errores.append(f"{ver}: {meta_try.get('mensaje') or 'sin datos'}")
-        # Conservar el último meta útil; probar la otra versión aunque sea 401
-        # (keys v4 antiguas fallan en v5 y viceversa).
+        errores.append(f"{ver}: {redactar_secretos(meta_try.get('mensaje') or 'sin datos')}")
         meta.update({k: v for k, v in meta_try.items() if k not in ("ok",)})
+        # Misma key: no martillar v4 tras 401/429 (quema el cupo y filtra la URL).
+        if int(meta_try.get("http_status") or 0) in (401, 403, 429):
+            break
+        if "invalid" in str(meta_try.get("error_api") or meta_try.get("mensaje") or "").lower():
+            break
 
     meta["ok"] = False
-    meta["mensaje"] = " | ".join(errores)[:240] or "OddsPapi sin cuotas MLB"
-    meta["intentos"] = errores
+    meta["mensaje"] = redactar_secretos(" | ".join(errores)[:180] or "OddsPapi sin cuotas MLB")
+    meta["intentos"] = [redactar_secretos(x) for x in errores]
     return {}, meta
 
 

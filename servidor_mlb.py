@@ -678,9 +678,18 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
             juegos = evaluar_juegos(juegos, cfg, bias)
         else:
             juegos, _lineas_meta_cache = aplicar_lineas_a_juegos(juegos, cfg)
+            try:
+                from lineas_oddspapi import redactar_secretos
+
+                if isinstance(_lineas_meta_cache, dict) and _lineas_meta_cache.get("mensaje"):
+                    _lineas_meta_cache["mensaje"] = redactar_secretos(
+                        _lineas_meta_cache["mensaje"]
+                    )
+            except Exception:
+                pass
             bias = calcular_bias_aprendizaje(memoria)
             cfg_eval = cfg
-            # Si OddsPapi/API falla: degradar a solo modelo (no tumbar el día)
+            # Si OddsPapi/API falla Y ESPN no trajo cuotas: estudio, no apostar.
             if not (_lineas_meta_cache or {}).get("ok") and (cfg.get("estrategia") or {}).get(
                 "fallback_solo_modelo", True
             ):
@@ -688,10 +697,7 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
                 _lineas_meta_cache = {
                     **(_lineas_meta_cache or {}),
                     "fallback_solo_modelo": True,
-                    "mensaje": (
-                        f"{(_lineas_meta_cache or {}).get('mensaje') or 'Sin cuotas'} "
-                        "· estudio sin mercado (no apostar)"
-                    ),
+                    "mensaje": "Sin cuota de casa ahora · estudio (no apostar). ESPN/OddsPapi no disponibles.",
                 }
             juegos = evaluar_juegos(juegos, cfg_eval, bias)
     else:

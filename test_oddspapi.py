@@ -136,3 +136,17 @@ def test_limpiar_key_pegada_en_url():
     assert _limpiar_key('  "abc123XYZ"  ') == "abc123XYZ"
     assert fingerprint_key("abcdefghijklmnop") == "abcd…mnop (len=16)"
     assert fingerprint_key("6f1f173c") == "*** (len=8)"
+
+
+def test_redactar_secretos_no_deja_key_en_url():
+    from lineas_oddspapi import redactar_secretos
+
+    uuid = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    bruto = (
+        "v4: 429 Client Error: Too Many Requests for url: "
+        f"https://api.oddspapi.io/v4/fixtures?apiKey={uuid}&sportId=13"
+    )
+    limpio = redactar_secretos(bruto)
+    assert uuid not in limpio
+    assert "apiKey=***" in limpio
+    assert "aaaaaaaa" not in limpio
