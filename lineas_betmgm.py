@@ -235,33 +235,81 @@ def buscar_lineas_partido(
     return None
 
 
+def _juegos_con_cuota(juegos: list[dict]) -> int:
+    return sum(
+        1
+        for j in juegos
+        if j.get("odds_away_decimal") and j.get("odds_home_decimal")
+    )
+
+
 def aplicar_lineas_a_juegos(juegos: list[dict], cfg: dict) -> tuple[list[dict], dict]:
-    """Enruta al proveedor configurado (oddspapi | the-odds-api)."""
-    proveedor = str((cfg.get("lineas") or {}).get("proveedor") or "oddspapi").lower()
+    """OddsPapi / The Odds API, y si faltan líneas: ESPN (DraftKings, sin key)."""
+    lineas_cfg = cfg.get("lineas") or {}
+    proveedor = str(lineas_cfg.get("proveedor") or "oddspapi").lower()
+    usar_espn = bool(lineas_cfg.get("fallback_internet", True))
+
+    if proveedor in ("espn", "espn-draftkings", "internet"):
+        from lineas_espn import aplicar_lineas_espn
+
+        return aplicar_lineas_espn(juegos, cfg, solo_vacios=False)
+
     if proveedor in ("oddspapi", "odds-papi", "odds_papi"):
         from lineas_oddspapi import aplicar_lineas_oddspapi
 
-        return aplicar_lineas_oddspapi(juegos, cfg)
+        juegos, meta = aplicar_lineas_oddspapi(juegos, cfg)
+    else:
+        mapa, meta = obtener_lineas_betmgm(cfg)
+        for juego in juegos:
+            lineas = buscar_lineas_partido(mapa, juego["visitante"], juego["home"])
+            juego["lineas_betmgm"] = lineas
+            juego["odds_away_american"] = None
+            juego["odds_home_american"] = None
+            juego["odds_away_decimal"] = None
+            juego["odds_home_decimal"] = None
+            juego["lineas_fuente"] = "modelo"
 
-    mapa, meta = obtener_lineas_betmgm(cfg)
-    for juego in juegos:
-        lineas = buscar_lineas_partido(mapa, juego["visitante"], juego["home"])
-        juego["lineas_betmgm"] = lineas
-        juego["odds_away_american"] = None
-        juego["odds_home_american"] = None
-        juego["odds_away_decimal"] = None
-        juego["odds_home_decimal"] = None
-        juego["lineas_fuente"] = "modelo"
+            if lineas:
+                away_l = lineas.get("away")
+                home_l = lineas.get("home")
+                if away_l:
+                    juego["odds_away_american"] = away_l["american"]
+                    juego["odds_away_decimal"] = away_l["decimal"]
+                if home_l:
+                    juego["odds_home_american"] = home_l["american"]
+                    juego["odds_home_decimal"] = home_l["decimal"]
+                juego["lineas_fuente"] = away_l.get("casa") or home_l.get("casa") or "odds-api"
 
-        if lineas:
-            away_l = lineas.get("away")
-            home_l = lineas.get("home")
-            if away_l:
-                juego["odds_away_american"] = away_l["american"]
-                juego["odds_away_decimal"] = away_l["decimal"]
-            if home_l:
-                juego["odds_home_american"] = home_l["american"]
-                juego["odds_home_decimal"] = home_l["decimal"]
-            juego["lineas_fuente"] = away_l.get("casa") or home_l.get("casa") or "odds-api"
+    n_ok = _juegos_con_cuota(juegos)
+    if usar_espn and n_ok < len(juegos):
+        try:
+            from lineas_espn import aplicar_lineas_espn
 
+            juegos, meta_e = aplicar_lineas_espn(juegos, cfg, solo_vacios=True)
+        except Exception as e:
+            meta_e = {"ok": False, "mensaje": f"ESPN fallback: {e}"[:160]}
+        n2 = _juegos_con_cuota(juegos)
+        if meta_e.get("ok") or n2 > n_ok:
+            meta = {
+                **(meta or {}),
+                "ok": n2 > 0,
+                "fallback_espn": True,
+                "espn_partidos": meta_e.get("partidos_aplicados") or (n2 - n_ok),
+                "partidos": n2,
+                "fuente": "espn" if n_ok == 0 else (meta or {}).get("fuente") or "mixto",
+                "mensaje": (
+                    f"{(meta or {}).get('mensaje') or 'Sin OddsPapi'} · "
+                    f"{meta_e.get('mensaje') or 'ESPN'}"
+                )[:240],
+            }
+        elif n_ok == 0:
+            meta = {
+                **(meta or {}),
+                "ok": False,
+                "fallback_espn": True,
+                "mensaje": (
+                    f"{(meta or {}).get('mensaje') or 'Sin OddsPapi'} · "
+                    f"{meta_e.get('mensaje') or 'ESPN sin cuotas'}"
+                )[:240],
+            }
     return juegos, meta

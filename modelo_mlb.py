@@ -631,6 +631,65 @@ def cuota_desde_prob(prob: float) -> tuple[float, int]:
     return dec, amer
 
 
+_FUENTES_SIN_MERCADO = frozenset({"", "modelo", "none", "null", "import"})
+
+
+def fuente_es_mercado(fuente: Any) -> bool:
+    """True solo si la fuente es una casa/API real (Pinnacle, DK, OddsPapi…)."""
+    return str(fuente or "").strip().lower() not in _FUENTES_SIN_MERCADO
+
+
+def tiene_cuota_mercado(juego: dict[str, Any] | None) -> bool:
+    """Hay cuota de casa para medir valor. Cuota inventada del modelo no cuenta."""
+    if not isinstance(juego, dict):
+        return False
+    if not fuente_es_mercado(juego.get("lineas_fuente")):
+        return False
+    if juego.get("odds_away_decimal") or juego.get("odds_home_decimal"):
+        return True
+    try:
+        return float(juego.get("odds") or 0) > 1.0
+    except (TypeError, ValueError):
+        return False
+
+
+def apostable_con_mercado(juego: dict[str, Any] | None) -> bool:
+    """Candidato de dinero: el modelo lo marcó y hay cuota real."""
+    if not isinstance(juego, dict):
+        return False
+    return bool(juego.get("apostable")) and tiene_cuota_mercado(juego)
+
+
+def marcar_estudio_sin_mercado(
+    juego: dict[str, Any],
+    *,
+    pick: str,
+    prob: float,
+    min_prob: float,
+) -> dict[str, Any]:
+    """Predicción de estudio: % del modelo, sin edge ni apostable.
+
+    La cuota justa sirve para P/L de papel; no es valor vs una casa.
+    """
+    dec, amer = cuota_desde_prob(prob)
+    juego["lineas_fuente"] = "modelo"
+    juego["pick"] = pick
+    juego["probPick"] = float(prob)
+    juego["odds"] = dec
+    juego["odds_american"] = amer
+    juego["edge"] = 0
+    juego["apostable"] = False
+    if float(prob) >= float(min_prob):
+        juego["motivo_apuesta"] = (
+            f"Modelo {float(prob):.0f}% sin cuota real — no es valor (no apostar)"
+        )
+    else:
+        juego["motivo_apuesta"] = (
+            f"Prob. modelo bajo {min_prob}% · sin cuota real"
+        )
+    return juego
+
+
 def _modo_solo_modelo(cfg: dict[str, Any]) -> bool:
     estrategia = cfg.get("estrategia", {})
     if cfg.get("modo_solo_modelo"):
@@ -981,30 +1040,14 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
     preferir_underdogs = estrategia.get("preferir_underdogs", False)
     solo_modelo = _modo_solo_modelo(cfg)
 
-    if solo_modelo:
-        juego["lineas_fuente"] = "modelo"
-        # Un solo favorito por partido (el de mayor prob). Evita picks <50% o ambos lados.
+    # Sin cuota de casa: el % es estudio. Nunca inventar edge = prob-50
+    # (eso convirtió un 72% en un falso "+22% de valor").
+    if solo_modelo or (not dec_away and not dec_home):
         if prob_away >= prob_home:
             pick, prob = f"{juego['visitante']} ML", prob_away
         else:
             pick, prob = f"{juego['home']} ML", prob_home
-        if prob >= min_prob and prob >= 50.0:
-            dec, amer = cuota_desde_prob(prob)
-            conf = round(prob - 50.0, 1)
-            bonus = 0.0
-            if preferir_underdogs and dec >= float(estrategia.get("min_cuota_underdog", 1.5)):
-                bonus = 2.0
-            candidatos.append(
-                {
-                    "pick": pick,
-                    "prob": prob,
-                    "edge": conf + bonus,
-                    "edge_base": conf,
-                    "odds": dec,
-                    "american": amer,
-                    "es_underdog": dec >= float(estrategia.get("min_cuota_underdog", 1.5)),
-                }
-            )
+        marcar_estudio_sin_mercado(juego, pick=pick, prob=prob, min_prob=min_prob)
     else:
         if dec_away and edge_away >= min_edge and prob_away >= min_prob:
             es_underdog = es_underdog_con_valor(dec_away, prob_away, cfg)
@@ -1045,15 +1088,14 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         juego["edge"] = mejor["edge_base"]
         juego["probPick"] = mejor["prob"]
         juego["apostable"] = True
-        if solo_modelo:
-            juego["motivo_apuesta"] = (
-                f"Modelo {mejor['prob']:.0f}% (solo stats+ML, sin mercado)"
-            )
-        else:
-            fuente = juego.get("lineas_fuente") or "mercado"
-            juego["motivo_apuesta"] = (
-                f"Valor +{mejor['edge']:.1f}% vs {fuente} "
-                f"(modelo {mejor['prob']:.0f}% vs mercado {prob_implicita(mejor['odds']):.0f}%)"
+        fuente = juego.get("lineas_fuente") or "mercado"
+        juego["motivo_apuesta"] = (
+            f"Valor +{mejor['edge']:.1f}% vs {fuente} "
+            f"(modelo {mejor['prob']:.0f}% vs mercado {prob_implicita(mejor['odds']):.0f}%)"
+        )
+        if not tiene_cuota_mercado(juego):
+            marcar_estudio_sin_mercado(
+                juego, pick=mejor["pick"], prob=mejor["prob"], min_prob=min_prob
             )
         # Lesiones / scratch / estrellas out → no dinero (mensaje neutro en panel)
         if lesiones_info.get("starter_riesgo") and _pick_sobre_starter_lesionado(
@@ -1066,7 +1108,7 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         ):
             juego["apostable"] = False
             juego["motivo_apuesta"] = "Spot no apto para dinero ahora"
-    else:
+    elif not juego.get("pick"):
         # SIEMPRE hacer una predicción, aunque no sea apostable
         if prob_away >= prob_home:
             juego["pick"] = f"{juego['visitante']} ML"
@@ -1093,8 +1135,14 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
                 juego["odds_american"] = amer
         
         juego["apostable"] = False
-        if solo_modelo or (not dec_away and not dec_home):
-            juego["motivo_apuesta"] = f"Prob. modelo bajo {min_prob}%"
+        if solo_modelo or (not dec_away and not dec_home) or not tiene_cuota_mercado(juego):
+            juego["lineas_fuente"] = "modelo"
+            juego["edge"] = 0
+            juego["motivo_apuesta"] = (
+                f"Modelo {float(juego.get('probPick') or 0):.0f}% sin cuota real — no es valor (no apostar)"
+                if float(juego.get("probPick") or 0) >= min_prob
+                else f"Prob. modelo bajo {min_prob}% · sin cuota real"
+            )
         elif edge_away < min_edge and edge_home < min_edge:
             juego["motivo_apuesta"] = f"Sin valor (mínimo +{min_edge}% edge)"
         else:
@@ -1127,13 +1175,10 @@ def seleccionar_favorables_del_dia(juegos: list[dict[str, Any]], cfg: dict[str, 
     favorables: list[dict[str, Any]] = [
         j
         for j in juegos
-        if j.get("apostable") and j.get("estado") == "PROGRAMADO"
+        if apostable_con_mercado(j) and j.get("estado") == "PROGRAMADO"
     ]
-    # Solo-modelo: priorizar % más alto. Con BetMGM: priorizar edge de valor.
-    if solo_modelo:
-        favorables.sort(key=lambda x: float(x.get("probPick") or 0), reverse=True)
-    else:
-        favorables.sort(key=lambda x: x.get("edge", 0), reverse=True)
+    # Sin mercado no hay apostables. Con cuota real: priorizar edge de valor.
+    favorables.sort(key=lambda x: x.get("edge", 0), reverse=True)
 
     ids_top = {j["id"] for j in favorables[:max_apuestas]}
     for j in juegos:

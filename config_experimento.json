@@ -34,7 +34,9 @@
 
     "tournament_id": 109,
 
-    "api_key": ""
+    "api_key": "",
+
+    "fallback_internet": true
 
   },
 
