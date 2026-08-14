@@ -2487,6 +2487,13 @@ def api_predicciones():
 def api_health():
     """Ping para Render + cron externo (mantiene el servicio despierto en plan free)."""
     cfg = cargar_config()
+    circ: dict = {"abierto": False}
+    try:
+        from lineas_oddspapi import estado_circuito
+
+        circ = estado_circuito()
+    except Exception:
+        pass
     return {
         "ok": True,
         "servicio": "quantum-mlb",
@@ -2525,6 +2532,8 @@ def api_health():
                 or ((cfg.get("lineas") or {}).get("api_key") or "").strip()
                 or (DATA_DIR / "oddspapi_api_key.txt").exists()
             ),
+            "circuito": bool(circ.get("abierto")),
+            "circuito_hasta_hora": circ.get("hasta_hora"),
         },
         "scratch_lineup": {
             "activo": bool(cfg.get("usar_scratch_lineup", True)),
@@ -2661,9 +2670,34 @@ def api_odds_status():
             }
 
         if proveedor in ("oddspapi", "odds-papi", "odds_papi"):
-            from lineas_oddspapi import cargar_api_key, fingerprint_key, obtener_lineas_oddspapi
+            from lineas_oddspapi import (
+                cargar_api_key,
+                circuito_abierto,
+                estado_circuito,
+                fingerprint_key,
+                obtener_lineas_oddspapi,
+            )
 
             key = cargar_api_key(cfg)
+            if circuito_abierto():
+                st = estado_circuito()
+                return _con_espn({
+                    **base,
+                    "ok": False,
+                    "key_presente": bool(key),
+                    "key_fingerprint": fingerprint_key(key) if key else None,
+                    "circuito": True,
+                    "circuito_hasta": st.get("hasta"),
+                    "circuito_hasta_hora": st.get("hasta_hora"),
+                    "http_status": st.get("http_status"),
+                    "motivo": st.get("mensaje"),
+                    "mensaje": st.get("mensaje"),
+                    "ayuda": (
+                        "OddsPapi se pausó sola (401/429). "
+                        "Las cuotas salen de ESPN/DraftKings. "
+                        "Se reintenta al vencer la pausa o al pegar una key nueva."
+                    ),
+                })
             if not key:
                 return _con_espn({
                     **base,
@@ -2690,6 +2724,8 @@ def api_odds_status():
                 "mensaje": meta.get("mensaje"),
                 "cache": meta.get("cache"),
                 "intentos": meta.get("intentos"),
+                "circuito": bool(meta.get("circuito")),
+                "circuito_hasta": meta.get("circuito_hasta"),
                 "ayuda": (
                     None
                     if meta.get("ok")

@@ -112,3 +112,26 @@ def test_espn_en_vivo_si_hay_red():
     if not meta.get("ok"):
         return
     assert int(meta.get("partidos") or 0) >= 1
+
+
+def test_espn_usa_cache_disco_si_red_falla(monkeypatch, tmp_path):
+    monkeypatch.setattr("lineas_espn._espn_disk_path", lambda: tmp_path / "espn.json")
+    from lineas_espn import (
+        _guardar_disco,
+        invalidar_cache_espn,
+        obtener_lineas_espn,
+        parsear_eventos_espn,
+    )
+
+    mapa = parsear_eventos_espn(FIXTURE)
+    _guardar_disco(mapa)
+    invalidar_cache_espn()
+
+    def boom(*_a, **_k):
+        raise RuntimeError("red caída")
+
+    monkeypatch.setattr("lineas_espn._session.get", boom)
+    m2, meta = obtener_lineas_espn()
+    assert meta.get("ok") is True
+    assert meta.get("cache_disco") is True
+    assert len(m2) == 1

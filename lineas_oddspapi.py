@@ -10,6 +10,7 @@ No usar ODDS_API_KEY (pertenece a The Odds API y rompe OddsPapi).
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import time
@@ -46,11 +47,149 @@ _cache: dict[tuple[str, str], dict[str, Any]] | None = None
 _cache_ts: datetime | None = None
 CACHE_MINUTES = 10
 
+# Cortacircuito: no martillar OddsPapi en cada recarga del panel.
+PAUSE_AUTH_MIN = 90  # 401 / 403 / key inválida
+PAUSE_RATE_MIN = 30  # 429
+PAUSE_NET_MIN = 10  # red / 5xx
+PAUSE_MAX_MIN = 180
+
+
+def _circuit_path() -> Path:
+    d = Path(os.environ.get("DATA_DIR") or str(DATA_DIR))
+    d.mkdir(parents=True, exist_ok=True)
+    return d / "oddspapi_circuit.json"
+
 
 def invalidar_cache_oddspapi() -> None:
     global _cache, _cache_ts
     _cache = None
     _cache_ts = None
+
+
+def _parse_dt(raw: Any) -> datetime | None:
+    if not raw:
+        return None
+    try:
+        return datetime.fromisoformat(str(raw).replace("Z", ""))
+    except ValueError:
+        return None
+
+
+def minutos_pausa_por_fallo(
+    http_status: int | None = None,
+    retry_after_segundos: int | None = None,
+    mensaje: str = "",
+) -> int:
+    st = int(http_status or 0)
+    blob = (mensaje or "").lower()
+    if st in (401, 403) or "invalid" in blob:
+        return PAUSE_AUTH_MIN
+    if st == 429 or "rate limit" in blob:
+        if retry_after_segundos:
+            mins = max(5, (int(retry_after_segundos) + 59) // 60)
+            return min(PAUSE_MAX_MIN, mins)
+        return PAUSE_RATE_MIN
+    if st >= 500:
+        return 15
+    return PAUSE_NET_MIN
+
+
+def fallo_abre_circuito(meta: dict[str, Any] | None) -> bool:
+    """Solo fallos que queman cupo o no se arreglan solos en segundos."""
+    meta = meta or {}
+    st = int(meta.get("http_status") or 0)
+    if st in (401, 403, 429) or st >= 500:
+        return True
+    blob = f"{meta.get('error_api') or ''} {meta.get('mensaje') or ''}".lower()
+    return "invalid" in blob or "rate limit" in blob or " 429" in blob
+
+
+def estado_circuito() -> dict[str, Any]:
+    path = _circuit_path()
+    if not path.exists():
+        return {"abierto": False}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {"abierto": False}
+    hasta = _parse_dt(data.get("hasta"))
+    if not hasta:
+        return {"abierto": False}
+    ahora = datetime.now()
+    if ahora >= hasta:
+        cerrar_circuito()
+        return {"abierto": False, "expiro": True}
+    restante = int((hasta - ahora).total_seconds() // 60) + 1
+    motivo = redactar_secretos(data.get("motivo") or "OddsPapi falló")
+    return {
+        "abierto": True,
+        "desde": data.get("desde"),
+        "hasta": hasta.isoformat(timespec="minutes"),
+        "hasta_hora": hasta.strftime("%H:%M"),
+        "minutos_restantes": restante,
+        "motivo": motivo,
+        "http_status": data.get("http_status"),
+        "mensaje": (
+            f"OddsPapi en pausa automática hasta {hasta.strftime('%H:%M')} "
+            f"({restante} min). Usando ESPN/DraftKings."
+        ),
+    }
+
+
+def circuito_abierto() -> bool:
+    return bool(estado_circuito().get("abierto"))
+
+
+def abrir_circuito(
+    motivo: str,
+    http_status: int | None = None,
+    minutos: int | None = None,
+    retry_after_segundos: int | None = None,
+) -> dict[str, Any]:
+    mins = int(
+        minutos
+        if minutos is not None
+        else minutos_pausa_por_fallo(http_status, retry_after_segundos, motivo)
+    )
+    mins = max(5, min(PAUSE_MAX_MIN, mins))
+    ahora = datetime.now()
+    hasta = ahora + timedelta(minutes=mins)
+    data = {
+        "abierto": True,
+        "desde": ahora.isoformat(timespec="minutes"),
+        "hasta": hasta.isoformat(timespec="minutes"),
+        "motivo": redactar_secretos(motivo)[:180],
+        "http_status": http_status,
+        "minutos": mins,
+    }
+    try:
+        _circuit_path().write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+    except OSError:
+        pass
+    return estado_circuito()
+
+
+def cerrar_circuito() -> None:
+    path = _circuit_path()
+    try:
+        if path.exists():
+            path.unlink()
+    except OSError:
+        pass
+
+
+def registrar_fallo_circuito(meta: dict[str, Any] | None) -> dict[str, Any] | None:
+    if not fallo_abre_circuito(meta):
+        return None
+    meta = meta or {}
+    st = estado_circuito()
+    if st.get("abierto"):
+        return st
+    return abrir_circuito(
+        motivo=str(meta.get("mensaje") or meta.get("error_api") or "OddsPapi falló"),
+        http_status=int(meta.get("http_status") or 0) or None,
+        retry_after_segundos=meta.get("retry_after_segundos"),
+    )
 
 
 def _norm(nombre: str) -> str:
@@ -103,6 +242,28 @@ def _http_error_corto(exc: BaseException) -> str:
     return redactar_secretos(exc)[:140]
 
 
+def _retry_after_segundos(resp: Any) -> int | None:
+    if resp is None:
+        return None
+    headers = getattr(resp, "headers", None) or {}
+    raw = headers.get("Retry-After") or headers.get("retry-after")
+    if not raw:
+        return None
+    try:
+        return max(1, int(float(str(raw).strip())))
+    except (TypeError, ValueError):
+        return None
+
+
+def _anotar_http(meta: dict[str, Any], resp: Any) -> None:
+    if resp is None:
+        return
+    meta["http_status"] = getattr(resp, "status_code", None)
+    ra = _retry_after_segundos(resp)
+    if ra:
+        meta["retry_after_segundos"] = ra
+
+
 def _score_key(key: str) -> int:
     """Prioriza UUID completa / keys largas; penaliza pegados truncados."""
     if not key:
@@ -136,11 +297,13 @@ def guardar_api_key(key: str) -> dict[str, Any]:
     except OSError:
         pass
     invalidar_cache_oddspapi()
+    cerrar_circuito()
     return {
         "ok": True,
         "key_fingerprint": fingerprint_key(limpia),
         "key_length": len(limpia),
         "path": str(KEY_FILE_DATA),
+        "circuito_cerrado": True,
     }
 
 
@@ -417,7 +580,7 @@ def _obtener_v5(cfg: dict, api_key: str, meta: dict) -> tuple[dict[tuple[str, st
         params["bookmakers"] = ",".join(book_keys[:4])
 
     r = requests.get(f"{BASE_URL_V5}/fixtures/odds/main", params=params, timeout=35)
-    meta["http_status"] = r.status_code
+    _anotar_http(meta, r)
     meta["api_version"] = "v5"
     if r.status_code in (401, 403):
         meta["mensaje"] = f"API key OddsPapi inválida o sin permiso (v5): {_parse_api_error(r)}"
@@ -508,7 +671,7 @@ def _obtener_v4(cfg: dict, api_key: str, meta: dict) -> tuple[dict[tuple[str, st
         },
         timeout=25,
     )
-    meta["http_status"] = r_fix.status_code
+    _anotar_http(meta, r_fix)
     if r_fix.status_code in (401, 403):
         meta["mensaje"] = f"API key OddsPapi inválida o sin permiso (v4): {_parse_api_error(r_fix)}"
         meta["error_api"] = _parse_api_error(r_fix)
@@ -638,6 +801,15 @@ def obtener_lineas_oddspapi(cfg: dict) -> tuple[dict[tuple[str, str], dict], dic
         "partidos": 0,
         "proveedor": "oddspapi",
     }
+    circ = estado_circuito()
+    if circ.get("abierto"):
+        meta["circuito"] = True
+        meta["circuito_hasta"] = circ.get("hasta")
+        meta["circuito_hasta_hora"] = circ.get("hasta_hora")
+        meta["http_status"] = circ.get("http_status")
+        meta["mensaje"] = circ.get("mensaje") or "OddsPapi en pausa automática"
+        return {}, meta
+
     api_key = cargar_api_key(cfg)
     if not api_key:
         meta["mensaje"] = "Falta ODDSPAPI_API_KEY en Render (oddspapi.io)"
@@ -678,10 +850,14 @@ def obtener_lineas_oddspapi(cfg: dict) -> tuple[dict[tuple[str, str], dict], dic
                 mapa, meta_try = _obtener_v4(cfg, api_key, dict(meta))
         except requests.RequestException as e:
             errores.append(f"{ver}: {_http_error_corto(e)}")
+            resp = getattr(e, "response", None)
+            if resp is not None:
+                _anotar_http(meta, resp)
             continue
         if meta_try.get("ok") and mapa:
             _cache = mapa
             _cache_ts = ahora
+            cerrar_circuito()
             return mapa, meta_try
         errores.append(f"{ver}: {redactar_secretos(meta_try.get('mensaje') or 'sin datos')}")
         meta.update({k: v for k, v in meta_try.items() if k not in ("ok",)})
@@ -694,6 +870,12 @@ def obtener_lineas_oddspapi(cfg: dict) -> tuple[dict[tuple[str, str], dict], dic
     meta["ok"] = False
     meta["mensaje"] = redactar_secretos(" | ".join(errores)[:180] or "OddsPapi sin cuotas MLB")
     meta["intentos"] = [redactar_secretos(x) for x in errores]
+    extra = registrar_fallo_circuito(meta)
+    if extra and extra.get("abierto"):
+        meta["circuito"] = True
+        meta["circuito_hasta"] = extra.get("hasta")
+        meta["circuito_hasta_hora"] = extra.get("hasta_hora")
+        meta["mensaje"] = extra.get("mensaje") or meta["mensaje"]
     return {}, meta
 
 
@@ -715,7 +897,22 @@ def buscar_lineas_partido(
 
 
 def aplicar_lineas_oddspapi(juegos: list[dict], cfg: dict) -> tuple[list[dict], dict]:
+    if circuito_abierto():
+        st = estado_circuito()
+        return juegos, {
+            "ok": False,
+            "fuente": "oddspapi",
+            "circuito": True,
+            "circuito_hasta": st.get("hasta"),
+            "circuito_hasta_hora": st.get("hasta_hora"),
+            "http_status": st.get("http_status"),
+            "mensaje": st.get("mensaje") or "OddsPapi en pausa automática",
+            "partidos": 0,
+        }
     mapa, meta = obtener_lineas_oddspapi(cfg)
+    if meta.get("circuito") or not meta.get("ok"):
+        # No borrar cuotas previas ni dejar todo en cero si vamos a ESPN.
+        return juegos, meta
     for juego in juegos:
         lineas = buscar_lineas_partido(mapa, juego["visitante"], juego["home"])
         juego["lineas_betmgm"] = lineas

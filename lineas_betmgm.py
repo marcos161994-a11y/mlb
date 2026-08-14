@@ -255,9 +255,22 @@ def aplicar_lineas_a_juegos(juegos: list[dict], cfg: dict) -> tuple[list[dict], 
         return aplicar_lineas_espn(juegos, cfg, solo_vacios=False)
 
     if proveedor in ("oddspapi", "odds-papi", "odds_papi"):
-        from lineas_oddspapi import aplicar_lineas_oddspapi
+        from lineas_oddspapi import aplicar_lineas_oddspapi, circuito_abierto, estado_circuito
 
-        juegos, meta = aplicar_lineas_oddspapi(juegos, cfg)
+        if circuito_abierto():
+            st = estado_circuito()
+            meta = {
+                "ok": False,
+                "fuente": "oddspapi",
+                "circuito": True,
+                "circuito_hasta": st.get("hasta"),
+                "circuito_hasta_hora": st.get("hasta_hora"),
+                "http_status": st.get("http_status"),
+                "mensaje": st.get("mensaje") or "OddsPapi en pausa automática",
+                "partidos": 0,
+            }
+        else:
+            juegos, meta = aplicar_lineas_oddspapi(juegos, cfg)
     else:
         mapa, meta = obtener_lineas_betmgm(cfg)
         for juego in juegos:
@@ -308,8 +321,17 @@ def aplicar_lineas_a_juegos(juegos: list[dict], cfg: dict) -> tuple[list[dict], 
                 "partidos": n2,
                 "fuente": "espn" if n_ok == 0 else (meta or {}).get("fuente") or "mixto",
                 "mensaje": (
-                    f"ESPN/DraftKings · {n2} partidos con cuota real"
-                    + (f" ({aviso_papi})" if n_ok == 0 else "")
+                    (
+                        f"OddsPapi en pausa automática hasta {(meta or {}).get('circuito_hasta_hora') or 'luego'} · "
+                        if (meta or {}).get("circuito")
+                        else ""
+                    )
+                    + f"ESPN/DraftKings · {n2} partidos con cuota real"
+                    + (
+                        f" ({aviso_papi})"
+                        if n_ok == 0 and not (meta or {}).get("circuito")
+                        else ""
+                    )
                 ),
             }
         elif n_ok == 0:

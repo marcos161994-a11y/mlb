@@ -887,9 +887,12 @@ function pintarEstado(data) {
         ls.style.color = '#00ff88';
         ls.textContent = '✓ Modo solo modelo (sin Odds API)';
     } else if (lin.ok) {
-        ls.style.color = '#00ff88';
+        ls.style.color = lin.circuito ? '#ffd166' : '#00ff88';
         const src = lin.fallback_espn ? 'ESPN/DraftKings' : (lin.fuente || 'mercado');
-        ls.textContent = '✓ Cuotas ' + src + ' · ' + redactar(lin.mensaje || '');
+        const pausa = lin.circuito
+            ? (' · OddsPapi en pausa hasta ' + (lin.circuito_hasta_hora || 'luego'))
+            : '';
+        ls.textContent = '✓ Cuotas ' + src + pausa + ' · ' + redactar(lin.mensaje || '');
     } else {
         ls.style.color = '#ffbc00';
         ls.textContent = '⚠ ' + redactar(lin.mensaje || 'Sin cuotas de internet');
@@ -911,7 +914,7 @@ function pintarEstado(data) {
             avisoBody.innerHTML =
                 '1 h antes se evalúa pitchers + stats + cuota de internet. ' +
                 'Solo se apuesta con valor vs la casa (borde verde). ' +
-                'Si OddsPapi falla, se usan moneyline ESPN/DraftKings. ' +
+                'Si OddsPapi falla (key o cupo), se pausa sola y usa moneyline ESPN/DraftKings. ' +
                 `Máximo ${estr.max_apuestas_dia || 5} apuestas/día.`;
         }
     }

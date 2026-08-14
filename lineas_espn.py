@@ -7,7 +7,10 @@ Se usa como respaldo cuando OddsPapi / The Odds API no traen línea.
 
 from __future__ import annotations
 
+import json
+import os
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -31,6 +34,7 @@ _HEADERS = {
 _cache: dict[tuple[str, str], dict[str, Any]] | None = None
 _cache_ts: datetime | None = None
 CACHE_MINUTES = 8
+DISK_CACHE_HOURS = 6
 
 _session = requests.Session()
 
@@ -39,6 +43,92 @@ def invalidar_cache_espn() -> None:
     global _cache, _cache_ts
     _cache = None
     _cache_ts = None
+
+
+def _espn_disk_path() -> Path:
+    d = Path(os.environ.get("DATA_DIR") or str(Path(__file__).resolve().parent))
+    d.mkdir(parents=True, exist_ok=True)
+    return d / "espn_lineas_cache.json"
+
+
+def _serializar_mapa(mapa: dict[tuple[str, str], dict[str, Any]]) -> list[dict[str, Any]]:
+    rows = []
+    for (away, home), fila in mapa.items():
+        away_l = fila.get("away") or {}
+        home_l = fila.get("home") or {}
+        rows.append(
+            {
+                "away": away,
+                "home": home,
+                "away_american": away_l.get("american"),
+                "away_decimal": away_l.get("decimal"),
+                "away_casa": away_l.get("casa"),
+                "home_american": home_l.get("american"),
+                "home_decimal": home_l.get("decimal"),
+                "home_casa": home_l.get("casa"),
+            }
+        )
+    return rows
+
+
+def _deserializar_mapa(rows: list[Any]) -> dict[tuple[str, str], dict[str, Any]]:
+    mapa: dict[tuple[str, str], dict[str, Any]] = {}
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+        away = str(row.get("away") or "").strip()
+        home = str(row.get("home") or "").strip()
+        if not away or not home:
+            continue
+        if not row.get("away_decimal") or not row.get("home_decimal"):
+            continue
+        mapa[(away, home)] = {
+            "away": {
+                "american": row.get("away_american"),
+                "decimal": row.get("away_decimal"),
+                "casa": row.get("away_casa") or "draftkings",
+                "lado": "away",
+            },
+            "home": {
+                "american": row.get("home_american"),
+                "decimal": row.get("home_decimal"),
+                "casa": row.get("home_casa") or "draftkings",
+                "lado": "home",
+            },
+        }
+    return mapa
+
+
+def _guardar_disco(mapa: dict[tuple[str, str], dict[str, Any]]) -> None:
+    if not mapa:
+        return
+    payload = {
+        "ts": datetime.now().isoformat(timespec="seconds"),
+        "partidos": len(mapa),
+        "rows": _serializar_mapa(mapa),
+    }
+    try:
+        _espn_disk_path().write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    except OSError:
+        pass
+
+
+def _cargar_disco() -> dict[tuple[str, str], dict[str, Any]] | None:
+    path = _espn_disk_path()
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    try:
+        ts = datetime.fromisoformat(str(data.get("ts") or ""))
+    except ValueError:
+        return None
+    if datetime.now() - ts > timedelta(hours=DISK_CACHE_HOURS):
+        return None
+    mapa = _deserializar_mapa(data.get("rows") or [])
+    return mapa or None
 
 
 def _ml_int(raw: Any) -> int | None:
@@ -141,11 +231,23 @@ def obtener_lineas_espn(timeout: float = 12.0) -> tuple[dict[tuple[str, str], di
         r.raise_for_status()
         mapa = parsear_eventos_espn(r.json())
     except Exception as e:
+        disco = _cargar_disco()
+        if disco:
+            _cache = disco
+            _cache_ts = ahora
+            meta["ok"] = True
+            meta["partidos"] = len(disco)
+            meta["cache_disco"] = True
+            meta["mensaje"] = (
+                f"{len(disco)} partidos ESPN/DraftKings (cache disco · red falló)"
+            )
+            return disco, meta
         meta["mensaje"] = f"ESPN cuotas: {e}"[:200]
         return {}, meta
 
     _cache = mapa
     _cache_ts = ahora
+    _guardar_disco(mapa)
     meta["ok"] = bool(mapa)
     meta["partidos"] = len(mapa)
     meta["mensaje"] = (
