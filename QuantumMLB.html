@@ -233,8 +233,10 @@
         .card.perdida { border-color: var(--red); }
         .card.apostable { border: 2px solid var(--green); box-shadow: 0 0 12px rgba(0,255,136,0.15); }
         .card.no-apostable { opacity: 0.55; }
+        .card.estudio { opacity: 1; border: 1px solid rgba(255,188,0,0.45); }
         .tag-apostar { background: rgba(0,255,136,0.2); color: var(--green); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
         .tag-skip { background: rgba(136,153,170,0.2); color: #8899aa; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; }
+        .tag-estudio { background: rgba(255,188,0,0.18); color: var(--gold); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
         .estado { color: var(--gold); font-size: 0.75rem; font-weight: bold; }
         .estado-apuesta { font-size: 0.7rem; margin-top: 4px; }
         .estado-apuesta.ganada { color: var(--green); }
@@ -462,7 +464,7 @@
         <div class="aviso-body" id="aviso-body">
             El tag <strong>PICK</strong> es la predicción (fija al apostar).
             <strong>GANÓ</strong> solo aparece cuando MLB confirma el final.
-            Verdes (≥58%) son apostables. Bloqueo 1 h antes.
+            Verdes = valor vs cuota real. Sin cuota = estudio, no apostar. Bloqueo 1 h antes.
         </div>
     </details>
 </div>
@@ -878,15 +880,22 @@ function pintarEstado(data) {
 
     const ls = document.getElementById('lineas-status');
     const lin = data.lineas || {};
+    const redactar = (s) => String(s || '')
+        .replace(/api[_-]?key=[^&\s]+/gi, 'apiKey=***')
+        .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '***');
     if (soloModelo) {
         ls.style.color = '#00ff88';
         ls.textContent = '✓ Modo solo modelo (sin Odds API)';
     } else if (lin.ok) {
-        ls.style.color = '#00ff88';
-        ls.textContent = '✓ BetMGM · ' + (lin.mensaje || '');
+        ls.style.color = lin.circuito ? '#ffd166' : '#00ff88';
+        const src = lin.fallback_espn ? 'ESPN/DraftKings' : (lin.fuente || 'mercado');
+        const pausa = lin.circuito
+            ? (' · OddsPapi en pausa hasta ' + (lin.circuito_hasta_hora || 'luego'))
+            : '';
+        ls.textContent = '✓ Cuotas ' + src + pausa + ' · ' + redactar(lin.mensaje || '');
     } else {
         ls.style.color = '#ffbc00';
-        ls.textContent = '⚠ ' + (lin.mensaje || 'Sin líneas BetMGM');
+        ls.textContent = '⚠ ' + redactar(lin.mensaje || 'Sin cuotas de internet');
     }
 
     const avisoSum = document.querySelector('#aviso-real summary');
@@ -894,16 +903,18 @@ function pintarEstado(data) {
     const minP = estr.min_prob_modelo || 58;
     if (avisoSum && avisoBody) {
         if (soloModelo) {
-            avisoSum.textContent = 'Modo solo modelo';
+            avisoSum.textContent = 'Cuotas de internet';
             avisoBody.innerHTML =
-                'El tag <strong>PICK</strong> es la predicción (fija al apostar). ' +
+                'El tag <strong>PICK</strong> es la predicción. ' +
                 '<strong>GANÓ</strong> solo al final oficial de MLB. ' +
-                `Verdes (≥${minP}%) son apostables. Bloqueo 1 h antes.`;
+                'Verde = valor vs cuota real (OddsPapi o ESPN/DraftKings). ' +
+                'Sin cuota de casa el % es estudio, no se apuesta.';
         } else {
-            avisoSum.textContent = 'Estrategia BetMGM';
+            avisoSum.textContent = 'Estrategia con cuota real';
             avisoBody.innerHTML =
-                '1 h antes se evalúa pitchers + stats + BetMGM. ' +
-                'Solo se apuesta con valor (borde verde). ' +
+                '1 h antes se evalúa pitchers + stats + cuota de internet. ' +
+                'Solo se apuesta con valor vs la casa (borde verde). ' +
+                'Si OddsPapi falla (key o cupo), se pausa sola y usa moneyline ESPN/DraftKings. ' +
                 `Máximo ${estr.max_apuestas_dia || 5} apuestas/día.`;
         }
     }
@@ -1018,6 +1029,11 @@ function nombrePick(pick) {
     return (pick || '').replace(/\s*ML\s*$/i, '').trim();
 }
 
+function sinCuotaMercado(j) {
+    const f = String((j && j.lineas_fuente) || 'modelo').toLowerCase();
+    return !f || f === 'modelo' || f === 'none' || f === 'null' || f === 'import';
+}
+
 function pintarPicksHoy(juegos, data) {
     const lista = document.getElementById('lista-picks-hoy');
     const sub = document.getElementById('picks-sub');
@@ -1043,8 +1059,8 @@ function pintarPicksHoy(juegos, data) {
     const idsYa = new Set(yaApostados.map(j => j.id));
     const cupoRestante = Math.max(0, maxP - yaApostados.length);
     const apostablesNuevos = unicos
-        .filter(j => j.apostable && (j.probPick || 0) >= minProb && !idsYa.has(j.id))
-        .sort((a, b) => (b.probPick || 0) - (a.probPick || 0))
+        .filter(j => j.apostable && !sinCuotaMercado(j) && (j.probPick || 0) >= minProb && !idsYa.has(j.id))
+        .sort((a, b) => (b.edge || 0) - (a.edge || 0))
         .slice(0, cupoRestante);
 
     if (!unicos.length) {
@@ -1053,7 +1069,7 @@ function pintarPicksHoy(juegos, data) {
         return;
     }
 
-    sub.textContent = `${unicos.length} juegos hoy · ${yaApostados.length} apostados · ${apostablesNuevos.length} listos (≥${minProb}%, máx. ${maxP}) · toca el título para abrir/cerrar.`;
+    sub.textContent = `${unicos.length} juegos hoy · ${yaApostados.length} apostados · ${apostablesNuevos.length} con valor vs cuota real (máx. ${maxP}) · toca el título para abrir/cerrar.`;
 
     let html = '';
     const conDinero = [...yaApostados, ...apostablesNuevos];
@@ -1288,11 +1304,14 @@ function pintarJuegos(juegos) {
     }
     const orden = [...juegos].sort((a, b) => (b.apostable ? 1 : 0) - (a.apostable ? 1 : 0));
     c.innerHTML = orden.map(j => {
+        const estudio = sinCuotaMercado(j) && !j.apostable;
         let cls = j.estado_apuesta === 'ganada' ? 'ganada' : (j.estado_apuesta === 'perdida' ? 'perdida' : '');
-        cls += j.apostable ? ' apostable' : ' no-apostable';
+        cls += j.apostable ? ' apostable' : (estudio ? ' estudio' : ' no-apostable');
         const tag = j.apostable
             ? `<span class="tag-apostar">APOSTAR · ${(j.probPick||0).toFixed(0)}%</span>`
-            : `<span class="tag-skip">NO APOSTAR</span>`;
+            : (estudio
+                ? `<span class="tag-estudio">ESTUDIO · ${(j.probPick||0).toFixed(0)}% · sin cuota</span>`
+                : `<span class="tag-skip">NO APOSTAR</span>`);
         const eqPick = nombrePick(j.pick);
         const awayPick = j.pick && j.pick.indexOf(j.visitante) >= 0;
         const homePick = j.pick && j.pick.indexOf(j.home) >= 0;
@@ -1355,7 +1374,9 @@ function pintarJuegos(juegos) {
                 <b style="font-size:1rem;color:var(--green)">→ ${eqPick || '—'}</b>
                 <div style="font-size:0.8rem;margin-top:6px">
                     Confianza: <b style="color:var(--cyan)">${j.probPick != null ? j.probPick.toFixed(1) + '%' : '—'}</b>
-                    · Cuota simulada: ${j.odds || '—'}
+                    · ${sinCuotaMercado(j)
+                        ? `Cuota justa (sin mercado): ${j.odds || '—'}`
+                        : `Cuota ${j.lineas_fuente || 'casa'}: ${j.odds || '—'}${j.edge ? ' · edge +' + Number(j.edge).toFixed(1) + '%' : ''}`}
                 </div>
                 <div style="font-size:0.75rem;color:#8899aa;margin-top:6px">
                     Modelo ${j.probAway||'?'}% / ${j.probHome||'?'}% (visitante / local)

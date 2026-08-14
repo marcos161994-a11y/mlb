@@ -24,6 +24,8 @@ from typing import Any
 
 import requests
 
+from modelo_mlb import tiene_cuota_mercado
+
 CALLMEBOT_WA_URL = "https://api.callmebot.com/whatsapp.php"
 CALLMEBOT_TG_URL = "https://api.callmebot.com/text.php"
 TG_API = "https://api.telegram.org"
@@ -326,16 +328,20 @@ def formatear_mensaje_pick(
         lineas.append(f"Mercado: {pick}")
     if prob:
         lineas.append(f"Prob: {prob:.0f}%")
-    if edge:
+    if edge and tiene_cuota_mercado(juego):
         lineas.append(f"Edge: +{edge:.1f}%")
     if odds:
-        cuota = f"{float(odds):.2f}"
-        if amer is not None:
-            try:
-                cuota += f" ({int(amer):+d})"
-            except (TypeError, ValueError):
-                pass
-        lineas.append(f"Cuota: {cuota}")
+        if tiene_cuota_mercado(juego):
+            cuota = f"{float(odds):.2f}"
+            if amer is not None:
+                try:
+                    cuota += f" ({int(amer):+d})"
+                except (TypeError, ValueError):
+                    pass
+            fuente = str(juego.get("lineas_fuente") or "casa")
+            lineas.append(f"Cuota {fuente}: {cuota}")
+        else:
+            lineas.append("Cuota: sin mercado (no apostar)")
     if hora:
         lineas.append(f"Inicio: {hora}")
     if a.get("incluir_mente") and mente.get("decision"):
