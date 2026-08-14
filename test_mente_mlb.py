@@ -76,6 +76,59 @@ def test_apostar_heuristico_con_edge():
     assert 1.0 <= stake <= 5.0
 
 
+def test_scratch_del_rival_no_tumba_pick():
+    """Estrellas out del rival no deben forzar PASAR (caso Angels vs Royals)."""
+    juego = {
+        "id": "t-rival-scratch",
+        "visitante": "Kansas City Royals",
+        "home": "Los Angeles Angels",
+        "pick": "Los Angeles Angels ML",
+        "probPick": 67,
+        "edge": 16.2,
+        "odds": 1.97,
+        "lineas_fuente": "draftkings",
+        "scratch_lineup": {
+            "ok": True,
+            "riesgo": True,
+            "scratch_away": False,
+            "scratch_home": False,
+            "estrellas_fuera_away": [
+                {"id": 1, "nombre": "Star A"},
+                {"id": 2, "nombre": "Star B"},
+            ],
+            "estrellas_fuera_home": [],
+            "alerta": "Estrellas out visitante",
+        },
+    }
+    c = mente_conclusion(juego, CFG, {}, forzar=True, solo_local=True)
+    assert c["decision"] == "APOSTAR"
+    assert c["autoriza_dinero"] is True
+    assert not any("scratch" in r.lower() or "roster" in r.lower() for r in c["razones"])
+
+
+def test_shadow_no_autoriza_aunque_aposte():
+    cfg = {
+        "usar_mente": True,
+        "mente": {"modo": "shadow", "min_confianza": 3, "requiere_mercado": True, "shadow": True},
+    }
+    juego = {
+        "id": "t-shadow",
+        "visitante": "A",
+        "home": "B",
+        "pick": "B ML",
+        "probPick": 70,
+        "edge": 12.0,
+        "odds": 1.8,
+        "lineas_fuente": "draftkings",
+    }
+    c = mente_conclusion(juego, cfg, {}, forzar=True, solo_local=True)
+    assert c["decision"] == "APOSTAR"
+    assert c["autoriza_dinero"] is False
+    assert c.get("dinero_bloqueado_por") == "shadow"
+    assert any("shadow" in r.lower() for r in c["razones"])
+    assert not any("conf 5 <" in r.lower() for r in c["razones"])
+
+
 def test_conf_baja_no_autoriza_en_estricto():
     cfg = {
         "usar_mente": True,
