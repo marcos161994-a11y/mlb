@@ -554,6 +554,36 @@ def _conclusion_groq(
         return None
 
 
+def _scratch_afecta_pick(juego: dict) -> bool:
+    """Solo cuenta scratch/estrellas del lado del pick (no del rival)."""
+    scratch = juego.get("scratch_lineup") if isinstance(juego.get("scratch_lineup"), dict) else {}
+    if not scratch.get("riesgo"):
+        return False
+    pick = str(juego.get("pick") or "")
+    visitante = str(juego.get("visitante") or "")
+    home = str(juego.get("home") or "")
+    try:
+        from lineup_scratch import pick_afectado_por_scratch
+
+        return bool(pick_afectado_por_scratch(pick, visitante, home, scratch))
+    except ImportError:
+        return True
+
+
+def _starter_riesgo_del_pick(juego: dict) -> bool:
+    lesiones = juego.get("lesiones") if isinstance(juego.get("lesiones"), dict) else {}
+    if not lesiones.get("starter_riesgo"):
+        return False
+    pick = str(juego.get("pick") or "")
+    visitante = str(juego.get("visitante") or "")
+    home = str(juego.get("home") or "")
+    if lesiones.get("starter_away_lesionado") and visitante and visitante in pick:
+        return True
+    if lesiones.get("starter_home_lesionado") and home and home in pick:
+        return True
+    return False
+
+
 def _heuristica_conclusion(juego: dict, briefing: dict, modo: dict) -> dict[str, Any]:
     """Fallback sin Groq: decide con señales locales."""
     try:
@@ -564,8 +594,17 @@ def _heuristica_conclusion(juego: dict, briefing: dict, modo: dict) -> dict[str,
     alertas = briefing.get("alertas") or []
     lec_ids = briefing.get("lecciones_ids") or []
 
-    if "scratch" in alertas or "starter_riesgo" in alertas:
-        return _pack("PASAR", 0, ["Alerta de roster/scratch"], 4, lec_ids[:2], fuente="heuristica", briefing=briefing)
+    # Scratch/starter del RIVAL no debe tumbar el pick.
+    if _scratch_afecta_pick(juego) or _starter_riesgo_del_pick(juego):
+        return _pack(
+            "PASAR",
+            0,
+            ["Alerta de roster/scratch en el lado del pick"],
+            4,
+            lec_ids[:2],
+            fuente="heuristica",
+            briefing=briefing,
+        )
     if "humanos" in alertas and edge < 8:
         return _pack("PASAR", 0, ["Contexto humano feo y edge justo"], 3, lec_ids[:2], fuente="heuristica", briefing=briefing)
 
@@ -717,11 +756,16 @@ def mente_conclusion(
     )
     out["autoriza_dinero"] = bool(autoriza)
     if out.get("decision") == "APOSTAR" and not autoriza:
-        out["razones"] = list(out.get("razones") or []) + [
-            f"Conf {out.get('confianza')} < mínimo {modo['min_confianza']}"
-            + (" (shadow)" if modo.get("shadow") else "")
-        ]
-        out["dinero_bloqueado_por"] = "shadow" if modo.get("shadow") else "confianza"
+        razones = list(out.get("razones") or [])
+        if modo.get("shadow"):
+            razones.append("Modo shadow: decide sin mover dinero")
+            out["dinero_bloqueado_por"] = "shadow"
+        else:
+            razones.append(
+                f"Conf {out.get('confianza')} < mínimo {modo['min_confianza']}"
+            )
+            out["dinero_bloqueado_por"] = "confianza"
+        out["razones"] = razones
 
     if gid and not solo_local:
         _mente_cache[gid] = dict(out)

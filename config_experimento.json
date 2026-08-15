@@ -93,10 +93,10 @@
   "usar_mente": true,
 
   "mente": {
-    "modo": "shadow",
+    "modo": "normal",
     "min_confianza": 3,
     "requiere_mercado": true,
-    "shadow": true
+    "shadow": false
   },
 
   "whatsapp": {
