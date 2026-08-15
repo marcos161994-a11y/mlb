@@ -2,7 +2,7 @@
   "modo": "simulacion",
   "capital": 100.0,
   "capital_inicial": 100.0,
-  "dia_actual": 8,
+  "dia_actual": 9,
   "dias_totales": 200,
   "stake_por_juego": 5.0,
   "experimento_activo": true,
@@ -16562,9 +16562,9 @@
           "pitcher_away_id": 669461,
           "pitcher_home_id": 605280,
           "inicio_juego": "2026-08-14T14:20:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.44,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-14T13:20:13.406448-04:00",
@@ -16999,9 +16999,27 @@
           "whatsapp_enviado": false,
           "telegram_enviado": false,
           "whatsapp_enviado_en": "2026-08-14T17:20:14.253674Z",
-          "whatsapp_error": "<!-- Global site tag (gtag.js) - Google Analytics -->\n<script async src=\"https://www.googletagmanager.com/gtag/js?id=UA-"
+          "whatsapp_error": "<!-- Global site tag (gtag.js) - Google Analytics -->\n<script async src=\"https://www.googletagmanager.com/gtag/js?id=UA-",
+          "marcador_final": "St. Louis Cardinals 0 - Chicago Cubs 3",
+          "liquidado_en": "2026-08-14T22:57:54.887319-04:00"
         }
       ],
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
+    },
+    {
+      "dia": 9,
+      "fecha": "2026-08-15",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
       "resumen": {
         "jugadas": 0,
         "ganadas": 0,
@@ -17015,45 +17033,25 @@
   ],
   "calib_meta": {
     "ok": true,
-    "muestras": 60,
+    "muestras": 61,
     "metodo": "isotonic",
-    "mensaje": "Calibrado isotonic con 60 muestras (ECE≈0.16)",
-    "ece": 0.158
+    "mensaje": "Calibrado isotonic con 61 muestras (ECE≈0.16)",
+    "ece": 0.163
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 60,
-    "muestras_reales": 60,
+    "muestras": 61,
+    "muestras_reales": 61,
     "schema": 4,
-    "mensaje": "Reentrenado con 60 muestras (60 reales, RF acc 100.0%, RF holdout 16.7%, XGB acc 98.3%, XGB holdout 58.3%)",
+    "mensaje": "Reentrenado con 61 muestras (61 reales, RF acc 100.0%, RF holdout 23.1%, XGB acc 98.4%, XGB holdout 38.5%)",
     "accuracy_train": 1.0,
-    "accuracy_holdout": 0.167,
-    "accuracy_xgb_train": 0.983,
-    "accuracy_xgb_holdout": 0.583,
-    "ultimo_entreno": "2026-08-14T05:10:05.770815",
+    "accuracy_holdout": 0.231,
+    "accuracy_xgb_train": 0.984,
+    "accuracy_xgb_holdout": 0.385,
+    "ultimo_entreno": "2026-08-15T02:57:57.248067",
     "xgb": true
   },
   "lecciones": [
-    {
-      "id": "lec-sin_cuota_real-824724-1786599793",
-      "tipo": "sin_cuota_real",
-      "fecha": "2026-08-09",
-      "game_id": "824724",
-      "visitante": "Athletics",
-      "home": "Boston Red Sox",
-      "pick": "Boston Red Sox ML",
-      "probPick": 64.1,
-      "edge": 14.1,
-      "lineas_fuente": null,
-      "marcador_final": "Athletics 4 - Boston Red Sox 3",
-      "patron": "mala_practica_sin_mercado",
-      "leccion": "No apostar dinero sin cuota real (Pinnacle/DK); paper sin mercado no es edge.",
-      "motivo": "sin cuota de mercado",
-      "confianza": 5,
-      "fuente": "heuristica",
-      "modelo": null,
-      "creada_en": "2026-08-13T05:43:13.327595Z"
-    },
     {
       "id": "lec-fallo_postmortem-823345-1786599793",
       "tipo": "fallo_postmortem",
@@ -18633,6 +18631,26 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-14T05:10:02.171647Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-824643-1786762674",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-14",
+      "game_id": "824643",
+      "visitante": "St. Louis Cardinals",
+      "home": "Chicago Cubs",
+      "pick": "Chicago Cubs ML",
+      "probPick": 53.0,
+      "edge": 0,
+      "lineas_fuente": null,
+      "marcador_final": "St. Louis Cardinals 0 - Chicago Cubs 3",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-15T02:57:54.938438Z"
     }
   ],
   "mente_stats": {
@@ -18643,9 +18661,9 @@
         "fallos": 0
       },
       "PASAR": {
-        "n": 32,
+        "n": 33,
         "evito_fallo": 17,
-        "oportunidad_perdida": 15
+        "oportunidad_perdida": 16
       },
       "ESPERAR": {
         "n": 28,
@@ -18655,9 +18673,9 @@
     },
     "patrones": {
       "scratch": {
-        "n": 19,
+        "n": 20,
         "pasar_ok": 10,
-        "pasar_miss": 9,
+        "pasar_miss": 10,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -18669,23 +18687,23 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 9,
+        "n": 10,
         "pasar_ok": 5,
-        "pasar_miss": 4,
+        "pasar_miss": 5,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "sin_mercado": {
-        "n": 60,
+        "n": 61,
         "pasar_ok": 31,
-        "pasar_miss": 29,
+        "pasar_miss": 30,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 29,
+        "n": 30,
         "pasar_ok": 15,
-        "pasar_miss": 14,
+        "pasar_miss": 15,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -18773,9 +18791,10 @@
       "822696:fallo",
       "823669:fallo",
       "823995:acierto",
-      "823915:acierto"
+      "823915:acierto",
+      "824643:acierto"
     ],
-    "actualizado_en": "2026-08-14T05:10:02.171697Z"
+    "actualizado_en": "2026-08-15T02:57:54.940793Z"
   },
   "lecciones_backfill_hecho": true,
   "experiencias_negativas_backfill_hecho": true
