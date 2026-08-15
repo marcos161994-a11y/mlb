@@ -172,39 +172,41 @@ def _intentar_recuperar_wipe() -> bool:
 
 def _inicializar_datos_persistencia() -> None:
     """Copia memoria local a DATA_DIR; restaura backup del repo si hubo wipe."""
-    if DATA_DIR.resolve() == BASE_DIR.resolve():
-        # Aun en local: restaurar telegram desde memoria si existe
-        try:
-            mem = cargar_memoria()
-            r = restaurar_telegram_desde_memoria(mem)
-            if r.get("ok"):
-                print(f"[TELEGRAM] Restaurado desde memoria: {r}")
-        except Exception as e:
-            print(f"[TELEGRAM] restore: {e}")
-        return
-    origen = BASE_DIR / "memoria_auditoria.json"
-    if origen.exists() and not MEMORIA_PATH.exists():
-        try:
-            bundled = json.loads(origen.read_text(encoding="utf-8"))
-            MEMORIA_PATH.write_text(
-                json.dumps(bundled, indent=2, ensure_ascii=False), encoding="utf-8"
-            )
-            print(f"[CLOUD] Memoria copiada a {MEMORIA_PATH}")
-        except Exception as e:
-            print(f"[CLOUD] No se pudo copiar memoria: {e}")
-    else:
-        _intentar_recuperar_wipe()
-    for nombre in ("modelo_rf_mlb.pkl", "scaler_rf_mlb.pkl"):
-        src = BASE_DIR / nombre
-        dst = DATA_DIR / nombre
-        if src.exists() and not dst.exists():
-            dst.write_bytes(src.read_bytes())
-            print(f"[CLOUD] Modelo ML copiado a {dst}")
+    if DATA_DIR.resolve() != BASE_DIR.resolve():
+        origen = BASE_DIR / "memoria_auditoria.json"
+        if origen.exists() and not MEMORIA_PATH.exists():
+            try:
+                bundled = json.loads(origen.read_text(encoding="utf-8"))
+                MEMORIA_PATH.write_text(
+                    json.dumps(bundled, indent=2, ensure_ascii=False), encoding="utf-8"
+                )
+                print(f"[CLOUD] Memoria copiada a {MEMORIA_PATH}")
+            except Exception as e:
+                print(f"[CLOUD] No se pudo copiar memoria: {e}")
+        else:
+            _intentar_recuperar_wipe()
+        for nombre in ("modelo_rf_mlb.pkl", "scaler_rf_mlb.pkl"):
+            src = BASE_DIR / nombre
+            dst = DATA_DIR / nombre
+            if src.exists() and not dst.exists():
+                dst.write_bytes(src.read_bytes())
+                print(f"[CLOUD] Modelo ML copiado a {dst}")
     try:
         mem = cargar_memoria()
-        r = restaurar_telegram_desde_memoria(mem)
-        if r.get("ok"):
-            print(f"[TELEGRAM] Restaurado desde memoria: {r}")
+        from whatsapp_alerta import sincronizar_telegram_persistencia
+
+        r = sincronizar_telegram_persistencia(_cfg_con_telegram_memoria(), mem)
+        if r.get("tiene_token") and r.get("tiene_chat"):
+            guardar_memoria(mem)
+            print(f"[TELEGRAM] Sync persistencia OK ({r.get('fuente')}): {r}")
+        elif r.get("restored_token") or r.get("restored_chat"):
+            print(f"[TELEGRAM] Sync parcial: {r}")
+        else:
+            r2 = restaurar_telegram_desde_memoria(mem)
+            if r2.get("ok"):
+                print(f"[TELEGRAM] Restaurado desde memoria: {r2}")
+            else:
+                print(f"[TELEGRAM] Sin credenciales aún: {r.get('motivo') or r2}")
     except Exception as e:
         print(f"[TELEGRAM] restore: {e}")
 
@@ -2560,11 +2562,14 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
     vigilancia = vigilancia_t60(juegos, memoria, cfg)
     cfg_ops = _cfg_con_telegram_memoria(cfg)
     try:
-        ejecutar_ciclo_mente_errores(
+        me_out = ejecutar_ciclo_mente_errores(
             cfg_ops,
             vigilancia=vigilancia,
             lineas_meta=_lineas_meta_cache if isinstance(_lineas_meta_cache, dict) else None,
+            memoria=memoria,
         )
+        if me_out.get("telegram_restaurado") or me_out.get("memoria_telegram_dirty"):
+            guardar_memoria(memoria)
     except Exception as e:
         print(f"[MENTE-ERRORES] aviso estado: {e}")
 
@@ -2846,12 +2851,16 @@ def api_mente_errores_ciclo(secret: str | None = None, forzar: bool = False):
     if secret:
         _verificar_cron_secreto(secret)
     cfg = _cfg_con_telegram_memoria()
+    mem = cargar_memoria()
     out = ejecutar_ciclo_mente_errores(
         cfg,
         vigilancia=None,
         lineas_meta=_lineas_meta_cache if isinstance(_lineas_meta_cache, dict) else None,
+        memoria=mem,
         forzar=forzar,
     )
+    if out.get("telegram_restaurado") or out.get("memoria_telegram_dirty"):
+        guardar_memoria(mem)
     return out
 
 
@@ -3515,7 +3524,10 @@ def ejecutar_trabajo_cron_externo() -> dict:
             cfg,
             vigilancia=None,
             lineas_meta=_lineas_meta_cache if isinstance(_lineas_meta_cache, dict) else None,
+            memoria=memoria,
         )
+        if mente_err.get("telegram_restaurado") or mente_err.get("memoria_telegram_dirty"):
+            guardar_memoria(memoria)
     except Exception as e:
         print(f"[MENTE-ERRORES] ciclo cron: {e}")
         try:
@@ -3533,6 +3545,7 @@ def ejecutar_trabajo_cron_externo() -> dict:
             "nivel": (mente_err or {}).get("nivel"),
             "mensaje": (mente_err or {}).get("mensaje"),
             "n_hallazgos": len((mente_err or {}).get("hallazgos") or []),
+            "telegram_restaurado": (mente_err or {}).get("telegram_restaurado"),
         },
     }
 

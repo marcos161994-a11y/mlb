@@ -156,6 +156,95 @@ def restaurar_telegram_desde_memoria(memoria: dict | None) -> dict[str, Any]:
     }
 
 
+def sincronizar_telegram_persistencia(
+    cfg: dict | None = None,
+    memoria: dict | None = None,
+) -> dict[str, Any]:
+    """
+    Repara wipe de Render: reescribe token/chat en DATA_DIR desde
+    env → memoria → cfg. No inventa credenciales nuevas.
+    """
+    cfg = cfg or {}
+    mem_tg = {}
+    if isinstance(memoria, dict) and isinstance(memoria.get("telegram"), dict):
+        mem_tg = memoria["telegram"]
+    elif isinstance(cfg.get("_memoria_telegram"), dict):
+        mem_tg = cfg["_memoria_telegram"]
+    cfg_tg = cfg.get("telegram") if isinstance(cfg.get("telegram"), dict) else {}
+
+    token = (
+        os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+        or os.environ.get("TELEGRAM_TOKEN", "").strip()
+        or str(mem_tg.get("bot_token") or "").strip()
+        or str(cfg_tg.get("bot_token") or cfg_tg.get("token") or "").strip()
+        or leer_bot_token_guardado()
+    )
+    chat_id = (
+        os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+        or str(mem_tg.get("chat_id") or "").strip()
+        or str(cfg_tg.get("chat_id") or "").strip()
+        or leer_chat_id_guardado()
+    )
+
+    wrote_token = False
+    wrote_chat = False
+    if token and token != leer_bot_token_guardado():
+        guardar_bot_token(token)
+        wrote_token = True
+    elif token and not leer_bot_token_guardado():
+        guardar_bot_token(token)
+        wrote_token = True
+    if chat_id and str(chat_id) != str(leer_chat_id_guardado() or ""):
+        guardar_chat_id(chat_id)
+        wrote_chat = True
+    elif chat_id and not leer_chat_id_guardado():
+        guardar_chat_id(chat_id)
+        wrote_chat = True
+
+    # Reinyectar en memoria si vino de env (sobrevive backup GitHub)
+    memoria_actualizada = False
+    if memoria is not None and (token or chat_id):
+        prev = (
+            str((memoria.get("telegram") or {}).get("bot_token") or ""),
+            str((memoria.get("telegram") or {}).get("chat_id") or ""),
+        )
+        telegram_a_memoria(
+            memoria,
+            token=token or "",
+            chat_id=str(chat_id or ""),
+            bot=str(mem_tg.get("bot") or cfg_tg.get("bot") or ""),
+        )
+        now = (
+            str((memoria.get("telegram") or {}).get("bot_token") or ""),
+            str((memoria.get("telegram") or {}).get("chat_id") or ""),
+        )
+        memoria_actualizada = now != prev or bool(wrote_token or wrote_chat)
+
+    listo = bool(token and chat_id)
+    return {
+        "ok": listo,
+        "restored_token": wrote_token or bool(token),
+        "restored_chat": wrote_chat or bool(chat_id),
+        "wrote_token": wrote_token,
+        "wrote_chat": wrote_chat,
+        "memoria_actualizada": memoria_actualizada,
+        "tiene_token": bool(token),
+        "tiene_chat": bool(chat_id),
+        "fuente": (
+            "env"
+            if os.environ.get("TELEGRAM_BOT_TOKEN", "").strip()
+            or os.environ.get("TELEGRAM_CHAT_ID", "").strip()
+            else ("memoria" if mem_tg else ("disco" if listo else "ninguna"))
+        ),
+        "motivo": None
+        if listo
+        else (
+            "Sin token/chat en env, memoria ni disco. "
+            "Pega token en el panel y pon TELEGRAM_BOT_TOKEN + TELEGRAM_CHAT_ID en Render."
+        ),
+    }
+
+
 def _cfg_telegram(cfg: dict | None) -> dict[str, Any]:
     cfg = cfg or {}
     tg = cfg.get("telegram") if isinstance(cfg.get("telegram"), dict) else {}

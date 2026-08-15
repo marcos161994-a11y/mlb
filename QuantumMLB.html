@@ -465,10 +465,11 @@
     <summary>📱 Telegram — avisos T-60 (obligatorio para alertas)</summary>
     <div class="rendimiento-body" style="display:flex;flex-direction:column;gap:8px;">
         <p style="color:var(--muted);font-size:0.85rem;margin:0;">
-            <b>1.</b> Telegram → busca <code>@BotFather</code> → <code>/newbot</code> → copia el token<br/>
+            <b>1.</b> Telegram → busca <code>@BotFather</code> → <code>/newbot</code> o <code>/token</code> → copia el token<br/>
             <b>2.</b> Pégalo abajo → <b>Guardar token</b><br/>
-            <b>3.</b> Abre <b>tu bot</b> (el que creaste) → escribe <code>hola</code><br/>
-            <b>4.</b> <b>Vincular</b> → <b>Probar mensaje</b>
+            <b>3.</b> Abre <b>tu bot</b> → escribe <code>hola</code> → <b>Vincular</b> → <b>Probar</b><br/>
+            <b>4.</b> (Anti-wipe) En Render → Environment pon <code>TELEGRAM_BOT_TOKEN</code> y <code>TELEGRAM_CHAT_ID</code>
+            para que un redeploy no borre las alertas. La mente de errores también intenta restaurar sola desde env/memoria.
         </p>
         <input id="tg-token" type="password" autocomplete="off" placeholder="Token BotFather (123456:AA...)"
             style="width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#111;color:#eee;font-size:0.9rem;" />
