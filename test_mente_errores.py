@@ -98,3 +98,59 @@ def test_no_duplica_incidentes_en_cooldown(tmp_path, monkeypatch):
     estado = me._leer_estado()
     shadows = [i for i in estado["incidentes"] if i.get("codigo") == "mente_shadow"]
     assert len(shadows) == 1
+
+
+def test_telegram_ok_no_dispara_hallazgo(tmp_path, monkeypatch):
+    """Bug fix: usaba 'listo' en vez de 'ok' y siempre alertaba."""
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
+    monkeypatch.setattr(me, "DATA_DIR", Path(tmp_path))
+    cfg = _cfg_base()
+    cfg["telegram"] = {
+        "activo": True,
+        "bot_token": "123:ABC",
+        "chat_id": "999",
+    }
+    out = me.ejecutar_ciclo(cfg)
+    codigos = {h["codigo"] for h in out["hallazgos"]}
+    assert "telegram_no_listo" not in codigos
+
+
+def test_restaurar_telegram_desde_memoria(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
+    monkeypatch.delenv("TELEGRAM_CHAT_ID", raising=False)
+    monkeypatch.setattr(me, "DATA_DIR", Path(tmp_path))
+    import whatsapp_alerta as wa
+
+    monkeypatch.setattr(wa, "_data_dir", lambda: Path(tmp_path))
+
+    memoria = {
+        "telegram": {
+            "bot_token": "222:FROM_MEM",
+            "chat_id": "5423229687",
+            "bot": "@TestBot",
+        }
+    }
+    cfg = _cfg_base()
+    cfg["telegram"] = {"activo": True}
+    out = me.ejecutar_ciclo(cfg, memoria=memoria)
+    assert out.get("telegram_restaurado") is True
+    assert wa.leer_bot_token_guardado() == "222:FROM_MEM"
+    assert str(wa.leer_chat_id_guardado()) == "5423229687"
+    codigos = {h["codigo"] for h in out["hallazgos"]}
+    assert "telegram_no_listo" not in codigos
+
+
+def test_sincronizar_telegram_desde_env(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "111:TOK")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "42")
+    import whatsapp_alerta as wa
+
+    monkeypatch.setattr(wa, "_data_dir", lambda: Path(tmp_path))
+    out = wa.sincronizar_telegram_persistencia({}, {})
+    assert out["ok"] is True
+    assert wa.leer_bot_token_guardado() == "111:TOK"
+    assert str(wa.leer_chat_id_guardado()) == "42"
