@@ -27,7 +27,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from lineas_betmgm import aplicar_lineas_a_juegos
 from lineas_betmgm import normalizar_nombre_equipo as norm_nombre
-from modelo_mlb import evaluar_juegos, calcular_stake_dinamico, cuota_desde_prob
+from modelo_mlb import (
+    evaluar_juegos,
+    calcular_stake_dinamico,
+    cuota_desde_prob,
+    tiene_cuota_mercado,
+    apostable_con_mercado,
+)
 from ml_predictor import auto_entrenar_ml
 from ia_groq import ia_veto_disponible, probar_conexion_groq, veto_apuesta
 from mente_mlb import (
@@ -715,9 +721,18 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
             juegos = evaluar_juegos(juegos, cfg, bias)
         else:
             juegos, _lineas_meta_cache = aplicar_lineas_a_juegos(juegos, cfg)
+            try:
+                from lineas_oddspapi import redactar_secretos
+
+                if isinstance(_lineas_meta_cache, dict) and _lineas_meta_cache.get("mensaje"):
+                    _lineas_meta_cache["mensaje"] = redactar_secretos(
+                        _lineas_meta_cache["mensaje"]
+                    )
+            except Exception:
+                pass
             bias = calcular_bias_aprendizaje(memoria)
             cfg_eval = cfg
-            # Si OddsPapi/API falla: degradar a solo modelo (no tumbar el día)
+            # Si OddsPapi/API falla Y ESPN no trajo cuotas: estudio, no apostar.
             if not (_lineas_meta_cache or {}).get("ok") and (cfg.get("estrategia") or {}).get(
                 "fallback_solo_modelo", True
             ):
@@ -725,10 +740,7 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
                 _lineas_meta_cache = {
                     **(_lineas_meta_cache or {}),
                     "fallback_solo_modelo": True,
-                    "mensaje": (
-                        f"{(_lineas_meta_cache or {}).get('mensaje') or 'Sin cuotas'} "
-                        "· fallback solo modelo"
-                    ),
+                    "mensaje": "Sin cuota de casa ahora · estudio (no apostar). ESPN/OddsPapi no disponibles.",
                 }
             juegos = evaluar_juegos(juegos, cfg_eval, bias)
     else:
@@ -1118,6 +1130,7 @@ def guardar_prediccion(
     *,
     con_dinero: bool = False,
     stake_virtual: float | None = None,
+    permitir_gracia: bool = False,
 ) -> bool:
     """Guarda/actualiza predicción de un juego. No mueve capital."""
     pick = (juego.get("pick") or "").strip()
@@ -1152,14 +1165,43 @@ def guardar_prediccion(
                 print(f"[BRIEFING] backfill: {e}")
         return False
 
-    # Seguridad: no crear pick nuevo si el juego ya empezó (o está EN VIVO/FINAL)
+    # No inventar pick a posteriori cuando el partido ya terminó.
     estado = juego.get("estado")
-    if estado in ("EN VIVO", "FINALIZADO", "POSPUESTO"):
-        print(f"[PREDICCIONES] No se congela pick nuevo en estado {estado} ({juego.get('visitante')}@{juego.get('home')})")
+    if estado in ("FINALIZADO", "POSPUESTO"):
+        print(
+            f"[PREDICCIONES] No se congela pick nuevo en estado {estado} "
+            f"({juego.get('visitante')}@{juego.get('home')})"
+        )
         return False
+
+    cfg = cargar_config()
+    gracia_min = float(cfg.get("minutos_gracia_bloqueo", 30))
     inicio = _parse_iso_dt(juego.get("inicio_juego"))
-    if inicio and (ahora_dt - inicio).total_seconds() > 5 * 60:
-        print(f"[PREDICCIONES] No se congela pick post-inicio ({juego.get('visitante')}@{juego.get('home')})")
+    mins_despues = (
+        (ahora_dt - inicio).total_seconds() / 60.0 if inicio else None
+    )
+
+    # EN VIVO: solo con gracia explícita (Render dormido en T-60).
+    if estado == "EN VIVO":
+        if not permitir_gracia:
+            print(
+                f"[PREDICCIONES] No se congela pick nuevo en estado EN VIVO "
+                f"({juego.get('visitante')}@{juego.get('home')})"
+            )
+            return False
+        if mins_despues is None or mins_despues > gracia_min:
+            print(
+                f"[PREDICCIONES] EN VIVO fuera de gracia "
+                f"({mins_despues} min > {gracia_min}) "
+                f"({juego.get('visitante')}@{juego.get('home')})"
+            )
+            return False
+    elif mins_despues is not None and mins_despues > gracia_min:
+        print(
+            f"[PREDICCIONES] No se congela pick post-inicio "
+            f"({mins_despues:.0f}m > gracia {gracia_min:.0f}m) "
+            f"({juego.get('visitante')}@{juego.get('home')})"
+        )
         return False
 
     prob = float(juego.get("probPick") or 50)
@@ -1168,11 +1210,8 @@ def guardar_prediccion(
     if not odds or float(odds) <= 1.0:
         odds, odds_amer = cuota_desde_prob(prob)
 
-    # Apostable por umbral de % aunque el juego ya esté EN VIVO (motivo "Juego EN VIVO"
-    # no debe impedir marcar candidatos de dinero al recuperar del sueño de Render).
-    cfg = cargar_config()
-    min_prob = float((cfg.get("estrategia") or {}).get("min_prob_modelo", 58.0))
-    apostable_flag = bool(juego.get("apostable")) or prob >= min_prob
+    # Apostable solo con cuota de casa. Un 72% sin mercado no es valor.
+    apostable_flag = apostable_con_mercado(juego)
 
     # Briefing T-60 interno (para la mente). No se muestra en el panel.
     briefing = None
@@ -1185,6 +1224,14 @@ def guardar_prediccion(
     except Exception as e:
         print(f"[BRIEFING] aviso T-60: {e}")
 
+    motivo = juego.get("motivo_apuesta") or ""
+    if estado == "EN VIVO" and permitir_gracia:
+        extra = (
+            f"Congelado en gracia EN VIVO "
+            f"({(mins_despues or 0):.0f} min tras inicio)"
+        )
+        motivo = f"{motivo} · {extra}".strip(" ·")
+
     dia["predicciones"].append(
         {
             "game_id": juego["id"],
@@ -1193,10 +1240,11 @@ def guardar_prediccion(
             "pick": juego["pick"],
             "odds": float(odds),
             "odds_american": odds_amer if odds_amer is not None else 150,
-            "edge": juego.get("edge", 0),
+            "edge": 0 if not tiene_cuota_mercado(juego) else juego.get("edge", 0),
             "probPick": prob,
             "apostable": apostable_flag,
-            "motivo_apuesta": juego.get("motivo_apuesta", ""),
+            "lineas_fuente": juego.get("lineas_fuente") or "modelo",
+            "motivo_apuesta": motivo,
             "pitcherAway": juego.get("pitcherAway"),
             "pitcherHome": juego.get("pitcherHome"),
             "pitcher_away_id": juego.get("pitcher_away_id"),
@@ -1208,6 +1256,7 @@ def guardar_prediccion(
             "stake_virtual": stake_v,
             "con_dinero": bool(con_dinero),
             "predicho_en": ahora,
+            "congelado_en_gracia": bool(estado == "EN VIVO" and permitir_gracia),
             "valida_stats": True,
             "invalida_tarde": False,
             "clima": juego.get("clima") if isinstance(juego.get("clima"), dict) else None,
@@ -1229,8 +1278,8 @@ def guardar_prediccion(
 
 def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     """
-    Registra un pick en PAPEL solo para juegos PROGRAMADOS (tras T-60).
-    Nunca congela EN VIVO: el pick en vivo cambia (lineup/scratch/marcador) y sesga.
+    Registra pick en PAPEL para juegos PROGRAMADOS (tras T-60).
+    Si Render dormía: también EN VIVO dentro de minutos_gracia_bloqueo.
     FINALIZADO: no se inventa pick a posteriori.
     """
     memoria = cargar_memoria()
@@ -1242,34 +1291,51 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     ya = {str(p.get("game_id")) for p in dia.get("predicciones", [])}
     nuevas = 0
     omitidas_vivo = 0
+    cfg = cargar_config()
+    gracia = float(cfg.get("minutos_gracia_bloqueo", 30))
 
     for juego in juegos:
         estado = juego.get("estado")
         gid = str(juego.get("id") or "")
+        permitir_gracia = False
         if estado == "EN VIVO":
-            if gid not in ya:
-                omitidas_vivo += 1
-            continue
-        if estado != "PROGRAMADO":
+            mins = _minutos_desde_inicio(juego)
+            if mins is None or mins > gracia:
+                if gid not in ya:
+                    omitidas_vivo += 1
+                continue
+            permitir_gracia = True
+        elif estado != "PROGRAMADO":
             continue
         if not (juego.get("pick") or "").strip():
             continue
         if gid in ya and not forzar:
             continue
-        try:
-            hb = datetime.fromisoformat(juego["hora_bloqueo"])
-        except Exception:
-            continue
-        if not forzar and hb > ahora:
-            continue
-        if guardar_prediccion(dia, juego, con_dinero=False, stake_virtual=stake_v):
+        if estado == "PROGRAMADO" and not forzar:
+            try:
+                hb = datetime.fromisoformat(juego["hora_bloqueo"])
+            except Exception:
+                continue
+            if hb > ahora:
+                continue
+        if guardar_prediccion(
+            dia,
+            juego,
+            con_dinero=False,
+            stake_virtual=stake_v,
+            permitir_gracia=permitir_gracia,
+        ):
             # Marca validez: solo PROGRAMADO pre-inicio
             pred = next(p for p in dia["predicciones"] if str(p.get("game_id")) == gid)
-            pred["valida_stats"] = True
-            pred["invalida_tarde"] = False
+            if permitir_gracia:
+                pred["valida_stats"] = prediccion_valida_para_stats(pred)
+                pred["invalida_tarde"] = not pred["valida_stats"]
+            else:
+                pred["valida_stats"] = True
+                pred["invalida_tarde"] = False
             # Mente local para el aviso (sin Groq) + WhatsApp del equipo elegido
             try:
-                cfg_wa = _cfg_con_telegram_memoria(cargar_config())
+                cfg_wa = _cfg_con_telegram_memoria(cfg)
                 if cfg_wa.get("usar_mente", True) and not isinstance(pred.get("ia_mente"), dict):
                     mente_t60 = mente_conclusion(
                         juego, cfg_wa, memoria, forzar=True, solo_local=True
@@ -1285,12 +1351,127 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     if nuevas:
         guardar_memoria(memoria)
     if omitidas_vivo:
-        print(f"[PREDICCIONES] Omitidas {omitidas_vivo} EN VIVO (no se congela pick a mitad).")
+        print(f"[PREDICCIONES] Omitidas {omitidas_vivo} EN VIVO (fuera de gracia / ya empezados).")
     return {
         "ok": True,
         "predicciones_nuevas": nuevas,
         "omitidas_en_vivo": omitidas_vivo,
         "fecha": hoy,
+    }
+
+
+def vigilancia_t60(
+    juegos: list[dict],
+    memoria: dict | None = None,
+    cfg: dict | None = None,
+) -> dict:
+    """
+    Detecta juegos PROGRAMADOS cerca del T-60 / inicio sin pick congelado.
+    Sirve para avisar en el panel antes de que se pierda el paper.
+    """
+    cfg = cfg or {}
+    memoria = memoria or {}
+    mins_antes = int(cfg.get("minutos_antes_juego", 60))
+    gracia = float(cfg.get("minutos_gracia_bloqueo", 30))
+    ventana_pre = float(mins_antes) + 30.0  # p.ej. 90 min si T-60
+
+    fecha = fecha_str()
+    dia = dia_por_fecha(memoria, fecha) if memoria else None
+    if not dia and memoria:
+        try:
+            dia = dia_operativo(memoria)
+        except Exception:
+            dia = None
+    ya = {
+        str(p.get("game_id"))
+        for p in ((dia or {}).get("predicciones") or [])
+        if (p.get("pick") or "").strip()
+    }
+
+    ahora = ahora_simulado()
+    en_riesgo: list[dict] = []
+    congelados = 0
+    programados = 0
+
+    for j in juegos or []:
+        estado = j.get("estado")
+        gid = str(j.get("id") or "")
+        if estado == "PROGRAMADO":
+            programados += 1
+        if gid in ya:
+            if estado in ("PROGRAMADO", "EN VIVO"):
+                congelados += 1
+            continue
+        if estado not in ("PROGRAMADO", "EN VIVO"):
+            continue
+        if not (j.get("pick") or "").strip():
+            continue
+
+        mins_a_inicio = None
+        raw_ini = j.get("inicio_juego")
+        try:
+            if raw_ini:
+                ini = datetime.fromisoformat(str(raw_ini))
+                if ini.tzinfo is None:
+                    ini = ini.replace(tzinfo=tz_experimento())
+                mins_a_inicio = (ini - ahora).total_seconds() / 60.0
+        except Exception:
+            mins_a_inicio = None
+
+        riesgo = False
+        motivo = ""
+        if estado == "PROGRAMADO" and mins_a_inicio is not None:
+            if -gracia <= mins_a_inicio <= ventana_pre:
+                riesgo = True
+                if mins_a_inicio <= mins_antes:
+                    motivo = f"T-60 pasado · faltan {mins_a_inicio:.0f} min al inicio"
+                else:
+                    motivo = f"Se acerca T-60 · faltan {mins_a_inicio:.0f} min"
+        elif estado == "EN VIVO":
+            mins_desde = _minutos_desde_inicio(j)
+            if mins_desde is not None and mins_desde <= gracia:
+                riesgo = True
+                motivo = f"EN VIVO sin congelar · {mins_desde:.0f} min de juego (gracia)"
+
+        if riesgo:
+            en_riesgo.append(
+                {
+                    "id": gid,
+                    "visitante": j.get("visitante"),
+                    "home": j.get("home"),
+                    "pick": j.get("pick"),
+                    "estado": estado,
+                    "hora_inicio_txt": j.get("hora_inicio_txt"),
+                    "mins_a_inicio": round(mins_a_inicio, 1) if mins_a_inicio is not None else None,
+                    "motivo": motivo,
+                }
+            )
+
+    en_riesgo.sort(key=lambda x: (x.get("mins_a_inicio") is None, x.get("mins_a_inicio") or 0))
+    n = len(en_riesgo)
+    if n == 0:
+        mensaje = "Vigilancia T-60 OK · sin juegos en riesgo ahora"
+        nivel = "ok"
+    elif n == 1:
+        g0 = en_riesgo[0]
+        mensaje = (
+            f"⚠ Sin pick fijo: {g0.get('visitante')} @ {g0.get('home')} "
+            f"· {g0.get('motivo')}"
+        )
+        nivel = "alerta"
+    else:
+        mensaje = f"⚠ {n} juegos sin pick congelado cerca del T-60 / inicio"
+        nivel = "alerta"
+
+    return {
+        "ok": n == 0,
+        "nivel": nivel,
+        "mensaje": mensaje,
+        "en_riesgo": en_riesgo[:8],
+        "total_riesgo": n,
+        "congelados_activos": congelados,
+        "programados": programados,
+        "cron_cada_min": 5,
     }
 
 
@@ -1509,18 +1690,24 @@ def _bloquear_juego_locked(
         }
 
     stake_v = stake_virtual_prediccion(memoria)
-    # Solo congelar papel en PROGRAMADO. EN VIVO (gracia) no debe crear pick nuevo
-    # — eso fue el caso Yankees / Twins de hoy (cambia a mitad y sesga).
+    # Congelar papel en PROGRAMADO; EN VIVO solo dentro de la gracia (Render dormido).
+    ok_gracia, _motivo_g = _permite_bloqueo_dinero(juego, forzar=forzar)
     if juego.get("estado") == "PROGRAMADO":
         guardar_prediccion(dia, juego, con_dinero=False, stake_virtual=stake_v)
+    elif juego.get("estado") == "EN VIVO" and ok_gracia:
+        guardar_prediccion(
+            dia,
+            juego,
+            con_dinero=False,
+            stake_virtual=stake_v,
+            permitir_gracia=True,
+        )
 
     # Si ya había predicción congelada, la apuesta con dinero debe usar ESE pick
     pred_existente = next(
         (p for p in dia.get("predicciones", []) if str(p.get("game_id")) == gid),
         None,
     )
-    cfg_estr = cfg.get("estrategia") or {}
-    min_prob = float(cfg_estr.get("min_prob_modelo", 58.0))
     if pred_existente and (pred_existente.get("pick") or "").strip():
         juego["pick"] = pred_existente["pick"]
         if pred_existente.get("odds"):
@@ -1533,12 +1720,20 @@ def _bloquear_juego_locked(
             juego["edge"] = pred_existente["edge"]
         if pred_existente.get("motivo_apuesta"):
             juego["motivo_apuesta"] = pred_existente["motivo_apuesta"]
-        # Respetar el veredicto congelado: no perder la apuesta porque el % vivo bajó un poco
-        prob_f = float(pred_existente.get("probPick") or 0)
-        if pred_existente.get("apostable") or prob_f >= min_prob:
+        if pred_existente.get("lineas_fuente"):
+            juego["lineas_fuente"] = pred_existente["lineas_fuente"]
+        if pred_existente.get("odds_away_decimal"):
+            juego["odds_away_decimal"] = pred_existente["odds_away_decimal"]
+        if pred_existente.get("odds_home_decimal"):
+            juego["odds_home_decimal"] = pred_existente["odds_home_decimal"]
+        # Congelado apostable solo si había cuota real. El % alto no basta.
+        if apostable_con_mercado(pred_existente) or apostable_con_mercado(juego):
             juego["apostable"] = True
-            if not pred_existente.get("apostable"):
-                pred_existente["apostable"] = True
+        else:
+            juego["apostable"] = False
+            juego["edge"] = 0
+            if pred_existente.get("apostable"):
+                pred_existente["apostable"] = False
 
     if not juego.get("apostable"):
         print(f"[DEBUG BLOQUEO] Juego {game_id} no apostable. Motivo: {juego.get('motivo_apuesta', 'Desconocido')}")
@@ -1627,15 +1822,11 @@ def _bloquear_juego_locked(
         except Exception as e:
             print(f"[SCRATCH] refresh bloqueo: {e}")
 
-    # Con mercado: exigir edge. Si no hay cuotas y hay fallback → solo % modelo.
+    # Con mercado: exigir edge. Sin cuota de casa: nunca dinero (ni con % alto).
     if not cfg.get("modo_solo_modelo") and (cfg.get("estrategia") or {}).get("requiere_betmgm", True):
         min_edge = float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0))
-        min_prob = float((cfg.get("estrategia") or {}).get("min_prob_modelo", 58.0))
         edge_now = juego.get("edge")
-        tiene_cuota_mkt = bool(
-            juego.get("odds_away_decimal") or juego.get("odds_home_decimal")
-        ) and (juego.get("lineas_fuente") not in (None, "", "modelo"))
-        if tiene_cuota_mkt:
+        if tiene_cuota_mercado(juego) or tiene_cuota_mercado(pred_existente or {}):
             if edge_now is None or float(edge_now) < min_edge:
                 motivo = "Sin valor vs mercado ahora"
                 if pred_existente is not None:
@@ -1647,10 +1838,14 @@ def _bloquear_juego_locked(
                     "juego": juego["visitante"] + " vs " + juego["home"],
                     "prediccion_guardada": True,
                 }
-        elif not (cfg.get("estrategia") or {}).get("fallback_solo_modelo", True):
-            motivo = "Sin cuota de mercado ahora"
+        else:
+            motivo = "Sin cuota real de mercado — el % del modelo no es valor"
             if pred_existente is not None:
                 pred_existente["apostable"] = False
+                pred_existente["edge"] = 0
+                pred_existente["motivo_apuesta"] = (
+                    f"{pred_existente.get('motivo_apuesta') or ''} · {motivo}"
+                ).strip(" ·")
             guardar_memoria(memoria)
             return {
                 "ok": False,
@@ -1658,23 +1853,6 @@ def _bloquear_juego_locked(
                 "juego": juego["visitante"] + " vs " + juego["home"],
                 "prediccion_guardada": True,
             }
-        else:
-            # Fallback: dinero solo si el % del modelo alcanza el umbral
-            if pred_existente and pred_existente.get("probPick") is not None:
-                prob_now = float(pred_existente.get("probPick") or 0)
-            else:
-                prob_now = float(juego.get("probPick") or 0)
-            if prob_now < min_prob:
-                motivo = f"Sin mercado · modelo bajo {min_prob}%"
-                if pred_existente is not None:
-                    pred_existente["apostable"] = False
-                guardar_memoria(memoria)
-                return {
-                    "ok": False,
-                    "motivo": motivo,
-                    "juego": juego["visitante"] + " vs " + juego["home"],
-                    "prediccion_guardada": True,
-                }
 
     # Modelo propone → MENTE concluye (APOSTAR/PASAR/ESPERAR) → solo entonces dinero.
     # Si mente off: cae al veto Groq legacy (con lecciones en memoria).
@@ -1844,7 +2022,6 @@ def bloquear_apuestas_del_dia(forzar: bool = False) -> dict:
     hoy = fecha_str()
     ahora = ahora_simulado()
     cfg = cargar_config()
-    min_prob = float((cfg.get("estrategia") or {}).get("min_prob_modelo", 58.0))
     juegos = obtener_juegos_fecha(hoy)
     dia = asegurar_dia_operativo(memoria, hoy)
     preds_por_id = {
@@ -1865,16 +2042,10 @@ def bloquear_apuestas_del_dia(forzar: bool = False) -> dict:
                 continue
         gid = str(juego["id"])
         pred = preds_por_id.get(gid)
-        # Apostable vivo O predicción congelada ≥ umbral (no perder el % alto del paper)
-        apostable = bool(juego.get("apostable"))
-        prob_live = float(juego.get("probPick") or 0)
-        if not apostable and prob_live >= min_prob:
-            apostable = True
-            juego["apostable"] = True
+        apostable = apostable_con_mercado(juego)
         if not apostable and pred is not None:
-            prob_f = float(pred.get("probPick") or 0)
-            if pred.get("apostable") or prob_f >= min_prob:
-                apostable = True
+            apostable = apostable_con_mercado(pred)
+            if apostable:
                 juego["apostable"] = True
         if not apostable:
             continue
@@ -2021,7 +2192,14 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
             copia["probPick"] = pred.get("probPick", copia.get("probPick"))
             copia["edge"] = pred.get("edge", copia.get("edge"))
             copia["motivo_apuesta"] = pred.get("motivo_apuesta", copia.get("motivo_apuesta", ""))
+            if pred.get("lineas_fuente"):
+                copia["lineas_fuente"] = pred.get("lineas_fuente")
             copia["pick_congelado"] = True
+            if not tiene_cuota_mercado(copia) and not tiene_cuota_mercado(pred):
+                copia["apostable"] = False
+                copia["edge"] = 0
+            else:
+                copia["apostable"] = apostable_con_mercado(pred) or apostable_con_mercado(copia)
             copia["resultado_papel"] = pred.get("resultado")
             copia["invalida_tarde"] = bool(
                 pred.get("invalida_tarde") or not prediccion_valida_para_stats(pred)
@@ -2068,6 +2246,9 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
             if copia.get("estado") in ("EN VIVO", "FINALIZADO"):
                 copia["solo_orientativo"] = True
         copia["apostable"] = copia.get("apostable", False)
+        if copia.get("apostable") and not ap and not tiene_cuota_mercado(copia):
+            copia["apostable"] = False
+            copia["edge"] = 0
         if not copia.get("motivo_apuesta"):
             copia["motivo_apuesta"] = ""
         mente_guardada = None
@@ -2381,6 +2562,7 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
             "shadow": bool((cfg.get("mente") or {}).get("shadow", False)),
             "stats": mente_stats_meta,
         },
+        "vigilancia": vigilancia_t60(juegos, memoria, cfg),
     }
 
 
@@ -2408,8 +2590,8 @@ def api_picks_hoy():
         vistos.add(g["id"])
         juegos.append(g)
     apostables = sorted(
-        [g for g in juegos if g.get("apostable") and (g.get("probPick") or 0) >= min_prob],
-        key=lambda x: x.get("probPick", 0),
+        [g for g in juegos if apostable_con_mercado(g) and (g.get("probPick") or 0) >= min_prob],
+        key=lambda x: x.get("edge", 0) or 0,
         reverse=True,
     )[:max_dia]
     return {
@@ -2527,6 +2709,13 @@ def api_predicciones():
 def api_health():
     """Ping para Render + cron externo (mantiene el servicio despierto en plan free)."""
     cfg = _cfg_con_telegram_memoria()
+    circ: dict = {"abierto": False}
+    try:
+        from lineas_oddspapi import estado_circuito
+
+        circ = estado_circuito()
+    except Exception:
+        pass
     return {
         "ok": True,
         "servicio": "quantum-mlb",
@@ -2556,9 +2745,7 @@ def api_health():
             "activo": not bool(cfg.get("modo_solo_modelo")),
             "proveedor": (cfg.get("lineas") or {}).get("proveedor") or "oddspapi",
             "requiere_mercado": bool((cfg.get("estrategia") or {}).get("requiere_betmgm", True)),
-            "fallback_solo_modelo": bool(
-                (cfg.get("estrategia") or {}).get("fallback_solo_modelo", True)
-            ),
+            "fallback_internet": bool((cfg.get("lineas") or {}).get("fallback_internet", True)),
             "bookmakers": (cfg.get("lineas") or {}).get("bookmakers") or "draftkings",
             "min_edge_pct": float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0)),
             "key_presente": bool(
@@ -2567,6 +2754,8 @@ def api_health():
                 or ((cfg.get("lineas") or {}).get("api_key") or "").strip()
                 or (DATA_DIR / "oddspapi_api_key.txt").exists()
             ),
+            "circuito": bool(circ.get("abierto")),
+            "circuito_hasta_hora": circ.get("hasta_hora"),
         },
         "scratch_lineup": {
             "activo": bool(cfg.get("usar_scratch_lineup", True)),
@@ -2588,6 +2777,7 @@ def api_health():
             "min_confianza": int((cfg.get("mente") or {}).get("min_confianza") or 3),
             "shadow": bool((cfg.get("mente") or {}).get("shadow", False)),
         },
+        "vigilancia_cron_min": 5,
         "whatsapp": whatsapp_disponible(cfg),
         "telegram": telegram_disponible(cfg),
         "alertas": alerta_disponible(cfg),
@@ -2652,6 +2842,7 @@ def api_odds_status():
         "bookmakers": (cfg.get("lineas") or {}).get("bookmakers") or "draftkings",
         "min_edge_pct": float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0)),
         "proveedor": proveedor,
+        "fallback_internet": bool((cfg.get("lineas") or {}).get("fallback_internet", True)),
         "fallback_solo_modelo": bool(
             (cfg.get("estrategia") or {}).get("fallback_solo_modelo", True)
         ),
@@ -2664,20 +2855,82 @@ def api_odds_status():
             "motivo": "Cuotas desactivadas (modo solo modelo)",
         }
     try:
+        def _con_espn(out: dict) -> dict:
+            if out.get("ok") or not bool((cfg.get("lineas") or {}).get("fallback_internet", True)):
+                return out
+            try:
+                from lineas_espn import obtener_lineas_espn
+
+                _, me = obtener_lineas_espn()
+            except Exception as e:
+                out["espn_error"] = str(e)[:120]
+                return out
+            if me.get("ok"):
+                out["ok"] = True
+                out["fallback_espn"] = True
+                out["espn_partidos"] = me.get("partidos")
+                out["mensaje"] = (
+                    f"{out.get('mensaje') or out.get('motivo') or 'OddsPapi no disponible'} · "
+                    f"{me.get('mensaje')}"
+                )
+                out["motivo"] = None
+            else:
+                out["fallback_espn"] = False
+                out["espn_mensaje"] = me.get("mensaje")
+            return out
+
+        if proveedor in ("espn", "espn-draftkings", "internet"):
+            from lineas_espn import obtener_lineas_espn
+
+            _, me = obtener_lineas_espn()
+            return {
+                **base,
+                "ok": bool(me.get("ok")),
+                "key_presente": False,
+                "fallback_espn": True,
+                "partidos": me.get("partidos"),
+                "mensaje": me.get("mensaje"),
+            }
+
         if proveedor in ("oddspapi", "odds-papi", "odds_papi"):
-            from lineas_oddspapi import cargar_api_key, fingerprint_key, obtener_lineas_oddspapi
+            from lineas_oddspapi import (
+                cargar_api_key,
+                circuito_abierto,
+                estado_circuito,
+                fingerprint_key,
+                obtener_lineas_oddspapi,
+            )
 
             key = cargar_api_key(cfg)
+            if circuito_abierto():
+                st = estado_circuito()
+                return _con_espn({
+                    **base,
+                    "ok": False,
+                    "key_presente": bool(key),
+                    "key_fingerprint": fingerprint_key(key) if key else None,
+                    "circuito": True,
+                    "circuito_hasta": st.get("hasta"),
+                    "circuito_hasta_hora": st.get("hasta_hora"),
+                    "http_status": st.get("http_status"),
+                    "motivo": st.get("mensaje"),
+                    "mensaje": st.get("mensaje"),
+                    "ayuda": (
+                        "OddsPapi se pausó sola (401/429). "
+                        "Las cuotas salen de ESPN/DraftKings. "
+                        "Se reintenta al vencer la pausa o al pegar una key nueva."
+                    ),
+                })
             if not key:
-                return {
+                return _con_espn({
                     **base,
                     "ok": False,
                     "key_presente": False,
-                    "motivo": "Falta ODDSPAPI_API_KEY en Render (oddspapi.io)",
-                    "ayuda": "Crea key en https://oddspapi.io → Render ODDSPAPI_API_KEY → Save + Deploy",
-                }
+                    "motivo": "Falta ODDSPAPI_API_KEY · se intenta ESPN/DraftKings",
+                    "ayuda": "Crea key en https://oddspapi.io o usa el fallback ESPN (sin key)",
+                })
             _, meta = obtener_lineas_oddspapi(cfg)
-            return {
+            return _con_espn({
                 **base,
                 "ok": bool(meta.get("ok")),
                 "key_presente": True,
@@ -2694,29 +2947,30 @@ def api_odds_status():
                 "mensaje": meta.get("mensaje"),
                 "cache": meta.get("cache"),
                 "intentos": meta.get("intentos"),
+                "circuito": bool(meta.get("circuito")),
+                "circuito_hasta": meta.get("circuito_hasta"),
                 "ayuda": (
                     None
                     if meta.get("ok")
                     else (
-                        "Key incompleta o rechazada. Opción fácil: GitHub → Actions → "
-                        "'Configurar OddsPapi' → Run workflow → pega la UUID completa. "
-                        "O en Render ODDSPAPI_API_KEY (36 caracteres) + Manual Deploy."
+                        "Si OddsPapi falla, se usan cuotas ESPN/DraftKings de internet. "
+                        "Key incompleta: GitHub Action 'Configurar OddsPapi' o UUID de 36 caracteres."
                     )
                 ),
-            }
+            })
 
         from lineas_betmgm import cargar_api_key, obtener_lineas_betmgm
 
         key = cargar_api_key(cfg)
         if not key:
-            return {
+            return _con_espn({
                 **base,
                 "ok": False,
                 "key_presente": False,
-                "motivo": "Falta ODDS_API_KEY en Render",
-            }
+                "motivo": "Falta ODDS_API_KEY · se intenta ESPN/DraftKings",
+            })
         _, meta = obtener_lineas_betmgm(cfg)
-        return {
+        return _con_espn({
             **base,
             "ok": bool(meta.get("ok")),
             "key_presente": True,
@@ -2724,7 +2978,7 @@ def api_odds_status():
             "mensaje": meta.get("mensaje"),
             "requests_restantes": meta.get("requests_restantes"),
             "cache": meta.get("cache"),
-        }
+        })
     except Exception as e:
         return {**base, "ok": False, "motivo": str(e)[:120]}
 
@@ -3250,6 +3504,17 @@ async def api_configurar_oddspapi(request: Request, secret: str | None = None, k
         "mensaje": meta.get("mensaje"),
         "key_fingerprint": meta.get("key_fingerprint") or info.get("key_fingerprint"),
         "key_source": meta.get("key_source"),
+        "circuito": bool(meta.get("circuito")),
+        "aviso_env": info.get("aviso_env"),
+        "ayuda": (
+            None
+            if meta.get("ok")
+            else (
+                "Si sigue en 401: crea key nueva en https://oddspapi.io, "
+                "revoca la vieja, y borra ODDSPAPI_API_KEY en Render Environment "
+                "(la del disco ya tiene prioridad)."
+            )
+        ),
     }
 
 

@@ -170,8 +170,24 @@ def test_top_n_solo_programados():
 
     cfg = {"estrategia": {"max_apuestas_dia": 1}}
     juegos = [
-        {"id": "1", "apostable": True, "edge": 20, "estado": "FINALIZADO"},
-        {"id": "2", "apostable": True, "edge": 10, "estado": "PROGRAMADO"},
+        {
+            "id": "1",
+            "apostable": True,
+            "edge": 20,
+            "estado": "FINALIZADO",
+            "lineas_fuente": "draftkings",
+            "odds_away_decimal": 2.1,
+            "odds_home_decimal": 1.8,
+        },
+        {
+            "id": "2",
+            "apostable": True,
+            "edge": 10,
+            "estado": "PROGRAMADO",
+            "lineas_fuente": "draftkings",
+            "odds_away_decimal": 2.1,
+            "odds_home_decimal": 1.8,
+        },
     ]
     seleccionar_favorables_del_dia(juegos, cfg)
     assert juegos[0]["apostable"] is False

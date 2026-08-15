@@ -233,8 +233,10 @@
         .card.perdida { border-color: var(--red); }
         .card.apostable { border: 2px solid var(--green); box-shadow: 0 0 12px rgba(0,255,136,0.15); }
         .card.no-apostable { opacity: 0.55; }
+        .card.estudio { opacity: 1; border: 1px solid rgba(255,188,0,0.45); }
         .tag-apostar { background: rgba(0,255,136,0.2); color: var(--green); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
         .tag-skip { background: rgba(136,153,170,0.2); color: #8899aa; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; }
+        .tag-estudio { background: rgba(255,188,0,0.18); color: var(--gold); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
         .estado { color: var(--gold); font-size: 0.75rem; font-weight: bold; }
         .estado-apuesta { font-size: 0.7rem; margin-top: 4px; }
         .estado-apuesta.ganada { color: var(--green); }
@@ -453,6 +455,7 @@
     </details>
 
     <p class="meta-line" id="lineas-status" style="color:#ffbc00;"></p>
+    <p class="meta-line" id="vigilancia-status" style="color:#8899aa;"></p>
     <p class="meta-line" id="proximo-bloqueo"></p>
 </div>
 
@@ -462,7 +465,7 @@
         <div class="aviso-body" id="aviso-body">
             El tag <strong>PICK</strong> es la predicción (fija al apostar).
             <strong>GANÓ</strong> solo aparece cuando MLB confirma el final.
-            Verdes (≥58%) son apostables. Bloqueo 1 h antes.
+            Verdes = valor vs cuota real. Sin cuota = estudio, no apostar. Bloqueo 1 h antes.
         </div>
     </details>
 </div>
@@ -878,15 +881,39 @@ function pintarEstado(data) {
 
     const ls = document.getElementById('lineas-status');
     const lin = data.lineas || {};
+    const redactar = (s) => String(s || '')
+        .replace(/api[_-]?key=[^&\s]+/gi, 'apiKey=***')
+        .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '***');
     if (soloModelo) {
         ls.style.color = '#00ff88';
         ls.textContent = '✓ Modo solo modelo (sin Odds API)';
     } else if (lin.ok) {
-        ls.style.color = '#00ff88';
-        ls.textContent = '✓ BetMGM · ' + (lin.mensaje || '');
+        ls.style.color = lin.circuito ? '#ffd166' : '#00ff88';
+        const src = lin.fallback_espn ? 'ESPN/DraftKings' : (lin.fuente || 'mercado');
+        const pausa = lin.circuito
+            ? (' · OddsPapi en pausa hasta ' + (lin.circuito_hasta_hora || 'luego'))
+            : '';
+        ls.textContent = '✓ Cuotas ' + src + pausa + ' · ' + redactar(lin.mensaje || '');
     } else {
         ls.style.color = '#ffbc00';
-        ls.textContent = '⚠ ' + (lin.mensaje || 'Sin líneas BetMGM');
+        ls.textContent = '⚠ ' + redactar(lin.mensaje || 'Sin cuotas de internet');
+    }
+
+    const vs = document.getElementById('vigilancia-status');
+    const vig = data.vigilancia || {};
+    if (vs) {
+        if (vig.nivel === 'alerta') {
+            vs.style.color = '#ffbc00';
+            const detalle = (vig.en_riesgo || []).slice(0, 2).map(g =>
+                (g.visitante || '?').split(' ').pop() + '@' + (g.home || '?').split(' ').pop()
+            ).join(' · ');
+            vs.textContent = (vig.mensaje || 'Juegos sin congelar') + (detalle ? ' · ' + detalle : '') +
+                ' · toca “Forzar bloqueos” o abre el panel cerca del T-60';
+        } else {
+            vs.style.color = '#00ff88';
+            vs.textContent = vig.mensaje ||
+                ('Vigilancia T-60 OK · cron cada ' + (vig.cron_cada_min || 5) + ' min');
+        }
     }
 
     const avisoSum = document.querySelector('#aviso-real summary');
@@ -894,16 +921,19 @@ function pintarEstado(data) {
     const minP = estr.min_prob_modelo || 58;
     if (avisoSum && avisoBody) {
         if (soloModelo) {
-            avisoSum.textContent = 'Modo solo modelo';
+            avisoSum.textContent = 'Cuotas de internet';
             avisoBody.innerHTML =
-                'El tag <strong>PICK</strong> es la predicción (fija al apostar). ' +
+                'El tag <strong>PICK</strong> es la predicción. ' +
                 '<strong>GANÓ</strong> solo al final oficial de MLB. ' +
-                `Verdes (≥${minP}%) son apostables. Bloqueo 1 h antes.`;
+                'Verde = valor vs cuota real (OddsPapi o ESPN/DraftKings). ' +
+                'Sin cuota de casa el % es estudio, no se apuesta.';
         } else {
-            avisoSum.textContent = 'Estrategia BetMGM';
+            avisoSum.textContent = 'Estrategia con cuota real';
             avisoBody.innerHTML =
-                '1 h antes se evalúa pitchers + stats + BetMGM. ' +
-                'Solo se apuesta con valor (borde verde). ' +
+                '1 h antes se evalúa pitchers + stats + cuota de internet. ' +
+                'Solo se apuesta con valor vs la casa (borde verde). ' +
+                'Cuotas por defecto: ESPN/DraftKings (sin API key). ' +
+                'OddsPapi solo si regeneras key y hay cupo. ' +
                 `Máximo ${estr.max_apuestas_dia || 5} apuestas/día.`;
         }
     }
@@ -1018,6 +1048,11 @@ function nombrePick(pick) {
     return (pick || '').replace(/\s*ML\s*$/i, '').trim();
 }
 
+function sinCuotaMercado(j) {
+    const f = String((j && j.lineas_fuente) || 'modelo').toLowerCase();
+    return !f || f === 'modelo' || f === 'none' || f === 'null' || f === 'import';
+}
+
 function pintarPicksHoy(juegos, data) {
     const lista = document.getElementById('lista-picks-hoy');
     const sub = document.getElementById('picks-sub');
@@ -1043,8 +1078,8 @@ function pintarPicksHoy(juegos, data) {
     const idsYa = new Set(yaApostados.map(j => j.id));
     const cupoRestante = Math.max(0, maxP - yaApostados.length);
     const apostablesNuevos = unicos
-        .filter(j => j.apostable && (j.probPick || 0) >= minProb && !idsYa.has(j.id))
-        .sort((a, b) => (b.probPick || 0) - (a.probPick || 0))
+        .filter(j => j.apostable && !sinCuotaMercado(j) && (j.probPick || 0) >= minProb && !idsYa.has(j.id))
+        .sort((a, b) => (b.edge || 0) - (a.edge || 0))
         .slice(0, cupoRestante);
 
     if (!unicos.length) {
@@ -1053,7 +1088,7 @@ function pintarPicksHoy(juegos, data) {
         return;
     }
 
-    sub.textContent = `${unicos.length} juegos hoy · ${yaApostados.length} apostados · ${apostablesNuevos.length} listos (≥${minProb}%, máx. ${maxP}) · toca el título para abrir/cerrar.`;
+    sub.textContent = `${unicos.length} juegos hoy · ${yaApostados.length} apostados · ${apostablesNuevos.length} con valor vs cuota real (máx. ${maxP}) · toca el título para abrir/cerrar.`;
 
     let html = '';
     const conDinero = [...yaApostados, ...apostablesNuevos];
@@ -1109,9 +1144,19 @@ function pintarPicksHoy(juegos, data) {
             </summary>
             <div class="picks-grupo-body">`;
         soloPred.forEach(j => {
+            let badge = '';
+            if (j.estado === 'FINALIZADO' && j.estado_apuesta === 'ganada') {
+                badge = '<span class="pick-badge bet">ACIERTO</span>';
+            } else if (j.estado === 'FINALIZADO' && j.estado_apuesta === 'perdida') {
+                badge = '<span class="pick-badge skip">FALLO</span>';
+            } else if (j.estado === 'FINALIZADO' && j.estado_apuesta === 'sin_bloquear') {
+                badge = '<span class="pick-badge wait">SIN CONGELAR</span>';
+            } else if (j.estado_apuesta === 'pendiente') {
+                badge = '<span class="pick-badge wait">PENDIENTE</span>';
+            }
             html += `<div class="pick-row no">
                 <div>
-                    <div class="pick-equipo" style="color:var(--muted)">${nombrePick(j.pick)}</div>
+                    <div class="pick-equipo" style="color:var(--muted)">${nombrePick(j.pick)} ${badge}</div>
                     <div class="pick-meta">${j.visitante} @ ${j.home} · ${j.hora_inicio_txt || ''} · ${(j.motivo_apuesta || '').slice(0, 50)}</div>
                 </div>
                 <div class="pick-prob" style="color:var(--muted)">${(j.probPick || 0).toFixed(0)}%</div>
@@ -1288,11 +1333,14 @@ function pintarJuegos(juegos) {
     }
     const orden = [...juegos].sort((a, b) => (b.apostable ? 1 : 0) - (a.apostable ? 1 : 0));
     c.innerHTML = orden.map(j => {
+        const estudio = sinCuotaMercado(j) && !j.apostable;
         let cls = j.estado_apuesta === 'ganada' ? 'ganada' : (j.estado_apuesta === 'perdida' ? 'perdida' : '');
-        cls += j.apostable ? ' apostable' : ' no-apostable';
+        cls += j.apostable ? ' apostable' : (estudio ? ' estudio' : ' no-apostable');
         const tag = j.apostable
             ? `<span class="tag-apostar">APOSTAR · ${(j.probPick||0).toFixed(0)}%</span>`
-            : `<span class="tag-skip">NO APOSTAR</span>`;
+            : (estudio
+                ? `<span class="tag-estudio">ESTUDIO · ${(j.probPick||0).toFixed(0)}% · sin cuota</span>`
+                : `<span class="tag-skip">NO APOSTAR</span>`);
         const eqPick = nombrePick(j.pick);
         const awayPick = j.pick && j.pick.indexOf(j.visitante) >= 0;
         const homePick = j.pick && j.pick.indexOf(j.home) >= 0;
@@ -1301,6 +1349,19 @@ function pintarJuegos(juegos) {
         const homeWon = j.estado === 'FINALIZADO' && j.ganador === j.home;
         let apuestaTxt = j.motivo_apuesta || 'Espera evaluación 1h antes';
         const papel = !!j.solo_papel;
+        let resultadoBanner = '';
+        if (j.estado === 'FINALIZADO' && j.ganador) {
+            const marcador = `${j.scoreAway ?? '—'}–${j.scoreHome ?? '—'}`;
+            if (j.estado_apuesta === 'ganada') {
+                resultadoBanner = `<div style="margin:8px 0;padding:8px 10px;border-radius:8px;background:rgba(0,255,136,0.12);border:1px solid rgba(0,255,136,0.4);color:var(--green);font-weight:700;font-size:0.9rem">✓ ${papel ? 'PAPEL ACIERTO' : 'GANASTE'} · ${j.ganador} (${marcador})${j.profit != null ? ' · ' + fmtMoney(j.profit) : ''}</div>`;
+            } else if (j.estado_apuesta === 'perdida') {
+                resultadoBanner = `<div style="margin:8px 0;padding:8px 10px;border-radius:8px;background:rgba(255,80,80,0.12);border:1px solid rgba(255,80,80,0.4);color:var(--red);font-weight:700;font-size:0.9rem">✗ ${papel ? 'PAPEL FALLO' : 'PERDISTE'} · ganó ${j.ganador} (${marcador})${j.profit != null ? ' · ' + fmtMoney(j.profit) : ''}</div>`;
+            } else if (j.estado_apuesta === 'sin_bloquear') {
+                resultadoBanner = `<div style="margin:8px 0;padding:8px 10px;border-radius:8px;background:rgba(255,188,0,0.1);border:1px solid rgba(255,188,0,0.35);color:var(--gold);font-size:0.82rem">Final MLB: <b>${j.ganador}</b> (${marcador}) · sin pick congelado a tiempo → no cuenta en el paper</div>`;
+            } else {
+                resultadoBanner = `<div style="margin:8px 0;padding:8px 10px;border-radius:8px;background:rgba(0,242,255,0.08);border:1px solid rgba(0,242,255,0.25);color:var(--cyan);font-size:0.82rem">Final MLB: <b>${j.ganador}</b> (${marcador})</div>`;
+            }
+        }
         if (j.estado === 'FINALIZADO' && j.estado_apuesta === 'sin_bloquear') {
             apuestaTxt = 'FINAL · sin pick congelado a tiempo (no cuenta en el paper de hoy)';
         } else if (j.estado_apuesta === 'sin_bloquear' && j.hora_bloqueo_txt) {
@@ -1333,6 +1394,7 @@ function pintarJuegos(juegos) {
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
                 <span class="estado">● ${j.estado}</span>${tag}
             </div>
+            ${resultadoBanner}
             <div style="font-size:0.7rem;color:#8899aa;margin-bottom:6px">
                 P: ${j.pitcherAway||'?'} (${j.pitcherAwayEra??'?'}) · ${j.pitcherHome||'?'} (${j.pitcherHomeEra??'?'})
             </div>
@@ -1355,14 +1417,16 @@ function pintarJuegos(juegos) {
                 <b style="font-size:1rem;color:var(--green)">→ ${eqPick || '—'}</b>
                 <div style="font-size:0.8rem;margin-top:6px">
                     Confianza: <b style="color:var(--cyan)">${j.probPick != null ? j.probPick.toFixed(1) + '%' : '—'}</b>
-                    · Cuota simulada: ${j.odds || '—'}
+                    · ${sinCuotaMercado(j)
+                        ? `Cuota justa (sin mercado): ${j.odds || '—'}`
+                        : `Cuota ${j.lineas_fuente || 'casa'}: ${j.odds || '—'}${j.edge ? ' · edge +' + Number(j.edge).toFixed(1) + '%' : ''}`}
                 </div>
                 <div style="font-size:0.75rem;color:#8899aa;margin-top:6px">
                     Modelo ${j.probAway||'?'}% / ${j.probHome||'?'}% (visitante / local)
                 </div>
                 <div style="font-size:0.7rem;color:#8899aa;margin-top:4px">${j.motivo_apuesta || ''}</div>
                 ${j.factores_humanos && j.factores_humanos.ok ? `<div style="font-size:0.68rem;color:#9ab;margin-top:4px">👤 ${(j.factores_humanos.resumen || '').slice(0, 110)}</div>` : ''}
-                ${j.ia_mente && j.ia_mente.decision ? `<div style="font-size:0.72rem;margin-top:6px;padding:6px 8px;border-radius:6px;border:1px solid ${j.ia_mente.autoriza_dinero ? 'rgba(0,255,136,0.35)' : 'rgba(255,188,0,0.35)'};color:${j.ia_mente.autoriza_dinero ? 'var(--green)' : 'var(--gold)'}">🧠 MENTE <b>${j.ia_mente.decision}</b> · conf ${j.ia_mente.confianza || '?'} · ${(j.ia_mente.razones || []).slice(0,2).join('; ').slice(0,90)}</div>` : ''}
+                ${j.ia_mente && j.ia_mente.decision ? `<div style="font-size:0.72rem;margin-top:6px;padding:6px 8px;border-radius:6px;border:1px solid ${j.ia_mente.autoriza_dinero ? 'rgba(0,255,136,0.35)' : 'rgba(255,188,0,0.35)'};color:${j.ia_mente.autoriza_dinero ? 'var(--green)' : 'var(--gold)'}">🧠 MENTE <b>${j.ia_mente.decision}</b>${j.ia_mente.autoriza_dinero ? ' · dinero OK' : (j.ia_mente.decision === 'APOSTAR' ? ' · sin dinero' : '')} · conf ${j.ia_mente.confianza || '?'} · ${(j.ia_mente.razones || []).slice(0,2).join('; ').slice(0,90)}</div>` : ''}
             </div>
             <div class="estado-apuesta ${j.estado_apuesta||''}">${apuestaTxt}</div>
         </div>`;
