@@ -2600,6 +2600,8 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
         },
         "vigilancia": vigilancia,
         "mente_errores": _resumen_mente_errores(cfg),
+        "telegram": telegram_disponible(_cfg_con_telegram_memoria(cfg)),
+        "alertas": alerta_disponible(_cfg_con_telegram_memoria(cfg)),
     }
 
 
@@ -3272,14 +3274,13 @@ def api_telegram_vincular():
 def api_telegram_guardar_token(token: str = "", secret: str = ""):
     """
     Guarda el token del bot en disco + memoria.
-    Primera vez (sin token aún): secret opcional.
+    GET con ?secret= solo si CRON_SECRET está definido (automatizaciones).
+    Preferir POST desde el panel (sin secret).
     """
-    from whatsapp_alerta import configurar_bot_token, leer_bot_token_guardado
+    from whatsapp_alerta import configurar_bot_token
 
-    ya_hay = bool(
-        os.environ.get("TELEGRAM_BOT_TOKEN", "").strip() or leer_bot_token_guardado()
-    )
-    if ya_hay:
+    esperado = os.environ.get("CRON_SECRET", "").strip()
+    if esperado:
         _verificar_cron_secreto(secret or None)
     res = configurar_bot_token(token, cargar_config())
     if res.get("ok") and res.get("bot_token"):
@@ -3287,7 +3288,7 @@ def api_telegram_guardar_token(token: str = "", secret: str = ""):
             mem = cargar_memoria()
             mem = telegram_a_memoria(mem, token=str(res["bot_token"]), bot=str(res.get("bot") or ""))
             guardar_memoria(mem)
-            res.pop("bot_token", None)  # no devolver token al cliente
+            res.pop("bot_token", None)
         except Exception as e:
             print(f"[TELEGRAM] persist memoria: {e}")
             res.pop("bot_token", None)
@@ -3298,20 +3299,14 @@ def api_telegram_guardar_token(token: str = "", secret: str = ""):
 
 @app.post("/api/telegram-guardar-token")
 async def api_telegram_guardar_token_post(request: Request):
-    """JSON: {"token":"123:AA...","secret":"..."}."""
-    from whatsapp_alerta import configurar_bot_token, leer_bot_token_guardado
+    """JSON: {"token":"123:AA..."}. Sin CRON_SECRET: el token ya es la credencial."""
+    from whatsapp_alerta import configurar_bot_token
 
     body = {}
     try:
         body = await request.json()
     except Exception:
         body = {}
-    secret = str((body or {}).get("secret") or "")
-    ya_hay = bool(
-        os.environ.get("TELEGRAM_BOT_TOKEN", "").strip() or leer_bot_token_guardado()
-    )
-    if ya_hay:
-        _verificar_cron_secreto(secret or None)
     res = configurar_bot_token(str((body or {}).get("token") or ""), cargar_config())
     if res.get("ok") and res.get("bot_token"):
         try:
