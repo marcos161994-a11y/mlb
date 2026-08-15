@@ -1317,6 +1317,121 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     }
 
 
+def vigilancia_t60(
+    juegos: list[dict],
+    memoria: dict | None = None,
+    cfg: dict | None = None,
+) -> dict:
+    """
+    Detecta juegos PROGRAMADOS cerca del T-60 / inicio sin pick congelado.
+    Sirve para avisar en el panel antes de que se pierda el paper.
+    """
+    cfg = cfg or {}
+    memoria = memoria or {}
+    mins_antes = int(cfg.get("minutos_antes_juego", 60))
+    gracia = float(cfg.get("minutos_gracia_bloqueo", 30))
+    ventana_pre = float(mins_antes) + 30.0  # p.ej. 90 min si T-60
+
+    fecha = fecha_str()
+    dia = dia_por_fecha(memoria, fecha) if memoria else None
+    if not dia and memoria:
+        try:
+            dia = dia_operativo(memoria)
+        except Exception:
+            dia = None
+    ya = {
+        str(p.get("game_id"))
+        for p in ((dia or {}).get("predicciones") or [])
+        if (p.get("pick") or "").strip()
+    }
+
+    ahora = ahora_simulado()
+    en_riesgo: list[dict] = []
+    congelados = 0
+    programados = 0
+
+    for j in juegos or []:
+        estado = j.get("estado")
+        gid = str(j.get("id") or "")
+        if estado == "PROGRAMADO":
+            programados += 1
+        if gid in ya:
+            if estado in ("PROGRAMADO", "EN VIVO"):
+                congelados += 1
+            continue
+        if estado not in ("PROGRAMADO", "EN VIVO"):
+            continue
+        if not (j.get("pick") or "").strip():
+            continue
+
+        mins_a_inicio = None
+        raw_ini = j.get("inicio_juego")
+        try:
+            if raw_ini:
+                ini = datetime.fromisoformat(str(raw_ini))
+                if ini.tzinfo is None:
+                    ini = ini.replace(tzinfo=tz_experimento())
+                mins_a_inicio = (ini - ahora).total_seconds() / 60.0
+        except Exception:
+            mins_a_inicio = None
+
+        riesgo = False
+        motivo = ""
+        if estado == "PROGRAMADO" and mins_a_inicio is not None:
+            if -gracia <= mins_a_inicio <= ventana_pre:
+                riesgo = True
+                if mins_a_inicio <= mins_antes:
+                    motivo = f"T-60 pasado · faltan {mins_a_inicio:.0f} min al inicio"
+                else:
+                    motivo = f"Se acerca T-60 · faltan {mins_a_inicio:.0f} min"
+        elif estado == "EN VIVO":
+            mins_desde = _minutos_desde_inicio(j)
+            if mins_desde is not None and mins_desde <= gracia:
+                riesgo = True
+                motivo = f"EN VIVO sin congelar · {mins_desde:.0f} min de juego (gracia)"
+
+        if riesgo:
+            en_riesgo.append(
+                {
+                    "id": gid,
+                    "visitante": j.get("visitante"),
+                    "home": j.get("home"),
+                    "pick": j.get("pick"),
+                    "estado": estado,
+                    "hora_inicio_txt": j.get("hora_inicio_txt"),
+                    "mins_a_inicio": round(mins_a_inicio, 1) if mins_a_inicio is not None else None,
+                    "motivo": motivo,
+                }
+            )
+
+    en_riesgo.sort(key=lambda x: (x.get("mins_a_inicio") is None, x.get("mins_a_inicio") or 0))
+    n = len(en_riesgo)
+    if n == 0:
+        mensaje = "Vigilancia T-60 OK · sin juegos en riesgo ahora"
+        nivel = "ok"
+    elif n == 1:
+        g0 = en_riesgo[0]
+        mensaje = (
+            f"⚠ Sin pick fijo: {g0.get('visitante')} @ {g0.get('home')} "
+            f"· {g0.get('motivo')}"
+        )
+        nivel = "alerta"
+    else:
+        mensaje = f"⚠ {n} juegos sin pick congelado cerca del T-60 / inicio"
+        nivel = "alerta"
+
+    return {
+        "ok": n == 0,
+        "nivel": nivel,
+        "mensaje": mensaje,
+        "en_riesgo": en_riesgo[:8],
+        "total_riesgo": n,
+        "congelados_activos": congelados,
+        "programados": programados,
+        "cron_cada_min": 5,
+    }
+
+
 def rellenar_predicciones_fecha(memoria: dict, fecha: str) -> int:
     """
     Ya NO inventa picks a posteriori.
@@ -2404,6 +2519,7 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
             "shadow": bool((cfg.get("mente") or {}).get("shadow", False)),
             "stats": mente_stats_meta,
         },
+        "vigilancia": vigilancia_t60(juegos, memoria, cfg),
     }
 
 
@@ -2618,6 +2734,7 @@ def api_health():
             "min_confianza": int((cfg.get("mente") or {}).get("min_confianza") or 3),
             "shadow": bool((cfg.get("mente") or {}).get("shadow", False)),
         },
+        "vigilancia_cron_min": 5,
         "whatsapp": whatsapp_disponible(cfg),
         "telegram": telegram_disponible(cfg),
         "alertas": alerta_disponible(cfg),

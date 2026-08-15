@@ -455,6 +455,7 @@
     </details>
 
     <p class="meta-line" id="lineas-status" style="color:#ffbc00;"></p>
+    <p class="meta-line" id="vigilancia-status" style="color:#8899aa;"></p>
     <p class="meta-line" id="proximo-bloqueo"></p>
 </div>
 
@@ -896,6 +897,23 @@ function pintarEstado(data) {
     } else {
         ls.style.color = '#ffbc00';
         ls.textContent = '⚠ ' + redactar(lin.mensaje || 'Sin cuotas de internet');
+    }
+
+    const vs = document.getElementById('vigilancia-status');
+    const vig = data.vigilancia || {};
+    if (vs) {
+        if (vig.nivel === 'alerta') {
+            vs.style.color = '#ffbc00';
+            const detalle = (vig.en_riesgo || []).slice(0, 2).map(g =>
+                (g.visitante || '?').split(' ').pop() + '@' + (g.home || '?').split(' ').pop()
+            ).join(' · ');
+            vs.textContent = (vig.mensaje || 'Juegos sin congelar') + (detalle ? ' · ' + detalle : '') +
+                ' · toca “Forzar bloqueos” o abre el panel cerca del T-60';
+        } else {
+            vs.style.color = '#00ff88';
+            vs.textContent = vig.mensaje ||
+                ('Vigilancia T-60 OK · cron cada ' + (vig.cron_cada_min || 5) + ' min');
+        }
     }
 
     const avisoSum = document.querySelector('#aviso-real summary');
