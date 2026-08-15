@@ -21,6 +21,9 @@ FIXTURE = {
                                 "provider": {"name": "DraftKings"},
                                 "away": {"moneyLine": 152},
                                 "home": {"moneyLine": -163},
+                                "overUnder": 8.5,
+                                "overOdds": -110,
+                                "underOdds": -110,
                                 "awayTeamOdds": {
                                     "moneyLine": 152,
                                     "team": {"displayName": "Seattle Mariners"},
@@ -56,6 +59,32 @@ def test_parsear_moneyline_espn():
     assert fila["away"]["american"] == 152
     assert abs(fila["home"]["decimal"] - american_a_decimal(-163)) < 0.001
     assert fila["home"]["casa"] == "draftkings"
+    assert fila["total"]["linea"] == 8.5
+    assert fila["total"]["over_american"] == -110
+    assert fila["total"]["under_american"] == -110
+
+
+def test_aplicar_total_aunque_ml_ya_exista(monkeypatch):
+    from lineas_espn import aplicar_lineas_espn, parsear_eventos_espn
+
+    mapa = parsear_eventos_espn(FIXTURE)
+    monkeypatch.setattr(
+        "lineas_espn.obtener_lineas_espn",
+        lambda timeout=12.0: (mapa, {"ok": True, "partidos": 1, "mensaje": "test"}),
+    )
+    juegos = [
+        {
+            "visitante": "Seattle Mariners",
+            "home": "New York Yankees",
+            "odds_away_decimal": 2.5,
+            "odds_home_decimal": 1.6,
+            "lineas_fuente": "draftkings",
+        }
+    ]
+    juegos, meta = aplicar_lineas_espn(juegos, {}, solo_vacios=True)
+    assert juegos[0]["total_linea"] == 8.5
+    assert juegos[0]["lineas_total"]["linea"] == 8.5
+    assert meta.get("totales_aplicados") == 1
 
 
 def test_aplicar_espn_solo_vacios():

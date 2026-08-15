@@ -8,7 +8,7 @@ cuenta para ML + lecciones, NO para win rate del panel.
 from __future__ import annotations
 
 import copy
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 
@@ -130,7 +130,7 @@ def importar_dump_aprendizaje(
     memoria["dias"] = dias
 
     memoria["import_aprendizaje_meta"] = {
-        "ultimo": datetime.utcnow().isoformat() + "Z",
+        "ultimo": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "preds_vistas": preds_in,
         "preds_nuevas": preds_new,
         "lecciones_importadas": lec_in,

@@ -96,12 +96,28 @@
 
   "usar_elo": true,
 
+  "usar_inteligencia": true,
+
   "elo": {
     "peso_elo": 0.40,
     "k": 20,
     "home_adv": 24,
     "fip_liga": 4.20,
     "pitcher_scale": 28
+  },
+
+  "inteligencia": {
+    "consenso_mercado": true,
+    "bullpen_dia": true,
+    "park_umpire": true,
+    "monte_carlo": true,
+    "monte_carlo_totales": true,
+    "peso_consenso": 0.10,
+    "peso_mc": 0.22,
+    "mc_sims": 800,
+    "linea_total_default": 8.5,
+    "linea_f5_default": 4.5,
+    "umbral_señal_total": 0.58
   },
 
   "mente": {

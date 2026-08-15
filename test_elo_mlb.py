@@ -65,6 +65,25 @@ def test_fusion_mueve_probs_con_pitcher(tmp_path, monkeypatch):
     assert meta["adj_pitcher_home"] > 0
     assert meta["adj_pitcher_away"] < 0
     assert Path(tmp_path, "elo_ratings.json").exists()
+    # Segunda llamada no debe romper (equipos ya sembrados)
+    a2, h2, meta2 = elo.fusionar_probs_elo(juego, 50.0, 50.0, pa, ph, cfg)
+    assert meta2["ok"] is True
+    assert abs(a2 - a) < 0.01 and abs(h2 - h) < 0.01
+
+
+def test_fusion_sin_team_id(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    a, h, meta = elo.fusionar_probs_elo(
+        {"visitante": "A", "home": "H"},
+        60.0,
+        40.0,
+        {},
+        {},
+        {"usar_elo": True},
+    )
+    assert a == 60.0 and h == 40.0
+    assert meta.get("ok") is False
+    assert "team_id" in str(meta.get("motivo") or "")
 
 
 def test_fusion_desactivada(tmp_path, monkeypatch):

@@ -88,6 +88,14 @@ except ImportError:
     actualizar_elo_desde_juego = None  # type: ignore
 
 try:
+    from inteligencia_mlb import enriquecer_probs, clasificar_tipo_pick
+    HAS_INTEL = True
+except ImportError:
+    HAS_INTEL = False
+    enriquecer_probs = None  # type: ignore
+    clasificar_tipo_pick = None  # type: ignore
+
+try:
     import vertexai
     from vertexai.generative_models import GenerativeModel
     HAS_VERTEX = True
@@ -751,6 +759,7 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         # Inicializamos valores para evitar signos de pregunta en la interfaz
         juego.setdefault("probPick", 0)
         juego.setdefault("edge", 0)
+        juego["elo"] = {"ok": False, "motivo": "esperando_pitchers", "activo": True}
         return juego
 
     # Precarga de datos para la IA
@@ -1010,20 +1019,23 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             print(f"[ML] Error en ensemble prediction: {e}")
             prob_away, prob_home = prob_est_away, prob_est_home
 
-    # Calibración: ajusta % para que reflejen frecuencia real de aciertos
-    if HAS_CALIB and cfg.get("usar_calibracion", True):
-        try:
-            antes_a, antes_h = prob_away, prob_home
-            prob_away, prob_home = calibrar_par(prob_away, prob_home, cfg)
-            if abs(prob_away - antes_a) >= 0.3 or abs(prob_home - antes_h) >= 0.3:
-                print(f"[CALIB] {antes_a}/{antes_h} → {prob_away}/{prob_home}")
-        except Exception as e:
-            print(f"[CALIB] Error: {e}")
-
     # Fusión Elo + ajuste pitcher (estilo 538 ligero)
     elo_meta: dict[str, Any] = {"ok": False, "activo": False}
     if HAS_ELO and fusionar_probs_elo and cfg.get("usar_elo", True):
         try:
+            # Semilla Elo con win% oficial si aún no hay rating
+            try:
+                recs = cargar_records(season)
+                juego.setdefault(
+                    "win_pct_away",
+                    float((recs.get(away_id) or {}).get("win_pct") or 0.5),
+                )
+                juego.setdefault(
+                    "win_pct_home",
+                    float((recs.get(home_id) or {}).get("win_pct") or 0.5),
+                )
+            except Exception:
+                pass
             antes_a, antes_h = prob_away, prob_home
             prob_away, prob_home, elo_meta = fusionar_probs_elo(
                 juego, prob_away, prob_home, pa, ph, cfg
@@ -1038,6 +1050,48 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             print(f"[ELO] Error: {e}")
             elo_meta = {"ok": False, "motivo": str(e)[:100]}
     juego["elo"] = elo_meta
+
+    # 5 capas de inteligencia (mercado, bullpen día, park/ump, tipo, Monte Carlo)
+    intel_meta: dict[str, Any] = {"ok": False, "capas": []}
+    if HAS_INTEL and enriquecer_probs and cfg.get("usar_inteligencia", True):
+        try:
+            park_pf = float(PARK_FACTORS.get(home_id, 1.0) or 1.0)
+            antes_a, antes_h = prob_away, prob_home
+            prob_away, prob_home, intel_meta = enriquecer_probs(
+                juego,
+                prob_away,
+                prob_home,
+                cfg,
+                park_factor=park_pf,
+                season=season,
+                pitcher_away=pa,
+                pitcher_home=ph,
+            )
+            if abs(prob_away - antes_a) >= 0.4 or abs(prob_home - antes_h) >= 0.4:
+                print(
+                    f"[INTEL] {juego.get('visitante')}@{juego.get('home')}: "
+                    f"{antes_a:.0f}/{antes_h:.0f} → {prob_away:.0f}/{prob_home:.0f} "
+                    f"({intel_meta.get('resumen', '')})"
+                )
+        except Exception as e:
+            print(f"[INTEL] Error: {e}")
+            intel_meta = {"ok": False, "motivo": str(e)[:120], "capas": []}
+    juego["inteligencia"] = intel_meta
+
+    # Calibración (global + por tipo_pick si hay datos)
+    if HAS_CALIB and cfg.get("usar_calibracion", True):
+        try:
+            tipo_pre = None
+            if isinstance(intel_meta, dict):
+                tipo_pre = intel_meta.get("tipo_pre") or intel_meta.get("tipo_pick")
+            antes_a, antes_h = prob_away, prob_home
+            prob_away, prob_home = calibrar_par(
+                prob_away, prob_home, cfg, tipo_pick=tipo_pre
+            )
+            if abs(prob_away - antes_a) >= 0.3 or abs(prob_home - antes_h) >= 0.3:
+                print(f"[CALIB] {antes_a}/{antes_h} → {prob_away}/{prob_home}")
+        except Exception as e:
+            print(f"[CALIB] Error: {e}")
 
     juego["probAway"] = prob_away
     juego["probHome"] = prob_home
@@ -1117,11 +1171,20 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         juego["apostable"] = True
         fuente = juego.get("lineas_fuente") or "mercado"
         juego["motivo_apuesta"] = (
-            f"Valor +{mejor['edge']:.1f}% vs {fuente} "
+            f"Valor +{mejor['edge_base']:.1f}% vs {fuente} "
             f"(modelo {mejor['prob']:.0f}% vs mercado {prob_implicita(mejor['odds']):.0f}%)"
         )
         if elo_meta.get("ok"):
             juego["motivo_apuesta"] += f" · Elo {elo_meta.get('resumen', '')[:70]}"
+        if intel_meta.get("ok") and intel_meta.get("capas"):
+            juego["motivo_apuesta"] += f" · Intel[{','.join(intel_meta.get('capas') or [])}]"
+        tot = intel_meta.get("totales") if isinstance(intel_meta.get("totales"), dict) else {}
+        if tot.get("ok") and tot.get("señal") in ("over", "under"):
+            juego["motivo_apuesta"] += (
+                f" · MC {tot['señal']} μ={tot.get('mu_total')} vs {tot.get('linea_total')}"
+            )
+        if juego.get("preferir_f5") or intel_meta.get("preferir_f5"):
+            juego["motivo_apuesta"] += " · entorno F5 (bullpen)"
         if not tiene_cuota_mercado(juego):
             marcar_estudio_sin_mercado(
                 juego, pick=mejor["pick"], prob=mejor["prob"], min_prob=min_prob
@@ -1189,6 +1252,21 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         )
         if packed:
             juego["ml_features"] = packed
+
+    # Capa 4: clasificar tipo de pick (para calibración / mente)
+    if HAS_INTEL and clasificar_tipo_pick:
+        try:
+            juego["tipo_pick"] = clasificar_tipo_pick(
+                juego,
+                prob=juego.get("probPick"),
+                odds=juego.get("odds"),
+            )
+            if isinstance(juego.get("inteligencia"), dict):
+                juego["inteligencia"]["tipo_pick"] = juego["tipo_pick"]
+        except Exception:
+            juego.setdefault("tipo_pick", "limpio")
+    else:
+        juego.setdefault("tipo_pick", "limpio")
 
     juego.pop("_features_away", None)
     juego.pop("_features_home", None)

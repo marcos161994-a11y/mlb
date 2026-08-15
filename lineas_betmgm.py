@@ -231,7 +231,21 @@ def buscar_lineas_partido(
         return mapa[(ka, kh)]
     if (kh, ka) in mapa:
         m = mapa[(kh, ka)]
-        return {"away": m.get("home"), "home": m.get("away")}
+        out = {"away": m.get("home"), "home": m.get("away")}
+        # Total O/U no depende del lado; conservar si existe
+        if isinstance(m.get("total"), dict):
+            out["total"] = dict(m["total"])
+        if isinstance(m.get("libros"), list):
+            out["libros"] = [
+                {
+                    "casa": b.get("casa"),
+                    "away": b.get("home"),
+                    "home": b.get("away"),
+                }
+                for b in m["libros"]
+                if isinstance(b, dict)
+            ]
+        return out
     return None
 
 

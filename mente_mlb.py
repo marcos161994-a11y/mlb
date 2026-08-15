@@ -157,6 +157,32 @@ def construir_briefing(juego: dict[str, Any], memoria: dict | None = None) -> di
             "adj_pitcher_home": (juego.get("elo") or {}).get("adj_pitcher_home"),
             "peso_elo": (juego.get("elo") or {}).get("peso_elo"),
         },
+        "inteligencia": {
+            "ok": bool((juego.get("inteligencia") or {}).get("ok")),
+            "capas": list((juego.get("inteligencia") or {}).get("capas") or [])[:8],
+            "resumen": str((juego.get("inteligencia") or {}).get("resumen") or "")[:160],
+            "tipo_pick": juego.get("tipo_pick")
+            or (juego.get("inteligencia") or {}).get("tipo_pick")
+            or (juego.get("inteligencia") or {}).get("tipo_pre"),
+            "consenso_n": ((juego.get("inteligencia") or {}).get("consenso") or {}).get("n_fuentes"),
+            "mc": str(((juego.get("inteligencia") or {}).get("monte_carlo") or {}).get("resumen") or "")[:80],
+            "totales": {
+                "ok": bool((juego.get("mc_totales") or (juego.get("inteligencia") or {}).get("totales") or {}).get("ok")),
+                "mu": (juego.get("mc_totales") or (juego.get("inteligencia") or {}).get("totales") or {}).get("mu_total"),
+                "mu_f5": (juego.get("mc_totales") or (juego.get("inteligencia") or {}).get("totales") or {}).get("mu_f5"),
+                "señal": (juego.get("mc_totales") or (juego.get("inteligencia") or {}).get("totales") or {}).get("señal"),
+                "señal_f5": (juego.get("mc_totales") or (juego.get("inteligencia") or {}).get("totales") or {}).get("señal_f5"),
+                "preferir_f5": bool(
+                    juego.get("preferir_f5")
+                    or (juego.get("mc_totales") or {}).get("preferir_f5")
+                    or (juego.get("inteligencia") or {}).get("preferir_f5")
+                ),
+                "resumen": str(
+                    (juego.get("mc_totales") or (juego.get("inteligencia") or {}).get("totales") or {}).get("resumen")
+                    or ""
+                )[:120],
+            },
+        },
         "pitchers": {
             "away": juego.get("pitcherAway"),
             "home": juego.get("pitcherHome"),
@@ -196,6 +222,32 @@ def construir_briefing(juego: dict[str, Any], memoria: dict | None = None) -> di
                 alertas.append("elo_discrepa")
         except (TypeError, ValueError):
             pass
+    intel_p = pilares.get("inteligencia") or {}
+    if intel_p.get("ok") and intel_p.get("capas"):
+        cons_n = intel_p.get("consenso_n") or 0
+        try:
+            disc = float(
+                ((juego.get("inteligencia") or {}).get("consenso") or {}).get(
+                    "discrepancia_casas_pct"
+                )
+                or 0
+            )
+        except (TypeError, ValueError):
+            disc = 0.0
+        if cons_n >= 2 and disc >= 6:
+            alertas.append("mercado_dividido")
+        if intel_p.get("tipo_pick") == "scratch":
+            alertas.append("tipo_scratch")
+        tot_p = intel_p.get("totales") if isinstance(intel_p.get("totales"), dict) else {}
+        if tot_p.get("ok"):
+            if tot_p.get("señal") == "over":
+                alertas.append("mc_over")
+            elif tot_p.get("señal") == "under":
+                alertas.append("mc_under")
+            if tot_p.get("preferir_f5"):
+                alertas.append("preferir_f5")
+            if tot_p.get("señal_f5") in ("over", "under") and tot_p.get("señal_f5") != tot_p.get("señal"):
+                alertas.append(f"f5_{tot_p['señal_f5']}")
 
     resumen_bits = [
         f"Pick {juego.get('pick') or '?'} @ {juego.get('probPick')}% edge={juego.get('edge')}",
@@ -203,6 +255,8 @@ def construir_briefing(juego: dict[str, Any], memoria: dict | None = None) -> di
     ]
     if elo_p.get("ok") and elo_p.get("resumen"):
         resumen_bits.append(str(elo_p["resumen"])[:90])
+    if intel_p.get("ok") and intel_p.get("resumen"):
+        resumen_bits.append(str(intel_p["resumen"])[:90])
     if alertas:
         resumen_bits.append("alertas=" + ",".join(alertas[:8]))
     if humanos.get("resumen"):
@@ -659,34 +713,51 @@ def _heuristica_conclusion(juego: dict, briefing: dict, modo: dict) -> dict[str,
         return _pack("PASAR", 0, ["Sin mercado"], 5, ["sin_cuota_real"], fuente="heuristica", briefing=briefing)
 
     conf_bonus = 1 if a_favor else 0
+    razones_extra: list[str] = []
+    if "preferir_f5" in alertas:
+        razones_extra.append("Bullpen cargado → entorno F5 más estable")
+        conf_bonus = max(0, conf_bonus)  # no sube confianza del ML full
+    if "mc_under" in alertas:
+        razones_extra.append("MC totales: entorno under")
+    elif "mc_over" in alertas:
+        razones_extra.append("MC totales: entorno over")
+    # Señal O/U fuerte + edge ML justo → más cautela (no tumba solo)
+    if ("mc_under" in alertas or "mc_over" in alertas) and edge < 7:
+        conf_bonus = min(conf_bonus, 0)
 
     if edge >= 6 and prob >= 55 and "sin_mercado" not in alertas:
         stake = 2.0 if edge < 8 else (3.0 if edge < 12 else 4.0)
         conf = 3 if edge < 8 else (4 if edge < 12 else 5)
         conf = min(5, conf + conf_bonus)
+        razones = [f"Edge +{edge:.1f}% con contexto limpio", f"Prob {prob:.0f}%"]
+        razones.extend(razones_extra[:2])
         return _pack(
             "APOSTAR",
             stake,
-            [f"Edge +{edge:.1f}% con contexto limpio", f"Prob {prob:.0f}%"],
+            razones,
             conf,
             lec_ids[:2],
             fuente="heuristica",
             briefing=briefing,
         )
     if edge >= 4 and prob >= 58:
+        razones = ["Spot marginal: esperar mejor precio o confirmación"]
+        razones.extend(razones_extra[:1])
         return _pack(
             "ESPERAR",
             0,
-            ["Spot marginal: esperar mejor precio o confirmación"],
+            razones,
             2,
             lec_ids[:1],
             fuente="heuristica",
             briefing=briefing,
         )
+    razones = ["No hay valor claro"]
+    razones.extend(razones_extra[:1])
     return _pack(
         "PASAR",
         0,
-        ["No hay valor claro"],
+        razones,
         3,
         lec_ids[:1],
         fuente="heuristica",
