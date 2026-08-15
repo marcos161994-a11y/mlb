@@ -456,6 +456,7 @@
 
     <p class="meta-line" id="lineas-status" style="color:#ffbc00;"></p>
     <p class="meta-line" id="vigilancia-status" style="color:#8899aa;"></p>
+    <p class="meta-line" id="mente-errores-status" style="color:#8899aa;"></p>
     <p class="meta-line" id="proximo-bloqueo"></p>
 </div>
 
@@ -913,6 +914,26 @@ function pintarEstado(data) {
             vs.style.color = '#00ff88';
             vs.textContent = vig.mensaje ||
                 ('Vigilancia T-60 OK · cron cada ' + (vig.cron_cada_min || 5) + ' min');
+        }
+    }
+
+    const mes = document.getElementById('mente-errores-status');
+    const me = data.mente_errores || {};
+    if (mes) {
+        if (!me.activo) {
+            mes.style.color = '#8899aa';
+            mes.textContent = 'Mente errores off';
+        } else if (me.nivel === 'alerta') {
+            mes.style.color = '#ffbc00';
+            const ov = me.overrides || {};
+            const tip = ov['lineas.proveedor'] ? (' · override ' + ov['lineas.proveedor']) : '';
+            mes.textContent = (me.mensaje || 'Mente errores · remediando') + tip;
+        } else if (me.nivel === 'aviso') {
+            mes.style.color = '#ffd166';
+            mes.textContent = me.mensaje || 'Mente errores · aviso';
+        } else {
+            mes.style.color = '#00ff88';
+            mes.textContent = me.mensaje || 'Mente errores OK';
         }
     }
 

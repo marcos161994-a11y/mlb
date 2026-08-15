@@ -92,11 +92,20 @@
 
   "usar_mente": true,
 
+  "usar_mente_errores": true,
+
   "mente": {
     "modo": "normal",
     "min_confianza": 3,
     "requiere_mercado": true,
     "shadow": false
+  },
+
+  "mente_errores": {
+    "activo": true,
+    "auto_remediar": true,
+    "notificar": true,
+    "cooldown_alerta_min": 360
   },
 
   "whatsapp": {
