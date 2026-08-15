@@ -901,6 +901,27 @@ def _liquidar_dia_con_juegos(memoria: dict, dia: dict, juegos: list) -> int:
     preds = dia.get("predicciones", [])
     por_id = {str(g["id"]): g for g in juegos}
     cambios = 0
+
+    # Elo: actualizar ratings con finales (idempotente por game_id)
+    try:
+        from elo_mlb import actualizar_elo_desde_juego
+
+        cfg_elo = cargar_config()
+        if cfg_elo.get("usar_elo", True):
+            for juego in juegos:
+                if not _juego_finalizado(juego):
+                    continue
+                if not _ganador_oficial(juego):
+                    continue
+                r = actualizar_elo_desde_juego(juego, cfg_elo)
+                if r.get("ok") and not r.get("omitido"):
+                    print(
+                        f"[ELO] Actualizado {juego.get('visitante')}@{juego.get('home')}: "
+                        f"{r.get('ganador')} away {r.get('away')} home {r.get('home')}"
+                    )
+    except Exception as e:
+        print(f"[ELO] aviso liquidación: {e}")
+
     for apuesta in dia.get("apuestas", []):
         juego = por_id.get(str(apuesta.get("game_id") or ""))
         if not juego:
@@ -2785,6 +2806,11 @@ def api_health():
         "pitcher_avanzado": {
             "activo": True,
             "metricas": ["fip", "xfip", "k_pct", "bb_pct"],
+        },
+        "elo": {
+            "activo": bool(cfg.get("usar_elo", True)),
+            "peso_elo": float((cfg.get("elo") or {}).get("peso_elo") or 0.40),
+            "home_adv": float((cfg.get("elo") or {}).get("home_adv") or 24),
         },
         "odds": {
             "activo": not bool(cfg.get("modo_solo_modelo")),

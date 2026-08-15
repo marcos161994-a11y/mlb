@@ -80,6 +80,14 @@ except ImportError:
     HAS_HISTORICO = False
 
 try:
+    from elo_mlb import fusionar_probs_elo, actualizar_elo_desde_juego
+    HAS_ELO = True
+except ImportError:
+    HAS_ELO = False
+    fusionar_probs_elo = None  # type: ignore
+    actualizar_elo_desde_juego = None  # type: ignore
+
+try:
     import vertexai
     from vertexai.generative_models import GenerativeModel
     HAS_VERTEX = True
@@ -1012,6 +1020,25 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         except Exception as e:
             print(f"[CALIB] Error: {e}")
 
+    # Fusión Elo + ajuste pitcher (estilo 538 ligero)
+    elo_meta: dict[str, Any] = {"ok": False, "activo": False}
+    if HAS_ELO and fusionar_probs_elo and cfg.get("usar_elo", True):
+        try:
+            antes_a, antes_h = prob_away, prob_home
+            prob_away, prob_home, elo_meta = fusionar_probs_elo(
+                juego, prob_away, prob_home, pa, ph, cfg
+            )
+            if abs(prob_away - antes_a) >= 0.5 or abs(prob_home - antes_h) >= 0.5:
+                print(
+                    f"[ELO] {juego.get('visitante')}@{juego.get('home')}: "
+                    f"{antes_a:.0f}/{antes_h:.0f} → {prob_away:.0f}/{prob_home:.0f} "
+                    f"({elo_meta.get('resumen', '')})"
+                )
+        except Exception as e:
+            print(f"[ELO] Error: {e}")
+            elo_meta = {"ok": False, "motivo": str(e)[:100]}
+    juego["elo"] = elo_meta
+
     juego["probAway"] = prob_away
     juego["probHome"] = prob_home
     juego["fuerzaAway"] = f_away
@@ -1093,6 +1120,8 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             f"Valor +{mejor['edge']:.1f}% vs {fuente} "
             f"(modelo {mejor['prob']:.0f}% vs mercado {prob_implicita(mejor['odds']):.0f}%)"
         )
+        if elo_meta.get("ok"):
+            juego["motivo_apuesta"] += f" · Elo {elo_meta.get('resumen', '')[:70]}"
         if not tiene_cuota_mercado(juego):
             marcar_estudio_sin_mercado(
                 juego, pick=mejor["pick"], prob=mejor["prob"], min_prob=min_prob
