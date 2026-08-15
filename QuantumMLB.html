@@ -932,7 +932,8 @@ function pintarEstado(data) {
             avisoBody.innerHTML =
                 '1 h antes se evalúa pitchers + stats + cuota de internet. ' +
                 'Solo se apuesta con valor vs la casa (borde verde). ' +
-                'Si OddsPapi falla (key o cupo), se pausa sola y usa moneyline ESPN/DraftKings. ' +
+                'Cuotas por defecto: ESPN/DraftKings (sin API key). ' +
+                'OddsPapi solo si regeneras key y hay cupo. ' +
                 `Máximo ${estr.max_apuestas_dia || 5} apuestas/día.`;
         }
     }

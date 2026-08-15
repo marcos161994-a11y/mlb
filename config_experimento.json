@@ -18,11 +18,11 @@
 
   "lineas": {
 
-    "casa": "pinnacle",
+    "casa": "draftkings",
 
-    "bookmakers": "pinnacle,draftkings",
+    "bookmakers": "draftkings",
 
-    "proveedor": "oddspapi",
+    "proveedor": "espn",
 
     "api_version": "v5",
 
