@@ -1312,6 +1312,10 @@ def guardar_prediccion(
             if isinstance(juego.get("inteligencia"), dict)
             else None,
             "elo": juego.get("elo") if isinstance(juego.get("elo"), dict) else None,
+            "mc_totales": juego.get("mc_totales")
+            if isinstance(juego.get("mc_totales"), dict)
+            else None,
+            "preferir_f5": bool(juego.get("preferir_f5")),
         }
     )
     return True
@@ -2830,10 +2834,17 @@ def api_health():
                 "park_umpire",
                 "tipo_pick",
                 "monte_carlo",
+                "mc_totales_f5",
             ],
             "peso_consenso": float((cfg.get("inteligencia") or {}).get("peso_consenso") or 0.10),
             "peso_mc": float((cfg.get("inteligencia") or {}).get("peso_mc") or 0.22),
             "mc_sims": int((cfg.get("inteligencia") or {}).get("mc_sims") or 800),
+            "monte_carlo_totales": bool(
+                (cfg.get("inteligencia") or {}).get("monte_carlo_totales", True)
+            ),
+            "linea_total_default": float(
+                (cfg.get("inteligencia") or {}).get("linea_total_default") or 8.5
+            ),
         },
         "odds": {
             "activo": not bool(cfg.get("modo_solo_modelo")),

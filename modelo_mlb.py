@@ -1064,6 +1064,8 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
                 cfg,
                 park_factor=park_pf,
                 season=season,
+                pitcher_away=pa,
+                pitcher_home=ph,
             )
             if abs(prob_away - antes_a) >= 0.4 or abs(prob_home - antes_h) >= 0.4:
                 print(
@@ -1176,6 +1178,13 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             juego["motivo_apuesta"] += f" · Elo {elo_meta.get('resumen', '')[:70]}"
         if intel_meta.get("ok") and intel_meta.get("capas"):
             juego["motivo_apuesta"] += f" · Intel[{','.join(intel_meta.get('capas') or [])}]"
+        tot = intel_meta.get("totales") if isinstance(intel_meta.get("totales"), dict) else {}
+        if tot.get("ok") and tot.get("señal") in ("over", "under"):
+            juego["motivo_apuesta"] += (
+                f" · MC {tot['señal']} μ={tot.get('mu_total')} vs {tot.get('linea_total')}"
+            )
+        if juego.get("preferir_f5") or intel_meta.get("preferir_f5"):
+            juego["motivo_apuesta"] += " · entorno F5 (bullpen)"
         if not tiene_cuota_mercado(juego):
             marcar_estudio_sin_mercado(
                 juego, pick=mejor["pick"], prob=mejor["prob"], min_prob=min_prob

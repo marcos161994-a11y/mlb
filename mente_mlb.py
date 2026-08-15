@@ -166,6 +166,22 @@ def construir_briefing(juego: dict[str, Any], memoria: dict | None = None) -> di
             or (juego.get("inteligencia") or {}).get("tipo_pre"),
             "consenso_n": ((juego.get("inteligencia") or {}).get("consenso") or {}).get("n_fuentes"),
             "mc": str(((juego.get("inteligencia") or {}).get("monte_carlo") or {}).get("resumen") or "")[:80],
+            "totales": {
+                "ok": bool((juego.get("mc_totales") or (juego.get("inteligencia") or {}).get("totales") or {}).get("ok")),
+                "mu": (juego.get("mc_totales") or (juego.get("inteligencia") or {}).get("totales") or {}).get("mu_total"),
+                "mu_f5": (juego.get("mc_totales") or (juego.get("inteligencia") or {}).get("totales") or {}).get("mu_f5"),
+                "señal": (juego.get("mc_totales") or (juego.get("inteligencia") or {}).get("totales") or {}).get("señal"),
+                "señal_f5": (juego.get("mc_totales") or (juego.get("inteligencia") or {}).get("totales") or {}).get("señal_f5"),
+                "preferir_f5": bool(
+                    juego.get("preferir_f5")
+                    or (juego.get("mc_totales") or {}).get("preferir_f5")
+                    or (juego.get("inteligencia") or {}).get("preferir_f5")
+                ),
+                "resumen": str(
+                    (juego.get("mc_totales") or (juego.get("inteligencia") or {}).get("totales") or {}).get("resumen")
+                    or ""
+                )[:120],
+            },
         },
         "pitchers": {
             "away": juego.get("pitcherAway"),
@@ -222,6 +238,16 @@ def construir_briefing(juego: dict[str, Any], memoria: dict | None = None) -> di
             alertas.append("mercado_dividido")
         if intel_p.get("tipo_pick") == "scratch":
             alertas.append("tipo_scratch")
+        tot_p = intel_p.get("totales") if isinstance(intel_p.get("totales"), dict) else {}
+        if tot_p.get("ok"):
+            if tot_p.get("señal") == "over":
+                alertas.append("mc_over")
+            elif tot_p.get("señal") == "under":
+                alertas.append("mc_under")
+            if tot_p.get("preferir_f5"):
+                alertas.append("preferir_f5")
+            if tot_p.get("señal_f5") in ("over", "under") and tot_p.get("señal_f5") != tot_p.get("señal"):
+                alertas.append(f"f5_{tot_p['señal_f5']}")
 
     resumen_bits = [
         f"Pick {juego.get('pick') or '?'} @ {juego.get('probPick')}% edge={juego.get('edge')}",

@@ -109,6 +109,7 @@ def test_enriquecer_probs_pipeline():
         "lineas_fuente": "espn",
         "elo": {"ok": True, "elo_adj_away": 1490, "elo_adj_home": 1520},
         "factores_humanos": {"sesgo_umpire_runs": 0.0},
+        "clima": {"ok": True, "run_env": 0.0},
     }
     cfg = {
         "usar_inteligencia": True,
@@ -116,17 +117,72 @@ def test_enriquecer_probs_pipeline():
             "bullpen_dia": False,  # evita red en test
             "park_umpire": True,
             "monte_carlo": True,
+            "monte_carlo_totales": True,
             "consenso_mercado": True,
             "peso_mc": 0.2,
             "mc_sims": 200,
             "peso_consenso": 0.1,
         },
-        "elo": {"home_adv": 24},
-        "estrategia": {"analizar_bullpen": True},
+        "elo": {"home_adv": 24, "fip_liga": 4.2},
+        "estrategia": {"analizar_bullpen": True, "preferir_f5_bullpen_debil": True},
     }
     with patch.object(intel, "analizar_bullpen_dia", return_value={"ok": False, "fatiga": 0.3}):
-        a, h, meta = intel.enriquecer_probs(juego, 52.0, 48.0, cfg, park_factor=1.05, season=2026)
+        a, h, meta = intel.enriquecer_probs(
+            juego,
+            52.0,
+            48.0,
+            cfg,
+            park_factor=1.05,
+            season=2026,
+            pitcher_away={"fip": 4.5},
+            pitcher_home={"fip": 3.8},
+        )
     assert abs(a + h - 100) < 0.3
     assert meta.get("ok") is True
     assert "consenso" in (meta.get("capas") or []) or meta.get("consenso", {}).get("ok")
     assert juego.get("inteligencia") is meta
+    assert meta.get("totales", {}).get("ok") is True
+    assert "mc_totales" in (meta.get("capas") or [])
+
+
+def test_lambda_coors_sube():
+    neutro = intel.lambda_carreras_equipo(
+        fip_pitcher_rival=4.2, park_factor=1.0, run_env=0.0, es_local=True
+    )
+    coors = intel.lambda_carreras_equipo(
+        fip_pitcher_rival=4.2, park_factor=1.35, run_env=0.0, es_local=True
+    )
+    assert coors > neutro
+
+
+def test_monte_carlo_totales_under_en_frio():
+    # Pitchers elite + park muerto + clima frío → under vs 8.5
+    out = intel.monte_carlo_totales(
+        fip_away_pitcher=2.8,
+        fip_home_pitcher=2.9,
+        park_factor=0.92,
+        run_env=-1.2,
+        fatiga_bp_away=0.2,
+        fatiga_bp_home=0.2,
+        linea_total=8.5,
+        linea_f5=4.5,
+        n=500,
+        seed=99,
+        umbral_señal=0.55,
+    )
+    assert out["ok"] is True
+    assert out["mu_total"] < 8.5
+    assert out["señal"] in ("under", "neutro")
+    assert out["mu_f5"] < out["mu_total"]
+
+
+def test_monte_carlo_totales_preferir_f5_bullpen():
+    out = intel.monte_carlo_totales(
+        fip_away_pitcher=4.2,
+        fip_home_pitcher=4.2,
+        fatiga_bp_away=0.7,
+        fatiga_bp_home=0.6,
+        n=200,
+        seed=3,
+    )
+    assert out["preferir_f5"] is True

@@ -5,7 +5,8 @@
 2) Bullpen del día — pitches de relevistas en el último juego
 3) Park + umpire — refuerzo sobre las %
 4) Tipo de pick — favorito_alto / underdog / scratch / limpio (para calibrar)
-5) Monte Carlo — simulación ligera Elo+pitcher
+5) Monte Carlo — simulación ligera Elo+pitcher (ML)
+   + 5b) Monte Carlo de carreras → totales y F5 (señal, sin inventar cuota)
 
 No inventa cuotas ni mueve dinero solo: ajusta probabilidades y metadatos.
 """
@@ -417,6 +418,257 @@ def fusionar_con_montecarlo(
 
 
 # ---------------------------------------------------------------------------
+# 5b) Monte Carlo de carreras → totales + F5
+# ---------------------------------------------------------------------------
+
+_FRAC_F5 = 0.56  # ~carreras típicas en primeras 5 entradas
+_BASE_RPG = 4.40  # carreras/equipo MLB aprox
+
+
+def _poisson(rng: random.Random, lam: float) -> int:
+    """Muestreo Poisson (Knuth); lam típico 2–6 → OK para sims ligeras."""
+    lam = max(0.05, float(lam))
+    if lam > 30:
+        # Normal approx para evitar bucles largos
+        return max(0, int(round(rng.gauss(lam, math.sqrt(lam)))))
+    L = math.exp(-lam)
+    k = 0
+    p = 1.0
+    while p > L:
+        k += 1
+        p *= rng.random()
+    return k - 1
+
+
+def _fip_safe(pitcher: dict | None, fip_liga: float) -> float:
+    if not isinstance(pitcher, dict):
+        return float(fip_liga)
+    try:
+        f = float(pitcher.get("fip") or pitcher.get("era") or fip_liga)
+    except (TypeError, ValueError):
+        f = float(fip_liga)
+    return max(2.0, min(7.0, f))
+
+
+def lambda_carreras_equipo(
+    *,
+    fip_pitcher_rival: float,
+    park_factor: float = 1.0,
+    run_env: float = 0.0,
+    fatiga_bullpen_rival: float = 0.3,
+    es_local: bool = False,
+    fip_liga: float = 4.20,
+    fraccion: float = 1.0,
+) -> float:
+    """
+    λ de carreras esperadas de un equipo.
+    Más FIP del rival / park ofensivo / clima alto / bullpen rival cansado → más λ.
+    """
+    park = 1.0 + (float(park_factor) - 1.0) * (0.65 if es_local else 0.45)
+    clima = 1.0 + float(run_env) * 0.06
+    fip_r = max(2.2, min(6.8, float(fip_pitcher_rival)))
+    pitcher = (fip_r / max(2.5, float(fip_liga))) ** 0.85
+    fat = max(0.0, min(1.0, float(fatiga_bullpen_rival)))
+    # En juego completo el bullpen pesa; en F5 casi no
+    if fraccion < 0.7:
+        bp = 1.0 + 0.05 * fat
+    else:
+        bp = 1.0 + 0.22 * fat
+    home_boost = 1.04 if es_local else 1.0
+    lam = _BASE_RPG * park * clima * pitcher * bp * home_boost * max(0.15, float(fraccion))
+    return max(1.2, min(9.0, lam))
+
+
+def _linea_total_juego(juego: dict[str, Any], default: float) -> float:
+    for key in ("total_linea", "linea_total", "total_line"):
+        v = juego.get(key)
+        if v is not None:
+            try:
+                return float(v)
+            except (TypeError, ValueError):
+                pass
+    lt = juego.get("lineas_total") if isinstance(juego.get("lineas_total"), dict) else {}
+    for key in ("linea", "total", "line"):
+        if lt.get(key) is not None:
+            try:
+                return float(lt[key])
+            except (TypeError, ValueError):
+                pass
+    return float(default)
+
+
+def _señal_umbral(p_over: float, p_under: float, umbral: float) -> str:
+    if p_over >= umbral and p_over >= p_under:
+        return "over"
+    if p_under >= umbral and p_under >= p_over:
+        return "under"
+    return "neutro"
+
+
+def monte_carlo_totales(
+    *,
+    fip_away_pitcher: float,
+    fip_home_pitcher: float,
+    park_factor: float = 1.0,
+    run_env: float = 0.0,
+    fatiga_bp_away: float = 0.3,
+    fatiga_bp_home: float = 0.3,
+    fip_liga: float = 4.20,
+    linea_total: float = 8.5,
+    linea_f5: float = 4.5,
+    n: int = 800,
+    seed: int | None = None,
+    umbral_señal: float = 0.58,
+) -> dict[str, Any]:
+    """
+    Simula carreras (Poisson) → distribución de total del juego y F5.
+    No inventa cuota: solo proyección + señal over/under/neutro.
+    """
+    n_eff = max(80, int(n))
+    rng = random.Random(seed)
+
+    # Away batea vs pitcher home; home batea vs pitcher away
+    lam_a = lambda_carreras_equipo(
+        fip_pitcher_rival=fip_home_pitcher,
+        park_factor=park_factor,
+        run_env=run_env,
+        fatiga_bullpen_rival=fatiga_bp_home,
+        es_local=False,
+        fip_liga=fip_liga,
+        fraccion=1.0,
+    )
+    lam_h = lambda_carreras_equipo(
+        fip_pitcher_rival=fip_away_pitcher,
+        park_factor=park_factor,
+        run_env=run_env,
+        fatiga_bullpen_rival=fatiga_bp_away,
+        es_local=True,
+        fip_liga=fip_liga,
+        fraccion=1.0,
+    )
+    lam_a_f5 = lam_a * _FRAC_F5
+    lam_h_f5 = lam_h * _FRAC_F5
+
+    totals: list[int] = []
+    totals_f5: list[int] = []
+    for _ in range(n_eff):
+        ra, rh = _poisson(rng, lam_a), _poisson(rng, lam_h)
+        totals.append(ra + rh)
+        totals_f5.append(_poisson(rng, lam_a_f5) + _poisson(rng, lam_h_f5))
+
+    totals.sort()
+    totals_f5.sort()
+
+    def _pct(xs: list[int], q: float) -> float:
+        if not xs:
+            return 0.0
+        i = min(len(xs) - 1, max(0, int(q * (len(xs) - 1))))
+        return float(xs[i])
+
+    mu = sum(totals) / n_eff
+    mu_f5 = sum(totals_f5) / n_eff
+    p_over = sum(1 for t in totals if t > linea_total) / n_eff
+    p_under = sum(1 for t in totals if t < linea_total) / n_eff
+    p_over_f5 = sum(1 for t in totals_f5 if t > linea_f5) / n_eff
+    p_under_f5 = sum(1 for t in totals_f5 if t < linea_f5) / n_eff
+
+    señal = _señal_umbral(p_over, p_under, umbral_señal)
+    señal_f5 = _señal_umbral(p_over_f5, p_under_f5, umbral_señal)
+
+    # Bullpen débil → el total full es más ruidoso; F5 más estable
+    preferir_f5 = max(fatiga_bp_away, fatiga_bp_home) >= 0.55 or (
+        fatiga_bp_away + fatiga_bp_home
+    ) >= 1.0
+
+    return {
+        "ok": True,
+        "n": n_eff,
+        "lambda_away": round(lam_a, 2),
+        "lambda_home": round(lam_h, 2),
+        "mu_total": round(mu, 2),
+        "mu_f5": round(mu_f5, 2),
+        "p10": _pct(totals, 0.10),
+        "p50": _pct(totals, 0.50),
+        "p90": _pct(totals, 0.90),
+        "linea_total": float(linea_total),
+        "linea_f5": float(linea_f5),
+        "p_over": round(p_over * 100.0, 1),
+        "p_under": round(p_under * 100.0, 1),
+        "p_over_f5": round(p_over_f5 * 100.0, 1),
+        "p_under_f5": round(p_under_f5 * 100.0, 1),
+        "señal": señal,
+        "señal_f5": señal_f5,
+        "preferir_f5": preferir_f5,
+        "resumen": (
+            f"MC totales μ={mu:.1f} (F5 {mu_f5:.1f}) vs {linea_total} "
+            f"→ {señal} {max(p_over, p_under)*100:.0f}%"
+            + (f" · F5→{señal_f5}" if señal_f5 != "neutro" else "")
+            + (" · preferir F5 (bullpen)" if preferir_f5 else "")
+        ),
+    }
+
+
+def proyectar_totales_juego(
+    juego: dict[str, Any],
+    cfg: dict | None = None,
+    *,
+    park_factor: float = 1.0,
+    pitcher_away: dict | None = None,
+    pitcher_home: dict | None = None,
+    fatiga_bp_away: float = 0.3,
+    fatiga_bp_home: float = 0.3,
+) -> dict[str, Any]:
+    """Wrapper: lee clima/FIP/línea del juego y corre MC totales+F5."""
+    cfg = cfg or {}
+    intel_cfg = cfg.get("inteligencia") if isinstance(cfg.get("inteligencia"), dict) else {}
+    elo_cfg = cfg.get("elo") if isinstance(cfg.get("elo"), dict) else {}
+    fip_liga = float(elo_cfg.get("fip_liga") or 4.20)
+    clima = juego.get("clima") if isinstance(juego.get("clima"), dict) else {}
+    try:
+        run_env = float(clima.get("run_env") or 0.0)
+    except (TypeError, ValueError):
+        run_env = 0.0
+
+    pa = pitcher_away if isinstance(pitcher_away, dict) else {}
+    ph = pitcher_home if isinstance(pitcher_home, dict) else {}
+    # Fallback a campos ya escritos en el juego
+    if not pa.get("fip") and juego.get("pitcherAwayFip") is not None:
+        pa = {**pa, "fip": juego.get("pitcherAwayFip")}
+    if not ph.get("fip") and juego.get("pitcherHomeFip") is not None:
+        ph = {**ph, "fip": juego.get("pitcherHomeFip")}
+
+    linea_def = float(intel_cfg.get("linea_total_default") or 8.5)
+    linea_f5_def = float(intel_cfg.get("linea_f5_default") or 4.5)
+    linea = _linea_total_juego(juego, linea_def)
+    try:
+        linea_f5 = float(juego.get("linea_f5") or linea_f5_def)
+    except (TypeError, ValueError):
+        linea_f5 = linea_f5_def
+
+    n_mc = int(intel_cfg.get("mc_sims") or 800)
+    seed = 42
+    try:
+        seed = int(juego.get("id") or 0) % 100000
+    except (TypeError, ValueError):
+        pass
+
+    return monte_carlo_totales(
+        fip_away_pitcher=_fip_safe(pa, fip_liga),
+        fip_home_pitcher=_fip_safe(ph, fip_liga),
+        park_factor=park_factor,
+        run_env=run_env,
+        fatiga_bp_away=fatiga_bp_away,
+        fatiga_bp_home=fatiga_bp_home,
+        fip_liga=fip_liga,
+        linea_total=linea,
+        linea_f5=linea_f5,
+        n=n_mc,
+        seed=seed + 17,
+        umbral_señal=float(intel_cfg.get("umbral_señal_total") or 0.58),
+    )
+
+
+# ---------------------------------------------------------------------------
 # Orquestador
 # ---------------------------------------------------------------------------
 
@@ -428,6 +680,8 @@ def enriquecer_probs(
     *,
     park_factor: float = 1.0,
     season: int = 2026,
+    pitcher_away: dict | None = None,
+    pitcher_home: dict | None = None,
 ) -> tuple[float, float, dict[str, Any]]:
     """Aplica capas 1–5 sobre probs ya fusionadas (modelo+Elo)."""
     cfg = cfg or {}
@@ -473,7 +727,7 @@ def enriquecer_probs(
         if park_meta.get("ok"):
             meta["capas"].append("park_umpire")
 
-    # 5) Monte Carlo (usa Elo adj si existe)
+    # 5) Monte Carlo ML (usa Elo adj si existe)
     if intel_cfg.get("monte_carlo", True):
         elo = juego.get("elo") if isinstance(juego.get("elo"), dict) else {}
         try:
@@ -495,6 +749,32 @@ def enriquecer_probs(
         )
         meta["monte_carlo"] = mc
         meta["capas"].append("monte_carlo")
+
+    # 5b) Monte Carlo totales + F5 (señal; no inventa cuota)
+    if intel_cfg.get("monte_carlo_totales", True):
+        try:
+            fa = float((bp_away or {}).get("fatiga") or 0.3)
+            fh = float((bp_home or {}).get("fatiga") or 0.3)
+            tot = proyectar_totales_juego(
+                juego,
+                cfg,
+                park_factor=park_factor,
+                pitcher_away=pitcher_away,
+                pitcher_home=pitcher_home,
+                fatiga_bp_away=fa,
+                fatiga_bp_home=fh,
+            )
+            meta["totales"] = tot
+            juego["mc_totales"] = tot
+            if tot.get("ok"):
+                meta["capas"].append("mc_totales")
+                # Si bullpen débil y la config lo pide, anotar preferencia F5
+                est = cfg.get("estrategia") if isinstance(cfg.get("estrategia"), dict) else {}
+                if tot.get("preferir_f5") and est.get("preferir_f5_bullpen_debil", True):
+                    juego["preferir_f5"] = True
+                    meta["preferir_f5"] = True
+        except Exception as e:
+            meta["totales"] = {"ok": False, "motivo": str(e)[:120]}
 
     # 1) Consenso (metadato + opcional ancla suave hacia fair)
     cons = {"ok": False}
@@ -523,9 +803,11 @@ def enriquecer_probs(
     if max(prob_away, prob_home) >= 62:
         pre_tipo = "favorito_alto"
     meta["tipo_pre"] = pre_tipo
-    meta["resumen"] = (
-        f"Intel[{','.join(meta['capas']) or 'none'}] → {prob_away:.0f}/{prob_home:.0f}%"
-    )
+    bits = [f"Intel[{','.join(meta['capas']) or 'none'}] → {prob_away:.0f}/{prob_home:.0f}%"]
+    tot_m = meta.get("totales") if isinstance(meta.get("totales"), dict) else {}
+    if tot_m.get("ok") and tot_m.get("resumen"):
+        bits.append(str(tot_m["resumen"])[:90])
+    meta["resumen"] = " · ".join(bits)[:220]
     juego["inteligencia"] = meta
     juego["bullpen_dia"] = {"away": bp_away, "home": bp_home}
     return prob_away, prob_home, meta
