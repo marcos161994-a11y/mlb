@@ -1,14 +1,18 @@
 # Guarda la API key de OddsPapi en el disco persistente de Render.
 # Más fácil desde el móvil que editar Environment (que a menudo queda truncada).
 #
-# GitHub → Actions → Configurar OddsPapi → Run workflow → pega la key → Run.
+# Pasos:
+# 1) En https://oddspapi.io revoca la key vieja y crea una NUEVA (UUID ~36).
+# 2) GitHub → Actions → Configurar OddsPapi → Run workflow → pega la key → Run.
+# 3) (Recomendado) En Render → Environment borra ODDSPAPI_API_KEY vieja.
+#    La key del disco ya tiene prioridad; borrar la env evita confusiones.
 name: Configurar OddsPapi
 
 on:
   workflow_dispatch:
     inputs:
       oddspapi_key:
-        description: "API key completa de oddspapi.io (UUID ~36 caracteres)"
+        description: "API key NUEVA de oddspapi.io (UUID ~36 caracteres). No reuses la filtrada."
         required: true
         type: string
 
@@ -34,9 +38,25 @@ jobs:
             echo "::error::Key demasiado corta ($LEN). Pega la UUID completa (~36)."
             exit 1
           fi
+          # Despierta Render (plan free)
+          curl -fsS --retry 3 --retry-delay 10 --max-time 120 \
+            "https://mlb-1-en7i.onrender.com/api/health" >/dev/null || true
           RESP="$(curl -fsS --max-time 90 -X POST \
             "https://mlb-1-en7i.onrender.com/api/configurar-oddspapi?secret=${CRON_SECRET}" \
             -H "Content-Type: application/json" \
             -d "$(python3 -c 'import json,os; print(json.dumps({"key": os.environ["ODDSPAPI_KEY"].strip()}))')")"
           echo "$RESP" | python3 -m json.tool
-          echo "$RESP" | python3 -c "import sys,json; d=json.load(sys.stdin); assert d.get('ok') is True, d; print('OK partidos=', d.get('partidos'), d.get('key_fingerprint'))"
+          echo "$RESP" | python3 -c "
+import sys, json
+d = json.load(sys.stdin)
+g = d.get('guardado') or {}
+print('fingerprint=', d.get('key_fingerprint') or g.get('key_fingerprint'))
+print('source=', d.get('key_source'))
+print('partidos=', d.get('partidos'))
+print('ok=', d.get('ok'))
+if g.get('aviso_env'):
+    print('AVISO:', g.get('aviso_env'))
+if not d.get('ok'):
+    raise SystemExit('OddsPapi no aceptó la key (¿401?). Revisa oddspapi.io / plan.')
+print('OK key rotada y circuito cerrado.')
+"

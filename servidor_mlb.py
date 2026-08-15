@@ -3427,6 +3427,17 @@ async def api_configurar_oddspapi(request: Request, secret: str | None = None, k
         "mensaje": meta.get("mensaje"),
         "key_fingerprint": meta.get("key_fingerprint") or info.get("key_fingerprint"),
         "key_source": meta.get("key_source"),
+        "circuito": bool(meta.get("circuito")),
+        "aviso_env": info.get("aviso_env"),
+        "ayuda": (
+            None
+            if meta.get("ok")
+            else (
+                "Si sigue en 401: crea key nueva en https://oddspapi.io, "
+                "revoca la vieja, y borra ODDSPAPI_API_KEY en Render Environment "
+                "(la del disco ya tiene prioridad)."
+            )
+        ),
     }
 
 
