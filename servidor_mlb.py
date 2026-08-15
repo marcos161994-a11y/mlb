@@ -1087,6 +1087,7 @@ def guardar_prediccion(
     *,
     con_dinero: bool = False,
     stake_virtual: float | None = None,
+    permitir_gracia: bool = False,
 ) -> bool:
     """Guarda/actualiza predicción de un juego. No mueve capital."""
     pick = (juego.get("pick") or "").strip()
@@ -1121,14 +1122,43 @@ def guardar_prediccion(
                 print(f"[BRIEFING] backfill: {e}")
         return False
 
-    # Seguridad: no crear pick nuevo si el juego ya empezó (o está EN VIVO/FINAL)
+    # No inventar pick a posteriori cuando el partido ya terminó.
     estado = juego.get("estado")
-    if estado in ("EN VIVO", "FINALIZADO", "POSPUESTO"):
-        print(f"[PREDICCIONES] No se congela pick nuevo en estado {estado} ({juego.get('visitante')}@{juego.get('home')})")
+    if estado in ("FINALIZADO", "POSPUESTO"):
+        print(
+            f"[PREDICCIONES] No se congela pick nuevo en estado {estado} "
+            f"({juego.get('visitante')}@{juego.get('home')})"
+        )
         return False
+
+    cfg = cargar_config()
+    gracia_min = float(cfg.get("minutos_gracia_bloqueo", 30))
     inicio = _parse_iso_dt(juego.get("inicio_juego"))
-    if inicio and (ahora_dt - inicio).total_seconds() > 5 * 60:
-        print(f"[PREDICCIONES] No se congela pick post-inicio ({juego.get('visitante')}@{juego.get('home')})")
+    mins_despues = (
+        (ahora_dt - inicio).total_seconds() / 60.0 if inicio else None
+    )
+
+    # EN VIVO: solo con gracia explícita (Render dormido en T-60).
+    if estado == "EN VIVO":
+        if not permitir_gracia:
+            print(
+                f"[PREDICCIONES] No se congela pick nuevo en estado EN VIVO "
+                f"({juego.get('visitante')}@{juego.get('home')})"
+            )
+            return False
+        if mins_despues is None or mins_despues > gracia_min:
+            print(
+                f"[PREDICCIONES] EN VIVO fuera de gracia "
+                f"({mins_despues} min > {gracia_min}) "
+                f"({juego.get('visitante')}@{juego.get('home')})"
+            )
+            return False
+    elif mins_despues is not None and mins_despues > gracia_min:
+        print(
+            f"[PREDICCIONES] No se congela pick post-inicio "
+            f"({mins_despues:.0f}m > gracia {gracia_min:.0f}m) "
+            f"({juego.get('visitante')}@{juego.get('home')})"
+        )
         return False
 
     prob = float(juego.get("probPick") or 50)
@@ -1138,7 +1168,6 @@ def guardar_prediccion(
         odds, odds_amer = cuota_desde_prob(prob)
 
     # Apostable solo con cuota de casa. Un 72% sin mercado no es valor.
-    cfg = cargar_config()
     apostable_flag = apostable_con_mercado(juego)
 
     # Briefing T-60 interno (para la mente). No se muestra en el panel.
@@ -1152,6 +1181,14 @@ def guardar_prediccion(
     except Exception as e:
         print(f"[BRIEFING] aviso T-60: {e}")
 
+    motivo = juego.get("motivo_apuesta") or ""
+    if estado == "EN VIVO" and permitir_gracia:
+        extra = (
+            f"Congelado en gracia EN VIVO "
+            f"({(mins_despues or 0):.0f} min tras inicio)"
+        )
+        motivo = f"{motivo} · {extra}".strip(" ·")
+
     dia["predicciones"].append(
         {
             "game_id": juego["id"],
@@ -1164,7 +1201,7 @@ def guardar_prediccion(
             "probPick": prob,
             "apostable": apostable_flag,
             "lineas_fuente": juego.get("lineas_fuente") or "modelo",
-            "motivo_apuesta": juego.get("motivo_apuesta", ""),
+            "motivo_apuesta": motivo,
             "pitcherAway": juego.get("pitcherAway"),
             "pitcherHome": juego.get("pitcherHome"),
             "pitcher_away_id": juego.get("pitcher_away_id"),
@@ -1176,6 +1213,7 @@ def guardar_prediccion(
             "stake_virtual": stake_v,
             "con_dinero": bool(con_dinero),
             "predicho_en": ahora,
+            "congelado_en_gracia": bool(estado == "EN VIVO" and permitir_gracia),
             "valida_stats": True,
             "invalida_tarde": False,
             "clima": juego.get("clima") if isinstance(juego.get("clima"), dict) else None,
@@ -1197,8 +1235,8 @@ def guardar_prediccion(
 
 def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     """
-    Registra un pick en PAPEL solo para juegos PROGRAMADOS (tras T-60).
-    Nunca congela EN VIVO: el pick en vivo cambia (lineup/scratch/marcador) y sesga.
+    Registra pick en PAPEL para juegos PROGRAMADOS (tras T-60).
+    Si Render dormía: también EN VIVO dentro de minutos_gracia_bloqueo.
     FINALIZADO: no se inventa pick a posteriori.
     """
     memoria = cargar_memoria()
@@ -1210,34 +1248,51 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     ya = {str(p.get("game_id")) for p in dia.get("predicciones", [])}
     nuevas = 0
     omitidas_vivo = 0
+    cfg = cargar_config()
+    gracia = float(cfg.get("minutos_gracia_bloqueo", 30))
 
     for juego in juegos:
         estado = juego.get("estado")
         gid = str(juego.get("id") or "")
+        permitir_gracia = False
         if estado == "EN VIVO":
-            if gid not in ya:
-                omitidas_vivo += 1
-            continue
-        if estado != "PROGRAMADO":
+            mins = _minutos_desde_inicio(juego)
+            if mins is None or mins > gracia:
+                if gid not in ya:
+                    omitidas_vivo += 1
+                continue
+            permitir_gracia = True
+        elif estado != "PROGRAMADO":
             continue
         if not (juego.get("pick") or "").strip():
             continue
         if gid in ya and not forzar:
             continue
-        try:
-            hb = datetime.fromisoformat(juego["hora_bloqueo"])
-        except Exception:
-            continue
-        if not forzar and hb > ahora:
-            continue
-        if guardar_prediccion(dia, juego, con_dinero=False, stake_virtual=stake_v):
+        if estado == "PROGRAMADO" and not forzar:
+            try:
+                hb = datetime.fromisoformat(juego["hora_bloqueo"])
+            except Exception:
+                continue
+            if hb > ahora:
+                continue
+        if guardar_prediccion(
+            dia,
+            juego,
+            con_dinero=False,
+            stake_virtual=stake_v,
+            permitir_gracia=permitir_gracia,
+        ):
             # Marca validez: solo PROGRAMADO pre-inicio
             pred = next(p for p in dia["predicciones"] if str(p.get("game_id")) == gid)
-            pred["valida_stats"] = True
-            pred["invalida_tarde"] = False
+            if permitir_gracia:
+                pred["valida_stats"] = prediccion_valida_para_stats(pred)
+                pred["invalida_tarde"] = not pred["valida_stats"]
+            else:
+                pred["valida_stats"] = True
+                pred["invalida_tarde"] = False
             # Mente local para el aviso (sin Groq) + WhatsApp del equipo elegido
             try:
-                cfg_wa = cargar_config()
+                cfg_wa = cfg
                 if cfg_wa.get("usar_mente", True) and not isinstance(pred.get("ia_mente"), dict):
                     mente_t60 = mente_conclusion(
                         juego, cfg_wa, memoria, forzar=True, solo_local=True
@@ -1253,7 +1308,7 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     if nuevas:
         guardar_memoria(memoria)
     if omitidas_vivo:
-        print(f"[PREDICCIONES] Omitidas {omitidas_vivo} EN VIVO (no se congela pick a mitad).")
+        print(f"[PREDICCIONES] Omitidas {omitidas_vivo} EN VIVO (fuera de gracia / ya empezados).")
     return {
         "ok": True,
         "predicciones_nuevas": nuevas,
@@ -1477,10 +1532,18 @@ def _bloquear_juego_locked(
         }
 
     stake_v = stake_virtual_prediccion(memoria)
-    # Solo congelar papel en PROGRAMADO. EN VIVO (gracia) no debe crear pick nuevo
-    # — eso fue el caso Yankees / Twins de hoy (cambia a mitad y sesga).
+    # Congelar papel en PROGRAMADO; EN VIVO solo dentro de la gracia (Render dormido).
+    ok_gracia, _motivo_g = _permite_bloqueo_dinero(juego, forzar=forzar)
     if juego.get("estado") == "PROGRAMADO":
         guardar_prediccion(dia, juego, con_dinero=False, stake_virtual=stake_v)
+    elif juego.get("estado") == "EN VIVO" and ok_gracia:
+        guardar_prediccion(
+            dia,
+            juego,
+            con_dinero=False,
+            stake_virtual=stake_v,
+            permitir_gracia=True,
+        )
 
     # Si ya había predicción congelada, la apuesta con dinero debe usar ESE pick
     pred_existente = next(
