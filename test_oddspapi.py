@@ -241,6 +241,24 @@ def test_guardar_key_cierra_circuito(monkeypatch, tmp_path):
     assert not circuito_abierto()
 
 
+def test_data_dir_gana_sobre_env_al_rotar(monkeypatch, tmp_path):
+    """Rotar vía Action/API no debe quedar tapado por ODDSPAPI_API_KEY vieja en Render."""
+    monkeypatch.setattr("lineas_oddspapi.DATA_DIR", tmp_path)
+    monkeypatch.setattr("lineas_oddspapi.KEY_FILE_DATA", tmp_path / "k.txt")
+    monkeypatch.setattr("lineas_oddspapi.KEY_FILE", tmp_path / "k2.txt")
+    monkeypatch.setattr("lineas_oddspapi._circuit_path", lambda: tmp_path / "c.json")
+    monkeypatch.setenv("ODDSPAPI_API_KEY", "ffffffff-1111-2222-3333-444444444444")
+    from lineas_oddspapi import cargar_api_key, fingerprint_key, guardar_api_key
+
+    nueva = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
+    info = guardar_api_key(nueva)
+    assert info.get("aviso_env")
+    key = cargar_api_key({})
+    assert key == nueva
+    assert fingerprint_key(key) == fingerprint_key(nueva)
+    assert getattr(cargar_api_key, "last_source", "").startswith("oddspapi_api_key.txt")
+
+
 def test_aplicar_con_circuito_usa_espn_sin_oddspapi(monkeypatch, tmp_path):
     monkeypatch.setattr("lineas_oddspapi._circuit_path", lambda: tmp_path / "c.json")
     from lineas_oddspapi import abrir_circuito

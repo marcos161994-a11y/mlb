@@ -298,24 +298,53 @@ def guardar_api_key(key: str) -> dict[str, Any]:
         pass
     invalidar_cache_oddspapi()
     cerrar_circuito()
+
+    # Aviso: si Render tiene ODDSPAPI_API_KEY distinta, antes tapaba la rotación.
+    # Ahora el archivo DATA_DIR gana; igual conviene borrar la env vieja.
+    env_raw = os.environ.get("ODDSPAPI_API_KEY") or os.environ.get("ODDS_PAPI_KEY")
+    env_fp = None
+    aviso_env = None
+    if env_raw:
+        env_limpia = _limpiar_key(str(env_raw))
+        env_fp = fingerprint_key(env_limpia)
+        if env_limpia and env_limpia != limpia:
+            aviso_env = (
+                "Hay otra key en variable de entorno Render. "
+                "Se usará la del disco (esta). Borra ODDSPAPI_API_KEY en Render "
+                "para no confundirte."
+            )
+
     return {
         "ok": True,
         "key_fingerprint": fingerprint_key(limpia),
         "key_length": len(limpia),
         "path": str(KEY_FILE_DATA),
         "circuito_cerrado": True,
+        "prioridad": "DATA_DIR",
+        "env_fingerprint": env_fp,
+        "aviso_env": aviso_env,
     }
 
 
 def cargar_api_key(cfg: dict) -> str | None:
-    """Keys de OddsPapi únicamente. NO usa ODDS_API_KEY (era The Odds API y tapa la buena)."""
+    """Keys de OddsPapi únicamente. NO usa ODDS_API_KEY (era The Odds API y tapa la buena).
+
+    Prioridad: disco DATA_DIR (rotación vía Action/API) > env > resto.
+    Así rotar la key no queda tapada por una ODDSPAPI_API_KEY vieja en Render.
+    """
     lineas = cfg.get("lineas") or {}
     candidates = (
+        (
+            "oddspapi_api_key.txt (DATA_DIR)",
+            KEY_FILE_DATA.read_text(encoding="utf-8") if KEY_FILE_DATA.exists() else None,
+        ),
         ("ODDSPAPI_API_KEY", os.environ.get("ODDSPAPI_API_KEY")),
         ("ODDS_PAPI_KEY", os.environ.get("ODDS_PAPI_KEY")),
-        ("oddspapi_api_key.txt (DATA_DIR)", KEY_FILE_DATA.read_text(encoding="utf-8") if KEY_FILE_DATA.exists() else None),
         ("lineas.api_key", lineas.get("api_key")),
-        ("oddspapi_api_key.txt", KEY_FILE.read_text(encoding="utf-8") if KEY_FILE.exists() else None),
+        (
+            "oddspapi_api_key.txt",
+            KEY_FILE.read_text(encoding="utf-8") if KEY_FILE.exists() else None,
+        ),
     )
     # (score, orden_preferencia, source, key) — a igual score gana el primero de la lista
     scored: list[tuple[int, int, str, str]] = []
