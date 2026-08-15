@@ -86,6 +86,30 @@ def test_guardar_chat_id(tmp_path, monkeypatch):
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
     guardar_chat_id(777)
     assert leer_chat_id_guardado() == "777"
+    guardar_chat_id("TELEGRAM_CHAT_ID = 999888777")
+    assert leer_chat_id_guardado() == "999888777"
+
+
+def test_normalizar_chat_id_sucio():
+    from whatsapp_alerta import normalizar_chat_id
+
+    assert normalizar_chat_id("5423229687") == "5423229687"
+    assert normalizar_chat_id("TELEGRAM_CHAT_ID = 5423229687") == "5423229687"
+    assert normalizar_chat_id("chat_id: 5423229687") == "5423229687"
+    assert normalizar_chat_id("  5423229687  ") == "5423229687"
+    assert normalizar_chat_id("") == ""
+    assert normalizar_chat_id("solo texto") == ""
+
+
+def test_env_chat_id_sucio_sigue_listo(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "123:ABC")
+    monkeypatch.setenv("TELEGRAM_CHAT_ID", "TELEGRAM_CHAT_ID = 5423229687")
+    from whatsapp_alerta import telegram_disponible
+
+    st = telegram_disponible({"telegram": {"activo": True}})
+    assert st["ok"] is True
+    assert st["chat_id"] == "5423229687"
 
 
 def test_notificar_usa_bot(monkeypatch, tmp_path):
