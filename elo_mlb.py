@@ -96,14 +96,17 @@ def asegurar_equipo(
     *,
     win_pct: float | None = None,
     nombre: str = "",
-) -> float:
-    """Crea Elo inicial; si hay win_pct, sesga suave desde 1500."""
+) -> tuple[float, bool]:
+    """Crea Elo inicial; si hay win_pct, sesga suave desde 1500.
+
+    Returns (elo, created_new).
+    """
     if team_id is None or team_id == "":
-        return DEFAULT_ELO
+        return DEFAULT_ELO, False
     key = str(int(team_id)) if str(team_id).isdigit() else str(team_id)
     equipos = data.setdefault("equipos", {})
     if key in equipos:
-        return elo_equipo(key, data)
+        return elo_equipo(key, data), False
     elo0 = DEFAULT_ELO
     if win_pct is not None:
         try:
@@ -117,7 +120,7 @@ def asegurar_equipo(
         "n": 0,
         "nombre": (nombre or "")[:40],
     }
-    return elo0
+    return elo0, True
 
 
 def prob_desde_elo(
@@ -251,29 +254,34 @@ def fusionar_probs_elo(
 
     away_id = juego.get("away_id") or juego.get("team_away_id")
     home_id = juego.get("home_id") or juego.get("team_home_id")
+    if away_id is None or home_id is None:
+        meta["motivo"] = "sin team_id"
+        return prob_away, prob_home, meta
+
     data = cargar_ratings()
 
-    # Semilla suave con win% si existen en el juego
-    wp_a = None
-    wp_h = None
-    try:
-        # a veces vienen en records embebidos; opcional
-        wp_a = float((juego.get("win_pct_away") or 0) or 0) or None
-    except (TypeError, ValueError):
-        wp_a = None
-    try:
-        wp_h = float((juego.get("win_pct_home") or 0) or 0) or None
-    except (TypeError, ValueError):
-        wp_h = None
+    def _wp(raw: Any) -> float | None:
+        try:
+            if raw is None or raw == "":
+                return None
+            v = float(raw)
+            if v < 0 or v > 1:
+                return None
+            return v
+        except (TypeError, ValueError):
+            return None
 
-    elo_a = asegurar_equipo(
+    wp_a = _wp(juego.get("win_pct_away"))
+    wp_h = _wp(juego.get("win_pct_home"))
+
+    elo_a, new_a = asegurar_equipo(
         away_id, data, win_pct=wp_a, nombre=str(juego.get("visitante") or "")
     )
-    elo_h = asegurar_equipo(
+    elo_h, new_h = asegurar_equipo(
         home_id, data, win_pct=wp_h, nombre=str(juego.get("home") or "")
     )
-    # Persistir semillas nuevas
-    guardar_ratings(data)
+    if new_a or new_h:
+        guardar_ratings(data)
 
     pa = stats_pitcher_away if isinstance(stats_pitcher_away, dict) else {}
     ph = stats_pitcher_home if isinstance(stats_pitcher_home, dict) else {}

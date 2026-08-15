@@ -751,6 +751,7 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         # Inicializamos valores para evitar signos de pregunta en la interfaz
         juego.setdefault("probPick", 0)
         juego.setdefault("edge", 0)
+        juego["elo"] = {"ok": False, "motivo": "esperando_pitchers", "activo": True}
         return juego
 
     # Precarga de datos para la IA
@@ -1024,6 +1025,19 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
     elo_meta: dict[str, Any] = {"ok": False, "activo": False}
     if HAS_ELO and fusionar_probs_elo and cfg.get("usar_elo", True):
         try:
+            # Semilla Elo con win% oficial si aún no hay rating
+            try:
+                recs = cargar_records(season)
+                juego.setdefault(
+                    "win_pct_away",
+                    float((recs.get(away_id) or {}).get("win_pct") or 0.5),
+                )
+                juego.setdefault(
+                    "win_pct_home",
+                    float((recs.get(home_id) or {}).get("win_pct") or 0.5),
+                )
+            except Exception:
+                pass
             antes_a, antes_h = prob_away, prob_home
             prob_away, prob_home, elo_meta = fusionar_probs_elo(
                 juego, prob_away, prob_home, pa, ph, cfg
@@ -1117,7 +1131,7 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         juego["apostable"] = True
         fuente = juego.get("lineas_fuente") or "mercado"
         juego["motivo_apuesta"] = (
-            f"Valor +{mejor['edge']:.1f}% vs {fuente} "
+            f"Valor +{mejor['edge_base']:.1f}% vs {fuente} "
             f"(modelo {mejor['prob']:.0f}% vs mercado {prob_implicita(mejor['odds']):.0f}%)"
         )
         if elo_meta.get("ok"):

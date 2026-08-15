@@ -10,7 +10,7 @@ La mente baja/sube confianza según historial real:
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 # Señales que la mente puede trackear (alineadas con briefing.alertas)
@@ -146,7 +146,7 @@ def _recalcular_penalizaciones(stats: dict) -> None:
                 score += 1
         pen[senal] = max(-2, min(2, score))
     stats["penalizacion"] = pen
-    stats["actualizado_en"] = datetime.utcnow().isoformat() + "Z"
+    stats["actualizado_en"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
 def actualizar_stats_tras_liquidar(
