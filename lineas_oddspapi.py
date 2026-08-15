@@ -540,6 +540,14 @@ def _mejor_ml_fixture(bookmaker_odds: dict, book_keys: list[str], *, api: str = 
 
     best_home = max(candidatos, key=lambda x: x[1])
     best_away = max(candidatos, key=lambda x: x[2])
+    libros = [
+        {
+            "casa": slug,
+            "away": round(a, 3),
+            "home": round(h, 3),
+        }
+        for slug, h, a in candidatos[:8]
+    ]
     return {
         "home": {
             "decimal": round(best_home[1], 3),
@@ -551,6 +559,7 @@ def _mejor_ml_fixture(bookmaker_odds: dict, book_keys: list[str], *, api: str = 
             "american": decimal_a_american(best_away[2]),
             "casa": best_away[0],
         },
+        "libros": libros,
     }
 
 
@@ -653,6 +662,7 @@ def _obtener_v5(cfg: dict, api_key: str, meta: dict) -> tuple[dict[tuple[str, st
         mapa[(n_away, n_home)] = {
             "away": {**ml["away"], "lado": "away", "nombre": p2},
             "home": {**ml["home"], "lado": "home", "nombre": p1},
+            "libros": list(ml.get("libros") or []),
         }
         for lado in ("away", "home"):
             casa_l = (ml.get(lado) or {}).get("casa")
@@ -916,12 +926,39 @@ def buscar_lineas_partido(
         return mapa[(ka, kh)]
     if (kh, ka) in mapa:
         m = mapa[(kh, ka)]
-        return {"away": m.get("home"), "home": m.get("away")}
+        libros = m.get("libros") if isinstance(m.get("libros"), list) else []
+        libros_flip = [
+            {
+                "casa": b.get("casa"),
+                "away": b.get("home"),
+                "home": b.get("away"),
+            }
+            for b in libros
+            if isinstance(b, dict)
+        ]
+        return {
+            "away": m.get("home"),
+            "home": m.get("away"),
+            "libros": libros_flip,
+        }
     for (a, h), fila in mapa.items():
         if {a, h} == {ka, kh}:
             if a == ka:
                 return fila
-            return {"away": fila.get("home"), "home": fila.get("away")}
+            libros = fila.get("libros") if isinstance(fila.get("libros"), list) else []
+            return {
+                "away": fila.get("home"),
+                "home": fila.get("away"),
+                "libros": [
+                    {
+                        "casa": b.get("casa"),
+                        "away": b.get("home"),
+                        "home": b.get("away"),
+                    }
+                    for b in libros
+                    if isinstance(b, dict)
+                ],
+            }
     return None
 
 
@@ -965,4 +1002,15 @@ def aplicar_lineas_oddspapi(juegos: list[dict], cfg: dict) -> tuple[list[dict], 
                 or (home_l or {}).get("casa")
                 or "oddspapi"
             )
+            libros = lineas.get("libros") if isinstance(lineas.get("libros"), list) else []
+            if libros:
+                juego["lineas_libros"] = libros
+            elif away_l and home_l and away_l.get("decimal") and home_l.get("decimal"):
+                juego["lineas_libros"] = [
+                    {
+                        "casa": juego["lineas_fuente"],
+                        "away": float(away_l["decimal"]),
+                        "home": float(home_l["decimal"]),
+                    }
+                ]
     return juegos, meta

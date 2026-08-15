@@ -157,6 +157,16 @@ def construir_briefing(juego: dict[str, Any], memoria: dict | None = None) -> di
             "adj_pitcher_home": (juego.get("elo") or {}).get("adj_pitcher_home"),
             "peso_elo": (juego.get("elo") or {}).get("peso_elo"),
         },
+        "inteligencia": {
+            "ok": bool((juego.get("inteligencia") or {}).get("ok")),
+            "capas": list((juego.get("inteligencia") or {}).get("capas") or [])[:8],
+            "resumen": str((juego.get("inteligencia") or {}).get("resumen") or "")[:160],
+            "tipo_pick": juego.get("tipo_pick")
+            or (juego.get("inteligencia") or {}).get("tipo_pick")
+            or (juego.get("inteligencia") or {}).get("tipo_pre"),
+            "consenso_n": ((juego.get("inteligencia") or {}).get("consenso") or {}).get("n_fuentes"),
+            "mc": str(((juego.get("inteligencia") or {}).get("monte_carlo") or {}).get("resumen") or "")[:80],
+        },
         "pitchers": {
             "away": juego.get("pitcherAway"),
             "home": juego.get("pitcherHome"),
@@ -196,6 +206,22 @@ def construir_briefing(juego: dict[str, Any], memoria: dict | None = None) -> di
                 alertas.append("elo_discrepa")
         except (TypeError, ValueError):
             pass
+    intel_p = pilares.get("inteligencia") or {}
+    if intel_p.get("ok") and intel_p.get("capas"):
+        cons_n = intel_p.get("consenso_n") or 0
+        try:
+            disc = float(
+                ((juego.get("inteligencia") or {}).get("consenso") or {}).get(
+                    "discrepancia_casas_pct"
+                )
+                or 0
+            )
+        except (TypeError, ValueError):
+            disc = 0.0
+        if cons_n >= 2 and disc >= 6:
+            alertas.append("mercado_dividido")
+        if intel_p.get("tipo_pick") == "scratch":
+            alertas.append("tipo_scratch")
 
     resumen_bits = [
         f"Pick {juego.get('pick') or '?'} @ {juego.get('probPick')}% edge={juego.get('edge')}",
@@ -203,6 +229,8 @@ def construir_briefing(juego: dict[str, Any], memoria: dict | None = None) -> di
     ]
     if elo_p.get("ok") and elo_p.get("resumen"):
         resumen_bits.append(str(elo_p["resumen"])[:90])
+    if intel_p.get("ok") and intel_p.get("resumen"):
+        resumen_bits.append(str(intel_p["resumen"])[:90])
     if alertas:
         resumen_bits.append("alertas=" + ",".join(alertas[:8]))
     if humanos.get("resumen"):

@@ -1307,6 +1307,11 @@ def guardar_prediccion(
             "ia_briefing": briefing if isinstance(briefing, dict) else None,
             "ia_mente": juego.get("ia_mente") if isinstance(juego.get("ia_mente"), dict) else None,
             "ml_features": juego.get("ml_features") if isinstance(juego.get("ml_features"), dict) else None,
+            "tipo_pick": juego.get("tipo_pick"),
+            "inteligencia": juego.get("inteligencia")
+            if isinstance(juego.get("inteligencia"), dict)
+            else None,
+            "elo": juego.get("elo") if isinstance(juego.get("elo"), dict) else None,
         }
     )
     return True
@@ -2029,6 +2034,11 @@ def _bloquear_juego_locked(
             if isinstance(juego.get("historico_oficial"), dict)
             else None,
             "ml_features": juego.get("ml_features") if isinstance(juego.get("ml_features"), dict) else None,
+            "tipo_pick": juego.get("tipo_pick"),
+            "inteligencia": juego.get("inteligencia")
+            if isinstance(juego.get("inteligencia"), dict)
+            else None,
+            "elo": juego.get("elo") if isinstance(juego.get("elo"), dict) else None,
             "pitcherAway": juego.get("pitcherAway"),
             "pitcherHome": juego.get("pitcherHome"),
             "inicio_juego": juego.get("inicio_juego"),
@@ -2811,6 +2821,19 @@ def api_health():
             "activo": bool(cfg.get("usar_elo", True)),
             "peso_elo": float((cfg.get("elo") or {}).get("peso_elo") or 0.40),
             "home_adv": float((cfg.get("elo") or {}).get("home_adv") or 24),
+        },
+        "inteligencia": {
+            "activo": bool(cfg.get("usar_inteligencia", True)),
+            "capas": [
+                "consenso_mercado",
+                "bullpen_dia",
+                "park_umpire",
+                "tipo_pick",
+                "monte_carlo",
+            ],
+            "peso_consenso": float((cfg.get("inteligencia") or {}).get("peso_consenso") or 0.10),
+            "peso_mc": float((cfg.get("inteligencia") or {}).get("peso_mc") or 0.22),
+            "mc_sims": int((cfg.get("inteligencia") or {}).get("mc_sims") or 800),
         },
         "odds": {
             "activo": not bool(cfg.get("modo_solo_modelo")),

@@ -284,6 +284,15 @@ def aplicar_lineas_espn(
         juego["odds_home_decimal"] = home_l.get("decimal")
         juego["lineas_fuente"] = away_l.get("casa") or home_l.get("casa") or "espn"
         juego["lineas_betmgm"] = lineas
+        # Consenso: al menos esta casa; si ya había multi-libro OddsPapi, no borrar
+        if not juego.get("lineas_libros"):
+            juego["lineas_libros"] = [
+                {
+                    "casa": juego["lineas_fuente"],
+                    "away": float(away_l["decimal"]),
+                    "home": float(home_l["decimal"]),
+                }
+            ]
         aplicados += 1
     meta["ok"] = aplicados > 0
     meta["partidos_aplicados"] = aplicados
