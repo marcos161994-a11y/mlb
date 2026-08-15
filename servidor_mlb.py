@@ -2558,9 +2558,10 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
         print(f"[MENTE-APRENDIZAJE] aviso estado: {e}")
 
     vigilancia = vigilancia_t60(juegos, memoria, cfg)
+    cfg_ops = _cfg_con_telegram_memoria(cfg)
     try:
         ejecutar_ciclo_mente_errores(
-            cfg,
+            cfg_ops,
             vigilancia=vigilancia,
             lineas_meta=_lineas_meta_cache if isinstance(_lineas_meta_cache, dict) else None,
         )
@@ -2599,9 +2600,9 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
             "stats": mente_stats_meta,
         },
         "vigilancia": vigilancia,
-        "mente_errores": _resumen_mente_errores(cfg),
-        "telegram": telegram_disponible(_cfg_con_telegram_memoria(cfg)),
-        "alertas": alerta_disponible(_cfg_con_telegram_memoria(cfg)),
+        "mente_errores": _resumen_mente_errores(cfg_ops),
+        "telegram": telegram_disponible(cfg_ops),
+        "alertas": alerta_disponible(cfg_ops),
     }
 
 
@@ -2844,7 +2845,7 @@ def api_mente_errores_ciclo(secret: str | None = None, forzar: bool = False):
     """Fuerza un ciclo de diagnóstico + remediación (opcional CRON_SECRET)."""
     if secret:
         _verificar_cron_secreto(secret)
-    cfg = cargar_config()
+    cfg = _cfg_con_telegram_memoria()
     out = ejecutar_ciclo_mente_errores(
         cfg,
         vigilancia=None,
@@ -3507,7 +3508,7 @@ def ejecutar_trabajo_cron_externo() -> dict:
     resultado = bloquear_apuestas_del_dia(forzar=False)
     liquidar_todo(cargar_memoria())
     memoria = cargar_memoria()
-    cfg = cargar_config()
+    cfg = _cfg_con_telegram_memoria()
     mente_err: dict = {}
     try:
         mente_err = ejecutar_ciclo_mente_errores(
