@@ -520,6 +520,24 @@
     </div>
 </details>
 
+<details class="rendimiento" id="oddspapi-setup" open>
+    <summary>🔑 OddsPapi — pegar API key</summary>
+    <div class="rendimiento-body" style="display:flex;flex-direction:column;gap:8px;">
+        <p style="color:var(--muted);font-size:0.85rem;margin:0;">
+            En <b>oddspapi.io</b> crea una key nueva (UUID ~36 con guiones). Pégala aquí entera.
+            Necesitas el <code>CRON_SECRET</code> de Render → Environment.
+        </p>
+        <input id="odds-key" type="text" autocomplete="off" placeholder="UUID completa (xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)"
+            style="width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#111;color:#eee;font-size:0.9rem;" />
+        <input id="odds-secret" type="text" autocomplete="off" placeholder="CRON_SECRET de Render"
+            style="width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#111;color:#eee;font-size:0.9rem;" />
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button onclick="guardarOddsPapiKey()">Guardar key OddsPapi</button>
+        </div>
+        <p id="odds-key-status" style="color:var(--muted);font-size:0.8rem;margin:0;">Estado: —</p>
+    </div>
+</details>
+
 <div class="historial" id="historial-dias">
     <h3 onclick="toggleHistorialBanca()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
         <span>💰 Banca real (solo apuestas con dinero)</span>
@@ -594,6 +612,59 @@ async function guardarTokenTelegram() {
         st.style.color = 'var(--green)';
         st.textContent = 'Token OK · bot ' + (d.bot || '') + ' · ahora escribe hola a ese bot y pulsa Vincular';
         toast('Token guardado');
+    } catch (e) {
+        st.style.color = '#ff4466';
+        st.textContent = String(e.message || e);
+    }
+}
+
+async function guardarOddsPapiKey() {
+    const key = (document.getElementById('odds-key').value || '').trim();
+    const secret = (document.getElementById('odds-secret').value || '').trim()
+        || (document.getElementById('tg-secret').value || '').trim();
+    const st = document.getElementById('odds-key-status');
+    if (!key || key.length < 32) {
+        st.style.color = '#ff4466';
+        st.textContent = 'Key incompleta. Debe ser la UUID entera (~36 caracteres).';
+        return;
+    }
+    if (!secret) {
+        st.style.color = '#ff4466';
+        st.textContent = 'Falta CRON_SECRET (Render → Environment → CRON_SECRET).';
+        return;
+    }
+    st.style.color = 'var(--muted)';
+    st.textContent = 'Guardando key...';
+    try {
+        const r = await fetch(API + '/api/configurar-oddspapi', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ key, secret }),
+        });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok) {
+            st.style.color = '#ff4466';
+            st.textContent = d.detail || d.motivo || ('Error ' + r.status);
+            return;
+        }
+        const fp = d.key_fingerprint || (d.guardado && d.guardado.key_fingerprint) || '?';
+        const src = d.key_source || '';
+        if (d.ok) {
+            st.style.color = 'var(--green)';
+            st.textContent = 'OK · ' + fp + (src ? ' · ' + src : '') +
+                (d.partidos != null ? ' · ' + d.partidos + ' partidos' : '');
+            toast('OddsPapi key guardada');
+            document.getElementById('odds-key').value = '';
+        } else {
+            st.style.color = '#ffbc00';
+            st.textContent = 'Guardada ' + fp + ' pero OddsPapi no OK: ' +
+                (d.mensaje || d.ayuda || 'revisa oddspapi.io');
+            toast('Key guardada · revisar 401');
+        }
+        if (d.aviso_env) {
+            st.textContent += ' · ' + d.aviso_env;
+        }
+        try { await cargar(); } catch (_) {}
     } catch (e) {
         st.style.color = '#ff4466';
         st.textContent = String(e.message || e);

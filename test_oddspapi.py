@@ -259,6 +259,20 @@ def test_data_dir_gana_sobre_env_al_rotar(monkeypatch, tmp_path):
     assert getattr(cargar_api_key, "last_source", "").startswith("oddspapi_api_key.txt")
 
 
+def test_key_corta_no_se_guarda(monkeypatch, tmp_path):
+    monkeypatch.setattr("lineas_oddspapi.DATA_DIR", tmp_path)
+    monkeypatch.setattr("lineas_oddspapi.KEY_FILE_DATA", tmp_path / "k.txt")
+    monkeypatch.setattr("lineas_oddspapi.KEY_FILE", tmp_path / "k2.txt")
+    monkeypatch.setattr("lineas_oddspapi._circuit_path", lambda: tmp_path / "c.json")
+    from lineas_oddspapi import guardar_api_key
+
+    try:
+        guardar_api_key("aaaa-bbbb-cccc")  # incompleta
+        assert False, "debía fallar"
+    except ValueError as e:
+        assert "incompleta" in str(e).lower() or "36" in str(e)
+
+
 def test_aplicar_con_circuito_usa_espn_sin_oddspapi(monkeypatch, tmp_path):
     monkeypatch.setattr("lineas_oddspapi._circuit_path", lambda: tmp_path / "c.json")
     from lineas_oddspapi import abrir_circuito

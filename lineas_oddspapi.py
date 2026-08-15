@@ -285,10 +285,12 @@ def _score_key(key: str) -> int:
 def guardar_api_key(key: str) -> dict[str, Any]:
     """Guarda key en disco persistente (DATA_DIR) y limpia cache."""
     limpia = _limpiar_key(key)
-    if _score_key(limpia) < 50:
+    # Exigir UUID / key larga: si no, la env vieja “ganaba” por score y parecía
+    # que la rotación no funcionaba.
+    if _score_key(limpia) < 80:
         raise ValueError(
-            f"Key demasiado corta o incompleta (len={len(limpia)}). "
-            "Una key OddsPapi suele tener 36 caracteres (UUID con guiones)."
+            f"Key incompleta (len={len(limpia)}). "
+            "Pega la UUID completa de oddspapi.io (~36 caracteres con guiones)."
         )
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     KEY_FILE_DATA.write_text(limpia + "\n", encoding="utf-8")
@@ -329,15 +331,22 @@ def guardar_api_key(key: str) -> dict[str, Any]:
 def cargar_api_key(cfg: dict) -> str | None:
     """Keys de OddsPapi únicamente. NO usa ODDS_API_KEY (era The Odds API y tapa la buena).
 
-    Prioridad: disco DATA_DIR (rotación vía Action/API) > env > resto.
-    Así rotar la key no queda tapada por una ODDSPAPI_API_KEY vieja en Render.
+    Si hay key válida en DATA_DIR (pegada desde el panel/Action), se usa SIEMPRE:
+    no deja que una ODDSPAPI_API_KEY vieja en Render la tape por score.
     """
     lineas = cfg.get("lineas") or {}
+
+    if KEY_FILE_DATA.exists():
+        try:
+            disk = _limpiar_key(KEY_FILE_DATA.read_text(encoding="utf-8"))
+        except OSError:
+            disk = ""
+        if _score_key(disk) >= 80:
+            cargar_api_key.last_source = "oddspapi_api_key.txt (DATA_DIR)"  # type: ignore[attr-defined]
+            cargar_api_key.last_score = _score_key(disk)  # type: ignore[attr-defined]
+            return disk
+
     candidates = (
-        (
-            "oddspapi_api_key.txt (DATA_DIR)",
-            KEY_FILE_DATA.read_text(encoding="utf-8") if KEY_FILE_DATA.exists() else None,
-        ),
         ("ODDSPAPI_API_KEY", os.environ.get("ODDSPAPI_API_KEY")),
         ("ODDS_PAPI_KEY", os.environ.get("ODDS_PAPI_KEY")),
         ("lineas.api_key", lineas.get("api_key")),

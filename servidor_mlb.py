@@ -3395,10 +3395,10 @@ def _cron_externo_en_fondo() -> None:
 async def api_configurar_oddspapi(request: Request, secret: str | None = None, key: str | None = None):
     """
     Guarda ODDSPAPI key en disco persistente (DATA_DIR).
-    Requiere CRON_SECRET. Body JSON {"key":"..."} o ?key=
+    Requiere CRON_SECRET. Body JSON {"key":"...","secret":"..."} o ?key=&secret=
     """
-    _verificar_cron_secreto(secret)
     raw = key
+    secret_body = secret
     if request.method == "POST":
         try:
             body = await request.json()
@@ -3406,10 +3406,17 @@ async def api_configurar_oddspapi(request: Request, secret: str | None = None, k
             body = None
         if isinstance(body, dict):
             raw = raw or body.get("key") or body.get("api_key") or body.get("apiKey")
+            secret_body = secret_body or body.get("secret") or body.get("cron_secret")
+    _verificar_cron_secreto(secret_body or None)
     if not raw:
         raise HTTPException(status_code=400, detail="Falta key (body JSON o ?key=)")
     try:
-        from lineas_oddspapi import guardar_api_key, obtener_lineas_oddspapi
+        from lineas_oddspapi import (
+            cargar_api_key,
+            fingerprint_key,
+            guardar_api_key,
+            obtener_lineas_oddspapi,
+        )
 
         info = guardar_api_key(str(raw))
     except ValueError as e:
@@ -3418,6 +3425,7 @@ async def api_configurar_oddspapi(request: Request, secret: str | None = None, k
         raise HTTPException(status_code=500, detail=str(e)[:160]) from e
 
     cfg = cargar_config()
+    efectiva = cargar_api_key(cfg)
     _, meta = obtener_lineas_oddspapi(cfg)
     return {
         "ok": bool(meta.get("ok")),
@@ -3425,17 +3433,18 @@ async def api_configurar_oddspapi(request: Request, secret: str | None = None, k
         "partidos": meta.get("partidos"),
         "api_version": meta.get("api_version"),
         "mensaje": meta.get("mensaje"),
-        "key_fingerprint": meta.get("key_fingerprint") or info.get("key_fingerprint"),
-        "key_source": meta.get("key_source"),
+        "key_fingerprint": fingerprint_key(efectiva) if efectiva else info.get("key_fingerprint"),
+        "key_source": getattr(cargar_api_key, "last_source", None) or meta.get("key_source"),
+        "key_length": len(efectiva) if efectiva else info.get("key_length"),
         "circuito": bool(meta.get("circuito")),
         "aviso_env": info.get("aviso_env"),
         "ayuda": (
             None
             if meta.get("ok")
             else (
-                "Si sigue en 401: crea key nueva en https://oddspapi.io, "
-                "revoca la vieja, y borra ODDSPAPI_API_KEY en Render Environment "
-                "(la del disco ya tiene prioridad)."
+                "Key guardada en disco. Si OddsPapi sigue en 401, la key no es válida "
+                "en oddspapi.io (revoca la vieja y crea otra). "
+                "Borra ODDSPAPI_API_KEY en Render Environment."
             )
         ),
     }
