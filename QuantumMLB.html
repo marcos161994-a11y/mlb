@@ -1125,9 +1125,19 @@ function pintarPicksHoy(juegos, data) {
             </summary>
             <div class="picks-grupo-body">`;
         soloPred.forEach(j => {
+            let badge = '';
+            if (j.estado === 'FINALIZADO' && j.estado_apuesta === 'ganada') {
+                badge = '<span class="pick-badge bet">ACIERTO</span>';
+            } else if (j.estado === 'FINALIZADO' && j.estado_apuesta === 'perdida') {
+                badge = '<span class="pick-badge skip">FALLO</span>';
+            } else if (j.estado === 'FINALIZADO' && j.estado_apuesta === 'sin_bloquear') {
+                badge = '<span class="pick-badge wait">SIN CONGELAR</span>';
+            } else if (j.estado_apuesta === 'pendiente') {
+                badge = '<span class="pick-badge wait">PENDIENTE</span>';
+            }
             html += `<div class="pick-row no">
                 <div>
-                    <div class="pick-equipo" style="color:var(--muted)">${nombrePick(j.pick)}</div>
+                    <div class="pick-equipo" style="color:var(--muted)">${nombrePick(j.pick)} ${badge}</div>
                     <div class="pick-meta">${j.visitante} @ ${j.home} · ${j.hora_inicio_txt || ''} · ${(j.motivo_apuesta || '').slice(0, 50)}</div>
                 </div>
                 <div class="pick-prob" style="color:var(--muted)">${(j.probPick || 0).toFixed(0)}%</div>
@@ -1320,6 +1330,19 @@ function pintarJuegos(juegos) {
         const homeWon = j.estado === 'FINALIZADO' && j.ganador === j.home;
         let apuestaTxt = j.motivo_apuesta || 'Espera evaluación 1h antes';
         const papel = !!j.solo_papel;
+        let resultadoBanner = '';
+        if (j.estado === 'FINALIZADO' && j.ganador) {
+            const marcador = `${j.scoreAway ?? '—'}–${j.scoreHome ?? '—'}`;
+            if (j.estado_apuesta === 'ganada') {
+                resultadoBanner = `<div style="margin:8px 0;padding:8px 10px;border-radius:8px;background:rgba(0,255,136,0.12);border:1px solid rgba(0,255,136,0.4);color:var(--green);font-weight:700;font-size:0.9rem">✓ ${papel ? 'PAPEL ACIERTO' : 'GANASTE'} · ${j.ganador} (${marcador})${j.profit != null ? ' · ' + fmtMoney(j.profit) : ''}</div>`;
+            } else if (j.estado_apuesta === 'perdida') {
+                resultadoBanner = `<div style="margin:8px 0;padding:8px 10px;border-radius:8px;background:rgba(255,80,80,0.12);border:1px solid rgba(255,80,80,0.4);color:var(--red);font-weight:700;font-size:0.9rem">✗ ${papel ? 'PAPEL FALLO' : 'PERDISTE'} · ganó ${j.ganador} (${marcador})${j.profit != null ? ' · ' + fmtMoney(j.profit) : ''}</div>`;
+            } else if (j.estado_apuesta === 'sin_bloquear') {
+                resultadoBanner = `<div style="margin:8px 0;padding:8px 10px;border-radius:8px;background:rgba(255,188,0,0.1);border:1px solid rgba(255,188,0,0.35);color:var(--gold);font-size:0.82rem">Final MLB: <b>${j.ganador}</b> (${marcador}) · sin pick congelado a tiempo → no cuenta en el paper</div>`;
+            } else {
+                resultadoBanner = `<div style="margin:8px 0;padding:8px 10px;border-radius:8px;background:rgba(0,242,255,0.08);border:1px solid rgba(0,242,255,0.25);color:var(--cyan);font-size:0.82rem">Final MLB: <b>${j.ganador}</b> (${marcador})</div>`;
+            }
+        }
         if (j.estado === 'FINALIZADO' && j.estado_apuesta === 'sin_bloquear') {
             apuestaTxt = 'FINAL · sin pick congelado a tiempo (no cuenta en el paper de hoy)';
         } else if (j.estado_apuesta === 'sin_bloquear' && j.hora_bloqueo_txt) {
@@ -1352,6 +1375,7 @@ function pintarJuegos(juegos) {
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
                 <span class="estado">● ${j.estado}</span>${tag}
             </div>
+            ${resultadoBanner}
             <div style="font-size:0.7rem;color:#8899aa;margin-bottom:6px">
                 P: ${j.pitcherAway||'?'} (${j.pitcherAwayEra??'?'}) · ${j.pitcherHome||'?'} (${j.pitcherHomeEra??'?'})
             </div>
