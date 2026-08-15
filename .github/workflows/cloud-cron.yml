@@ -1,10 +1,10 @@
-# Mantiene Quantum MLB en Render despierto y liquida resultados cada 10 min.
+# Mantiene Quantum MLB en Render despierto, congela T-60 y liquida cada 5 min.
 # Requiere: secret CRON_SECRET en GitHub (mismo valor que en Render).
 name: MLB Cloud Cron
 
 on:
   schedule:
-    - cron: "*/10 * * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch:
 
 jobs:
