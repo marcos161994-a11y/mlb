@@ -42,6 +42,12 @@ from mente_mlb import (
     aplicar_stake_mente,
     generar_briefing_juego,
 )
+from mente_errores import (
+    mente_errores_disponible,
+    resumen_para_panel as resumen_mente_errores_panel,
+    ejecutar_ciclo as ejecutar_ciclo_mente_errores,
+    registrar_error_runtime,
+)
 from whatsapp_alerta import (
     notificar_pick_t60,
     whatsapp_disponible,
@@ -230,7 +236,14 @@ def cargar_config() -> dict:
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump(cfg_base, f, indent=2)
     with open(CONFIG_PATH, encoding="utf-8") as f:
-        return json.load(f)
+        cfg = json.load(f)
+    try:
+        from mente_errores import aplicar_overrides_config
+
+        cfg = aplicar_overrides_config(cfg)
+    except Exception as e:
+        print(f"[MENTE-ERRORES] aviso al aplicar overrides: {e}")
+    return cfg
 
 
 def cargar_memoria() -> dict:
@@ -1475,6 +1488,19 @@ def vigilancia_t60(
     }
 
 
+def _resumen_mente_errores(cfg: dict | None = None) -> dict:
+    try:
+        return resumen_mente_errores_panel(cfg or cargar_config())
+    except Exception as e:
+        return {
+            "activo": False,
+            "nivel": "aviso",
+            "mensaje": f"Mente errores no disponible: {e}"[:120],
+            "overrides": {},
+            "incidentes_recientes": [],
+        }
+
+
 def rellenar_predicciones_fecha(memoria: dict, fecha: str) -> int:
     """
     Ya NO inventa picks a posteriori.
@@ -2530,7 +2556,17 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
         mente_stats_meta = resumen_mente_stats(memoria)
     except Exception as e:
         print(f"[MENTE-APRENDIZAJE] aviso estado: {e}")
-    
+
+    vigilancia = vigilancia_t60(juegos, memoria, cfg)
+    try:
+        ejecutar_ciclo_mente_errores(
+            cfg,
+            vigilancia=vigilancia,
+            lineas_meta=_lineas_meta_cache if isinstance(_lineas_meta_cache, dict) else None,
+        )
+    except Exception as e:
+        print(f"[MENTE-ERRORES] aviso estado: {e}")
+
     return {
         "memoria": _memoria_sin_secretos(memoria),
         "banca": resumen_banca(memoria),
@@ -2562,7 +2598,8 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
             "shadow": bool((cfg.get("mente") or {}).get("shadow", False)),
             "stats": mente_stats_meta,
         },
-        "vigilancia": vigilancia_t60(juegos, memoria, cfg),
+        "vigilancia": vigilancia,
+        "mente_errores": _resumen_mente_errores(cfg),
     }
 
 
@@ -2777,6 +2814,7 @@ def api_health():
             "min_confianza": int((cfg.get("mente") or {}).get("min_confianza") or 3),
             "shadow": bool((cfg.get("mente") or {}).get("shadow", False)),
         },
+        "mente_errores": _resumen_mente_errores(cfg),
         "vigilancia_cron_min": 5,
         "whatsapp": whatsapp_disponible(cfg),
         "telegram": telegram_disponible(cfg),
@@ -2785,6 +2823,33 @@ def api_health():
             "activo": bool(cfg.get("usar_xgboost", True)),
         },
     }
+
+
+@app.get("/api/mente-errores")
+def api_mente_errores_status():
+    """Estado de la mente operativa (errores de la app, no picks)."""
+    cfg = cargar_config()
+    return {
+        "ok": True,
+        "disponible": mente_errores_disponible(cfg),
+        **_resumen_mente_errores(cfg),
+    }
+
+
+@app.post("/api/mente-errores/ciclo")
+@app.get("/api/mente-errores/ciclo")
+def api_mente_errores_ciclo(secret: str | None = None, forzar: bool = False):
+    """Fuerza un ciclo de diagnóstico + remediación (opcional CRON_SECRET)."""
+    if secret:
+        _verificar_cron_secreto(secret)
+    cfg = cargar_config()
+    out = ejecutar_ciclo_mente_errores(
+        cfg,
+        vigilancia=None,
+        lineas_meta=_lineas_meta_cache if isinstance(_lineas_meta_cache, dict) else None,
+        forzar=forzar,
+    )
+    return out
 
 
 @app.get("/api/clima-status")
@@ -3447,6 +3512,20 @@ def ejecutar_trabajo_cron_externo() -> dict:
     resultado = bloquear_apuestas_del_dia(forzar=False)
     liquidar_todo(cargar_memoria())
     memoria = cargar_memoria()
+    cfg = cargar_config()
+    mente_err: dict = {}
+    try:
+        mente_err = ejecutar_ciclo_mente_errores(
+            cfg,
+            vigilancia=None,
+            lineas_meta=_lineas_meta_cache if isinstance(_lineas_meta_cache, dict) else None,
+        )
+    except Exception as e:
+        print(f"[MENTE-ERRORES] ciclo cron: {e}")
+        try:
+            registrar_error_runtime("cron", str(e))
+        except Exception:
+            pass
     return {
         "ok": True,
         "mensaje": "Auto-bloqueo ejecutado",
@@ -3454,6 +3533,11 @@ def ejecutar_trabajo_cron_externo() -> dict:
         "capital": memoria["capital"],
         "dia_actual": memoria.get("dia_actual"),
         "fecha_hoy": fecha_str(),
+        "mente_errores": {
+            "nivel": (mente_err or {}).get("nivel"),
+            "mensaje": (mente_err or {}).get("mensaje"),
+            "n_hallazgos": len((mente_err or {}).get("hallazgos") or []),
+        },
     }
 
 
@@ -3463,6 +3547,10 @@ def _cron_externo_en_fondo() -> None:
         ejecutar_trabajo_cron_externo()
     except Exception as e:
         print(f"[CRON] Error en trabajo externo: {e}")
+        try:
+            registrar_error_runtime("cron_fondo", str(e))
+        except Exception:
+            pass
     finally:
         _cron_externo_activo = False
 
