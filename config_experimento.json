@@ -94,6 +94,16 @@
 
   "usar_mente_errores": true,
 
+  "usar_elo": true,
+
+  "elo": {
+    "peso_elo": 0.40,
+    "k": 20,
+    "home_adv": 24,
+    "fip_liga": 4.20,
+    "pitcher_scale": 28
+  },
+
   "mente": {
     "modo": "normal",
     "min_confianza": 3,

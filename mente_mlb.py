@@ -148,6 +148,15 @@ def construir_briefing(juego: dict[str, Any], memoria: dict | None = None) -> di
             "pvr_away": (historico.get("pitcher_vs_rival_away") or {}).get("calidad"),
             "pvr_home": (historico.get("pitcher_vs_rival_home") or {}).get("calidad"),
         },
+        "elo": {
+            "ok": bool((juego.get("elo") or {}).get("ok")),
+            "resumen": str((juego.get("elo") or {}).get("resumen") or "")[:160],
+            "prob_elo_away": (juego.get("elo") or {}).get("prob_elo_away"),
+            "prob_elo_home": (juego.get("elo") or {}).get("prob_elo_home"),
+            "adj_pitcher_away": (juego.get("elo") or {}).get("adj_pitcher_away"),
+            "adj_pitcher_home": (juego.get("elo") or {}).get("adj_pitcher_home"),
+            "peso_elo": (juego.get("elo") or {}).get("peso_elo"),
+        },
         "pitchers": {
             "away": juego.get("pitcherAway"),
             "home": juego.get("pitcherHome"),
@@ -171,11 +180,29 @@ def construir_briefing(juego: dict[str, Any], memoria: dict | None = None) -> di
     fuente = str(pilares["modelo"]["fuente_cuotas"] or "").lower()
     if fuente in ("modelo", "", "none"):
         alertas.append("sin_mercado")
+    elo_p = pilares.get("elo") or {}
+    if elo_p.get("ok"):
+        try:
+            pick = str(juego.get("pick") or "")
+            home = str(juego.get("home") or "")
+            elo_raw = juego.get("elo") if isinstance(juego.get("elo"), dict) else {}
+            if home and home in pick:
+                modelo_lado = float(elo_raw.get("prob_modelo_home") or juego.get("probPick") or 0)
+                elo_lado = float(elo_p.get("prob_elo_home") or 0)
+            else:
+                modelo_lado = float(elo_raw.get("prob_modelo_away") or juego.get("probPick") or 0)
+                elo_lado = float(elo_p.get("prob_elo_away") or 0)
+            if abs(modelo_lado - elo_lado) >= 12:
+                alertas.append("elo_discrepa")
+        except (TypeError, ValueError):
+            pass
 
     resumen_bits = [
         f"Pick {juego.get('pick') or '?'} @ {juego.get('probPick')}% edge={juego.get('edge')}",
         f"cuotas={fuente or 'n/a'}",
     ]
+    if elo_p.get("ok") and elo_p.get("resumen"):
+        resumen_bits.append(str(elo_p["resumen"])[:90])
     if alertas:
         resumen_bits.append("alertas=" + ",".join(alertas[:8]))
     if humanos.get("resumen"):
