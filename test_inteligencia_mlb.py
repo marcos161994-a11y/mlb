@@ -186,3 +186,30 @@ def test_monte_carlo_totales_preferir_f5_bullpen():
         seed=3,
     )
     assert out["preferir_f5"] is True
+
+
+def test_proyectar_usa_linea_espn_real():
+    juego = {
+        "id": 7,
+        "total_linea": 7.5,
+        "lineas_total": {
+            "linea": 7.5,
+            "over_decimal": 1.91,
+            "under_decimal": 1.91,
+            "fuente": "espn",
+        },
+        "clima": {"run_env": 0.0},
+        "win_pct_away": 0.5,
+        "win_pct_home": 0.5,
+    }
+    out = intel.proyectar_totales_juego(
+        juego,
+        {"inteligencia": {"mc_sims": 300}, "elo": {"fip_liga": 4.2}},
+        pitcher_away={"fip": 4.2},
+        pitcher_home={"fip": 4.2},
+    )
+    assert out["ok"] is True
+    assert out["linea_total"] == 7.5
+    assert out["linea_es_default"] is False
+    assert out["linea_fuente"] == "mercado"
+    assert "edge_over" in out or "edge_under" in out

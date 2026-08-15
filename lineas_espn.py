@@ -56,6 +56,7 @@ def _serializar_mapa(mapa: dict[tuple[str, str], dict[str, Any]]) -> list[dict[s
     for (away, home), fila in mapa.items():
         away_l = fila.get("away") or {}
         home_l = fila.get("home") or {}
+        tot = fila.get("total") if isinstance(fila.get("total"), dict) else {}
         rows.append(
             {
                 "away": away,
@@ -66,6 +67,12 @@ def _serializar_mapa(mapa: dict[tuple[str, str], dict[str, Any]]) -> list[dict[s
                 "home_american": home_l.get("american"),
                 "home_decimal": home_l.get("decimal"),
                 "home_casa": home_l.get("casa"),
+                "total_linea": tot.get("linea"),
+                "total_over_american": tot.get("over_american"),
+                "total_over_decimal": tot.get("over_decimal"),
+                "total_under_american": tot.get("under_american"),
+                "total_under_decimal": tot.get("under_decimal"),
+                "total_casa": tot.get("casa"),
             }
         )
     return rows
@@ -82,7 +89,7 @@ def _deserializar_mapa(rows: list[Any]) -> dict[tuple[str, str], dict[str, Any]]
             continue
         if not row.get("away_decimal") or not row.get("home_decimal"):
             continue
-        mapa[(away, home)] = {
+        fila: dict[str, Any] = {
             "away": {
                 "american": row.get("away_american"),
                 "decimal": row.get("away_decimal"),
@@ -96,8 +103,44 @@ def _deserializar_mapa(rows: list[Any]) -> dict[tuple[str, str], dict[str, Any]]
                 "lado": "home",
             },
         }
+        if row.get("total_linea") is not None:
+            fila["total"] = {
+                "linea": row.get("total_linea"),
+                "over_american": row.get("total_over_american"),
+                "over_decimal": row.get("total_over_decimal"),
+                "under_american": row.get("total_under_american"),
+                "under_decimal": row.get("total_under_decimal"),
+                "casa": row.get("total_casa") or "draftkings",
+            }
+        mapa[(away, home)] = fila
     return mapa
 
+
+def _parse_total_espn(odds: dict[str, Any], casa: str) -> dict[str, Any] | None:
+    """Extrae over/under del bloque odds ESPN (DraftKings)."""
+    try:
+        linea = odds.get("overUnder")
+        if linea is None and isinstance(odds.get("total"), dict):
+            linea = odds["total"].get("overUnder") or odds["total"].get("line")
+        if linea is None:
+            return None
+        linea_f = float(linea)
+    except (TypeError, ValueError):
+        return None
+    over_am = _ml_int(odds.get("overOdds"))
+    under_am = _ml_int(odds.get("underOdds"))
+    out: dict[str, Any] = {
+        "linea": linea_f,
+        "casa": casa,
+        "fuente": "espn",
+    }
+    if over_am is not None:
+        out["over_american"] = over_am
+        out["over_decimal"] = american_a_decimal(over_am)
+    if under_am is not None:
+        out["under_american"] = under_am
+        out["under_decimal"] = american_a_decimal(under_am)
+    return out
 
 def _guardar_disco(mapa: dict[tuple[str, str], dict[str, Any]]) -> None:
     if not mapa:
@@ -184,7 +227,7 @@ def parsear_eventos_espn(payload: dict[str, Any]) -> dict[tuple[str, str], dict[
         provider = ((odds.get("provider") or {}).get("name") or "DraftKings").strip()
         casa = provider.lower().replace(" ", "") or "draftkings"
         ka, kh = normalizar_nombre_equipo(away_name), normalizar_nombre_equipo(home_name)
-        mapa[(ka, kh)] = {
+        fila: dict[str, Any] = {
             "away": {
                 "american": ml_away,
                 "decimal": american_a_decimal(ml_away),
@@ -200,7 +243,33 @@ def parsear_eventos_espn(payload: dict[str, Any]) -> dict[tuple[str, str], dict[
             "provider": provider,
             "espn_id": ev.get("id"),
         }
+        tot = _parse_total_espn(odds, casa)
+        if tot:
+            fila["total"] = tot
+        mapa[(ka, kh)] = fila
     return mapa
+
+
+def _aplicar_total_a_juego(juego: dict[str, Any], lineas: dict[str, Any]) -> bool:
+    """Escribe total_linea / lineas_total si el mapa trae O/U."""
+    tot = lineas.get("total") if isinstance(lineas.get("total"), dict) else None
+    if not tot or tot.get("linea") is None:
+        return False
+    try:
+        linea = float(tot["linea"])
+    except (TypeError, ValueError):
+        return False
+    juego["total_linea"] = linea
+    juego["lineas_total"] = {
+        "linea": linea,
+        "over_american": tot.get("over_american"),
+        "over_decimal": tot.get("over_decimal"),
+        "under_american": tot.get("under_american"),
+        "under_decimal": tot.get("under_decimal"),
+        "casa": tot.get("casa") or juego.get("lineas_fuente") or "espn",
+        "fuente": tot.get("fuente") or "espn",
+    }
+    return True
 
 
 def obtener_lineas_espn(timeout: float = 12.0) -> tuple[dict[tuple[str, str], dict[str, Any]], dict[str, Any]]:
@@ -264,38 +333,42 @@ def aplicar_lineas_espn(
     *,
     solo_vacios: bool = True,
 ) -> tuple[list[dict], dict]:
-    """Rellena moneyline en juegos que aún no tienen cuota de casa."""
+    """Rellena moneyline (y total O/U) en juegos."""
     del cfg
     mapa, meta = obtener_lineas_espn()
     aplicados = 0
+    totales = 0
     for juego in juegos:
-        if solo_vacios and juego.get("odds_away_decimal") and juego.get("odds_home_decimal"):
-            continue
         lineas = buscar_lineas_partido(mapa, juego.get("visitante") or "", juego.get("home") or "")
         if not lineas:
             continue
-        away_l = lineas.get("away") or {}
-        home_l = lineas.get("home") or {}
-        if not away_l.get("decimal") or not home_l.get("decimal"):
-            continue
-        juego["odds_away_american"] = away_l.get("american")
-        juego["odds_away_decimal"] = away_l.get("decimal")
-        juego["odds_home_american"] = home_l.get("american")
-        juego["odds_home_decimal"] = home_l.get("decimal")
-        juego["lineas_fuente"] = away_l.get("casa") or home_l.get("casa") or "espn"
-        juego["lineas_betmgm"] = lineas
-        # Consenso: al menos esta casa; si ya había multi-libro OddsPapi, no borrar
-        if not juego.get("lineas_libros"):
-            juego["lineas_libros"] = [
-                {
-                    "casa": juego["lineas_fuente"],
-                    "away": float(away_l["decimal"]),
-                    "home": float(home_l["decimal"]),
-                }
-            ]
-        aplicados += 1
-    meta["ok"] = aplicados > 0
+        aplicar_ml = not (
+            solo_vacios and juego.get("odds_away_decimal") and juego.get("odds_home_decimal")
+        )
+        if aplicar_ml:
+            away_l = lineas.get("away") or {}
+            home_l = lineas.get("home") or {}
+            if away_l.get("decimal") and home_l.get("decimal"):
+                juego["odds_away_american"] = away_l.get("american")
+                juego["odds_away_decimal"] = away_l.get("decimal")
+                juego["odds_home_american"] = home_l.get("american")
+                juego["odds_home_decimal"] = home_l.get("decimal")
+                juego["lineas_fuente"] = away_l.get("casa") or home_l.get("casa") or "espn"
+                juego["lineas_betmgm"] = lineas
+                if not juego.get("lineas_libros"):
+                    juego["lineas_libros"] = [
+                        {
+                            "casa": juego["lineas_fuente"],
+                            "away": float(away_l["decimal"]),
+                            "home": float(home_l["decimal"]),
+                        }
+                    ]
+                aplicados += 1
+        if _aplicar_total_a_juego(juego, lineas):
+            totales += 1
+    meta["ok"] = aplicados > 0 or totales > 0
     meta["partidos_aplicados"] = aplicados
-    if aplicados:
-        meta["mensaje"] = f"ESPN/DraftKings: {aplicados} juegos con cuota real"
+    meta["totales_aplicados"] = totales
+    if aplicados or totales:
+        meta["mensaje"] = f"ESPN/DraftKings: {aplicados} ML · {totales} totales"
     return juegos, meta

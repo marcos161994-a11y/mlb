@@ -713,34 +713,51 @@ def _heuristica_conclusion(juego: dict, briefing: dict, modo: dict) -> dict[str,
         return _pack("PASAR", 0, ["Sin mercado"], 5, ["sin_cuota_real"], fuente="heuristica", briefing=briefing)
 
     conf_bonus = 1 if a_favor else 0
+    razones_extra: list[str] = []
+    if "preferir_f5" in alertas:
+        razones_extra.append("Bullpen cargado → entorno F5 más estable")
+        conf_bonus = max(0, conf_bonus)  # no sube confianza del ML full
+    if "mc_under" in alertas:
+        razones_extra.append("MC totales: entorno under")
+    elif "mc_over" in alertas:
+        razones_extra.append("MC totales: entorno over")
+    # Señal O/U fuerte + edge ML justo → más cautela (no tumba solo)
+    if ("mc_under" in alertas or "mc_over" in alertas) and edge < 7:
+        conf_bonus = min(conf_bonus, 0)
 
     if edge >= 6 and prob >= 55 and "sin_mercado" not in alertas:
         stake = 2.0 if edge < 8 else (3.0 if edge < 12 else 4.0)
         conf = 3 if edge < 8 else (4 if edge < 12 else 5)
         conf = min(5, conf + conf_bonus)
+        razones = [f"Edge +{edge:.1f}% con contexto limpio", f"Prob {prob:.0f}%"]
+        razones.extend(razones_extra[:2])
         return _pack(
             "APOSTAR",
             stake,
-            [f"Edge +{edge:.1f}% con contexto limpio", f"Prob {prob:.0f}%"],
+            razones,
             conf,
             lec_ids[:2],
             fuente="heuristica",
             briefing=briefing,
         )
     if edge >= 4 and prob >= 58:
+        razones = ["Spot marginal: esperar mejor precio o confirmación"]
+        razones.extend(razones_extra[:1])
         return _pack(
             "ESPERAR",
             0,
-            ["Spot marginal: esperar mejor precio o confirmación"],
+            razones,
             2,
             lec_ids[:1],
             fuente="heuristica",
             briefing=briefing,
         )
+    razones = ["No hay valor claro"]
+    razones.extend(razones_extra[:1])
     return _pack(
         "PASAR",
         0,
-        ["No hay valor claro"],
+        razones,
         3,
         lec_ids[:1],
         fuente="heuristica",

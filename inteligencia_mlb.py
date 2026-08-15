@@ -519,6 +519,11 @@ def monte_carlo_totales(
     n: int = 800,
     seed: int | None = None,
     umbral_señal: float = 0.58,
+    linea_es_default: bool = True,
+    over_decimal: float | None = None,
+    under_decimal: float | None = None,
+    ofensiva_away: float = 1.0,
+    ofensiva_home: float = 1.0,
 ) -> dict[str, Any]:
     """
     Simula carreras (Poisson) → distribución de total del juego y F5.
@@ -536,7 +541,7 @@ def monte_carlo_totales(
         es_local=False,
         fip_liga=fip_liga,
         fraccion=1.0,
-    )
+    ) * max(0.85, min(1.15, float(ofensiva_away) or 1.0))
     lam_h = lambda_carreras_equipo(
         fip_pitcher_rival=fip_away_pitcher,
         park_factor=park_factor,
@@ -545,7 +550,9 @@ def monte_carlo_totales(
         es_local=True,
         fip_liga=fip_liga,
         fraccion=1.0,
-    )
+    ) * max(0.85, min(1.15, float(ofensiva_home) or 1.0))
+    lam_a = max(1.2, min(9.0, lam_a))
+    lam_h = max(1.2, min(9.0, lam_h))
     lam_a_f5 = lam_a * _FRAC_F5
     lam_h_f5 = lam_h * _FRAC_F5
 
@@ -575,12 +582,11 @@ def monte_carlo_totales(
     señal = _señal_umbral(p_over, p_under, umbral_señal)
     señal_f5 = _señal_umbral(p_over_f5, p_under_f5, umbral_señal)
 
-    # Bullpen débil → el total full es más ruidoso; F5 más estable
     preferir_f5 = max(fatiga_bp_away, fatiga_bp_home) >= 0.55 or (
         fatiga_bp_away + fatiga_bp_home
     ) >= 1.0
 
-    return {
+    out: dict[str, Any] = {
         "ok": True,
         "n": n_eff,
         "lambda_away": round(lam_a, 2),
@@ -592,6 +598,8 @@ def monte_carlo_totales(
         "p90": _pct(totals, 0.90),
         "linea_total": float(linea_total),
         "linea_f5": float(linea_f5),
+        "linea_fuente": "default" if linea_es_default else "mercado",
+        "linea_es_default": bool(linea_es_default),
         "p_over": round(p_over * 100.0, 1),
         "p_under": round(p_under * 100.0, 1),
         "p_over_f5": round(p_over_f5 * 100.0, 1),
@@ -600,12 +608,28 @@ def monte_carlo_totales(
         "señal_f5": señal_f5,
         "preferir_f5": preferir_f5,
         "resumen": (
-            f"MC totales μ={mu:.1f} (F5 {mu_f5:.1f}) vs {linea_total} "
-            f"→ {señal} {max(p_over, p_under)*100:.0f}%"
+            f"MC totales μ={mu:.1f} (F5 {mu_f5:.1f}) vs {linea_total}"
+            f"{' (def)' if linea_es_default else ''}"
+            f" → {señal} {max(p_over, p_under)*100:.0f}%"
             + (f" · F5→{señal_f5}" if señal_f5 != "neutro" else "")
             + (" · preferir F5 (bullpen)" if preferir_f5 else "")
         ),
     }
+    if over_decimal and float(over_decimal) >= 1.01:
+        try:
+            impl = 100.0 / float(over_decimal)
+            out["edge_over"] = round(p_over * 100.0 - impl, 1)
+            out["odds_over"] = float(over_decimal)
+        except (TypeError, ValueError, ZeroDivisionError):
+            pass
+    if under_decimal and float(under_decimal) >= 1.01:
+        try:
+            impl = 100.0 / float(under_decimal)
+            out["edge_under"] = round(p_under * 100.0 - impl, 1)
+            out["odds_under"] = float(under_decimal)
+        except (TypeError, ValueError, ZeroDivisionError):
+            pass
+    return out
 
 
 def proyectar_totales_juego(
@@ -631,7 +655,6 @@ def proyectar_totales_juego(
 
     pa = pitcher_away if isinstance(pitcher_away, dict) else {}
     ph = pitcher_home if isinstance(pitcher_home, dict) else {}
-    # Fallback a campos ya escritos en el juego
     if not pa.get("fip") and juego.get("pitcherAwayFip") is not None:
         pa = {**pa, "fip": juego.get("pitcherAwayFip")}
     if not ph.get("fip") and juego.get("pitcherHomeFip") is not None:
@@ -639,11 +662,36 @@ def proyectar_totales_juego(
 
     linea_def = float(intel_cfg.get("linea_total_default") or 8.5)
     linea_f5_def = float(intel_cfg.get("linea_f5_default") or 4.5)
-    linea = _linea_total_juego(juego, linea_def)
+    linea_raw = None
+    for key in ("total_linea", "linea_total", "total_line"):
+        if juego.get(key) is not None:
+            linea_raw = juego.get(key)
+            break
+    lt = juego.get("lineas_total") if isinstance(juego.get("lineas_total"), dict) else {}
+    if linea_raw is None:
+        for key in ("linea", "total", "line"):
+            if lt.get(key) is not None:
+                linea_raw = lt.get(key)
+                break
+    linea_es_default = linea_raw is None
+    try:
+        linea = float(linea_raw) if linea_raw is not None else linea_def
+    except (TypeError, ValueError):
+        linea = linea_def
+        linea_es_default = True
     try:
         linea_f5 = float(juego.get("linea_f5") or linea_f5_def)
     except (TypeError, ValueError):
         linea_f5 = linea_f5_def
+
+    over_dec = under_dec = None
+    try:
+        if lt.get("over_decimal"):
+            over_dec = float(lt["over_decimal"])
+        if lt.get("under_decimal"):
+            under_dec = float(lt["under_decimal"])
+    except (TypeError, ValueError):
+        pass
 
     n_mc = int(intel_cfg.get("mc_sims") or 800)
     seed = 42
@@ -651,6 +699,12 @@ def proyectar_totales_juego(
         seed = int(juego.get("id") or 0) % 100000
     except (TypeError, ValueError):
         pass
+
+    try:
+        wpa = float(juego.get("win_pct_away") or 0.5)
+        wph = float(juego.get("win_pct_home") or 0.5)
+    except (TypeError, ValueError):
+        wpa, wph = 0.5, 0.5
 
     return monte_carlo_totales(
         fip_away_pitcher=_fip_safe(pa, fip_liga),
@@ -665,6 +719,11 @@ def proyectar_totales_juego(
         n=n_mc,
         seed=seed + 17,
         umbral_señal=float(intel_cfg.get("umbral_señal_total") or 0.58),
+        linea_es_default=linea_es_default,
+        over_decimal=over_dec,
+        under_decimal=under_dec,
+        ofensiva_away=1.0 + (wpa - 0.5) * 0.35,
+        ofensiva_home=1.0 + (wph - 0.5) * 0.35,
     )
 
 

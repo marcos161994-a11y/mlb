@@ -1316,6 +1316,10 @@ def guardar_prediccion(
             if isinstance(juego.get("mc_totales"), dict)
             else None,
             "preferir_f5": bool(juego.get("preferir_f5")),
+            "total_linea": juego.get("total_linea"),
+            "lineas_total": juego.get("lineas_total")
+            if isinstance(juego.get("lineas_total"), dict)
+            else None,
         }
     )
     return True
