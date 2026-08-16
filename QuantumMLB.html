@@ -533,10 +533,10 @@
 
 <div class="historial" id="historial-predicciones">
     <h3 onclick="togglePredicciones()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
-        <span>📋 Predicciones en papel (todos los juegos)</span>
-        <span id="predicciones-toggle" style="font-size:1.2rem;">▼</span>
+        <span>📋 Predicciones en papel (todos los juegos · pasado incluido)</span>
+        <span id="predicciones-toggle" style="font-size:1.2rem;">▲</span>
     </h3>
-    <div id="lista-predicciones" style="display:none;"><p style="color:var(--muted)">Sin predicciones registradas aún.</p></div>
+    <div id="lista-predicciones" style="display:block;"><p style="color:var(--muted)">Sin predicciones registradas aún.</p></div>
 </div>
 
 <div class="historial" id="historial-lecciones">
@@ -1261,6 +1261,14 @@ function pintarPredicciones(memoria, plSplit) {
 
     let hayFilas = false;
     const diasOrden = [...memoria.dias].filter(d => (d.predicciones || []).length > 0).reverse();
+    // Abrir el bloque de historial si hay días pasados
+    const listaWrap = document.getElementById('lista-predicciones');
+    const listaToggle = document.getElementById('predicciones-toggle');
+    if (listaWrap && diasOrden.length) {
+        listaWrap.style.display = 'block';
+        if (listaToggle) listaToggle.textContent = '▲';
+    }
+    let diaIdx = 0;
     for (const d of diasOrden) {
         const porJuego = new Map();
         (d.predicciones || []).forEach(p => {
@@ -1325,52 +1333,58 @@ function pintarPredicciones(memoria, plSplit) {
             ? `papel n/a (${nTarde} retroactivos · no cuentan)`
             : `pred ${gPapel}✓/${pPapel}✗ · papel ${fmtMoney(netoPapel)}` + (nTarde ? ` · ${nTarde} tardíos ignorados` : '');
 
+        // Abrir días con resultados (y el más reciente) para que en móvil se vean los juegos
+        const tieneResultados = filas.some(f => f.resultado === 'acierto' || f.resultado === 'fallo');
+        const abierto = tieneResultados || diaIdx === 0;
+        diaIdx += 1;
+
         html += `<div style="margin-bottom:14px;padding:12px;background:var(--panel);border-radius:8px;border:1px solid var(--border);">
             <div style="font-weight:bold;color:var(--cyan);margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;" onclick="togglePredDia('${d.dia}')">
                 <span>Día ${d.dia} (${d.fecha}) — ${filas.length} juegos · ${resumenPapel} · dinero ${fmtMoney(netoDin)}</span>
-                <span id="pred-toggle-${d.dia}" style="font-size:1rem;">▼</span>
+                <span id="pred-toggle-${d.dia}" style="font-size:1rem;">${abierto ? '▲' : '▼'}</span>
             </div>
-            <div id="pred-content-${d.dia}" style="display:none;overflow-x:auto;">
-            <table style="width:100%;border-collapse:collapse;font-size:0.78rem;min-width:640px">
+            <div id="pred-content-${d.dia}" style="display:${abierto ? 'block' : 'none'};overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.78rem;min-width:0">
                 <thead>
                     <tr style="color:var(--muted);text-align:left;border-bottom:1px solid var(--border)">
                         <th style="padding:6px 4px">Partido</th>
                         <th style="padding:6px 4px">Pick</th>
+                        <th style="padding:6px 4px">Res</th>
                         <th style="padding:6px 4px">%</th>
-                        <th style="padding:6px 4px">Resultado</th>
-                        <th style="padding:6px 4px">P/L papel</th>
-                        <th style="padding:6px 4px">Dinero</th>
+                        <th style="padding:6px 4px">P/L</th>
+                        <th style="padding:6px 4px">$</th>
                     </tr>
                 </thead>
                 <tbody>`;
 
         filas.sort((a, b) => (b.probPick || 0) - (a.probPick || 0));
         filas.forEach(f => {
-            let resTxt = '⏳ pendiente';
+            let resTxt = '⏳';
             let resColor = 'var(--muted)';
             if (f.invalida_tarde) {
-                resTxt = f.resultado === 'acierto' ? '⊘ no cuenta (retro)' : (f.resultado === 'fallo' ? '⊘ no cuenta (retro)' : '⊘ no cuenta');
+                resTxt = '⊘';
                 resColor = 'var(--muted)';
-            } else if (f.resultado === 'acierto') { resTxt = '✓ ganó'; resColor = 'var(--green)'; }
-            else if (f.resultado === 'fallo') { resTxt = '✗ perdió'; resColor = 'var(--red)'; }
+            } else if (f.resultado === 'acierto') { resTxt = '✓'; resColor = 'var(--green)'; }
+            else if (f.resultado === 'fallo') { resTxt = '✗'; resColor = 'var(--red)'; }
+            const marc = f.marcador ? ` <span style="color:var(--muted);font-size:0.7rem">${f.marcador}</span>` : '';
             const plPapel = f.invalida_tarde ? '—' : (f.profit_papel != null ? fmtMoney(f.profit_papel) : '—');
             const plColor = (f.profit_papel || 0) > 0 ? 'var(--green)' : ((f.profit_papel || 0) < 0 ? 'var(--red)' : 'var(--muted)');
             let dinTxt = '—';
             let dinColor = 'var(--muted)';
             if (f.con_dinero) {
                 if (f.profit_dinero != null) {
-                    dinTxt = `💰 ${fmtMoney(f.profit_dinero)}`;
+                    dinTxt = `💰${fmtMoney(f.profit_dinero)}`;
                     dinColor = f.profit_dinero >= 0 ? 'var(--green)' : 'var(--red)';
                 } else {
-                    dinTxt = `💰 $${(f.stake_dinero || 0).toFixed(2)} en juego`;
+                    dinTxt = '💰';
                     dinColor = 'var(--gold)';
                 }
             }
             html += `<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
                 <td style="padding:7px 4px">${f.visitante || '?'} @ ${f.home || '?'}</td>
-                <td style="padding:7px 4px;color:var(--cyan)">${nombrePick(f.pick) || '—'}</td>
+                <td style="padding:7px 4px;color:var(--cyan)">${nombrePick(f.pick) || '—'}${marc}</td>
+                <td style="padding:7px 4px;color:${resColor};font-weight:700">${resTxt}</td>
                 <td style="padding:7px 4px">${f.probPick != null ? Number(f.probPick).toFixed(0) + '%' : '—'}</td>
-                <td style="padding:7px 4px;color:${resColor}">${resTxt}</td>
                 <td style="padding:7px 4px;color:${plColor}">${plPapel}</td>
                 <td style="padding:7px 4px;color:${dinColor}">${dinTxt}</td>
             </tr>`;
