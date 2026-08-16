@@ -6957,9 +6957,9 @@
           "pitcher_away_id": 669022,
           "pitcher_home_id": 669372,
           "inicio_juego": "2026-08-15T21:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 3.25,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-15T20:40:13.432993-04:00",
@@ -7634,7 +7634,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-16T00:40:14.074664Z"
+          "whatsapp_enviado_en": "2026-08-16T00:40:14.074664Z",
+          "marcador_final": "Texas Rangers 5 - Athletics 3",
+          "liquidado_en": "2026-08-16T00:30:00.498894-04:00"
         }
       ],
       "resumen": {
@@ -7784,6 +7786,26 @@
       "fuente": "groq",
       "modelo": "llama-3.1-8b-instant",
       "creada_en": "2026-08-16T03:50:00.866792Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-824966-1786854600",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-15",
+      "game_id": "824966",
+      "visitante": "Texas Rangers",
+      "home": "Athletics",
+      "pick": "Texas Rangers ML",
+      "probPick": 50.0,
+      "edge": -10.6,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Texas Rangers 5 - Athletics 3",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-16T04:30:00.506299Z"
     }
   ],
   "mente_stats": {
@@ -7794,9 +7816,9 @@
         "fallos": 2
       },
       "PASAR": {
-        "n": 3,
+        "n": 4,
         "evito_fallo": 0,
-        "oportunidad_perdida": 3
+        "oportunidad_perdida": 4
       },
       "ESPERAR": {
         "n": 4,
@@ -7806,9 +7828,9 @@
     },
     "patrones": {
       "scratch": {
-        "n": 2,
+        "n": 3,
         "pasar_ok": 0,
-        "pasar_miss": 2,
+        "pasar_miss": 3,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -7820,9 +7842,9 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 7,
+        "n": 8,
         "pasar_ok": 0,
-        "pasar_miss": 5,
+        "pasar_miss": 6,
         "apostar_ok": 0,
         "apostar_fail": 2
       },
@@ -7834,9 +7856,9 @@
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 3,
+        "n": 4,
         "pasar_ok": 0,
-        "pasar_miss": 3,
+        "pasar_miss": 4,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -7860,7 +7882,7 @@
       "starter_riesgo": 0,
       "humanos": -2,
       "sin_mercado": 0,
-      "edge_bajo": 0,
+      "edge_bajo": -2,
       "favorito_alto": 0,
       "limpio": 0
     },
@@ -7873,33 +7895,34 @@
       "823671:acierto",
       "823347:fallo",
       "824884:acierto",
-      "823990:fallo"
+      "823990:fallo",
+      "824966:acierto"
     ],
-    "actualizado_en": "2026-08-16T03:50:00.866865Z"
+    "actualizado_en": "2026-08-16T04:30:00.510328Z"
   },
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-15T21:27:07.935299Z"
+    "actualizado_en": "2026-08-16T04:06:46.503652Z"
   },
   "calib_meta": {
     "ok": false,
-    "muestras": 9,
+    "muestras": 10,
     "metodo": null,
     "por_tipo": {},
-    "mensaje": "Esperando más liquidaciones (9/30)"
+    "mensaje": "Esperando más liquidaciones (10/30)"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 9,
-    "muestras_reales": 9,
+    "muestras": 10,
+    "muestras_reales": 10,
     "schema": 4,
-    "mensaje": "Reentrenado con 9 muestras (9 reales, RF acc 100.0%, XGB acc 66.7%)",
+    "mensaje": "Reentrenado con 10 muestras (10 reales, RF acc 100.0%, XGB acc 70.0%)",
     "accuracy_train": 1.0,
     "accuracy_holdout": null,
-    "accuracy_xgb_train": 0.667,
+    "accuracy_xgb_train": 0.7,
     "accuracy_xgb_holdout": null,
-    "ultimo_entreno": "2026-08-16T03:50:02.337616",
+    "ultimo_entreno": "2026-08-16T04:30:03.196364",
     "xgb": true
   }
 }
