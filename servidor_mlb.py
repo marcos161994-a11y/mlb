@@ -1416,7 +1416,7 @@ def vigilancia_t60(
 ) -> dict:
     """
     Detecta juegos PROGRAMADOS cerca del T-60 / inicio sin pick congelado.
-    Sirve para avisar en el panel antes de que se pierda el paper.
+    También lista FINALIZADOS del día sin predicción (Render dormido).
     """
     cfg = cfg or {}
     memoria = memoria or {}
@@ -1439,21 +1439,18 @@ def vigilancia_t60(
 
     ahora = ahora_simulado()
     en_riesgo: list[dict] = []
+    perdidos: list[dict] = []
     congelados = 0
     programados = 0
 
     for j in juegos or []:
-        estado = j.get("estado")
+        estado = str(j.get("estado") or "")
         gid = str(j.get("id") or "")
         if estado == "PROGRAMADO":
             programados += 1
         if gid in ya:
             if estado in ("PROGRAMADO", "EN VIVO"):
                 congelados += 1
-            continue
-        if estado not in ("PROGRAMADO", "EN VIVO"):
-            continue
-        if not (j.get("pick") or "").strip():
             continue
 
         mins_a_inicio = None
@@ -1467,20 +1464,51 @@ def vigilancia_t60(
         except Exception:
             mins_a_inicio = None
 
+        # Ya terminó y nunca hubo pick → perdido por sueño/ops (no inventamos pick)
+        if estado == "FINALIZADO":
+            perdidos.append(
+                {
+                    "id": gid,
+                    "visitante": j.get("visitante"),
+                    "home": j.get("home"),
+                    "estado": estado,
+                    "hora_inicio_txt": j.get("hora_inicio_txt"),
+                    "mins_a_inicio": round(mins_a_inicio, 1) if mins_a_inicio is not None else None,
+                    "motivo": "FINAL sin predicción (posible Render dormido / T-60 perdido)",
+                }
+            )
+            continue
+
+        if estado not in ("PROGRAMADO", "EN VIVO"):
+            continue
+
+        # Antes se exigía pick en el objeto juego: si el motor no corrió, no alertaba.
         riesgo = False
         motivo = ""
         if estado == "PROGRAMADO" and mins_a_inicio is not None:
             if -gracia <= mins_a_inicio <= ventana_pre:
                 riesgo = True
                 if mins_a_inicio <= mins_antes:
-                    motivo = f"T-60 pasado · faltan {mins_a_inicio:.0f} min al inicio"
+                    motivo = f"T-60 pasado · faltan {mins_a_inicio:.0f} min al inicio · sin congelar"
                 else:
-                    motivo = f"Se acerca T-60 · faltan {mins_a_inicio:.0f} min"
+                    motivo = f"Se acerca T-60 · faltan {mins_a_inicio:.0f} min · sin congelar"
         elif estado == "EN VIVO":
             mins_desde = _minutos_desde_inicio(j)
             if mins_desde is not None and mins_desde <= gracia:
                 riesgo = True
                 motivo = f"EN VIVO sin congelar · {mins_desde:.0f} min de juego (gracia)"
+            elif mins_desde is not None and mins_desde > gracia:
+                perdidos.append(
+                    {
+                        "id": gid,
+                        "visitante": j.get("visitante"),
+                        "home": j.get("home"),
+                        "estado": estado,
+                        "hora_inicio_txt": j.get("hora_inicio_txt"),
+                        "mins_a_inicio": round(mins_a_inicio, 1) if mins_a_inicio is not None else None,
+                        "motivo": f"EN VIVO fuera de gracia ({mins_desde:.0f} min) sin pick",
+                    }
+                )
 
         if riesgo:
             en_riesgo.append(
@@ -1498,29 +1526,45 @@ def vigilancia_t60(
 
     en_riesgo.sort(key=lambda x: (x.get("mins_a_inicio") is None, x.get("mins_a_inicio") or 0))
     n = len(en_riesgo)
-    if n == 0:
+    n_perd = len(perdidos)
+    if n > 0:
+        nivel = "alerta"
+        if n == 1:
+            g0 = en_riesgo[0]
+            mensaje = (
+                f"⚠ Sin pick fijo: {g0.get('visitante')} @ {g0.get('home')} "
+                f"· {g0.get('motivo')}"
+            )
+        else:
+            mensaje = f"⚠ {n} juegos sin pick congelado cerca del T-60 / inicio"
+    elif n_perd > 0:
+        nivel = "alerta"
+        p0 = perdidos[0]
+        if n_perd == 1:
+            mensaje = (
+                f"⚠ Pick perdido: {p0.get('visitante')} @ {p0.get('home')} "
+                f"(sin predicción · posible sueño Render)"
+            )
+        else:
+            mensaje = f"⚠ {n_perd} juegos del día sin predicción (posible sueño Render)"
+    else:
         mensaje = "Vigilancia T-60 OK · sin juegos en riesgo ahora"
         nivel = "ok"
-    elif n == 1:
-        g0 = en_riesgo[0]
-        mensaje = (
-            f"⚠ Sin pick fijo: {g0.get('visitante')} @ {g0.get('home')} "
-            f"· {g0.get('motivo')}"
-        )
-        nivel = "alerta"
-    else:
-        mensaje = f"⚠ {n} juegos sin pick congelado cerca del T-60 / inicio"
-        nivel = "alerta"
 
     return {
-        "ok": n == 0,
+        "ok": n == 0 and n_perd == 0,
         "nivel": nivel,
         "mensaje": mensaje,
         "en_riesgo": en_riesgo[:8],
         "total_riesgo": n,
+        "perdidos": perdidos[:12],
+        "total_perdidos": n_perd,
         "congelados_activos": congelados,
         "programados": programados,
         "cron_cada_min": 5,
+        "accion_sugerida": (
+            "forzar_registro_t60" if n > 0 else ("cron_externo" if n_perd > 0 else None)
+        ),
     }
 
 
@@ -2792,6 +2836,21 @@ def api_predicciones():
 @app.get("/api/health")
 def api_health():
     """Ping para Render + cron externo (mantiene el servicio despierto en plan free)."""
+    # Al despertar: intentar congelar T-60 antes de que se pierdan juegos
+    wake: dict[str, Any] = {"registro": False, "predicciones_nuevas": 0}
+    try:
+        sincronizar_experimento_a_hoy()
+        reg = registrar_predicciones_del_dia(forzar=False)
+        wake["registro"] = True
+        wake["predicciones_nuevas"] = int((reg or {}).get("predicciones_nuevas") or 0)
+        if wake["predicciones_nuevas"]:
+            try:
+                bloquear_apuestas_del_dia(forzar=False)
+            except Exception:
+                pass
+    except Exception as e:
+        wake["error"] = str(e)[:120]
+
     cfg = _cfg_con_telegram_memoria()
     circ: dict = {"abierto": False}
     try:
@@ -2803,6 +2862,7 @@ def api_health():
     return {
         "ok": True,
         "servicio": "quantum-mlb",
+        "wake": wake,
         "capital": cargar_memoria().get("capital"),
         "dia_actual": cargar_memoria().get("dia_actual"),
         "hora": datetime.now(tz_experimento()).isoformat(),
@@ -3582,11 +3642,27 @@ def ejecutar_trabajo_cron_externo() -> dict:
     liquidar_todo(cargar_memoria())
     memoria = cargar_memoria()
     cfg = _cfg_con_telegram_memoria()
+    # Vigilancia real (antes el cron pasaba vigilancia=None → mente ciega al sueño)
+    vigilancia: dict = {}
+    try:
+        juegos = obtener_juegos_fecha(fecha_str())
+        vigilancia = vigilancia_t60(juegos, memoria, cfg)
+        if vigilancia.get("nivel") == "alerta" and int(vigilancia.get("total_riesgo") or 0) > 0:
+            registrar_predicciones_del_dia(forzar=True)
+            try:
+                bloquear_apuestas_del_dia(forzar=False)
+            except Exception:
+                pass
+            memoria = cargar_memoria()
+            vigilancia = vigilancia_t60(juegos, memoria, cfg)
+    except Exception as e:
+        print(f"[CRON] vigilancia: {e}")
+        vigilancia = {"ok": False, "nivel": "ok", "mensaje": str(e)[:120]}
     mente_err: dict = {}
     try:
         mente_err = ejecutar_ciclo_mente_errores(
             cfg,
-            vigilancia=None,
+            vigilancia=vigilancia if isinstance(vigilancia, dict) else None,
             lineas_meta=_lineas_meta_cache if isinstance(_lineas_meta_cache, dict) else None,
             memoria=memoria,
         )
@@ -3605,6 +3681,12 @@ def ejecutar_trabajo_cron_externo() -> dict:
         "capital": memoria["capital"],
         "dia_actual": memoria.get("dia_actual"),
         "fecha_hoy": fecha_str(),
+        "vigilancia": {
+            "nivel": (vigilancia or {}).get("nivel"),
+            "total_riesgo": (vigilancia or {}).get("total_riesgo"),
+            "total_perdidos": (vigilancia or {}).get("total_perdidos"),
+            "mensaje": (vigilancia or {}).get("mensaje"),
+        },
         "mente_errores": {
             "nivel": (mente_err or {}).get("nivel"),
             "mensaje": (mente_err or {}).get("mensaje"),

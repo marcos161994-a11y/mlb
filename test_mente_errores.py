@@ -154,3 +154,55 @@ def test_sincronizar_telegram_desde_env(tmp_path, monkeypatch):
     assert out["ok"] is True
     assert wa.leer_bot_token_guardado() == "111:TOK"
     assert str(wa.leer_chat_id_guardado()) == "42"
+
+
+def test_vigilancia_t60_fuerza_registro(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(me, "DATA_DIR", Path(tmp_path))
+    called = {"reg": 0}
+
+    def fake_reg(forzar=False):
+        called["reg"] += 1
+        assert forzar is True
+        return {"predicciones_nuevas": 2}
+
+    def fake_bloq(forzar=False):
+        return {"ok": True}
+
+    import servidor_mlb as srv
+
+    monkeypatch.setattr(srv, "registrar_predicciones_del_dia", fake_reg)
+    monkeypatch.setattr(srv, "bloquear_apuestas_del_dia", fake_bloq)
+
+    vig = {
+        "nivel": "alerta",
+        "mensaje": "⚠ 1 juego sin pick",
+        "total_riesgo": 1,
+        "total_perdidos": 0,
+        "en_riesgo": [{"visitante": "A", "home": "B"}],
+    }
+    out = me.ejecutar_ciclo(_cfg_base(), vigilancia=vig)
+    assert any(h["codigo"] == "vigilancia_t60" for h in out["hallazgos"])
+    assert called["reg"] >= 1
+    acciones = []
+    for a in out.get("acciones") or []:
+        acciones.extend(a.get("acciones") or [])
+    assert me.ACCION_FORZAR_REGISTRO_T60 in acciones
+
+
+def test_juegos_perdidos_hallazgo(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(me, "DATA_DIR", Path(tmp_path))
+    vig = {
+        "nivel": "alerta",
+        "mensaje": "⚠ 2 juegos sin predicción",
+        "total_riesgo": 0,
+        "total_perdidos": 2,
+        "perdidos": [
+            {"visitante": "New York Yankees", "home": "Toronto Blue Jays"},
+            {"visitante": "Chi", "home": "Det"},
+        ],
+    }
+    out = me.ejecutar_ciclo(_cfg_base(), vigilancia=vig)
+    codigos = {h["codigo"] for h in out["hallazgos"]}
+    assert "juegos_sin_pick_perdidos" in codigos
