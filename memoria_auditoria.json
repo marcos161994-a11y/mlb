@@ -3985,7 +3985,600 @@
       "fecha": "2026-08-17",
       "bloqueado_en": null,
       "apuestas": [],
-      "predicciones": [],
+      "predicciones": [
+        {
+          "game_id": "824514",
+          "visitante": "St. Louis Cardinals",
+          "home": "Cincinnati Reds",
+          "pick": "St. Louis Cardinals ML",
+          "odds": 1.855,
+          "odds_american": -117,
+          "edge": -2.0,
+          "probPick": 51.9,
+          "apostable": false,
+          "lineas_fuente": "draftkings",
+          "motivo_apuesta": "Sin valor (mínimo +6.0% edge)",
+          "pitcherAway": "Quinn Mathews",
+          "pitcherHome": "Kent Emanuel",
+          "pitcher_away_id": 687273,
+          "pitcher_home_id": 592288,
+          "inicio_juego": "2026-08-17T13:40:00-04:00",
+          "estado": "pendiente",
+          "resultado": null,
+          "profit": null,
+          "stake_virtual": 5.0,
+          "con_dinero": false,
+          "predicho_en": "2026-08-17T12:40:13.832933-04:00",
+          "congelado_en_gracia": false,
+          "valida_stats": true,
+          "invalida_tarde": false,
+          "clima": {
+            "ok": false,
+            "fuente": "none",
+            "temp_f": null,
+            "viento_mph": null,
+            "humedad": null,
+            "run_env": 0.0,
+            "motivo": "429 Client Error: Too Many Requests for url: https://api.open-meteo.com/v1/forecast?latitude=39.0979&longitude=-84.5082&",
+            "estadio": "Great American Ball Park",
+            "es_domo": false
+          },
+          "lesiones": {
+            "ok": true,
+            "fuente": "espn",
+            "motivo": "294 bajas indexadas",
+            "away": [
+              {
+                "jugador": "Ramon Urias",
+                "apellido": "urias",
+                "pos": "3B",
+                "status": "60-Day-IL",
+                "comentario": "Urias (elbows) has been sent to Triple-A Memphis to resume a rehab assignment, John Denton of Roundtable.io reports.",
+                "severidad": 5,
+                "equipo": "St. Louis Cardinals"
+              },
+              {
+                "jugador": "Max Rajcic",
+                "apellido": "rajcic",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Rajcic revealed on his Instagram account Thursday that he recently underwent a right elbow UCL reconstruction.",
+                "severidad": 5,
+                "equipo": "St. Louis Cardinals"
+              }
+            ],
+            "home": [
+              {
+                "jugador": "Brandon Williamson",
+                "apellido": "williamson",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Williamson (shoulder) struck out two and allowed one earned run on five hits and no walks across 3.2 innings in a rehab appearance Sunday wi",
+                "severidad": 5,
+                "equipo": "Cincinnati Reds"
+              },
+              {
+                "jugador": "Hunter Greene",
+                "apellido": "greene",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Greene (elbow) will be out for 12-to-18 months after undergoing his second Tommy John surgery Wednesday, Gordon Wittenmyer of The Cincinnati",
+                "severidad": 5,
+                "equipo": "Cincinnati Reds"
+              },
+              {
+                "jugador": "Blake Dunn",
+                "apellido": "dunn",
+                "pos": "CF",
+                "status": "60-Day-IL",
+                "comentario": "The Reds transferred Dunn (elbow) from the 10-day injured list to the 60-day IL on Thursday.",
+                "severidad": 5,
+                "equipo": "Cincinnati Reds"
+              },
+              {
+                "jugador": "Graham Ashcraft",
+                "apellido": "ashcraft",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Ashcraft (elbow) is on a throwing program, which will have him throw from 105 feet beginning July 20 at the Reds' training facility in Arizo",
+                "severidad": 5,
+                "equipo": "Cincinnati Reds"
+              },
+              {
+                "jugador": "Tony Santillan",
+                "apellido": "santillan",
+                "pos": "RP",
+                "status": "15-Day-IL",
+                "comentario": "Santillan (oblique) could be activated to the major-league roster later this week, Mike Petraglia of MLB.com reports.",
+                "severidad": 4,
+                "equipo": "Cincinnati Reds"
+              },
+              {
+                "jugador": "Spencer Steer",
+                "apellido": "steer",
+                "pos": "1B",
+                "status": "10-Day-IL",
+                "comentario": "Steer (wrist) is scheduled to have a splint removed from his right wrist Monday, MLB.com reports.",
+                "severidad": 3,
+                "equipo": "Cincinnati Reds"
+              }
+            ],
+            "resumen": "St. Louis Cardinals: Ramon Urias(3B/60-Day-IL), Max Rajcic(RP/60-Day-IL) | Cincinnati Reds: Brandon Williamson(SP/60-Day-IL), Hunter Greene(SP/60-Day-IL), Blake Dunn(CF/60-Day-IL), Graham Ashcraft(RP/60-Day-IL)",
+            "ajuste_away": -1.6,
+            "ajuste_home": -3.1,
+            "starter_riesgo": false,
+            "starter_away_lesionado": false,
+            "starter_home_lesionado": false,
+            "alerta": ""
+          },
+          "scratch_lineup": {
+            "ok": true,
+            "lineup_confirmado": true,
+            "scratch_away": false,
+            "scratch_home": false,
+            "estrellas_fuera_away": [],
+            "estrellas_fuera_home": [
+              {
+                "id": 668709,
+                "nombre": "JJ Bleday",
+                "ops": 0.772,
+                "pa": 398
+              }
+            ],
+            "ajuste_away": 0.0,
+            "ajuste_home": 0.0,
+            "min_estrellas_fuera": 2,
+            "riesgo": false,
+            "alerta": "",
+            "resumen": "Lineup OK"
+          },
+          "factores_humanos": {
+            "ok": true,
+            "away": {
+              "ok": true,
+              "dias_descanso": 0.0,
+              "back_to_back": true,
+              "juegos_seguidos_visita": 4,
+              "cambio_zona": 1,
+              "fatiga_viaje": 0.86,
+              "ultimo_rival": "Chicago Cubs",
+              "ultimo_venue": "Wrigley Field",
+              "motivo": "B2B · descanso 0d · Δzona 1h · road×4 · fatiga 0.86"
+            },
+            "home": {
+              "ok": true,
+              "dias_descanso": 0.0,
+              "back_to_back": true,
+              "juegos_seguidos_visita": 0,
+              "cambio_zona": 0,
+              "fatiga_viaje": 0.35,
+              "ultimo_rival": "Miami Marlins",
+              "ultimo_venue": "Great American Ball Park",
+              "motivo": "B2B · descanso 0d"
+            },
+            "serie": {
+              "game_number": 1,
+              "games_in_series": 5,
+              "leverage": 0.2,
+              "rubber": false,
+              "day_night": "day"
+            },
+            "umpire": {
+              "ok": true,
+              "hp_nombre": "Vic Carapazza",
+              "hp_id": 483569,
+              "sesgo_runs": 0.0,
+              "motivo": "HP Vic Carapazza"
+            },
+            "ajuste_away": -1.89,
+            "ajuste_home": -0.49,
+            "sesgo_umpire_runs": 0.0,
+            "alertas": [
+              "Visita fatigada (B2B · descanso 0d · Δzona 1h · road×4 · fatiga 0.86)"
+            ],
+            "resumen": "AWAY: B2B · descanso 0d · Δzona 1h · road×4 · fatiga 0.86 | HOME: B2B · descanso 0d | Serie 1/5 | day | HP Vic Carapazza",
+            "riesgo": true,
+            "features_away": {
+              "fatiga_viaje": 0.86,
+              "dias_descanso": 0.0,
+              "cambio_zona": 1.0,
+              "leverage_serie": 0.2,
+              "umpire_runs": 0.0
+            },
+            "features_home": {
+              "fatiga_viaje": 0.35,
+              "dias_descanso": 0.0,
+              "cambio_zona": 0.0,
+              "leverage_serie": 0.2,
+              "umpire_runs": 0.0
+            }
+          },
+          "historico_oficial": {
+            "ok": true,
+            "season": 2026,
+            "l10_away": {
+              "ok": true,
+              "wins": 7,
+              "losses": 3,
+              "pct": 0.7,
+              "marca": "7-3",
+              "streak_code": "W2",
+              "streak_type": "wins",
+              "streak_n": 2,
+              "forma": "buena"
+            },
+            "l10_home": {
+              "ok": true,
+              "wins": 4,
+              "losses": 6,
+              "pct": 0.4,
+              "marca": "4-6",
+              "streak_code": "L2",
+              "streak_type": "losses",
+              "streak_n": 2,
+              "forma": "neutra"
+            },
+            "pitcher_vs_rival_away": {
+              "ok": true,
+              "pitcher_id": 687273,
+              "pitcher": "Quinn Mathews",
+              "rival_id": 113,
+              "gs": 0,
+              "ip": 0.0,
+              "era": null,
+              "whip": null,
+              "k": 0,
+              "bb": 0,
+              "hr": 0,
+              "ops_contra": null,
+              "avg_contra": null,
+              "calidad": "desconocido",
+              "motivo": "sin historial vs rival",
+              "fechas": [],
+              "resumenes": []
+            },
+            "pitcher_vs_rival_home": {
+              "ok": true,
+              "pitcher_id": 592288,
+              "pitcher": "Kent Emanuel",
+              "rival_id": 138,
+              "gs": 0,
+              "ip": 0.0,
+              "era": null,
+              "whip": null,
+              "k": 0,
+              "bb": 0,
+              "hr": 0,
+              "ops_contra": null,
+              "avg_contra": null,
+              "calidad": "desconocido",
+              "motivo": "sin historial vs rival",
+              "fechas": [],
+              "resumenes": []
+            },
+            "alertas": [],
+            "riesgo": false,
+            "ajuste_away": 0.4,
+            "ajuste_home": -0.2,
+            "resumen": "L10 visita 7-3 · L10 local 4-6"
+          },
+          "ia_briefing": {
+            "ok": true,
+            "fase": "t60",
+            "creado_en": "2026-08-17T16:40:13.835938Z",
+            "alertas": [
+              "humanos",
+              "mc_over",
+              "preferir_f5"
+            ],
+            "resumen": "Pick St. Louis Cardinals ML @ 51.9% edge=-2.0 · cuotas=draftkings · Elo 1511/1490 pitch +14/-1 → 52/48% · fusión 52/48% · Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 52/48% · MC totales μ=10.4 (F · alertas=humanos,mc_over,preferir_f5 · AWAY: B2B · descanso 0d · Δzona 1h · road×4 · fatiga 0.86 | HOME: B",
+            "pilares": {
+              "modelo": {
+                "pick": "St. Louis Cardinals ML",
+                "prob": 51.9,
+                "edge": -2.0,
+                "odds": 1.855,
+                "fuente_cuotas": "draftkings",
+                "motivo": "Sin valor (mínimo +6.0% edge)"
+              },
+              "clima": {
+                "ok": false,
+                "run_env": 0.0,
+                "motivo": "429 Client Error: Too Many Requests for url: https://api.open-meteo.com/v1/forecast?latitude=39.0979"
+              },
+              "lesiones": {
+                "ok": true,
+                "starter_riesgo": false,
+                "resumen": "St. Louis Cardinals: Ramon Urias(3B/60-Day-IL), Max Rajcic(RP/60-Day-IL) | Cincinnati Reds: Brandon Williamson(SP/60-Day-IL), Hunter Greene("
+              },
+              "scratch": {
+                "ok": true,
+                "riesgo": false,
+                "resumen": "Lineup OK"
+              },
+              "humanos": {
+                "ok": true,
+                "riesgo": true,
+                "resumen": "AWAY: B2B · descanso 0d · Δzona 1h · road×4 · fatiga 0.86 | HOME: B2B · descanso 0d | Serie 1/5 | day | HP Vic Carapazza",
+                "fatiga_away": 0.86,
+                "fatiga_home": 0.35
+              },
+              "historico": {
+                "ok": true,
+                "riesgo": false,
+                "resumen": "L10 visita 7-3 · L10 local 4-6",
+                "l10_away": "7-3",
+                "l10_home": "4-6",
+                "pvr_away": "desconocido",
+                "pvr_home": "desconocido"
+              },
+              "elo": {
+                "ok": true,
+                "resumen": "Elo 1511/1490 pitch +14/-1 → 52/48% · fusión 52/48%",
+                "prob_elo_away": 51.62,
+                "prob_elo_home": 48.38,
+                "adj_pitcher_away": 14.0,
+                "adj_pitcher_home": -0.56,
+                "peso_elo": 0.4
+              },
+              "inteligencia": {
+                "ok": true,
+                "capas": [
+                  "bullpen",
+                  "park_umpire",
+                  "monte_carlo",
+                  "mc_totales",
+                  "consenso"
+                ],
+                "resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 52/48% · MC totales μ=10.4 (F5 5.8) vs 9.0 → over 61% · F5→over · preferir F5 (bullpen)",
+                "tipo_pick": "underdog",
+                "consenso_n": 1,
+                "mc": "MC×800 → 51/49%",
+                "totales": {
+                  "ok": true,
+                  "mu": 10.43,
+                  "mu_f5": 5.81,
+                  "señal": "over",
+                  "señal_f5": "over",
+                  "preferir_f5": true,
+                  "resumen": "MC totales μ=10.4 (F5 5.8) vs 9.0 → over 61% · F5→over · preferir F5 (bullpen)"
+                }
+              },
+              "pitchers": {
+                "away": "Quinn Mathews",
+                "home": "Kent Emanuel",
+                "fip": 3.7,
+                "fatiga_bullpen": 0.4
+              }
+            },
+            "lecciones_ids": [
+              "lec-veto_acertado-824965-1786920600",
+              "lec-fallo_postmortem-823912-1786921800",
+              "lec-veto_acertado-823912-1786921800",
+              "lec-fallo_postmortem-823182-1786922400",
+              "lec-veto_acertado-823182-1786922400",
+              "lec-oportunidad_perdida-824156-1786933200"
+            ]
+          },
+          "ia_mente": {
+            "ok": true,
+            "decision": "PASAR",
+            "stake_pct": 0.0,
+            "razones": [
+              "Fatiga de viaje extrema (away=0.86)"
+            ],
+            "confianza": 5,
+            "lecciones_usadas": [],
+            "fuente": "regla-local",
+            "modelo": null,
+            "briefing": null,
+            "alertas": [
+              "humanos",
+              "mc_over",
+              "preferir_f5"
+            ],
+            "senales": [
+              "humanos",
+              "mc_over",
+              "preferir_f5",
+              "edge_bajo"
+            ],
+            "penalizacion_aprendizaje": 2,
+            "modo": "normal",
+            "min_confianza": 3,
+            "shadow": false,
+            "briefing_fase": "t60",
+            "autoriza_dinero": false
+          },
+          "ml_features": {
+            "era_pitcher": 3.6,
+            "whip_pitcher": 1.8,
+            "k9_pitcher": 5.4,
+            "woba_equipo": 0.319,
+            "ops_equipo": 0.698,
+            "win_pct_equipo": 0.508,
+            "es_local": 0.0,
+            "park_factor": 1.1,
+            "fatiga_bullpen": 0.4,
+            "matchup_zurdo_diestro": 0.18000000000000016,
+            "edge_estadistico": -2.0,
+            "bb9_pitcher": 5.4,
+            "hr9_pitcher": 0.0,
+            "racha_equipo": 0.7,
+            "diferencia_run": 0.0,
+            "vs_pitcher_hand": 0.0,
+            "temp_f": 72.0,
+            "viento_mph": 5.0,
+            "run_env": 0.0,
+            "fip_pitcher": 3.7,
+            "xfip_pitcher": 4.9,
+            "k_pct_pitcher": 12.5,
+            "bb_pct_pitcher": 12.5,
+            "fatiga_viaje": 0.86,
+            "dias_descanso": 1.0,
+            "cambio_zona": 1.0,
+            "leverage_serie": 0.2,
+            "umpire_runs": 0.0
+          },
+          "tipo_pick": "underdog",
+          "inteligencia": {
+            "ok": true,
+            "capas": [
+              "bullpen",
+              "park_umpire",
+              "monte_carlo",
+              "mc_totales",
+              "consenso"
+            ],
+            "bullpen": {
+              "away": {
+                "ok": true,
+                "fatiga": 0.708,
+                "pitches_relevo": 67,
+                "relevistas": 3,
+                "horas_desde": 18.8,
+                "resumen": "Bullpen St. Louis Cardinals: 67 pitches relevo (3 brazos) · fatiga 0.71",
+                "nombre": "St. Louis Cardinals",
+                "game_pk": 824642
+              },
+              "home": {
+                "ok": true,
+                "fatiga": 0.713,
+                "pitches_relevo": 112,
+                "relevistas": 3,
+                "horas_desde": 20.3,
+                "resumen": "Bullpen Cincinnati Reds: 112 pitches relevo (3 brazos) · fatiga 0.71",
+                "nombre": "Cincinnati Reds",
+                "game_pk": 824477
+              },
+              "shift_hacia_away": 0.02
+            },
+            "park_umpire": {
+              "ok": true,
+              "adj_away": 0.28,
+              "adj_home": 0.44,
+              "park_factor": 1.1,
+              "sesgo_umpire": 0.0,
+              "resumen": "Park×1.10 ump +0.00 → 52/48%"
+            },
+            "monte_carlo": {
+              "ok": true,
+              "n": 800,
+              "prob_home": 48.88,
+              "prob_away": 51.12,
+              "resumen": "MC×800 → 51/49%"
+            },
+            "totales": {
+              "ok": true,
+              "n": 800,
+              "lambda_away": 5.36,
+              "lambda_home": 5.02,
+              "mu_total": 10.43,
+              "mu_f5": 5.81,
+              "p10": 6.0,
+              "p50": 10.0,
+              "p90": 15.0,
+              "linea_total": 9.0,
+              "linea_f5": 4.5,
+              "linea_fuente": "mercado",
+              "linea_es_default": false,
+              "p_over": 61.4,
+              "p_under": 27.5,
+              "p_over_f5": 69.6,
+              "p_under_f5": 30.4,
+              "señal": "over",
+              "señal_f5": "over",
+              "preferir_f5": true,
+              "resumen": "MC totales μ=10.4 (F5 5.8) vs 9.0 → over 61% · F5→over · preferir F5 (bullpen)",
+              "edge_over": 7.2,
+              "odds_over": 1.847,
+              "edge_under": -23.0,
+              "odds_under": 1.98
+            },
+            "preferir_f5": true,
+            "consenso": {
+              "ok": true,
+              "n_fuentes": 1,
+              "fuentes": [
+                "draftkings"
+              ],
+              "dec_away": 1.855,
+              "dec_home": 2.09,
+              "prob_away": 52.98,
+              "prob_home": 47.02,
+              "vig_pct": 1.76,
+              "discrepancia_casas_pct": 0.0,
+              "resumen": "Consenso 1 casa(s) · fair 52.98/47.02% · vig 1.76%"
+            },
+            "tipo_pre": "limpio",
+            "resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 52/48% · MC totales μ=10.4 (F5 5.8) vs 9.0 → over 61% · F5→over · preferir F5 (bullpen)",
+            "tipo_pick": "underdog"
+          },
+          "elo": {
+            "ok": true,
+            "activo": true,
+            "peso_elo": 0.4,
+            "elo_away": 1510.9,
+            "elo_home": 1490.1,
+            "adj_pitcher_away": 14.0,
+            "adj_pitcher_home": -0.56,
+            "elo_adj_away": 1524.9,
+            "elo_adj_home": 1489.6,
+            "prob_elo_away": 51.62,
+            "prob_elo_home": 48.38,
+            "prob_modelo_away": 52.3,
+            "prob_modelo_home": 47.7,
+            "prob_fusion_away": 52.03,
+            "prob_fusion_home": 47.97,
+            "fip_away": 3.7,
+            "fip_home": 4.22,
+            "resumen": "Elo 1511/1490 pitch +14/-1 → 52/48% · fusión 52/48%"
+          },
+          "mc_totales": {
+            "ok": true,
+            "n": 800,
+            "lambda_away": 5.36,
+            "lambda_home": 5.02,
+            "mu_total": 10.43,
+            "mu_f5": 5.81,
+            "p10": 6.0,
+            "p50": 10.0,
+            "p90": 15.0,
+            "linea_total": 9.0,
+            "linea_f5": 4.5,
+            "linea_fuente": "mercado",
+            "linea_es_default": false,
+            "p_over": 61.4,
+            "p_under": 27.5,
+            "p_over_f5": 69.6,
+            "p_under_f5": 30.4,
+            "señal": "over",
+            "señal_f5": "over",
+            "preferir_f5": true,
+            "resumen": "MC totales μ=10.4 (F5 5.8) vs 9.0 → over 61% · F5→over · preferir F5 (bullpen)",
+            "edge_over": 7.2,
+            "odds_over": 1.847,
+            "edge_under": -23.0,
+            "odds_under": 1.98
+          },
+          "preferir_f5": true,
+          "total_linea": 9.0,
+          "lineas_total": {
+            "linea": 9.0,
+            "over_american": -118,
+            "over_decimal": 1.847,
+            "under_american": -102,
+            "under_decimal": 1.98,
+            "casa": "draftkings",
+            "fuente": "espn"
+          },
+          "alerta_enviado": true,
+          "alerta_canal": "telegram",
+          "whatsapp_enviado": true,
+          "telegram_enviado": true,
+          "whatsapp_enviado_en": "2026-08-17T16:40:14.469595Z"
+        }
+      ],
       "resumen": {
         "jugadas": 0,
         "ganadas": 0,
@@ -4270,7 +4863,7 @@
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-17T04:10:47.068738Z"
+    "actualizado_en": "2026-08-17T08:36:02.442052Z"
   },
   "calib_meta": {
     "ok": false,
