@@ -206,3 +206,32 @@ def test_juegos_perdidos_hallazgo(tmp_path, monkeypatch):
     out = me.ejecutar_ciclo(_cfg_base(), vigilancia=vig)
     codigos = {h["codigo"] for h in out["hallazgos"]}
     assert "juegos_sin_pick_perdidos" in codigos
+
+
+def test_historial_wipeado_restaura(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(me, "DATA_DIR", Path(tmp_path))
+    called = {"n": 0}
+
+    def fake_restore():
+        called["n"] += 1
+        return True
+
+    monkeypatch.setattr("servidor_mlb._intentar_recuperar_wipe", fake_restore)
+    monkeypatch.setattr(
+        "servidor_mlb._backup_tiene_dias_que_el_disco_perdio",
+        lambda b, d: True,
+    )
+    monkeypatch.setattr("servidor_mlb._contar_historial", lambda m: (2, 10))
+    bundled = {"dias": [{"fecha": "2026-08-15", "predicciones": [{"game_id": "1"}]}]}
+    disk = {"dias": [{"fecha": "2026-08-17", "predicciones": [{"game_id": "2"}]}]}
+    import servidor_mlb as srv
+
+    (tmp_path / "memoria_auditoria.json").write_text(json.dumps(bundled), encoding="utf-8")
+    disk_path = tmp_path / "disk.json"
+    disk_path.write_text(json.dumps(disk), encoding="utf-8")
+    monkeypatch.setattr(srv, "BASE_DIR", tmp_path)
+    monkeypatch.setattr(srv, "MEMORIA_PATH", disk_path)
+    out = me.ejecutar_ciclo(_cfg_base())
+    assert any(h["codigo"] == "historial_wipeado" for h in out["hallazgos"])
+    assert called["n"] >= 1

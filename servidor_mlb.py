@@ -144,8 +144,28 @@ def _fusionar_memoria(base: dict, extra: dict) -> dict:
     return out
 
 
+def _fechas_con_historial(memoria: dict) -> set[str]:
+    out: set[str] = set()
+    for dia in memoria.get("dias") or []:
+        fecha = str(dia.get("fecha") or "")
+        if not fecha:
+            continue
+        if (dia.get("predicciones") or []) or (dia.get("apuestas") or []):
+            out.add(fecha)
+    return out
+
+
+def _backup_tiene_dias_que_el_disco_perdio(bundled: dict, disk: dict) -> bool:
+    """True si el JSON del repo tiene fechas con picks que el disco ya no tiene."""
+    lost = _fechas_con_historial(bundled) - _fechas_con_historial(disk)
+    return bool(lost)
+
+
 def _intentar_recuperar_wipe() -> bool:
-    """Si el disco parece reinicio y el repo tiene historial, restaura + fusiona hoy."""
+    """
+    Recupera historial del JSON del repo si Render wipeó o arrancó un
+    experimento nuevo sin los días anteriores.
+    """
     origen = BASE_DIR / "memoria_auditoria.json"
     if not origen.exists() or not MEMORIA_PATH.exists():
         return False
@@ -157,15 +177,23 @@ def _intentar_recuperar_wipe() -> bool:
     if disk.get("reinicio_manual"):
         return False
     b_ap, b_pr = _contar_historial(bundled)
-    if not _memoria_parece_reinicio(disk) or (b_ap + b_pr) <= 0:
+    if (b_ap + b_pr) <= 0:
+        return False
+    wipe_clasico = _memoria_parece_reinicio(disk)
+    dias_perdidos = _backup_tiene_dias_que_el_disco_perdio(bundled, disk)
+    if not wipe_clasico and not dias_perdidos:
         return False
     merged = _fusionar_memoria(bundled, disk)
+    # Evitar escribir si no cambió nada útil
+    if _fechas_con_historial(merged) <= _fechas_con_historial(disk) and not wipe_clasico:
+        return False
     MEMORIA_PATH.write_text(
         json.dumps(merged, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     print(
         f"[CLOUD] Memoria recuperada desde repo "
-        f"(backup {b_ap} apuestas / {b_pr} preds + día en disco)"
+        f"(backup {b_ap} apuestas / {b_pr} preds · "
+        f"wipe={wipe_clasico} dias_perdidos={dias_perdidos})"
     )
     return True
 
