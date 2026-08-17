@@ -15,6 +15,7 @@ import time
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import requests
@@ -27,6 +28,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from lineas_betmgm import aplicar_lineas_a_juegos
 from lineas_betmgm import normalizar_nombre_equipo as norm_nombre
+from memoria_fusion import (
+    backup_tiene_dias_que_el_disco_perdio as _backup_tiene_dias_que_el_disco_perdio,
+    contar_historial as _contar_historial,
+    fechas_con_historial as _fechas_con_historial,
+    fusionar_memoria as _fusionar_memoria,
+    memoria_parece_reinicio as _memoria_parece_reinicio,
+)
 from modelo_mlb import (
     evaluar_juegos,
     calcular_stake_dinamico,
@@ -76,89 +84,6 @@ _cron_externo_lock = threading.Lock()
 _cron_externo_activo = False
 _juegos_ui_cache: dict = {"fecha": "", "ts": 0.0, "juegos": []}
 _JUEGOS_UI_TTL_SEC = 90
-
-
-def _contar_historial(memoria: dict) -> tuple[int, int]:
-    """(apuestas liquidadas, predicciones con resultado) para comparar backups."""
-    apuestas = 0
-    preds = 0
-    for dia in memoria.get("dias") or []:
-        for a in dia.get("apuestas") or []:
-            if a.get("estado") in ("ganada", "perdida"):
-                apuestas += 1
-        for p in dia.get("predicciones") or []:
-            if p.get("resultado") in ("acierto", "fallo"):
-                preds += 1
-    return apuestas, preds
-
-
-def _memoria_parece_reinicio(memoria: dict) -> bool:
-    """True si parece un wipe/reinicio (día 1, banca inicial, sin historial dinero)."""
-    dias = memoria.get("dias") or []
-    capital = float(memoria.get("capital") or 0)
-    inicial = float(memoria.get("capital_inicial") or 100)
-    apuestas, preds = _contar_historial(memoria)
-    return (
-        int(memoria.get("dia_actual") or 1) <= 1
-        and abs(capital - inicial) < 0.01
-        and apuestas == 0
-        and len(dias) <= 2
-        and preds <= 10  # solo el día recién creado tras el wipe
-    )
-
-
-def _fusionar_memoria(base: dict, extra: dict) -> dict:
-    """Une historial base con días más nuevos de extra (p.ej. picks de hoy tras wipe)."""
-    out = copy.deepcopy(base)
-    by_fecha = {d["fecha"]: d for d in out.get("dias") or [] if d.get("fecha")}
-    for dia in extra.get("dias") or []:
-        fecha = dia.get("fecha")
-        if not fecha:
-            continue
-        if fecha not in by_fecha:
-            by_fecha[fecha] = copy.deepcopy(dia)
-            continue
-        dest = by_fecha[fecha]
-        preds = {str(p.get("game_id")): p for p in (dest.get("predicciones") or [])}
-        for p in dia.get("predicciones") or []:
-            gid = str(p.get("game_id") or "")
-            cur = preds.get(gid)
-            if cur is None or (
-                cur.get("estado") == "pendiente" and p.get("estado") == "liquidado"
-            ):
-                preds[gid] = p
-        dest["predicciones"] = list(preds.values())
-        if not dest.get("apuestas") and dia.get("apuestas"):
-            dest["apuestas"] = copy.deepcopy(dia["apuestas"])
-    dias = sorted(by_fecha.values(), key=lambda d: d["fecha"])
-    for i, d in enumerate(dias, 1):
-        d["dia"] = i
-    out["dias"] = dias
-    # Capital real solo de apuestas con dinero
-    cap = float(out.get("capital_inicial") or 100)
-    for d in dias:
-        for a in d.get("apuestas") or []:
-            if a.get("estado") in ("ganada", "perdida") and a.get("profit") is not None:
-                cap += float(a["profit"])
-    out["capital"] = round(cap, 2)
-    return out
-
-
-def _fechas_con_historial(memoria: dict) -> set[str]:
-    out: set[str] = set()
-    for dia in memoria.get("dias") or []:
-        fecha = str(dia.get("fecha") or "")
-        if not fecha:
-            continue
-        if (dia.get("predicciones") or []) or (dia.get("apuestas") or []):
-            out.add(fecha)
-    return out
-
-
-def _backup_tiene_dias_que_el_disco_perdio(bundled: dict, disk: dict) -> bool:
-    """True si el JSON del repo tiene fechas con picks que el disco ya no tiene."""
-    lost = _fechas_con_historial(bundled) - _fechas_con_historial(disk)
-    return bool(lost)
 
 
 def _intentar_recuperar_wipe() -> bool:
@@ -2863,19 +2788,15 @@ def api_predicciones():
 
 @app.get("/api/health")
 def api_health():
-    """Ping para Render + cron externo (mantiene el servicio despierto en plan free)."""
-    # Al despertar: intentar congelar T-60 antes de que se pierdan juegos
-    wake: dict[str, Any] = {"registro": False, "predicciones_nuevas": 0}
+    """Ping para Render + cron externo (mantiene el servicio despierto en plan free).
+
+    Ligero a propósito: Render usa este path como healthCheck. Si aquí corre ML
+    o T-60, el check timeout mata el servicio y parece que siempre hay un error.
+    El trabajo pesado va en /api/auto-bloqueo-externo (cron cada 5 min).
+    """
+    wake: dict[str, Any] = {"restore": False}
     try:
-        sincronizar_experimento_a_hoy()
-        reg = registrar_predicciones_del_dia(forzar=False)
-        wake["registro"] = True
-        wake["predicciones_nuevas"] = int((reg or {}).get("predicciones_nuevas") or 0)
-        if wake["predicciones_nuevas"]:
-            try:
-                bloquear_apuestas_del_dia(forzar=False)
-            except Exception:
-                pass
+        wake["restore"] = bool(_intentar_recuperar_wipe())
     except Exception as e:
         wake["error"] = str(e)[:120]
 
@@ -3661,6 +3582,10 @@ def api_ia_status():
 
 def ejecutar_trabajo_cron_externo() -> dict:
     """Sincroniza fecha, predicciones, bloqueos y liquidacion."""
+    try:
+        _intentar_recuperar_wipe()
+    except Exception as e:
+        print(f"[CRON] restore wipe: {e}")
     sincronizar_experimento_a_hoy()
     reparar_odds_papel(cargar_memoria())
     rellenar_predicciones_recientes(cargar_memoria(), dias_atras=7)
@@ -3828,12 +3753,13 @@ def api_subir_memoria(
 ):
     """Sube memoria_auditoria.json desde la PC local a Render (requiere CRON_SECRET).
 
-    modo=replace (default) | aprendizaje (fusiona como paper retroactivo, plan 4)
+    modo=replace (default) | fusionar (une días) | aprendizaje (paper retroactivo)
     """
     _verificar_cron_secreto(secret)
     if not isinstance(payload, dict) or "capital" not in payload:
         raise HTTPException(status_code=400, detail="JSON de memoria invalido")
-    if (modo or "replace").lower() in ("aprendizaje", "merge", "import"):
+    modo_n = (modo or "replace").lower()
+    if modo_n in ("aprendizaje", "import"):
         from ia_importar import importar_dump_aprendizaje
         from ia_lecciones import escanear_experiencias_negativas
 
@@ -3852,6 +3778,21 @@ def api_subir_memoria(
             "lecciones_nuevas": n_lec,
             "capital": memoria.get("capital"),
             "dias": len(memoria.get("dias", [])),
+        }
+    if modo_n in ("fusionar", "merge", "union"):
+        disk = cargar_memoria()
+        merged = _fusionar_memoria(payload, disk)
+        guardar_memoria(merged)
+        sincronizar_experimento_a_hoy(merged)
+        memoria = cargar_memoria()
+        ap, pr = _contar_historial(memoria)
+        return {
+            "ok": True,
+            "modo": "fusionar",
+            "capital": memoria.get("capital"),
+            "dia_actual": memoria.get("dia_actual"),
+            "dias": len(memoria.get("dias", [])),
+            "historial": {"apuestas": ap, "preds": pr},
         }
     guardar_memoria(payload)
     memoria = cargar_memoria()
@@ -3948,7 +3889,7 @@ def api_procesar_experiencias(forzar: bool = False):
 
 @app.post("/api/restaurar-backup")
 def api_restaurar_backup(secret: str | None = None):
-    """Restaura memoria desde el JSON del repo si el disco parece un reinicio/wipe."""
+    """Fusiona el JSON del repo con el disco si faltan días (wipe o redeploy)."""
     _verificar_cron_secreto(secret)
     origen = BASE_DIR / "memoria_auditoria.json"
     if not origen.exists():
@@ -3958,11 +3899,22 @@ def api_restaurar_backup(secret: str | None = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Backup ilegible: {e}") from e
     disk = cargar_memoria()
-    if not _memoria_parece_reinicio(disk):
+    if disk.get("reinicio_manual"):
         ap, pr = _contar_historial(disk)
         return {
             "ok": False,
-            "motivo": "La memoria actual no parece un reinicio; no se sobrescribe",
+            "motivo": "reinicio_manual=true; no se restaura el backup",
+            "dia_actual": disk.get("dia_actual"),
+            "capital": disk.get("capital"),
+            "historial": {"apuestas": ap, "preds": pr},
+        }
+    wipe_clasico = _memoria_parece_reinicio(disk)
+    dias_perdidos = _backup_tiene_dias_que_el_disco_perdio(bundled, disk)
+    if not wipe_clasico and not dias_perdidos:
+        ap, pr = _contar_historial(disk)
+        return {
+            "ok": True,
+            "motivo": "Nada que restaurar; el disco ya tiene los días del backup",
             "dia_actual": disk.get("dia_actual"),
             "capital": disk.get("capital"),
             "historial": {"apuestas": ap, "preds": pr},
@@ -3985,6 +3937,8 @@ def api_restaurar_backup(secret: str | None = None):
         "dias": len(memoria.get("dias", [])),
         "historial": {"apuestas": ap, "preds": pr},
         "lecciones": len(memoria.get("lecciones") or []),
+        "wipe_clasico": wipe_clasico,
+        "dias_perdidos": dias_perdidos,
     }
 
 

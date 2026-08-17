@@ -1,12 +1,13 @@
 # Backup automático de memoria_auditoria.json desde Render → GitHub.
-# Así un wipe del plan free no borra el historial (se puede restaurar desde el repo).
+# Fusiona (nunca pisa) para que un wipe en vivo no borre días viejos del repo.
 # Requiere: secret CRON_SECRET (igual que en Render).
 # El schedule solo corre cuando este archivo está en la rama default (main).
 name: Backup memoria Render
 
 on:
   schedule:
-    # 4:00, 14:00 y 23:30 hora Puerto Rico (UTC-4)
+    # Cada 2 h + 4:00 / 14:00 / 23:30 hora Puerto Rico (UTC-4)
+    - cron: "0 */2 * * *"
     - cron: "0 8 * * *"
     - cron: "0 18 * * *"
     - cron: "30 3 * * *"
@@ -52,13 +53,13 @@ jobs:
           if not isinstance(data, dict) or "capital" not in data or "dias" not in data:
               print("Respuesta invalida:", raw[:300])
               sys.exit(1)
-          out = pathlib.Path("memoria_auditoria.json")
-          out.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
           print(
-              f"OK backup dia={data.get('dia_actual')} capital={data.get('capital')} "
+              f"Live dia={data.get('dia_actual')} capital={data.get('capital')} "
               f"dias={len(data.get('dias') or [])}"
           )
           PY
+
+          python3 memoria_fusion.py memoria_auditoria.json /tmp/memoria_live.json memoria_auditoria.json
 
       - name: Commit si cambió
         run: |

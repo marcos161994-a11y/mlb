@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import servidor_mlb as srv
 
@@ -50,6 +49,55 @@ def test_backup_detecta_dia_faltante():
     disk = {"dias": [{"fecha": "2026-08-16", "predicciones": [{"game_id": "2"}]}]}
     assert srv._backup_tiene_dias_que_el_disco_perdio(bundled, disk) is True
     assert srv._backup_tiene_dias_que_el_disco_perdio(bundled, bundled) is False
+
+
+def test_fusionar_llena_dia_vacio_con_live():
+    bundled = {
+        "capital_inicial": 100,
+        "capital": 92,
+        "dia_actual": 2,
+        "dias": [
+            {
+                "dia": 1,
+                "fecha": "2026-08-15",
+                "predicciones": [
+                    {"game_id": "yankees", "pick": "NYY ML", "resultado": "acierto", "estado": "liquidado"}
+                ],
+                "apuestas": [{"game_id": "x", "estado": "perdida", "profit": -8}],
+            },
+            {"dia": 2, "fecha": "2026-08-16", "predicciones": [], "apuestas": []},
+        ],
+        "lecciones": [{"id": "a", "patron": "viejo"}],
+    }
+    live = {
+        "capital_inicial": 100,
+        "capital": 100,
+        "dia_actual": 2,
+        "dias": [
+            {
+                "dia": 1,
+                "fecha": "2026-08-16",
+                "predicciones": [
+                    {"game_id": "cubs", "pick": "CHC ML", "resultado": "fallo", "estado": "liquidado"}
+                ],
+                "apuestas": [],
+            },
+            {
+                "dia": 2,
+                "fecha": "2026-08-17",
+                "predicciones": [{"game_id": "hoy", "pick": "STL ML", "estado": "pendiente"}],
+            },
+        ],
+        "lecciones": [{"id": "b", "patron": "nuevo"}],
+    }
+    merged = srv._fusionar_memoria(bundled, live)
+    by = {d["fecha"]: d for d in merged["dias"]}
+    assert set(by) == {"2026-08-15", "2026-08-16", "2026-08-17"}
+    assert len(by["2026-08-16"]["predicciones"]) == 1
+    assert by["2026-08-16"]["predicciones"][0]["game_id"] == "cubs"
+    assert merged["capital"] == 92.0
+    patrones = {x.get("patron") for x in merged["lecciones"]}
+    assert "viejo" in patrones and "nuevo" in patrones
 
 
 def test_recuperar_wipe_aunque_sea_dia_2(tmp_path, monkeypatch):

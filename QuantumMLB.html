@@ -998,9 +998,15 @@ function pintarEstado(data) {
     // Nota corta de hoy
     const fav = data.favorables_hoy ?? data.oportunidades_valor_hoy ?? 0;
     const maxP = estr.max_apuestas_dia || 5;
+    const fechasHist = (m.dias || [])
+        .filter(d => (d.predicciones || []).length > 0 || (d.apuestas || []).length > 0)
+        .map(d => `${d.fecha} (${(d.predicciones || []).length})`);
+    const histTxt = fechasHist.length
+        ? ` · historial ${fechasHist.join(' · ')}`
+        : ' · historial vacío';
     document.getElementById('favorables-hoy').textContent =
         `Hoy: ${fav} listo(s) / máx ${maxP} · papel ${ganadas}✓ ${perdidas}✗ ${pendientes}⏳ ${fmtMoney(profitHoy)}` +
-        ` · dinero ${gDin}✓ ${pDin}✗ ${pendDin}⏳ ${fmtMoney(profitDin)}`;
+        ` · dinero ${gDin}✓ ${pDin}✗ ${pendDin}⏳ ${fmtMoney(profitDin)}` + histTxt;
 
     const lista = document.getElementById('lista-historial');
     const diasDinero = (m.dias || []).filter(d => (d.apuestas || []).length > 0);
@@ -1256,7 +1262,8 @@ function pintarPredicciones(memoria, plSplit) {
         Ganado <span style="color:var(--green)">$${(din.ganado||0).toFixed(2)}</span> ·
         Perdido <span style="color:var(--red)">$${(din.perdido||0).toFixed(2)}</span> ·
         Neto <b>$${(din.neto||0).toFixed(2)}</b></div>
-        <div style="margin-top:6px;color:var(--muted);font-size:0.75rem">💰 = apuesta con dinero · sin badge = solo predicción</div>
+        <div style="margin-top:6px;color:var(--muted);font-size:0.75rem">💰 = apuesta con dinero · sin badge = solo predicción · días pasados abiertos</div>
+        <div style="margin-top:4px;color:var(--cyan);font-size:0.78rem">Días: ${diasOrden.map(d => `${d.fecha} (${(d.predicciones||[]).length})`).join(' · ') || 'ninguno'}</div>
     </div>`;
 
     let hayFilas = false;
@@ -1333,9 +1340,8 @@ function pintarPredicciones(memoria, plSplit) {
             ? `papel n/a (${nTarde} retroactivos · no cuentan)`
             : `pred ${gPapel}✓/${pPapel}✗ · papel ${fmtMoney(netoPapel)}` + (nTarde ? ` · ${nTarde} tardíos ignorados` : '');
 
-        // Abrir días con resultados (y el más reciente) para que en móvil se vean los juegos
-        const tieneResultados = filas.some(f => f.resultado === 'acierto' || f.resultado === 'fallo');
-        const abierto = tieneResultados || diaIdx === 0;
+        // Siempre abiertos: en móvil el historial colapsado parecía “no hay juegos”
+        const abierto = true;
         diaIdx += 1;
 
         html += `<div style="margin-bottom:14px;padding:12px;background:var(--panel);border-radius:8px;border:1px solid var(--border);">

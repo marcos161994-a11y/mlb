@@ -685,6 +685,30 @@ def ejecutar_ciclo(
         # Ya listo vía env/memoria/disco: no reportar falso positivo
         hallazgos = [h for h in hallazgos if h.get("codigo") != "telegram_no_listo"]
 
+    # Si se restauró historial, re-evaluar y no dejar el panel en "alerta" eterna
+    if any(ACCION_RESTAURAR_HISTORIAL in (a.get("acciones") or []) for a in aplicadas):
+        try:
+            from servidor_mlb import (
+                BASE_DIR,
+                MEMORIA_PATH,
+                _backup_tiene_dias_que_el_disco_perdio,
+            )
+
+            origen = BASE_DIR / "memoria_auditoria.json"
+            if origen.exists() and MEMORIA_PATH.exists():
+                bundled = json.loads(origen.read_text(encoding="utf-8"))
+                disk = json.loads(MEMORIA_PATH.read_text(encoding="utf-8"))
+                if disk.get("reinicio_manual") or not _backup_tiene_dias_que_el_disco_perdio(
+                    bundled, disk
+                ):
+                    hallazgos = [h for h in hallazgos if h.get("codigo") != "historial_wipeado"]
+                    for a in aplicadas:
+                        if a.get("codigo") == "historial_wipeado":
+                            a["severidad"] = "baja"
+                            a["mensaje"] = "Historial restaurado desde backup del repo"
+        except Exception:
+            pass
+
     aviso = _notificar_si_cabe(estado, aplicadas, cfg_eff, opts) if aplicadas else None
 
     if telegram_ok_tras and not hallazgos:
