@@ -10685,9 +10685,9 @@
           "pitcher_away_id": 663542,
           "pitcher_home_id": 592332,
           "inicio_juego": "2026-08-18T20:05:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.94,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-18T19:05:20.840533-04:00",
@@ -11352,7 +11352,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-18T23:05:21.494975Z"
+          "whatsapp_enviado_en": "2026-08-18T23:05:21.494975Z",
+          "marcador_final": "Chicago White Sox 3 - Chicago Cubs 4",
+          "liquidado_en": "2026-08-19T00:40:00.636662-04:00"
         },
         {
           "game_id": "824154",
@@ -13107,6 +13109,26 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-19T03:40:00.787063Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-824639-1787114400",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-18",
+      "game_id": "824639",
+      "visitante": "Chicago White Sox",
+      "home": "Chicago Cubs",
+      "pick": "Chicago Cubs ML",
+      "probPick": 58.4,
+      "edge": -4.6,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Chicago White Sox 3 - Chicago Cubs 4",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-19T04:40:00.640781Z"
     }
   ],
   "mente_stats": {
@@ -13117,9 +13139,9 @@
         "fallos": 0
       },
       "PASAR": {
-        "n": 12,
+        "n": 13,
         "evito_fallo": 4,
-        "oportunidad_perdida": 8
+        "oportunidad_perdida": 9
       },
       "ESPERAR": {
         "n": 6,
@@ -13143,9 +13165,9 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 15,
+        "n": 16,
         "pasar_ok": 3,
-        "pasar_miss": 12,
+        "pasar_miss": 13,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -13157,9 +13179,9 @@
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 17,
+        "n": 18,
         "pasar_ok": 4,
-        "pasar_miss": 13,
+        "pasar_miss": 14,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -13205,33 +13227,34 @@
       "823749:acierto",
       "822859:acierto",
       "824154:fallo",
-      "824319:acierto"
+      "824319:acierto",
+      "824639:acierto"
     ],
-    "actualizado_en": "2026-08-19T03:40:00.787113Z"
+    "actualizado_en": "2026-08-19T04:40:00.644238Z"
   },
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-18T18:49:59.196185Z"
+    "actualizado_en": "2026-08-19T04:06:35.249685Z"
   },
   "calib_meta": {
     "ok": false,
-    "muestras": 18,
+    "muestras": 19,
     "metodo": null,
     "por_tipo": {},
-    "mensaje": "Esperando más liquidaciones (18/30)"
+    "mensaje": "Esperando más liquidaciones (19/30)"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 18,
-    "muestras_reales": 18,
+    "muestras": 19,
+    "muestras_reales": 19,
     "schema": 4,
-    "mensaje": "Reentrenado con 18 muestras (18 reales, RF acc 100.0%, XGB acc 72.2%)",
+    "mensaje": "Reentrenado con 19 muestras (19 reales, RF acc 100.0%, XGB acc 73.7%)",
     "accuracy_train": 1.0,
     "accuracy_holdout": null,
-    "accuracy_xgb_train": 0.722,
+    "accuracy_xgb_train": 0.737,
     "accuracy_xgb_holdout": null,
-    "ultimo_entreno": "2026-08-19T03:40:02.296710",
+    "ultimo_entreno": "2026-08-19T04:40:02.539259",
     "xgb": true
   }
 }
