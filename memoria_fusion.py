@@ -9,6 +9,7 @@ from __future__ import annotations
 import copy
 import json
 import sys
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -178,6 +179,133 @@ def memoria_parece_reinicio(memoria: dict) -> bool:
     )
 
 
+def perderia_historial(actual: dict | None, nueva: dict | None) -> set[str]:
+    """Fechas con picks/apuestas que están en actual y desaparecerían en nueva."""
+    if not isinstance(actual, dict) or not isinstance(nueva, dict):
+        return set()
+    return fechas_con_historial(actual) - fechas_con_historial(nueva)
+
+
+def proteger_escritura(
+    actual: dict | None,
+    nueva: dict,
+    *,
+    permitir_wipe: bool = False,
+) -> tuple[dict, dict[str, Any]]:
+    """
+    Candado anti-wipe: si 'nueva' borraría días, fusiona en vez de pisar.
+    Solo permite wipe real si permitir_wipe=True (reinicio confirmado).
+    """
+    meta: dict[str, Any] = {"protegido": False, "fechas_salvadas": []}
+    if permitir_wipe or not isinstance(actual, dict) or not actual.get("dias"):
+        return nueva, meta
+    perdidas = perderia_historial(actual, nueva)
+    if not perdidas:
+        # Aun sin perder fechas, fusionar puede traer predicciones que nueva omitió
+        # en el mismo día — no hace falta si nueva ya tiene >= contenido.
+        return nueva, meta
+    merged = fusionar_memoria(actual, nueva)
+    # Si el caller marcó reinicio_manual por error sin permitir_wipe, quitarlo
+    if merged.get("reinicio_manual") and not permitir_wipe:
+        merged.pop("reinicio_manual", None)
+    meta["protegido"] = True
+    meta["fechas_salvadas"] = sorted(perdidas)
+    return merged, meta
+
+
+def resumen_sello(memoria: dict | None, *, minimo_dias: int = 3) -> dict[str, Any]:
+    """Sello visible: ¿el historial está sano o en peligro?"""
+    memoria = memoria if isinstance(memoria, dict) else {}
+    fechas = sorted(fechas_con_historial(memoria))
+    ap, pr = contar_historial(memoria)
+    n = len(fechas)
+    ok = n >= minimo_dias and not memoria.get("reinicio_manual")
+    if memoria.get("reinicio_manual"):
+        nivel = "peligro"
+        mensaje = "Historial bloqueado (reinicio_manual) · no auto-restaura"
+    elif n == 0:
+        nivel = "peligro"
+        mensaje = "Historial vacío · sin días con predicciones"
+    elif n < minimo_dias:
+        nivel = "aviso"
+        mensaje = f"Historial corto · solo {n} día(s): {', '.join(fechas)}"
+    else:
+        nivel = "ok"
+        mensaje = f"Historial OK · {n} días · {fechas[0]} → {fechas[-1]} · {pr} preds"
+    return {
+        "ok": ok,
+        "nivel": nivel,
+        "mensaje": mensaje,
+        "fechas": fechas,
+        "n_dias": n,
+        "apuestas_liquidadas": ap,
+        "preds_liquidadas": pr,
+        "reinicio_manual": bool(memoria.get("reinicio_manual")),
+        "minimo_dias": minimo_dias,
+    }
+
+
+def snapshots_dir(data_dir: Path) -> Path:
+    d = Path(data_dir) / "memoria_snapshots"
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def escribir_snapshot(data_dir: Path, memoria: dict, *, keep: int = 48) -> Path | None:
+    """Guarda copia rotativa. keep=últimos N archivos."""
+    if not isinstance(memoria, dict) or not fechas_con_historial(memoria):
+        return None
+    folder = snapshots_dir(data_dir)
+    stamp = datetime.now().strftime("%Y%m%dT%H%M%SZ")
+    n_fechas = len(fechas_con_historial(memoria))
+    path = folder / f"mem_{stamp}_{n_fechas}d.json"
+    path.write_text(json.dumps(memoria, ensure_ascii=False, indent=2), encoding="utf-8")
+    # También un "latest" fácil de encontrar
+    (folder / "latest.json").write_text(
+        json.dumps(memoria, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    archivos = sorted(
+        [p for p in folder.glob("mem_*.json") if p.is_file()],
+        key=lambda p: p.stat().st_mtime,
+        reverse=True,
+    )
+    for viejo in archivos[keep:]:
+        try:
+            viejo.unlink()
+        except OSError:
+            pass
+    return path
+
+
+def listar_snapshots(data_dir: Path) -> list[Path]:
+    folder = Path(data_dir) / "memoria_snapshots"
+    if not folder.exists():
+        return []
+    paths = [p for p in folder.glob("mem_*.json") if p.is_file()]
+    latest = folder / "latest.json"
+    if latest.exists():
+        paths.append(latest)
+    return sorted(set(paths), key=lambda p: p.stat().st_mtime, reverse=True)
+
+
+def mejor_snapshot(data_dir: Path) -> dict | None:
+    """Devuelve el snapshot con más fechas con historial."""
+    best: dict | None = None
+    best_n = -1
+    for path in listar_snapshots(data_dir):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(data, dict):
+            continue
+        n = len(fechas_con_historial(data))
+        if n > best_n:
+            best = data
+            best_n = n
+    return best
+
+
 def fusionar_archivos(path_a: Path, path_b: Path, path_out: Path) -> dict[str, Any]:
     a = json.loads(path_a.read_text(encoding="utf-8"))
     b = json.loads(path_b.read_text(encoding="utf-8"))
@@ -196,9 +324,16 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     src_a, src_b = Path(args[0]), Path(args[1])
     dest = Path(args[2]) if len(args) > 2 else src_a
+    # Guardrail: no permitir que el resultado pierda fechas del repo
+    before = fechas_con_historial(json.loads(src_a.read_text(encoding="utf-8")))
     merged = fusionar_archivos(src_a, src_b, dest)
+    after = fechas_con_historial(merged)
+    lost = before - after
+    if lost:
+        print(f"ERROR: fusion perdería fechas {sorted(lost)}", file=sys.stderr)
+        return 1
     ap, pr = contar_historial(merged)
-    fechas = sorted(fechas_con_historial(merged))
+    fechas = sorted(after)
     print(
         f"OK fusion dia={merged.get('dia_actual')} capital={merged.get('capital')} "
         f"apuestas={ap} preds={pr} fechas={','.join(fechas)}"

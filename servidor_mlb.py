@@ -31,9 +31,13 @@ from lineas_betmgm import normalizar_nombre_equipo as norm_nombre
 from memoria_fusion import (
     backup_tiene_dias_que_el_disco_perdio as _backup_tiene_dias_que_el_disco_perdio,
     contar_historial as _contar_historial,
+    escribir_snapshot as _escribir_snapshot,
     fechas_con_historial as _fechas_con_historial,
     fusionar_memoria as _fusionar_memoria,
+    mejor_snapshot as _mejor_snapshot,
     memoria_parece_reinicio as _memoria_parece_reinicio,
+    proteger_escritura as _proteger_escritura,
+    resumen_sello as _resumen_sello,
 )
 from modelo_mlb import (
     evaluar_juegos,
@@ -88,37 +92,68 @@ _JUEGOS_UI_TTL_SEC = 90
 
 def _intentar_recuperar_wipe() -> bool:
     """
-    Recupera historial del JSON del repo si Render wipeó o arrancó un
-    experimento nuevo sin los días anteriores.
+    Recupera historial del JSON del repo / snapshots locales si Render wipeó
+    o arrancó un experimento nuevo sin los días anteriores.
     """
+    disk: dict | None = None
+    if MEMORIA_PATH.exists():
+        try:
+            disk = json.loads(MEMORIA_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            disk = None
+    if isinstance(disk, dict) and disk.get("reinicio_manual"):
+        return False
+
+    candidatos: list[dict] = []
     origen = BASE_DIR / "memoria_auditoria.json"
-    if not origen.exists() or not MEMORIA_PATH.exists():
+    if origen.exists():
+        try:
+            bundled = json.loads(origen.read_text(encoding="utf-8"))
+            if isinstance(bundled, dict):
+                b_ap, b_pr = _contar_historial(bundled)
+                if (b_ap + b_pr) > 0:
+                    candidatos.append(bundled)
+        except Exception:
+            pass
+    snap = _mejor_snapshot(DATA_DIR)
+    if isinstance(snap, dict):
+        candidatos.append(snap)
+
+    if not candidatos:
         return False
-    try:
-        bundled = json.loads(origen.read_text(encoding="utf-8"))
-        disk = json.loads(MEMORIA_PATH.read_text(encoding="utf-8"))
-    except Exception:
+
+    candidatos.sort(key=lambda m: len(_fechas_con_historial(m)), reverse=True)
+    merged = copy.deepcopy(candidatos[0])
+    for c in candidatos[1:]:
+        merged = _fusionar_memoria(merged, c)
+    if isinstance(disk, dict):
+        merged = _fusionar_memoria(merged, disk)
+        wipe_clasico = _memoria_parece_reinicio(disk)
+        dias_perdidos = _backup_tiene_dias_que_el_disco_perdio(merged, disk)
+        if not wipe_clasico and not dias_perdidos:
+            return False
+        if _fechas_con_historial(merged) <= _fechas_con_historial(disk) and not wipe_clasico:
+            return False
+    elif not MEMORIA_PATH.exists():
+        wipe_clasico = True
+        dias_perdidos = True
+    else:
         return False
-    if disk.get("reinicio_manual"):
-        return False
-    b_ap, b_pr = _contar_historial(bundled)
-    if (b_ap + b_pr) <= 0:
-        return False
-    wipe_clasico = _memoria_parece_reinicio(disk)
-    dias_perdidos = _backup_tiene_dias_que_el_disco_perdio(bundled, disk)
-    if not wipe_clasico and not dias_perdidos:
-        return False
-    merged = _fusionar_memoria(bundled, disk)
-    # Evitar escribir si no cambió nada útil
-    if _fechas_con_historial(merged) <= _fechas_con_historial(disk) and not wipe_clasico:
-        return False
+
+    MEMORIA_PATH.parent.mkdir(parents=True, exist_ok=True)
     MEMORIA_PATH.write_text(
         json.dumps(merged, indent=2, ensure_ascii=False), encoding="utf-8"
     )
+    try:
+        _escribir_snapshot(DATA_DIR, merged)
+    except Exception:
+        pass
+    b_ap, b_pr = _contar_historial(merged)
     print(
-        f"[CLOUD] Memoria recuperada desde repo "
-        f"(backup {b_ap} apuestas / {b_pr} preds · "
-        f"wipe={wipe_clasico} dias_perdidos={dias_perdidos})"
+        f"[CLOUD] Memoria recuperada "
+        f"(merged {b_ap} apuestas / {b_pr} preds · "
+        f"wipe={wipe_clasico} dias_perdidos={dias_perdidos} "
+        f"fuentes={len(candidatos)})"
     )
     return True
 
@@ -238,19 +273,47 @@ def _memoria_sin_secretos(memoria: dict) -> dict:
     return out
 
 
-def guardar_memoria(memoria: dict) -> None:
+def guardar_memoria(memoria: dict, *, permitir_wipe: bool = False) -> None:
+    """Persiste memoria con candado anti-wipe + snapshot rotativo.
+
+    Si 'memoria' borraría días que ya están en disco, se fusiona en vez de pisar
+    (salvo permitir_wipe=True en reinicio confirmado).
+    """
     with _memoria_lock:
+        actual: dict | None = None
+        if MEMORIA_PATH.exists():
+            try:
+                actual = json.loads(MEMORIA_PATH.read_text(encoding="utf-8"))
+            except Exception:
+                actual = None
+        final, meta = _proteger_escritura(
+            actual, memoria, permitir_wipe=permitir_wipe
+        )
+        if meta.get("protegido"):
+            print(
+                f"[GUARDAR] Candado anti-wipe: se salvaron fechas "
+                f"{meta.get('fechas_salvadas')}"
+            )
+        MEMORIA_PATH.parent.mkdir(parents=True, exist_ok=True)
         with open(MEMORIA_PATH, "w", encoding="utf-8") as f:
             print(
-                f"[GUARDAR] Guardando memoria. Capital: {memoria['capital']:.2f}, "
-                f"Día: {memoria['dia_actual']}"
+                f"[GUARDAR] Guardando memoria. Capital: {float(final.get('capital') or 0):.2f}, "
+                f"Día: {final.get('dia_actual')} · "
+                f"fechas={sorted(_fechas_con_historial(final))}"
             )
-            json.dump(memoria, f, indent=2, ensure_ascii=False)
+            json.dump(final, f, indent=2, ensure_ascii=False)
+        try:
+            _escribir_snapshot(DATA_DIR, final)
+        except Exception as e:
+            print(f"[GUARDAR] snapshot: {e}")
         js_path = DATA_DIR / "memoria_dashboard.js"
         js_path.write_text(
-            f"const datosMemoria = {json.dumps(_memoria_sin_secretos(memoria), ensure_ascii=False)};",
+            f"const datosMemoria = {json.dumps(_memoria_sin_secretos(final), ensure_ascii=False)};",
             encoding="utf-8",
         )
+        if final is not memoria:
+            memoria.clear()
+            memoria.update(final)
 
 
 def tz_experimento() -> ZoneInfo:
@@ -2642,8 +2705,34 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
         },
         "vigilancia": vigilancia,
         "mente_errores": _resumen_mente_errores(cfg_ops),
+        "historial_sello": _resumen_sello(memoria),
         "telegram": telegram_disponible(cfg_ops),
         "alertas": alerta_disponible(cfg_ops),
+    }
+
+
+@app.get("/api/historial-status")
+def api_historial_status():
+    """Sello rápido: ¿el historial está sano? (para ti / cron / Telegram)."""
+    try:
+        _intentar_recuperar_wipe()
+    except Exception:
+        pass
+    mem = cargar_memoria()
+    sello = _resumen_sello(mem)
+    snaps = 0
+    try:
+        from memoria_fusion import listar_snapshots
+
+        snaps = len(listar_snapshots(DATA_DIR))
+    except Exception:
+        pass
+    return {
+        "ok": True,
+        **sello,
+        "snapshots_locales": snaps,
+        "capital": mem.get("capital"),
+        "dia_actual": mem.get("dia_actual"),
     }
 
 
@@ -2725,13 +2814,25 @@ def api_liquidar():
 
 
 @app.post("/api/reiniciar")
-def api_reiniciar():
-    """Reinicia el experimento por completo, borrando historial previo."""
+def api_reiniciar(confirm: str | None = None):
+    """Reinicia el experimento. Requiere confirm=BORRAR para no borrar por accidente."""
+    if (confirm or "").strip().upper() != "BORRAR":
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Reinicio bloqueado. Para borrar el historial llama "
+                "/api/reiniciar?confirm=BORRAR (irreversible)."
+            ),
+        )
     cfg = cargar_config()
-    # Borrar archivos de reporte antiguos
+    try:
+        prev = cargar_memoria()
+        _escribir_snapshot(DATA_DIR, prev)
+    except Exception as e:
+        print(f"[REINICIAR] snapshot previo: {e}")
     for f in DATA_DIR.glob("reporte_dia_*.txt"):
         f.unlink(missing_ok=True)
-        
+
     memoria = {
         "modo": "simulacion",
         "capital": cfg["capital_inicial"],
@@ -2742,10 +2843,9 @@ def api_reiniciar():
         "experimento_activo": True,
         "ultimo_bloqueo": None,
         "dias": [],
-        # Evita que el auto-restore del backup deshaga un reinicio deliberado
         "reinicio_manual": True,
     }
-    guardar_memoria(memoria)
+    guardar_memoria(memoria, permitir_wipe=True)
     return {"ok": True, "memoria": memoria}
 
 
@@ -2822,6 +2922,7 @@ def api_health():
             "n_dias": len(hist_fechas),
             "apuestas_liquidadas": hist_ap,
             "preds_liquidadas": hist_pr,
+            **{k: v for k, v in _resumen_sello(mem_h).items() if k not in ("fechas", "n_dias", "apuestas_liquidadas", "preds_liquidadas")},
         },
         "hora": datetime.now(tz_experimento()).isoformat(),
         "ia_veto": {
@@ -3762,12 +3863,12 @@ def api_subir_memoria(
 ):
     """Sube memoria_auditoria.json desde la PC local a Render (requiere CRON_SECRET).
 
-    modo=replace (default) | fusionar (une días) | aprendizaje (paper retroactivo)
+    modo=fusionar (default, une días) | replace | aprendizaje (paper retroactivo)
     """
     _verificar_cron_secreto(secret)
     if not isinstance(payload, dict) or "capital" not in payload:
         raise HTTPException(status_code=400, detail="JSON de memoria invalido")
-    modo_n = (modo or "replace").lower()
+    modo_n = (modo or "fusionar").lower()
     if modo_n in ("aprendizaje", "import"):
         from ia_importar import importar_dump_aprendizaje
         from ia_lecciones import escanear_experiencias_negativas
