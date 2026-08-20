@@ -9285,9 +9285,9 @@
           "pitcher_away_id": 808963,
           "pitcher_home_id": 607536,
           "inicio_juego": "2026-08-19T20:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.59,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-19T19:40:19.376814-04:00",
@@ -9965,7 +9965,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-19T23:40:20.143970Z"
+          "whatsapp_enviado_en": "2026-08-19T23:40:20.143970Z",
+          "marcador_final": "Los Angeles Dodgers 6 - Colorado Rockies 4",
+          "liquidado_en": "2026-08-20T00:07:01.684063-04:00"
         }
       ],
       "resumen": {
@@ -10315,6 +10317,26 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-20T03:10:00.473388Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-824318-1787198821",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-19",
+      "game_id": "824318",
+      "visitante": "Los Angeles Dodgers",
+      "home": "Colorado Rockies",
+      "pick": "Los Angeles Dodgers ML",
+      "probPick": 51.2,
+      "edge": -14.7,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Los Angeles Dodgers 6 - Colorado Rockies 4",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-20T04:07:01.768228Z"
     }
   ],
   "mente_stats": {
@@ -10325,9 +10347,9 @@
         "fallos": 1
       },
       "PASAR": {
-        "n": 10,
+        "n": 11,
         "evito_fallo": 4,
-        "oportunidad_perdida": 6
+        "oportunidad_perdida": 7
       },
       "ESPERAR": {
         "n": 1,
@@ -10337,9 +10359,9 @@
     },
     "patrones": {
       "scratch": {
-        "n": 3,
+        "n": 4,
         "pasar_ok": 0,
-        "pasar_miss": 3,
+        "pasar_miss": 4,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -10351,9 +10373,9 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 10,
+        "n": 11,
         "pasar_ok": 3,
-        "pasar_miss": 6,
+        "pasar_miss": 7,
         "apostar_ok": 0,
         "apostar_fail": 1
       },
@@ -10365,9 +10387,9 @@
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 11,
+        "n": 12,
         "pasar_ok": 4,
-        "pasar_miss": 7,
+        "pasar_miss": 8,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -10387,9 +10409,9 @@
       }
     },
     "penalizacion": {
-      "scratch": 0,
+      "scratch": -2,
       "starter_riesgo": 0,
-      "humanos": -1,
+      "humanos": -2,
       "sin_mercado": 0,
       "edge_bajo": -1,
       "favorito_alto": 0,
@@ -10407,33 +10429,34 @@
       "824076:acierto",
       "823748:fallo",
       "822860:fallo",
-      "824155:acierto"
+      "824155:acierto",
+      "824318:acierto"
     ],
-    "actualizado_en": "2026-08-20T03:10:00.473440Z"
+    "actualizado_en": "2026-08-20T04:07:01.770982Z"
   },
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-19T18:45:51.261496Z"
+    "actualizado_en": "2026-08-20T04:06:35.282975Z"
   },
   "calib_meta": {
     "ok": false,
-    "muestras": 13,
+    "muestras": 14,
     "metodo": null,
     "por_tipo": {},
-    "mensaje": "Esperando más liquidaciones (13/30)"
+    "mensaje": "Esperando más liquidaciones (14/30)"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 13,
-    "muestras_reales": 13,
+    "muestras": 14,
+    "muestras_reales": 14,
     "schema": 4,
-    "mensaje": "Reentrenado con 13 muestras (13 reales, RF acc 100.0%, XGB acc 53.8%)",
+    "mensaje": "Reentrenado con 14 muestras (14 reales, RF acc 100.0%, XGB acc 57.1%)",
     "accuracy_train": 1.0,
     "accuracy_holdout": null,
-    "accuracy_xgb_train": 0.538,
+    "accuracy_xgb_train": 0.571,
     "accuracy_xgb_holdout": null,
-    "ultimo_entreno": "2026-08-20T03:10:02.568293",
+    "ultimo_entreno": "2026-08-20T04:07:03.372159",
     "xgb": true
   }
 }
