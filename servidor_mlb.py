@@ -15,6 +15,7 @@ import time
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import requests
@@ -27,6 +28,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from lineas_betmgm import aplicar_lineas_a_juegos
 from lineas_betmgm import normalizar_nombre_equipo as norm_nombre
+from memoria_fusion import (
+    backup_tiene_dias_que_el_disco_perdio as _backup_tiene_dias_que_el_disco_perdio,
+    contar_historial as _contar_historial,
+    fechas_con_historial as _fechas_con_historial,
+    fusionar_memoria as _fusionar_memoria,
+    memoria_parece_reinicio as _memoria_parece_reinicio,
+)
 from modelo_mlb import (
     evaluar_juegos,
     calcular_stake_dinamico,
@@ -78,74 +86,11 @@ _juegos_ui_cache: dict = {"fecha": "", "ts": 0.0, "juegos": []}
 _JUEGOS_UI_TTL_SEC = 90
 
 
-def _contar_historial(memoria: dict) -> tuple[int, int]:
-    """(apuestas liquidadas, predicciones con resultado) para comparar backups."""
-    apuestas = 0
-    preds = 0
-    for dia in memoria.get("dias") or []:
-        for a in dia.get("apuestas") or []:
-            if a.get("estado") in ("ganada", "perdida"):
-                apuestas += 1
-        for p in dia.get("predicciones") or []:
-            if p.get("resultado") in ("acierto", "fallo"):
-                preds += 1
-    return apuestas, preds
-
-
-def _memoria_parece_reinicio(memoria: dict) -> bool:
-    """True si parece un wipe/reinicio (día 1, banca inicial, sin historial dinero)."""
-    dias = memoria.get("dias") or []
-    capital = float(memoria.get("capital") or 0)
-    inicial = float(memoria.get("capital_inicial") or 100)
-    apuestas, preds = _contar_historial(memoria)
-    return (
-        int(memoria.get("dia_actual") or 1) <= 1
-        and abs(capital - inicial) < 0.01
-        and apuestas == 0
-        and len(dias) <= 2
-        and preds <= 10  # solo el día recién creado tras el wipe
-    )
-
-
-def _fusionar_memoria(base: dict, extra: dict) -> dict:
-    """Une historial base con días más nuevos de extra (p.ej. picks de hoy tras wipe)."""
-    out = copy.deepcopy(base)
-    by_fecha = {d["fecha"]: d for d in out.get("dias") or [] if d.get("fecha")}
-    for dia in extra.get("dias") or []:
-        fecha = dia.get("fecha")
-        if not fecha:
-            continue
-        if fecha not in by_fecha:
-            by_fecha[fecha] = copy.deepcopy(dia)
-            continue
-        dest = by_fecha[fecha]
-        preds = {str(p.get("game_id")): p for p in (dest.get("predicciones") or [])}
-        for p in dia.get("predicciones") or []:
-            gid = str(p.get("game_id") or "")
-            cur = preds.get(gid)
-            if cur is None or (
-                cur.get("estado") == "pendiente" and p.get("estado") == "liquidado"
-            ):
-                preds[gid] = p
-        dest["predicciones"] = list(preds.values())
-        if not dest.get("apuestas") and dia.get("apuestas"):
-            dest["apuestas"] = copy.deepcopy(dia["apuestas"])
-    dias = sorted(by_fecha.values(), key=lambda d: d["fecha"])
-    for i, d in enumerate(dias, 1):
-        d["dia"] = i
-    out["dias"] = dias
-    # Capital real solo de apuestas con dinero
-    cap = float(out.get("capital_inicial") or 100)
-    for d in dias:
-        for a in d.get("apuestas") or []:
-            if a.get("estado") in ("ganada", "perdida") and a.get("profit") is not None:
-                cap += float(a["profit"])
-    out["capital"] = round(cap, 2)
-    return out
-
-
 def _intentar_recuperar_wipe() -> bool:
-    """Si el disco parece reinicio y el repo tiene historial, restaura + fusiona hoy."""
+    """
+    Recupera historial del JSON del repo si Render wipeó o arrancó un
+    experimento nuevo sin los días anteriores.
+    """
     origen = BASE_DIR / "memoria_auditoria.json"
     if not origen.exists() or not MEMORIA_PATH.exists():
         return False
@@ -157,15 +102,23 @@ def _intentar_recuperar_wipe() -> bool:
     if disk.get("reinicio_manual"):
         return False
     b_ap, b_pr = _contar_historial(bundled)
-    if not _memoria_parece_reinicio(disk) or (b_ap + b_pr) <= 0:
+    if (b_ap + b_pr) <= 0:
+        return False
+    wipe_clasico = _memoria_parece_reinicio(disk)
+    dias_perdidos = _backup_tiene_dias_que_el_disco_perdio(bundled, disk)
+    if not wipe_clasico and not dias_perdidos:
         return False
     merged = _fusionar_memoria(bundled, disk)
+    # Evitar escribir si no cambió nada útil
+    if _fechas_con_historial(merged) <= _fechas_con_historial(disk) and not wipe_clasico:
+        return False
     MEMORIA_PATH.write_text(
         json.dumps(merged, indent=2, ensure_ascii=False), encoding="utf-8"
     )
     print(
         f"[CLOUD] Memoria recuperada desde repo "
-        f"(backup {b_ap} apuestas / {b_pr} preds + día en disco)"
+        f"(backup {b_ap} apuestas / {b_pr} preds · "
+        f"wipe={wipe_clasico} dias_perdidos={dias_perdidos})"
     )
     return True
 
@@ -1416,7 +1369,7 @@ def vigilancia_t60(
 ) -> dict:
     """
     Detecta juegos PROGRAMADOS cerca del T-60 / inicio sin pick congelado.
-    Sirve para avisar en el panel antes de que se pierda el paper.
+    También lista FINALIZADOS del día sin predicción (Render dormido).
     """
     cfg = cfg or {}
     memoria = memoria or {}
@@ -1439,21 +1392,18 @@ def vigilancia_t60(
 
     ahora = ahora_simulado()
     en_riesgo: list[dict] = []
+    perdidos: list[dict] = []
     congelados = 0
     programados = 0
 
     for j in juegos or []:
-        estado = j.get("estado")
+        estado = str(j.get("estado") or "")
         gid = str(j.get("id") or "")
         if estado == "PROGRAMADO":
             programados += 1
         if gid in ya:
             if estado in ("PROGRAMADO", "EN VIVO"):
                 congelados += 1
-            continue
-        if estado not in ("PROGRAMADO", "EN VIVO"):
-            continue
-        if not (j.get("pick") or "").strip():
             continue
 
         mins_a_inicio = None
@@ -1467,20 +1417,51 @@ def vigilancia_t60(
         except Exception:
             mins_a_inicio = None
 
+        # Ya terminó y nunca hubo pick → perdido por sueño/ops (no inventamos pick)
+        if estado == "FINALIZADO":
+            perdidos.append(
+                {
+                    "id": gid,
+                    "visitante": j.get("visitante"),
+                    "home": j.get("home"),
+                    "estado": estado,
+                    "hora_inicio_txt": j.get("hora_inicio_txt"),
+                    "mins_a_inicio": round(mins_a_inicio, 1) if mins_a_inicio is not None else None,
+                    "motivo": "FINAL sin predicción (posible Render dormido / T-60 perdido)",
+                }
+            )
+            continue
+
+        if estado not in ("PROGRAMADO", "EN VIVO"):
+            continue
+
+        # Antes se exigía pick en el objeto juego: si el motor no corrió, no alertaba.
         riesgo = False
         motivo = ""
         if estado == "PROGRAMADO" and mins_a_inicio is not None:
             if -gracia <= mins_a_inicio <= ventana_pre:
                 riesgo = True
                 if mins_a_inicio <= mins_antes:
-                    motivo = f"T-60 pasado · faltan {mins_a_inicio:.0f} min al inicio"
+                    motivo = f"T-60 pasado · faltan {mins_a_inicio:.0f} min al inicio · sin congelar"
                 else:
-                    motivo = f"Se acerca T-60 · faltan {mins_a_inicio:.0f} min"
+                    motivo = f"Se acerca T-60 · faltan {mins_a_inicio:.0f} min · sin congelar"
         elif estado == "EN VIVO":
             mins_desde = _minutos_desde_inicio(j)
             if mins_desde is not None and mins_desde <= gracia:
                 riesgo = True
                 motivo = f"EN VIVO sin congelar · {mins_desde:.0f} min de juego (gracia)"
+            elif mins_desde is not None and mins_desde > gracia:
+                perdidos.append(
+                    {
+                        "id": gid,
+                        "visitante": j.get("visitante"),
+                        "home": j.get("home"),
+                        "estado": estado,
+                        "hora_inicio_txt": j.get("hora_inicio_txt"),
+                        "mins_a_inicio": round(mins_a_inicio, 1) if mins_a_inicio is not None else None,
+                        "motivo": f"EN VIVO fuera de gracia ({mins_desde:.0f} min) sin pick",
+                    }
+                )
 
         if riesgo:
             en_riesgo.append(
@@ -1498,29 +1479,45 @@ def vigilancia_t60(
 
     en_riesgo.sort(key=lambda x: (x.get("mins_a_inicio") is None, x.get("mins_a_inicio") or 0))
     n = len(en_riesgo)
-    if n == 0:
+    n_perd = len(perdidos)
+    if n > 0:
+        nivel = "alerta"
+        if n == 1:
+            g0 = en_riesgo[0]
+            mensaje = (
+                f"⚠ Sin pick fijo: {g0.get('visitante')} @ {g0.get('home')} "
+                f"· {g0.get('motivo')}"
+            )
+        else:
+            mensaje = f"⚠ {n} juegos sin pick congelado cerca del T-60 / inicio"
+    elif n_perd > 0:
+        nivel = "alerta"
+        p0 = perdidos[0]
+        if n_perd == 1:
+            mensaje = (
+                f"⚠ Pick perdido: {p0.get('visitante')} @ {p0.get('home')} "
+                f"(sin predicción · posible sueño Render)"
+            )
+        else:
+            mensaje = f"⚠ {n_perd} juegos del día sin predicción (posible sueño Render)"
+    else:
         mensaje = "Vigilancia T-60 OK · sin juegos en riesgo ahora"
         nivel = "ok"
-    elif n == 1:
-        g0 = en_riesgo[0]
-        mensaje = (
-            f"⚠ Sin pick fijo: {g0.get('visitante')} @ {g0.get('home')} "
-            f"· {g0.get('motivo')}"
-        )
-        nivel = "alerta"
-    else:
-        mensaje = f"⚠ {n} juegos sin pick congelado cerca del T-60 / inicio"
-        nivel = "alerta"
 
     return {
-        "ok": n == 0,
+        "ok": n == 0 and n_perd == 0,
         "nivel": nivel,
         "mensaje": mensaje,
         "en_riesgo": en_riesgo[:8],
         "total_riesgo": n,
+        "perdidos": perdidos[:12],
+        "total_perdidos": n_perd,
         "congelados_activos": congelados,
         "programados": programados,
         "cron_cada_min": 5,
+        "accion_sugerida": (
+            "forzar_registro_t60" if n > 0 else ("cron_externo" if n_perd > 0 else None)
+        ),
     }
 
 
@@ -2791,7 +2788,18 @@ def api_predicciones():
 
 @app.get("/api/health")
 def api_health():
-    """Ping para Render + cron externo (mantiene el servicio despierto en plan free)."""
+    """Ping para Render + cron externo (mantiene el servicio despierto en plan free).
+
+    Ligero a propósito: Render usa este path como healthCheck. Si aquí corre ML
+    o T-60, el check timeout mata el servicio y parece que siempre hay un error.
+    El trabajo pesado va en /api/auto-bloqueo-externo (cron cada 5 min).
+    """
+    wake: dict[str, Any] = {"restore": False}
+    try:
+        wake["restore"] = bool(_intentar_recuperar_wipe())
+    except Exception as e:
+        wake["error"] = str(e)[:120]
+
     cfg = _cfg_con_telegram_memoria()
     circ: dict = {"abierto": False}
     try:
@@ -2800,11 +2808,21 @@ def api_health():
         circ = estado_circuito()
     except Exception:
         pass
+    mem_h = cargar_memoria()
+    hist_fechas = sorted(_fechas_con_historial(mem_h))
+    hist_ap, hist_pr = _contar_historial(mem_h)
     return {
         "ok": True,
         "servicio": "quantum-mlb",
-        "capital": cargar_memoria().get("capital"),
-        "dia_actual": cargar_memoria().get("dia_actual"),
+        "wake": wake,
+        "capital": mem_h.get("capital"),
+        "dia_actual": mem_h.get("dia_actual"),
+        "historial": {
+            "fechas": hist_fechas,
+            "n_dias": len(hist_fechas),
+            "apuestas_liquidadas": hist_ap,
+            "preds_liquidadas": hist_pr,
+        },
         "hora": datetime.now(tz_experimento()).isoformat(),
         "ia_veto": {
             "activo": bool(cfg.get("usar_ia_veto")),
@@ -3573,6 +3591,10 @@ def api_ia_status():
 
 def ejecutar_trabajo_cron_externo() -> dict:
     """Sincroniza fecha, predicciones, bloqueos y liquidacion."""
+    try:
+        _intentar_recuperar_wipe()
+    except Exception as e:
+        print(f"[CRON] restore wipe: {e}")
     sincronizar_experimento_a_hoy()
     reparar_odds_papel(cargar_memoria())
     rellenar_predicciones_recientes(cargar_memoria(), dias_atras=7)
@@ -3582,11 +3604,27 @@ def ejecutar_trabajo_cron_externo() -> dict:
     liquidar_todo(cargar_memoria())
     memoria = cargar_memoria()
     cfg = _cfg_con_telegram_memoria()
+    # Vigilancia real (antes el cron pasaba vigilancia=None → mente ciega al sueño)
+    vigilancia: dict = {}
+    try:
+        juegos = obtener_juegos_fecha(fecha_str())
+        vigilancia = vigilancia_t60(juegos, memoria, cfg)
+        if vigilancia.get("nivel") == "alerta" and int(vigilancia.get("total_riesgo") or 0) > 0:
+            registrar_predicciones_del_dia(forzar=True)
+            try:
+                bloquear_apuestas_del_dia(forzar=False)
+            except Exception:
+                pass
+            memoria = cargar_memoria()
+            vigilancia = vigilancia_t60(juegos, memoria, cfg)
+    except Exception as e:
+        print(f"[CRON] vigilancia: {e}")
+        vigilancia = {"ok": False, "nivel": "ok", "mensaje": str(e)[:120]}
     mente_err: dict = {}
     try:
         mente_err = ejecutar_ciclo_mente_errores(
             cfg,
-            vigilancia=None,
+            vigilancia=vigilancia if isinstance(vigilancia, dict) else None,
             lineas_meta=_lineas_meta_cache if isinstance(_lineas_meta_cache, dict) else None,
             memoria=memoria,
         )
@@ -3605,6 +3643,12 @@ def ejecutar_trabajo_cron_externo() -> dict:
         "capital": memoria["capital"],
         "dia_actual": memoria.get("dia_actual"),
         "fecha_hoy": fecha_str(),
+        "vigilancia": {
+            "nivel": (vigilancia or {}).get("nivel"),
+            "total_riesgo": (vigilancia or {}).get("total_riesgo"),
+            "total_perdidos": (vigilancia or {}).get("total_perdidos"),
+            "mensaje": (vigilancia or {}).get("mensaje"),
+        },
         "mente_errores": {
             "nivel": (mente_err or {}).get("nivel"),
             "mensaje": (mente_err or {}).get("mensaje"),
@@ -3718,12 +3762,13 @@ def api_subir_memoria(
 ):
     """Sube memoria_auditoria.json desde la PC local a Render (requiere CRON_SECRET).
 
-    modo=replace (default) | aprendizaje (fusiona como paper retroactivo, plan 4)
+    modo=replace (default) | fusionar (une días) | aprendizaje (paper retroactivo)
     """
     _verificar_cron_secreto(secret)
     if not isinstance(payload, dict) or "capital" not in payload:
         raise HTTPException(status_code=400, detail="JSON de memoria invalido")
-    if (modo or "replace").lower() in ("aprendizaje", "merge", "import"):
+    modo_n = (modo or "replace").lower()
+    if modo_n in ("aprendizaje", "import"):
         from ia_importar import importar_dump_aprendizaje
         from ia_lecciones import escanear_experiencias_negativas
 
@@ -3742,6 +3787,21 @@ def api_subir_memoria(
             "lecciones_nuevas": n_lec,
             "capital": memoria.get("capital"),
             "dias": len(memoria.get("dias", [])),
+        }
+    if modo_n in ("fusionar", "merge", "union"):
+        disk = cargar_memoria()
+        merged = _fusionar_memoria(payload, disk)
+        guardar_memoria(merged)
+        sincronizar_experimento_a_hoy(merged)
+        memoria = cargar_memoria()
+        ap, pr = _contar_historial(memoria)
+        return {
+            "ok": True,
+            "modo": "fusionar",
+            "capital": memoria.get("capital"),
+            "dia_actual": memoria.get("dia_actual"),
+            "dias": len(memoria.get("dias", [])),
+            "historial": {"apuestas": ap, "preds": pr},
         }
     guardar_memoria(payload)
     memoria = cargar_memoria()
@@ -3838,7 +3898,7 @@ def api_procesar_experiencias(forzar: bool = False):
 
 @app.post("/api/restaurar-backup")
 def api_restaurar_backup(secret: str | None = None):
-    """Restaura memoria desde el JSON del repo si el disco parece un reinicio/wipe."""
+    """Fusiona el JSON del repo con el disco si faltan días (wipe o redeploy)."""
     _verificar_cron_secreto(secret)
     origen = BASE_DIR / "memoria_auditoria.json"
     if not origen.exists():
@@ -3848,11 +3908,22 @@ def api_restaurar_backup(secret: str | None = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Backup ilegible: {e}") from e
     disk = cargar_memoria()
-    if not _memoria_parece_reinicio(disk):
+    if disk.get("reinicio_manual"):
         ap, pr = _contar_historial(disk)
         return {
             "ok": False,
-            "motivo": "La memoria actual no parece un reinicio; no se sobrescribe",
+            "motivo": "reinicio_manual=true; no se restaura el backup",
+            "dia_actual": disk.get("dia_actual"),
+            "capital": disk.get("capital"),
+            "historial": {"apuestas": ap, "preds": pr},
+        }
+    wipe_clasico = _memoria_parece_reinicio(disk)
+    dias_perdidos = _backup_tiene_dias_que_el_disco_perdio(bundled, disk)
+    if not wipe_clasico and not dias_perdidos:
+        ap, pr = _contar_historial(disk)
+        return {
+            "ok": True,
+            "motivo": "Nada que restaurar; el disco ya tiene los días del backup",
             "dia_actual": disk.get("dia_actual"),
             "capital": disk.get("capital"),
             "historial": {"apuestas": ap, "preds": pr},
@@ -3875,6 +3946,8 @@ def api_restaurar_backup(secret: str | None = None):
         "dias": len(memoria.get("dias", [])),
         "historial": {"apuestas": ap, "preds": pr},
         "lecciones": len(memoria.get("lecciones") or []),
+        "wipe_clasico": wipe_clasico,
+        "dias_perdidos": dias_perdidos,
     }
 
 

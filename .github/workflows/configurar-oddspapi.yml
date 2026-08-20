@@ -46,17 +46,17 @@ jobs:
             -H "Content-Type: application/json" \
             -d "$(python3 -c 'import json,os; print(json.dumps({"key": os.environ["ODDSPAPI_KEY"].strip()}))')")"
           echo "$RESP" | python3 -m json.tool
-          echo "$RESP" | python3 -c "
-import sys, json
-d = json.load(sys.stdin)
-g = d.get('guardado') or {}
-print('fingerprint=', d.get('key_fingerprint') or g.get('key_fingerprint'))
-print('source=', d.get('key_source'))
-print('partidos=', d.get('partidos'))
-print('ok=', d.get('ok'))
-if g.get('aviso_env'):
-    print('AVISO:', g.get('aviso_env'))
-if not d.get('ok'):
-    raise SystemExit('OddsPapi no aceptó la key (¿401?). Revisa oddspapi.io / plan.')
-print('OK key rotada y circuito cerrado.')
-"
+          echo "$RESP" | python3 -c '
+          import sys, json
+          d = json.load(sys.stdin)
+          g = d.get("guardado") or {}
+          print("fingerprint=", d.get("key_fingerprint") or g.get("key_fingerprint"))
+          print("source=", d.get("key_source"))
+          print("partidos=", d.get("partidos"))
+          print("ok=", d.get("ok"))
+          if g.get("aviso_env"):
+              print("AVISO:", g.get("aviso_env"))
+          if not d.get("ok"):
+              raise SystemExit("OddsPapi no aceptó la key (¿401?). Revisa oddspapi.io / plan.")
+          print("OK key rotada y circuito cerrado.")
+          '
