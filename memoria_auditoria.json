@@ -41569,9 +41569,9 @@
           "pitcher_away_id": 700241,
           "pitcher_home_id": 663903,
           "inicio_juego": "2026-08-20T12:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.71,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-20T11:40:16.491981-04:00",
@@ -42160,7 +42160,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-20T15:40:17.531616Z"
+          "whatsapp_enviado_en": "2026-08-20T15:40:17.531616Z",
+          "marcador_final": "St. Louis Cardinals 10 - Cincinnati Reds 9",
+          "liquidado_en": "2026-08-20T15:50:02.895419-04:00"
         },
         {
           "game_id": "824395",
@@ -42179,9 +42181,9 @@
           "pitcher_away_id": 694738,
           "pitcher_home_id": 668909,
           "inicio_juego": "2026-08-20T13:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.55,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-20T11:41:50.387953-04:00",
@@ -42826,7 +42828,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-20T15:41:51.309949Z"
+          "whatsapp_enviado_en": "2026-08-20T15:41:51.309949Z",
+          "marcador_final": "San Francisco Giants 2 - Cleveland Guardians 5",
+          "liquidado_en": "2026-08-20T15:50:02.895971-04:00"
         },
         {
           "game_id": "822934",
@@ -42845,9 +42849,9 @@
           "pitcher_away_id": 669456,
           "pitcher_home_id": 693855,
           "inicio_juego": "2026-08-20T13:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-20T11:41:51.312026-04:00",
@@ -43529,7 +43533,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-20T15:41:52.201286Z"
+          "whatsapp_enviado_en": "2026-08-20T15:41:52.201286Z",
+          "marcador_final": "Toronto Blue Jays 5 - Tampa Bay Rays 1",
+          "liquidado_en": "2026-08-20T16:00:03.192155-04:00"
         },
         {
           "game_id": "824074",
@@ -50488,6 +50494,86 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-20T13:27:48.212962Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-824474-1787255402",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-20",
+      "game_id": "824474",
+      "visitante": "St. Louis Cardinals",
+      "home": "Cincinnati Reds",
+      "pick": "St. Louis Cardinals ML",
+      "probPick": 52.9,
+      "edge": 1.4,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "St. Louis Cardinals 10 - Cincinnati Reds 9",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-20T19:50:02.895683Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-824395-1787255402",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-20",
+      "game_id": "824395",
+      "visitante": "San Francisco Giants",
+      "home": "Cleveland Guardians",
+      "pick": "Cleveland Guardians ML",
+      "probPick": 57.5,
+      "edge": -8.7,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "San Francisco Giants 2 - Cleveland Guardians 5",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-20T19:50:02.896168Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-822934-1787256003",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-08-20",
+      "game_id": "822934",
+      "visitante": "Toronto Blue Jays",
+      "home": "Tampa Bay Rays",
+      "pick": "Tampa Bay Rays ML",
+      "probPick": 64.2,
+      "edge": 2.5,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Toronto Blue Jays 5 - Tampa Bay Rays 1",
+      "patron": "scratch_lineup",
+      "leccion": "PASAR si scratch/lineup debilita el lado del pick.",
+      "motivo": "Heurística post-fallo (scratch_lineup)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-20T20:00:03.489597Z"
+    },
+    {
+      "id": "lec-veto_acertado-822934-1787256003",
+      "tipo": "veto_acertado",
+      "fecha": "2026-08-20",
+      "game_id": "822934",
+      "visitante": "Toronto Blue Jays",
+      "home": "Tampa Bay Rays",
+      "pick": "Tampa Bay Rays ML",
+      "probPick": 64.2,
+      "edge": 2.5,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Toronto Blue Jays 5 - Tampa Bay Rays 1",
+      "patron": "veto_acertado",
+      "leccion": "Bloqueo de dinero acertó: el pick falló; mantener señales parecidas.",
+      "motivo": "mente bloqueó dinero + fallo",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-20T20:00:03.489944Z"
     }
   ],
   "mente_stats": {
@@ -50498,9 +50584,9 @@
         "fallos": 1
       },
       "PASAR": {
-        "n": 20,
-        "evito_fallo": 8,
-        "oportunidad_perdida": 12
+        "n": 23,
+        "evito_fallo": 9,
+        "oportunidad_perdida": 14
       },
       "ESPERAR": {
         "n": 3,
@@ -50510,9 +50596,9 @@
     },
     "patrones": {
       "scratch": {
-        "n": 7,
-        "pasar_ok": 1,
-        "pasar_miss": 6,
+        "n": 9,
+        "pasar_ok": 2,
+        "pasar_miss": 7,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -50524,9 +50610,9 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 22,
-        "pasar_ok": 8,
-        "pasar_miss": 13,
+        "n": 25,
+        "pasar_ok": 9,
+        "pasar_miss": 15,
         "apostar_ok": 0,
         "apostar_fail": 1
       },
@@ -50538,15 +50624,15 @@
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 20,
-        "pasar_ok": 7,
-        "pasar_miss": 13,
+        "n": 23,
+        "pasar_ok": 8,
+        "pasar_miss": 15,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "favorito_alto": {
-        "n": 6,
-        "pasar_ok": 2,
+        "n": 7,
+        "pasar_ok": 3,
         "pasar_miss": 3,
         "apostar_ok": 0,
         "apostar_fail": 1
@@ -50565,7 +50651,7 @@
       "humanos": -1,
       "sin_mercado": 0,
       "edge_bajo": -1,
-      "favorito_alto": -1,
+      "favorito_alto": 0,
       "limpio": 0
     },
     "vistos": [
@@ -50592,26 +50678,29 @@
       "824236:acierto",
       "824477:acierto",
       "823670:acierto",
-      "824514:acierto"
+      "824514:acierto",
+      "824474:acierto",
+      "824395:acierto",
+      "822934:fallo"
     ],
-    "actualizado_en": "2026-08-20T13:27:48.213032Z"
+    "actualizado_en": "2026-08-20T20:00:03.490021Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 60,
-    "muestras_reales": 60,
+    "muestras": 63,
+    "muestras_reales": 63,
     "schema": 4,
-    "mensaje": "Reentrenado con 60 muestras (60 reales, RF acc 100.0%, RF holdout 58.3%, XGB acc 96.7%, XGB holdout 66.7%)",
+    "mensaje": "Reentrenado con 63 muestras (63 reales, RF acc 100.0%, RF holdout 53.8%, XGB acc 96.8%, XGB holdout 61.5%)",
     "accuracy_train": 1.0,
-    "accuracy_holdout": 0.583,
-    "accuracy_xgb_train": 0.967,
-    "accuracy_xgb_holdout": 0.667,
-    "ultimo_entreno": "2026-08-20T13:27:54.115273",
+    "accuracy_holdout": 0.538,
+    "accuracy_xgb_train": 0.968,
+    "accuracy_xgb_holdout": 0.615,
+    "ultimo_entreno": "2026-08-20T20:00:17.386262",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 60,
+    "muestras": 63,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
@@ -50620,12 +50709,12 @@
       },
       "underdog": {
         "ok": true,
-        "muestras": 20,
+        "muestras": 21,
         "metodo": "isotonic"
       },
       "scratch": {
         "ok": true,
-        "muestras": 21,
+        "muestras": 23,
         "metodo": "isotonic"
       },
       "limpio": {
@@ -50633,8 +50722,8 @@
         "muestras": 11
       }
     },
-    "mensaje": "Calibrado isotonic con 60 muestras (ECE≈0.13) · 2 tipos",
-    "ece": 0.133
+    "mensaje": "Calibrado isotonic con 63 muestras (ECE≈0.12) · 2 tipos",
+    "ece": 0.118
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
