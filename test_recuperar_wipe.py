@@ -51,6 +51,67 @@ def test_backup_detecta_dia_faltante():
     assert srv._backup_tiene_dias_que_el_disco_perdio(bundled, bundled) is False
 
 
+def test_proteger_escritura_no_borra_dias(tmp_path):
+    actual = {
+        "capital_inicial": 100,
+        "capital": 92,
+        "dias": [
+            {
+                "fecha": "2026-08-15",
+                "predicciones": [{"game_id": "a", "resultado": "acierto", "estado": "liquidado"}],
+                "apuestas": [{"game_id": "x", "estado": "perdida", "profit": -8}],
+            }
+        ],
+    }
+    nueva = {
+        "capital_inicial": 100,
+        "capital": 100,
+        "dias": [
+            {
+                "fecha": "2026-08-20",
+                "predicciones": [{"game_id": "hoy", "estado": "pendiente"}],
+            }
+        ],
+        "reinicio_manual": True,
+    }
+    from memoria_fusion import proteger_escritura, fechas_con_historial
+
+    out, meta = proteger_escritura(actual, nueva, permitir_wipe=False)
+    assert meta["protegido"] is True
+    assert "2026-08-15" in fechas_con_historial(out)
+    assert "2026-08-20" in fechas_con_historial(out)
+    assert out.get("reinicio_manual") is None
+
+
+def test_proteger_escritura_respeta_wipe_confirmado():
+    from memoria_fusion import proteger_escritura, fechas_con_historial
+
+    actual = {
+        "dias": [{"fecha": "2026-08-15", "predicciones": [{"game_id": "a"}]}]
+    }
+    nueva = {"dias": [], "reinicio_manual": True}
+    out, meta = proteger_escritura(actual, nueva, permitir_wipe=True)
+    assert meta["protegido"] is False
+    assert fechas_con_historial(out) == set()
+
+
+def test_snapshot_y_mejor(tmp_path):
+    from memoria_fusion import escribir_snapshot, mejor_snapshot, fechas_con_historial
+
+    m = {
+        "capital_inicial": 100,
+        "dias": [
+            {"fecha": "2026-08-15", "predicciones": [{"game_id": "1"}]},
+            {"fecha": "2026-08-16", "predicciones": [{"game_id": "2"}]},
+        ],
+    }
+    p = escribir_snapshot(tmp_path, m, keep=5)
+    assert p is not None and p.exists()
+    best = mejor_snapshot(tmp_path)
+    assert best is not None
+    assert fechas_con_historial(best) == {"2026-08-15", "2026-08-16"}
+
+
 def test_fusionar_llena_dia_vacio_con_live():
     bundled = {
         "capital_inicial": 100,
