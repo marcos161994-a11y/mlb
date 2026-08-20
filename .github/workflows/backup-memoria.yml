@@ -59,7 +59,19 @@ jobs:
           )
           PY
 
+          # NUNCA pisar: unir repo + vivo. Si falta el script, abortar (no borrar historial).
+          if [ ! -f memoria_fusion.py ]; then
+            echo "::error::Falta memoria_fusion.py — no se sobrescribe el historial del repo."
+            exit 1
+          fi
+          BEFORE=$(python3 -c "import json; d=json.load(open('memoria_auditoria.json')); print(len([x for x in d.get('dias') or [] if x.get('predicciones') or x.get('apuestas')]))")
           python3 memoria_fusion.py memoria_auditoria.json /tmp/memoria_live.json memoria_auditoria.json
+          AFTER=$(python3 -c "import json; d=json.load(open('memoria_auditoria.json')); print(len([x for x in d.get('dias') or [] if x.get('predicciones') or x.get('apuestas')]))")
+          if [ "$AFTER" -lt "$BEFORE" ]; then
+            echo "::error::Fusion perdería días ($BEFORE -> $AFTER). Abortando."
+            exit 1
+          fi
+          echo "Backup OK: días con historial $BEFORE -> $AFTER"
 
       - name: Commit si cambió
         run: |

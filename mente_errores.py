@@ -307,6 +307,7 @@ def diagnosticar(
             MEMORIA_PATH,
             _backup_tiene_dias_que_el_disco_perdio,
             _contar_historial,
+            _fechas_con_historial,
         )
 
         origen = BASE_DIR / "memoria_auditoria.json"
@@ -317,13 +318,15 @@ def diagnosticar(
                 bundled, disk
             ):
                 b_ap, b_pr = _contar_historial(bundled)
+                perdidas = sorted(_fechas_con_historial(bundled) - _fechas_con_historial(disk))
                 hallazgos.append(
                     {
                         "codigo": "historial_wipeado",
                         "severidad": "alta",
                         "mensaje": (
-                            "El disco perdió días con predicciones. "
-                            f"Backup del repo tiene {b_pr} preds / {b_ap} apuestas. Restaurando."
+                            "El disco perdió días con predicciones "
+                            f"({', '.join(perdidas[:4])}{'…' if len(perdidas) > 4 else ''}). "
+                            f"Backup tiene {b_pr} preds / {b_ap} apuestas. Restaurando."
                         )[:180],
                         "acciones": [
                             ACCION_RESTAURAR_HISTORIAL,

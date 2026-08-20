@@ -2808,12 +2808,21 @@ def api_health():
         circ = estado_circuito()
     except Exception:
         pass
+    mem_h = cargar_memoria()
+    hist_fechas = sorted(_fechas_con_historial(mem_h))
+    hist_ap, hist_pr = _contar_historial(mem_h)
     return {
         "ok": True,
         "servicio": "quantum-mlb",
         "wake": wake,
-        "capital": cargar_memoria().get("capital"),
-        "dia_actual": cargar_memoria().get("dia_actual"),
+        "capital": mem_h.get("capital"),
+        "dia_actual": mem_h.get("dia_actual"),
+        "historial": {
+            "fechas": hist_fechas,
+            "n_dias": len(hist_fechas),
+            "apuestas_liquidadas": hist_ap,
+            "preds_liquidadas": hist_pr,
+        },
         "hora": datetime.now(tz_experimento()).isoformat(),
         "ia_veto": {
             "activo": bool(cfg.get("usar_ia_veto")),
