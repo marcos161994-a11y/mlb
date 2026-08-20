@@ -457,6 +457,7 @@
     <p class="meta-line" id="lineas-status" style="color:#ffbc00;"></p>
     <p class="meta-line" id="vigilancia-status" style="color:#8899aa;"></p>
     <p class="meta-line" id="mente-errores-status" style="color:#8899aa;"></p>
+    <p class="meta-line" id="historial-sello" style="color:#8899aa;font-weight:700;"></p>
     <p class="meta-line" id="telegram-banner" style="color:#ffbc00;"></p>
     <p class="meta-line" id="proximo-bloqueo"></p>
 </div>
@@ -947,6 +948,22 @@ function pintarEstado(data) {
         } else {
             mes.style.color = '#00ff88';
             mes.textContent = me.mensaje || 'Mente errores OK';
+        }
+    }
+
+    const hs = document.getElementById('historial-sello');
+    const seal = data.historial_sello || (data.historial) || {};
+    if (hs) {
+        const nivel = seal.nivel || (seal.ok ? 'ok' : 'aviso');
+        if (nivel === 'ok') {
+            hs.style.color = '#00ff88';
+            hs.textContent = '✓ ' + (seal.mensaje || 'Historial OK');
+        } else if (nivel === 'aviso') {
+            hs.style.color = '#ffbc00';
+            hs.textContent = '⚠ ' + (seal.mensaje || 'Historial corto');
+        } else {
+            hs.style.color = '#ff4466';
+            hs.textContent = '✗ ' + (seal.mensaje || 'Historial en peligro');
         }
     }
 
@@ -1550,8 +1567,22 @@ async function procesarExperiencias() {
 }
 
 async function reiniciar() {
-    if (!confirm('¿Reiniciar el experimento a $100 y día 1?')) return;
-    await fetch(API + '/api/reiniciar', { method: 'POST' });
+    const ok1 = confirm(
+        'PELIGRO: esto borra el historial del experimento.\n\n' +
+        'Solo úsalo si quieres empezar de cero. ¿Continuar?'
+    );
+    if (!ok1) return;
+    const typed = prompt('Escribe BORRAR (en mayúsculas) para confirmar el wipe del historial:');
+    if ((typed || '').trim().toUpperCase() !== 'BORRAR') {
+        toast('Reinicio cancelado · historial intacto');
+        return;
+    }
+    const res = await fetch(API + '/api/reiniciar?confirm=BORRAR', { method: 'POST' });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast(err.detail || 'Reinicio bloqueado');
+        return;
+    }
     toast('Experimento reiniciado');
     cargarEstado();
 }
