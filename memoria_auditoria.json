@@ -43554,9 +43554,9 @@
           "pitcher_away_id": 695611,
           "pitcher_home_id": 677976,
           "inicio_juego": "2026-08-20T14:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 3.87,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-20T11:41:52.203079-04:00",
@@ -44215,7 +44215,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-20T15:41:53.028794Z"
+          "whatsapp_enviado_en": "2026-08-20T15:41:53.028794Z",
+          "marcador_final": "Athletics 2 - Kansas City Royals 6",
+          "liquidado_en": "2026-08-20T17:10:03.576714-04:00"
         },
         {
           "game_id": "824589",
@@ -44234,9 +44236,9 @@
           "pitcher_away_id": 656550,
           "pitcher_home_id": 641743,
           "inicio_juego": "2026-08-20T14:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-20T11:41:53.030350-04:00",
@@ -44887,7 +44889,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-20T15:41:54.417054Z"
+          "whatsapp_enviado_en": "2026-08-20T15:41:54.417054Z",
+          "marcador_final": "Atlanta Braves 2 - Chicago White Sox 0",
+          "liquidado_en": "2026-08-20T16:40:03.975967-04:00"
         },
         {
           "game_id": "823747",
@@ -44906,9 +44910,9 @@
           "pitcher_away_id": 669923,
           "pitcher_home_id": 688107,
           "inicio_juego": "2026-08-20T14:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 3.9,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-20T11:41:54.419074-04:00",
@@ -45547,7 +45551,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-20T15:41:55.223020Z"
+          "whatsapp_enviado_en": "2026-08-20T15:41:55.223020Z",
+          "marcador_final": "Seattle Mariners 4 - Milwaukee Brewers 7",
+          "liquidado_en": "2026-08-20T17:13:20.780184-04:00"
         },
         {
           "game_id": "824802",
@@ -50574,6 +50580,86 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-20T20:00:03.489944Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-824589-1787258404",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-08-20",
+      "game_id": "824589",
+      "visitante": "Atlanta Braves",
+      "home": "Chicago White Sox",
+      "pick": "Chicago White Sox ML",
+      "probPick": 58.0,
+      "edge": 7.5,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Atlanta Braves 2 - Chicago White Sox 0",
+      "patron": "bullpen",
+      "leccion": "Desconfiar de favoritos con bullpen cargado / fatiga alta.",
+      "motivo": "Heurística post-fallo (bullpen)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-20T20:40:04.170534Z"
+    },
+    {
+      "id": "lec-veto_acertado-824589-1787258404",
+      "tipo": "veto_acertado",
+      "fecha": "2026-08-20",
+      "game_id": "824589",
+      "visitante": "Atlanta Braves",
+      "home": "Chicago White Sox",
+      "pick": "Chicago White Sox ML",
+      "probPick": 58.0,
+      "edge": 7.5,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Atlanta Braves 2 - Chicago White Sox 0",
+      "patron": "veto_acertado",
+      "leccion": "Bloqueo de dinero acertó: el pick falló; mantener señales parecidas.",
+      "motivo": "mente bloqueó dinero + fallo",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-20T20:40:04.170635Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-824074-1787260203",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-20",
+      "game_id": "824074",
+      "visitante": "Athletics",
+      "home": "Kansas City Royals",
+      "pick": "Kansas City Royals ML",
+      "probPick": 61.9,
+      "edge": 5.6,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Athletics 2 - Kansas City Royals 6",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-20T21:10:03.576973Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-823747-1787260400",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-20",
+      "game_id": "823747",
+      "visitante": "Seattle Mariners",
+      "home": "Milwaukee Brewers",
+      "pick": "Milwaukee Brewers ML",
+      "probPick": 57.3,
+      "edge": 1.2,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Seattle Mariners 4 - Milwaukee Brewers 7",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-20T21:13:20.780483Z"
     }
   ],
   "mente_stats": {
@@ -50584,21 +50670,21 @@
         "fallos": 1
       },
       "PASAR": {
-        "n": 23,
+        "n": 25,
         "evito_fallo": 9,
-        "oportunidad_perdida": 14
+        "oportunidad_perdida": 16
       },
       "ESPERAR": {
-        "n": 3,
+        "n": 4,
         "aciertos": 2,
-        "fallos": 1
+        "fallos": 2
       }
     },
     "patrones": {
       "scratch": {
-        "n": 9,
+        "n": 10,
         "pasar_ok": 2,
-        "pasar_miss": 7,
+        "pasar_miss": 8,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -50610,9 +50696,9 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 25,
-        "pasar_ok": 9,
-        "pasar_miss": 15,
+        "n": 28,
+        "pasar_ok": 10,
+        "pasar_miss": 17,
         "apostar_ok": 0,
         "apostar_fail": 1
       },
@@ -50624,9 +50710,9 @@
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 23,
+        "n": 24,
         "pasar_ok": 8,
-        "pasar_miss": 15,
+        "pasar_miss": 16,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -50681,26 +50767,29 @@
       "824514:acierto",
       "824474:acierto",
       "824395:acierto",
-      "822934:fallo"
+      "822934:fallo",
+      "824589:fallo",
+      "824074:acierto",
+      "823747:acierto"
     ],
-    "actualizado_en": "2026-08-20T20:00:03.490021Z"
+    "actualizado_en": "2026-08-20T21:13:20.780553Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 63,
-    "muestras_reales": 63,
+    "muestras": 66,
+    "muestras_reales": 66,
     "schema": 4,
-    "mensaje": "Reentrenado con 63 muestras (63 reales, RF acc 100.0%, RF holdout 53.8%, XGB acc 96.8%, XGB holdout 61.5%)",
-    "accuracy_train": 1.0,
-    "accuracy_holdout": 0.538,
-    "accuracy_xgb_train": 0.968,
-    "accuracy_xgb_holdout": 0.615,
-    "ultimo_entreno": "2026-08-20T20:00:17.386262",
+    "mensaje": "Reentrenado con 66 muestras (66 reales, RF acc 98.5%, RF holdout 57.1%, XGB acc 100.0%, XGB holdout 78.6%)",
+    "accuracy_train": 0.985,
+    "accuracy_holdout": 0.571,
+    "accuracy_xgb_train": 1.0,
+    "accuracy_xgb_holdout": 0.786,
+    "ultimo_entreno": "2026-08-20T21:13:25.470211",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 63,
+    "muestras": 66,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
@@ -50714,22 +50803,23 @@
       },
       "scratch": {
         "ok": true,
-        "muestras": 23,
+        "muestras": 24,
         "metodo": "isotonic"
       },
       "limpio": {
-        "ok": false,
-        "muestras": 11
+        "ok": true,
+        "muestras": 13,
+        "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 63 muestras (ECE≈0.12) · 2 tipos",
-    "ece": 0.118
+    "mensaje": "Calibrado isotonic con 66 muestras (ECE≈0.11) · 3 tipos",
+    "ece": 0.109
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-20T14:25:19.194922Z"
+    "actualizado_en": "2026-08-20T20:17:34.268987Z"
   }
 }
