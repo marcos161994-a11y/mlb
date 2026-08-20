@@ -7,3 +7,4 @@ gcp_credentials.json
 __pycache__/
 *.pyc
 *.exe
+memoria_snapshots/
