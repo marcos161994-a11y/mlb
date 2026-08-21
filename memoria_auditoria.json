@@ -2,7 +2,7 @@
   "modo": "simulacion",
   "capital": 89.0,
   "capital_inicial": 100.0,
-  "dia_actual": 6,
+  "dia_actual": 7,
   "dias_totales": 200,
   "stake_por_juego": 5.0,
   "experimento_activo": true,
@@ -46891,9 +46891,9 @@
           "pitcher_away_id": 680570,
           "pitcher_home_id": 663567,
           "inicio_juego": "2026-08-20T20:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-20T11:41:56.946604-04:00",
@@ -47518,10 +47518,28 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-20T15:41:57.717986Z"
+          "whatsapp_enviado_en": "2026-08-20T15:41:57.717986Z",
+          "marcador_final": "Los Angeles Angels 18 - Houston Astros 3",
+          "liquidado_en": "2026-08-20T23:10:04.292189-04:00"
         }
       ],
       "apuestas": []
+    },
+    {
+      "dia": 7,
+      "fecha": "2026-08-21",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
     }
   ],
   "lecciones": [
@@ -50704,6 +50722,46 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-21T02:30:03.837946Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-824153-1787281804",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-08-20",
+      "game_id": "824153",
+      "visitante": "Los Angeles Angels",
+      "home": "Houston Astros",
+      "pick": "Houston Astros ML",
+      "probPick": 62.7,
+      "edge": -1.2,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Los Angeles Angels 18 - Houston Astros 3",
+      "patron": "favorito_inflado",
+      "leccion": "Favorito con % alto también falla; validar vs mercado y matchup.",
+      "motivo": "Heurística post-fallo (favorito_inflado)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-21T03:10:04.882651Z"
+    },
+    {
+      "id": "lec-veto_acertado-824153-1787281804",
+      "tipo": "veto_acertado",
+      "fecha": "2026-08-20",
+      "game_id": "824153",
+      "visitante": "Los Angeles Angels",
+      "home": "Houston Astros",
+      "pick": "Houston Astros ML",
+      "probPick": 62.7,
+      "edge": -1.2,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Los Angeles Angels 18 - Houston Astros 3",
+      "patron": "veto_acertado",
+      "leccion": "Bloqueo de dinero acertó: el pick falló; mantener señales parecidas.",
+      "motivo": "mente bloqueó dinero + fallo",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-21T03:10:04.882837Z"
     }
   ],
   "mente_stats": {
@@ -50714,8 +50772,8 @@
         "fallos": 1
       },
       "PASAR": {
-        "n": 27,
-        "evito_fallo": 9,
+        "n": 28,
+        "evito_fallo": 10,
         "oportunidad_perdida": 18
       },
       "ESPERAR": {
@@ -50740,8 +50798,8 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 30,
-        "pasar_ok": 10,
+        "n": 31,
+        "pasar_ok": 11,
         "pasar_miss": 19,
         "apostar_ok": 0,
         "apostar_fail": 1
@@ -50754,15 +50812,15 @@
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 26,
-        "pasar_ok": 8,
+        "n": 27,
+        "pasar_ok": 9,
         "pasar_miss": 18,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "favorito_alto": {
-        "n": 7,
-        "pasar_ok": 3,
+        "n": 8,
+        "pasar_ok": 4,
         "pasar_miss": 3,
         "apostar_ok": 0,
         "apostar_fail": 1
@@ -50816,31 +50874,32 @@
       "824074:acierto",
       "823747:acierto",
       "824802:acierto",
-      "822861:acierto"
+      "822861:acierto",
+      "824153:fallo"
     ],
-    "actualizado_en": "2026-08-21T02:30:03.838064Z"
+    "actualizado_en": "2026-08-21T03:10:05.083379Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 68,
-    "muestras_reales": 68,
+    "muestras": 69,
+    "muestras_reales": 69,
     "schema": 4,
-    "mensaje": "Reentrenado con 68 muestras (68 reales, RF acc 98.5%, RF holdout 64.3%, XGB acc 97.1%, XGB holdout 71.4%)",
-    "accuracy_train": 0.985,
+    "mensaje": "Reentrenado con 69 muestras (69 reales, RF acc 98.6%, RF holdout 64.3%, XGB acc 98.6%, XGB holdout 71.4%)",
+    "accuracy_train": 0.986,
     "accuracy_holdout": 0.643,
-    "accuracy_xgb_train": 0.971,
+    "accuracy_xgb_train": 0.986,
     "accuracy_xgb_holdout": 0.714,
-    "ultimo_entreno": "2026-08-21T02:30:12.634098",
+    "ultimo_entreno": "2026-08-21T03:10:13.287362",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 68,
+    "muestras": 69,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
         "ok": false,
-        "muestras": 8
+        "muestras": 9
       },
       "underdog": {
         "ok": true,
@@ -50858,14 +50917,14 @@
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 68 muestras (ECE≈0.09) · 3 tipos",
-    "ece": 0.093
+    "mensaje": "Calibrado isotonic con 69 muestras (ECE≈0.10) · 3 tipos",
+    "ece": 0.1
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-21T00:44:40.247626Z"
+    "actualizado_en": "2026-08-21T02:54:37.629945Z"
   }
 }
