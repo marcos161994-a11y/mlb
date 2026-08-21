@@ -549,7 +549,7 @@
 </div>
 
 <div id="contenedor-juegos" class="grid-juegos">
-    <p style="color:var(--muted)">Conectando con el motor...</p>
+    <p style="color:var(--muted)">Despertando servidor…</p>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -768,15 +768,42 @@ async function cargarEstado() {
     const yaCargo = contenedor.dataset.loaded === '1';
     if (!yaCargo) {
         contenedor.innerHTML = ES_NUBE
-            ? '<p style="color:var(--muted)">Conectando con el motor... (la nube puede tardar ~1 min al despertar)</p>'
+            ? '<p style="color:var(--muted)">Despertando servidor… (Render free · 15–60 s la 1ª vez)</p>'
             : '<p style="color:var(--muted)">Conectando con el motor...</p>';
     }
     const ctrl = new AbortController();
     const timeoutMs = ES_NUBE ? 180000 : 45000;
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
-        // Si ya falló antes, primero despierta con /api/health (rápido) y luego carga estado
-        if (ES_NUBE && wakeIntentos > 0) {
+        // Siempre health primero en nube: despierta + pinta banca/sello al instante
+        if (ES_NUBE) {
+            try {
+                const hr = await fetch(API + '/api/health', { cache: 'no-store', signal: ctrl.signal });
+                if (hr.ok) {
+                    const h = await hr.json();
+                    if (h.capital != null) {
+                        const capEl = document.getElementById('capital-display');
+                        if (capEl) capEl.textContent = '$' + Number(h.capital).toFixed(2);
+                    }
+                    if (h.dia_actual != null) {
+                        const dEl = document.getElementById('dia-actual');
+                        if (dEl) dEl.textContent = 'DÍA ' + h.dia_actual;
+                    }
+                    const hs = document.getElementById('historial-sello');
+                    const seal = h.historial || {};
+                    if (hs && seal.mensaje) {
+                        hs.style.color = seal.nivel === 'ok' ? '#00ff88' : (seal.nivel === 'aviso' ? '#ffbc00' : '#ff4466');
+                        hs.textContent = (seal.nivel === 'ok' ? '✓ ' : '⚠ ') + seal.mensaje;
+                    }
+                    if (!yaCargo) {
+                        contenedor.innerHTML =
+                            '<p style="color:var(--muted)">Servidor despierto · cargando juegos…</p>';
+                    }
+                }
+            } catch (eHealth) {
+                /* sigue a /api/state */
+            }
+        } else if (wakeIntentos > 0) {
             await despertarServidor(120000);
         }
         const stateRes = await fetch(API + '/api/state', { cache: 'no-store', signal: ctrl.signal });
@@ -794,7 +821,6 @@ async function cargarEstado() {
                 '<p style="color:#ffaa00"><b>El servidor está despertando...</b><br>' +
                 'Intento ' + wakeIntentos + '/' + WAKE_MAX +
                 ' · Render free se duerme sin tráfico; reintentando.</p>';
-            // Despertar en paralelo y reintentar panel
             despertarServidor(120000).finally(() => {
                 setTimeout(cargarEstado, 6000);
             });
@@ -1617,6 +1643,12 @@ async function reiniciar() {
 
 cargarEstado();
 setInterval(cargarEstado, REFRESH_MS);
+// Al volver a la pestaña: despertar Render antes de refrescar el panel
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && ES_NUBE) {
+        despertarServidor(90000).then(() => cargarEstado());
+    }
+});
 
 </script>
 </body>
