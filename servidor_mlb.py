@@ -273,6 +273,146 @@ def _memoria_sin_secretos(memoria: dict) -> dict:
     return out
 
 
+_PRED_PANEL_KEYS = (
+    "game_id",
+    "visitante",
+    "home",
+    "pick",
+    "odds",
+    "odds_american",
+    "probPick",
+    "resultado",
+    "estado",
+    "profit",
+    "marcador_final",
+    "con_dinero",
+    "invalida_tarde",
+    "valida_stats",
+    "retroactivo",
+    "stake_virtual",
+    "predicho_en",
+    "liquidado_en",
+)
+_APUESTA_PANEL_KEYS = (
+    "game_id",
+    "visitante",
+    "home",
+    "pick",
+    "odds",
+    "odds_american",
+    "probPick",
+    "estado",
+    "profit",
+    "stake",
+    "marcador_final",
+    "liquidado_en",
+)
+_JUEGO_PANEL_KEYS = (
+    "id",
+    "visitante",
+    "home",
+    "estado",
+    "estado_apuesta",
+    "pick",
+    "probPick",
+    "odds",
+    "odds_american",
+    "edge",
+    "apostable",
+    "motivo_apuesta",
+    "hora_inicio_txt",
+    "hora_bloqueo_txt",
+    "inicio_juego",
+    "scoreAway",
+    "scoreHome",
+    "ganador",
+    "profit",
+    "stake",
+    "solo_papel",
+    "resultado_papel",
+    "invalida_tarde",
+    "logoAway",
+    "logoHome",
+    "pitcherAway",
+    "pitcherHome",
+    "lineas_fuente",
+    "pick_congelado",
+)
+
+
+def _recortar_dict(src: dict, keys: tuple[str, ...]) -> dict:
+    return {k: src[k] for k in keys if k in src}
+
+
+def _memoria_para_panel(memoria: dict) -> dict:
+    """Memoria liviana para el panel (sin IA/clima/lesiones anidados ~1MB)."""
+    base = _memoria_sin_secretos(memoria)
+    dias_out = []
+    for dia in base.get("dias") or []:
+        if not isinstance(dia, dict):
+            continue
+        d = {
+            "dia": dia.get("dia"),
+            "fecha": dia.get("fecha"),
+            "bloqueado_en": dia.get("bloqueado_en"),
+            "resumen": dia.get("resumen"),
+            "predicciones": [
+                _recortar_dict(p, _PRED_PANEL_KEYS)
+                for p in (dia.get("predicciones") or [])
+                if isinstance(p, dict)
+            ],
+            "apuestas": [
+                _recortar_dict(a, _APUESTA_PANEL_KEYS)
+                for a in (dia.get("apuestas") or [])
+                if isinstance(a, dict)
+            ],
+        }
+        dias_out.append(d)
+    base["dias"] = dias_out
+    # Lecciones: solo lo que pinta el panel
+    lecs = []
+    for lec in base.get("lecciones") or []:
+        if not isinstance(lec, dict):
+            continue
+        lecs.append(
+            {
+                k: lec.get(k)
+                for k in (
+                    "id",
+                    "patron",
+                    "titulo",
+                    "resumen",
+                    "detalle",
+                    "game_id",
+                    "fecha",
+                    "creado_en",
+                )
+                if k in lec
+            }
+        )
+    if lecs:
+        base["lecciones"] = lecs
+    return base
+
+
+def _juegos_para_panel(juegos: list) -> list:
+    out = []
+    for j in juegos or []:
+        if not isinstance(j, dict):
+            continue
+        row = _recortar_dict(j, _JUEGO_PANEL_KEYS)
+        # Mantener un peinado corto de mente si existe
+        im = j.get("ia_mente") if isinstance(j.get("ia_mente"), dict) else None
+        if im:
+            row["ia_mente"] = {
+                k: im.get(k)
+                for k in ("ok", "decision", "motivo", "confianza", "fuente")
+                if k in im
+            }
+        out.append(row)
+    return out
+
+
 def guardar_memoria(memoria: dict, *, permitir_wipe: bool = False) -> None:
     """Persiste memoria con candado anti-wipe + snapshot rotativo.
 
@@ -2636,11 +2776,12 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
             resumen_lecciones,
         )
 
-        n_bf = backfill_lecciones_si_vacio(memoria)
-        n_neg = backfill_negativas_si_falta(memoria)
-        if n_bf or n_neg:
-            guardar_memoria(memoria)
-            print(f"[LECCIONES] Backfill: fallos={n_bf} total_scan={n_neg}")
+        if not ligero:
+            n_bf = backfill_lecciones_si_vacio(memoria)
+            n_neg = backfill_negativas_si_falta(memoria)
+            if n_bf or n_neg:
+                guardar_memoria(memoria)
+                print(f"[LECCIONES] Backfill: fallos={n_bf} total_scan={n_neg}")
         lecciones_meta = resumen_lecciones(memoria)
     except Exception as e:
         print(f"[LECCIONES] aviso estado: {e}")
@@ -2649,7 +2790,7 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
     try:
         from mente_aprendizaje import resumen_mente_stats, recomputar_stats_desde_historial
 
-        if not (memoria.get("mente_stats") or {}).get("actualizado_en"):
+        if (not ligero) and not (memoria.get("mente_stats") or {}).get("actualizado_en"):
             n_ms = recomputar_stats_desde_historial(memoria)
             if n_ms:
                 guardar_memoria(memoria)
@@ -2660,30 +2801,66 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
 
     vigilancia = vigilancia_t60(juegos, memoria, cfg)
     cfg_ops = _cfg_con_telegram_memoria(cfg)
-    try:
-        me_out = ejecutar_ciclo_mente_errores(
-            cfg_ops,
-            vigilancia=vigilancia,
-            lineas_meta=_lineas_meta_cache if isinstance(_lineas_meta_cache, dict) else None,
-            memoria=memoria,
-        )
-        if me_out.get("telegram_restaurado") or me_out.get("memoria_telegram_dirty"):
-            guardar_memoria(memoria)
-    except Exception as e:
-        print(f"[MENTE-ERRORES] aviso estado: {e}")
+    # En panel ligero el cron ya corre mente/T-60; no bloquear la UI 10–20s
+    if not ligero:
+        try:
+            me_out = ejecutar_ciclo_mente_errores(
+                cfg_ops,
+                vigilancia=vigilancia,
+                lineas_meta=_lineas_meta_cache if isinstance(_lineas_meta_cache, dict) else None,
+                memoria=memoria,
+            )
+            if me_out.get("telegram_restaurado") or me_out.get("memoria_telegram_dirty"):
+                guardar_memoria(memoria)
+        except Exception as e:
+            print(f"[MENTE-ERRORES] aviso estado: {e}")
+
+    memoria_panel = _memoria_para_panel(memoria)
+    dia_panel = None
+    if dia:
+        dia_panel = {
+            "dia": dia.get("dia"),
+            "fecha": dia.get("fecha"),
+            "bloqueado_en": dia.get("bloqueado_en"),
+            "resumen": dia.get("resumen"),
+            "predicciones": [
+                _recortar_dict(p, _PRED_PANEL_KEYS)
+                for p in (dia.get("predicciones") or [])
+                if isinstance(p, dict)
+            ],
+            "apuestas": [
+                _recortar_dict(a, _APUESTA_PANEL_KEYS)
+                for a in (dia.get("apuestas") or [])
+                if isinstance(a, dict)
+            ],
+        }
 
     return {
-        "memoria": _memoria_sin_secretos(memoria),
+        "memoria": memoria_panel,
         "banca": resumen_banca(memoria),
-        "dia_hoy": dia,
-        "config": cfg,
+        "dia_hoy": dia_panel,
+        "config": {
+            k: cfg.get(k)
+            for k in (
+                "capital_inicial",
+                "dias_totales",
+                "stake_por_juego",
+                "minutos_antes_juego",
+                "timezone",
+                "modo_solo_modelo",
+                "usar_ia_veto",
+                "usar_mente",
+            )
+            if k in cfg
+        },
         "lineas": _lineas_meta_cache,
         "estrategia": cfg.get("estrategia", {}),
         "total_juegos_bloqueados": len(dia["apuestas"]) if dia else 0,
         "oportunidades_valor_hoy": sum(1 for j in juegos if j.get("apostable")),
+        "favorables_hoy": sum(1 for j in juegos if j.get("apostable")),
         "minutos_antes_juego": cfg.get("minutos_antes_juego", 60),
         "fecha_hoy": fecha_hoy,
-        "games": juegos,
+        "games": _juegos_para_panel(juegos),
         "stats_modelo": stats_modelo,
         "pl_split": pl_split,
         "ml_meta": memoria.get("ml_meta"),
@@ -2737,11 +2914,12 @@ def api_historial_status():
 
 
 @app.get("/api/state")
-def api_state():
-    """Estado del panel. Liquida pendientes barato (solo marcadores MLB)."""
-    # En Render free el cron a veces no corre si el servicio duerme:
-    # liquidar aquí garantiza que al abrir/refrescar el panel salgan resultados.
-    return construir_estado_completo(liquidar=True, ligero=True)
+def api_state(liquidar: bool = False):
+    """Estado del panel (liviano). Por defecto no liquida: el cron ya lo hace.
+
+    ?liquidar=1 fuerza liquidación (botón Actualizar resultados / catch-up).
+    """
+    return construir_estado_completo(liquidar=bool(liquidar), ligero=True)
 
 
 @app.get("/api/picks-hoy")

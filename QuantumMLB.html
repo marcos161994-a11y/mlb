@@ -549,7 +549,7 @@
 </div>
 
 <div id="contenedor-juegos" class="grid-juegos">
-    <p style="color:var(--muted)">Conectando con el motor...</p>
+    <p style="color:var(--muted)">Despertando servidor…</p>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -562,12 +562,28 @@ const API = (!window.location.origin || window.location.protocol === 'file:')
 const ES_NUBE = API.includes('onrender.com') || API.includes('render.com');
 const REFRESH_MS = ES_NUBE ? 45000 : 8000;
 let cargandoEstado = false;
+let wakeIntentos = 0;
+const WAKE_MAX = 6;
 
 function toast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg;
     t.style.display = 'block';
     setTimeout(() => t.style.display = 'none', 4000);
+}
+
+/** Ping ligero: despierta Render free sin cargar todo el panel. */
+async function despertarServidor(ms) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), ms || 120000);
+    try {
+        const r = await fetch(API + '/api/health', { cache: 'no-store', signal: ctrl.signal });
+        return r.ok;
+    } catch (e) {
+        return false;
+    } finally {
+        clearTimeout(t);
+    }
 }
 
 async function guardarTokenTelegram() {
@@ -752,31 +768,69 @@ async function cargarEstado() {
     const yaCargo = contenedor.dataset.loaded === '1';
     if (!yaCargo) {
         contenedor.innerHTML = ES_NUBE
-            ? '<p style="color:var(--muted)">Conectando con el motor... (la nube puede tardar ~1 min al despertar)</p>'
+            ? '<p style="color:var(--muted)">Despertando servidor… (Render free · 15–60 s la 1ª vez)</p>'
             : '<p style="color:var(--muted)">Conectando con el motor...</p>';
     }
     const ctrl = new AbortController();
     const timeoutMs = ES_NUBE ? 180000 : 45000;
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
+        // Siempre health primero en nube: despierta + pinta banca/sello al instante
+        if (ES_NUBE) {
+            try {
+                const hr = await fetch(API + '/api/health', { cache: 'no-store', signal: ctrl.signal });
+                if (hr.ok) {
+                    const h = await hr.json();
+                    if (h.capital != null) {
+                        const capEl = document.getElementById('capital-display');
+                        if (capEl) capEl.textContent = '$' + Number(h.capital).toFixed(2);
+                    }
+                    if (h.dia_actual != null) {
+                        const dEl = document.getElementById('dia-actual');
+                        if (dEl) dEl.textContent = 'DÍA ' + h.dia_actual;
+                    }
+                    const hs = document.getElementById('historial-sello');
+                    const seal = h.historial || {};
+                    if (hs && seal.mensaje) {
+                        hs.style.color = seal.nivel === 'ok' ? '#00ff88' : (seal.nivel === 'aviso' ? '#ffbc00' : '#ff4466');
+                        hs.textContent = (seal.nivel === 'ok' ? '✓ ' : '⚠ ') + seal.mensaje;
+                    }
+                    if (!yaCargo) {
+                        contenedor.innerHTML =
+                            '<p style="color:var(--muted)">Servidor despierto · cargando juegos…</p>';
+                    }
+                }
+            } catch (eHealth) {
+                /* sigue a /api/state */
+            }
+        } else if (wakeIntentos > 0) {
+            await despertarServidor(120000);
+        }
         const stateRes = await fetch(API + '/api/state', { cache: 'no-store', signal: ctrl.signal });
         if (!stateRes.ok) throw new Error('Servidor respondió ' + stateRes.status);
         const state = await stateRes.json();
         contenedor.dataset.loaded = '1';
+        wakeIntentos = 0;
         pintarEstado(state);
         pintarPicksHoy(state.games || [], state);
         pintarJuegos(state.games || []);
     } catch (e) {
-        if (e.name === 'AbortError' && ES_NUBE) {
+        if (ES_NUBE && wakeIntentos < WAKE_MAX) {
+            wakeIntentos += 1;
             contenedor.innerHTML =
-                '<p style="color:#ffaa00"><b>El servidor está despertando...</b><br>Reintentando en unos segundos.</p>';
-            setTimeout(cargarEstado, 8000);
+                '<p style="color:#ffaa00"><b>El servidor está despertando...</b><br>' +
+                'Intento ' + wakeIntentos + '/' + WAKE_MAX +
+                ' · Render free se duerme sin tráfico; reintentando.</p>';
+            despertarServidor(120000).finally(() => {
+                setTimeout(cargarEstado, 6000);
+            });
             return;
         }
         contenedor.innerHTML =
-            '<p style="color:#ff4466"><b>Servidor apagado.</b><br>' +
+            '<p style="color:#ff4466"><b>No conecta con el servidor.</b><br>' +
             (ES_NUBE
-                ? 'Abre <b>https://mlb-1-en7i.onrender.com</b> y espera ~1 min.<br>'
+                ? 'Recarga la página o espera 1 min. El historial no se borra por dormir.<br>' +
+                  'Si se repite: GitHub Actions → MLB Cloud Cron → Run workflow.<br>'
                 : '1) Doble clic en <b>iniciar.bat</b><br>2) Abre <b>http://localhost:8000</b><br>') +
             '<small>' + (e.message || e) + '</small></p>';
     } finally {
@@ -1589,6 +1643,12 @@ async function reiniciar() {
 
 cargarEstado();
 setInterval(cargarEstado, REFRESH_MS);
+// Al volver a la pestaña: despertar Render antes de refrescar el panel
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && ES_NUBE) {
+        despertarServidor(90000).then(() => cargarEstado());
+    }
+});
 
 </script>
 </body>
