@@ -45572,9 +45572,9 @@
           "pitcher_away_id": 543037,
           "pitcher_home_id": 680694,
           "inicio_juego": "2026-08-20T18:35:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.2,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-20T11:41:55.224390-04:00",
@@ -46208,7 +46208,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-20T15:41:56.083865Z"
+          "whatsapp_enviado_en": "2026-08-20T15:41:56.083865Z",
+          "marcador_final": "New York Yankees 6 - Baltimore Orioles 1",
+          "liquidado_en": "2026-08-20T21:50:03.037524-04:00"
         },
         {
           "game_id": "822861",
@@ -46227,9 +46229,9 @@
           "pitcher_away_id": 674841,
           "pitcher_home_id": 594798,
           "inicio_juego": "2026-08-20T20:05:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 3.17,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-20T11:41:56.085307-04:00",
@@ -46868,7 +46870,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-20T15:41:56.945068Z"
+          "whatsapp_enviado_en": "2026-08-20T15:41:56.945068Z",
+          "marcador_final": "Washington Nationals 0 - Texas Rangers 2",
+          "liquidado_en": "2026-08-20T22:30:03.837625-04:00"
         },
         {
           "game_id": "824153",
@@ -50660,6 +50664,46 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-20T21:13:20.780483Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-824802-1787277003",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-20",
+      "game_id": "824802",
+      "visitante": "New York Yankees",
+      "home": "Baltimore Orioles",
+      "pick": "New York Yankees ML",
+      "probPick": 56.0,
+      "edge": 1.7,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "New York Yankees 6 - Baltimore Orioles 1",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-21T01:50:03.037740Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-822861-1787279403",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-20",
+      "game_id": "822861",
+      "visitante": "Washington Nationals",
+      "home": "Texas Rangers",
+      "pick": "Texas Rangers ML",
+      "probPick": 55.2,
+      "edge": -6.0,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Washington Nationals 0 - Texas Rangers 2",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-21T02:30:03.837946Z"
     }
   ],
   "mente_stats": {
@@ -50670,9 +50714,9 @@
         "fallos": 1
       },
       "PASAR": {
-        "n": 25,
+        "n": 27,
         "evito_fallo": 9,
-        "oportunidad_perdida": 16
+        "oportunidad_perdida": 18
       },
       "ESPERAR": {
         "n": 4,
@@ -50696,9 +50740,9 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 28,
+        "n": 30,
         "pasar_ok": 10,
-        "pasar_miss": 17,
+        "pasar_miss": 19,
         "apostar_ok": 0,
         "apostar_fail": 1
       },
@@ -50710,9 +50754,9 @@
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 24,
+        "n": 26,
         "pasar_ok": 8,
-        "pasar_miss": 16,
+        "pasar_miss": 18,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -50770,26 +50814,28 @@
       "822934:fallo",
       "824589:fallo",
       "824074:acierto",
-      "823747:acierto"
+      "823747:acierto",
+      "824802:acierto",
+      "822861:acierto"
     ],
-    "actualizado_en": "2026-08-20T21:13:20.780553Z"
+    "actualizado_en": "2026-08-21T02:30:03.838064Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 66,
-    "muestras_reales": 66,
+    "muestras": 68,
+    "muestras_reales": 68,
     "schema": 4,
-    "mensaje": "Reentrenado con 66 muestras (66 reales, RF acc 98.5%, RF holdout 57.1%, XGB acc 100.0%, XGB holdout 78.6%)",
+    "mensaje": "Reentrenado con 68 muestras (68 reales, RF acc 98.5%, RF holdout 64.3%, XGB acc 97.1%, XGB holdout 71.4%)",
     "accuracy_train": 0.985,
-    "accuracy_holdout": 0.571,
-    "accuracy_xgb_train": 1.0,
-    "accuracy_xgb_holdout": 0.786,
-    "ultimo_entreno": "2026-08-20T21:13:25.470211",
+    "accuracy_holdout": 0.643,
+    "accuracy_xgb_train": 0.971,
+    "accuracy_xgb_holdout": 0.714,
+    "ultimo_entreno": "2026-08-21T02:30:12.634098",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 66,
+    "muestras": 68,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
@@ -50808,18 +50854,18 @@
       },
       "limpio": {
         "ok": true,
-        "muestras": 13,
+        "muestras": 15,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 66 muestras (ECE≈0.11) · 3 tipos",
-    "ece": 0.109
+    "mensaje": "Calibrado isotonic con 68 muestras (ECE≈0.09) · 3 tipos",
+    "ece": 0.093
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-21T00:29:53.139214Z"
+    "actualizado_en": "2026-08-21T00:44:40.247626Z"
   }
 }
