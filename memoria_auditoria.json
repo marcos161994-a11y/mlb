@@ -47530,7 +47530,675 @@
       "fecha": "2026-08-21",
       "bloqueado_en": null,
       "apuestas": [],
-      "predicciones": [],
+      "predicciones": [
+        {
+          "game_id": "823746",
+          "visitante": "Atlanta Braves",
+          "home": "Milwaukee Brewers",
+          "pick": "Milwaukee Brewers ML",
+          "odds": 1.709,
+          "odds_american": -141,
+          "edge": 0.9,
+          "probPick": 59.4,
+          "apostable": false,
+          "lineas_fuente": "draftkings",
+          "motivo_apuesta": "Sin valor (mínimo +6.0% edge)",
+          "pitcherAway": "Chris Sale",
+          "pitcherHome": "Jacob Misiorowski",
+          "pitcher_away_id": 519242,
+          "pitcher_home_id": 694819,
+          "inicio_juego": "2026-08-21T16:10:00-04:00",
+          "estado": "pendiente",
+          "resultado": null,
+          "profit": null,
+          "stake_virtual": 5.0,
+          "con_dinero": false,
+          "predicho_en": "2026-08-21T15:10:23.393306-04:00",
+          "congelado_en_gracia": false,
+          "valida_stats": true,
+          "invalida_tarde": false,
+          "clima": {
+            "ok": false,
+            "fuente": "none",
+            "temp_f": null,
+            "viento_mph": null,
+            "humedad": null,
+            "run_env": 0.0,
+            "motivo": "429 Client Error: Too Many Requests for url: https://api.open-meteo.com/v1/forecast?latitude=43.028&longitude=-87.9712&c",
+            "estadio": "American Family Field",
+            "es_domo": false
+          },
+          "lesiones": {
+            "ok": true,
+            "fuente": "espn",
+            "motivo": "290 bajas indexadas",
+            "away": [
+              {
+                "jugador": "Spencer Schwellenbach",
+                "apellido": "schwellenbach",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Schwellenbach (elbow) is still not feeling 100 percent and will have his throwing progression slowed, Grant McAuley of the Marietta Daily Jo",
+                "severidad": 5,
+                "equipo": "Atlanta Braves"
+              },
+              {
+                "jugador": "Spencer Strider",
+                "apellido": "strider",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Atlanta manager Walt Weiss said Monday that Strider (elbow) will begin a throwing progression this week, Chad Bishop of The Atlanta Journal-",
+                "severidad": 5,
+                "equipo": "Atlanta Braves"
+              },
+              {
+                "jugador": "Joe Jimenez",
+                "apellido": "jimenez",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Atlanta manager Walt Weiss revealed Wednesday that Jimenez underwent another surgery on his left knee 3-to-4 weeks ago, Grant McAuley of the",
+                "severidad": 5,
+                "equipo": "Atlanta Braves"
+              },
+              {
+                "jugador": "Joey Wentz",
+                "apellido": "wentz",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Atlanta placed Wentz (knee) on the 60-day injured list Tuesday.",
+                "severidad": 5,
+                "equipo": "Atlanta Braves"
+              },
+              {
+                "jugador": "Reynaldo Lopez",
+                "apellido": "lopez",
+                "pos": "RP",
+                "status": "15-Day-IL",
+                "comentario": "Lopez (knee) will begin a rehab assignment with Triple-A Gwinnett on Sunday, Chad Bishop of The Atlanta Journal-Constitution reports.",
+                "severidad": 4,
+                "equipo": "Atlanta Braves"
+              },
+              {
+                "jugador": "Robert Suarez",
+                "apellido": "suarez",
+                "pos": "RP",
+                "status": "15-Day-IL",
+                "comentario": "Suarez (elbow) will advance his throwing progression on flat ground Thursday, Grant McAuley of the Marietta Daily Journal reports.",
+                "severidad": 4,
+                "equipo": "Atlanta Braves"
+              },
+              {
+                "jugador": "Jurickson Profar",
+                "apellido": "profar",
+                "pos": "LF",
+                "status": "suspension",
+                "comentario": "Profar will miss the full 2026 season after the appeal of his 162-game PED suspension was denied Thursday, Jeff Passan of ESPN.com reports.",
+                "severidad": 2,
+                "equipo": "Atlanta Braves"
+              }
+            ],
+            "home": [
+              {
+                "jugador": "Brandon Woodruff",
+                "apellido": "woodruff",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Woodruff announced Saturday that he will undergo season-ending capsule repair surgery on his right shoulder, Adam McCalvy of MLB.com reports",
+                "severidad": 5,
+                "equipo": "Milwaukee Brewers"
+              },
+              {
+                "jugador": "Rob Zastryzny",
+                "apellido": "zastryzny",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "The Brewers transferred Zastryzny (shoulder) to the 60-day injured list Wednesday.",
+                "severidad": 5,
+                "equipo": "Milwaukee Brewers"
+              },
+              {
+                "jugador": "Brian Fitzpatrick",
+                "apellido": "fitzpatrick",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Fitzpatrick (elbow) underwent Tommy John surgery over the past week, Curt Hogg of the Milwaukee Journal Sentinel reports.",
+                "severidad": 5,
+                "equipo": "Milwaukee Brewers"
+              },
+              {
+                "jugador": "Quinn Priester",
+                "apellido": "priester",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Priester will undergo thoracic outlet compression surgery on Monday and is expected to be sidelined 8-to-10 months, Curt Hogg of the Milwauk",
+                "severidad": 5,
+                "equipo": "Milwaukee Brewers"
+              },
+              {
+                "jugador": "Angel Zerpa",
+                "apellido": "zerpa",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "The Brewers transferred Zerpa (elbow) to the 60-day injured list Sunday.",
+                "severidad": 5,
+                "equipo": "Milwaukee Brewers"
+              },
+              {
+                "jugador": "Sal Frelick",
+                "apellido": "frelick",
+                "pos": "RF",
+                "status": "10-Day-IL",
+                "comentario": "Brewers manager Pat Murphy said that Frelick (shoulder) will not be activated from the 10-day injured list Friday or Saturday, but \"I think ",
+                "severidad": 4,
+                "equipo": "Milwaukee Brewers"
+              },
+              {
+                "jugador": "JoJo Romero",
+                "apellido": "romero",
+                "pos": "RP",
+                "status": "15-Day-IL",
+                "comentario": "Romero (abdomen) will throw a live batting practice session Friday, Adam McCalvy of MLB.com reports.",
+                "severidad": 4,
+                "equipo": "Milwaukee Brewers"
+              },
+              {
+                "jugador": "Abner Uribe",
+                "apellido": "uribe",
+                "pos": "RP",
+                "status": "15-Day-IL",
+                "comentario": "Uribe (forearm) will throw a bullpen session Tuesday, Adam McCalvy of MLB.com reports.",
+                "severidad": 4,
+                "equipo": "Milwaukee Brewers"
+              }
+            ],
+            "resumen": "Atlanta Braves: Spencer Schwellenbach(SP/60-Day-IL), Spencer Strider(SP/60-Day-IL), Joe Jimenez(RP/60-Day-IL), Joey Wentz(RP/60-Day-IL) | Milwaukee Brewers: Brandon Woodruff(SP/60-Day-IL), Rob Zastryzny(RP/60-Day-IL), Brian Fitzpatrick(RP/60-Day-IL), Quinn Priester(SP/60-Day-IL)",
+            "ajuste_away": -3.25,
+            "ajuste_home": -3.45,
+            "starter_riesgo": false,
+            "starter_away_lesionado": false,
+            "starter_home_lesionado": false,
+            "alerta": ""
+          },
+          "scratch_lineup": {
+            "ok": true,
+            "lineup_confirmado": true,
+            "scratch_away": false,
+            "scratch_home": false,
+            "estrellas_fuera_away": [],
+            "estrellas_fuera_home": [],
+            "ajuste_away": 0.0,
+            "ajuste_home": 0.0,
+            "min_estrellas_fuera": 2,
+            "riesgo": false,
+            "alerta": "",
+            "resumen": "Lineup OK"
+          },
+          "factores_humanos": {
+            "ok": true,
+            "away": {
+              "ok": true,
+              "dias_descanso": 0.0,
+              "back_to_back": true,
+              "juegos_seguidos_visita": 5,
+              "cambio_zona": 0,
+              "fatiga_viaje": 0.75,
+              "ultimo_rival": "Chicago White Sox",
+              "ultimo_venue": "Rate Field",
+              "motivo": "B2B · descanso 0d · road×5 · fatiga 0.75"
+            },
+            "home": {
+              "ok": true,
+              "dias_descanso": 0.0,
+              "back_to_back": true,
+              "juegos_seguidos_visita": 0,
+              "cambio_zona": 0,
+              "fatiga_viaje": 0.35,
+              "ultimo_rival": "Seattle Mariners",
+              "ultimo_venue": "American Family Field",
+              "motivo": "B2B · descanso 0d"
+            },
+            "serie": {
+              "game_number": 1,
+              "games_in_series": 3,
+              "leverage": 0.333,
+              "rubber": false,
+              "day_night": "day"
+            },
+            "umpire": {
+              "ok": true,
+              "hp_nombre": "Todd Tichenor",
+              "hp_id": 429805,
+              "sesgo_runs": 0.0,
+              "motivo": "HP Todd Tichenor"
+            },
+            "ajuste_away": -1.65,
+            "ajuste_home": -0.49,
+            "sesgo_umpire_runs": 0.0,
+            "alertas": [
+              "Visita fatigada (B2B · descanso 0d · road×5 · fatiga 0.75)"
+            ],
+            "resumen": "AWAY: B2B · descanso 0d · road×5 · fatiga 0.75 | HOME: B2B · descanso 0d | Serie 1/3 | day | HP Todd Tichenor",
+            "riesgo": true,
+            "features_away": {
+              "fatiga_viaje": 0.75,
+              "dias_descanso": 0.0,
+              "cambio_zona": 0.0,
+              "leverage_serie": 0.333,
+              "umpire_runs": 0.0
+            },
+            "features_home": {
+              "fatiga_viaje": 0.35,
+              "dias_descanso": 0.0,
+              "cambio_zona": 0.0,
+              "leverage_serie": 0.333,
+              "umpire_runs": 0.0
+            }
+          },
+          "historico_oficial": {
+            "ok": true,
+            "season": 2026,
+            "l10_away": {
+              "ok": true,
+              "wins": 4,
+              "losses": 6,
+              "pct": 0.4,
+              "marca": "4-6",
+              "streak_code": "W1",
+              "streak_type": "wins",
+              "streak_n": 1,
+              "forma": "neutra"
+            },
+            "l10_home": {
+              "ok": true,
+              "wins": 5,
+              "losses": 5,
+              "pct": 0.5,
+              "marca": "5-5",
+              "streak_code": "W1",
+              "streak_type": "wins",
+              "streak_n": 1,
+              "forma": "neutra"
+            },
+            "pitcher_vs_rival_away": {
+              "ok": true,
+              "pitcher_id": 519242,
+              "pitcher": "Chris Sale",
+              "rival_id": 158,
+              "gs": 1,
+              "ip": 5.7,
+              "era": 0.0,
+              "whip": 1.05,
+              "k": 7,
+              "bb": 1,
+              "hr": 0,
+              "ops_contra": 0.499,
+              "avg_contra": 0.238,
+              "calidad": "bueno",
+              "motivo": "ERA 0.0 en 5.7 IP vs rival",
+              "fechas": [
+                "2026-06-20"
+              ],
+              "resumenes": [
+                "5.2 IP, 0 ER, 7 K, BB"
+              ]
+            },
+            "pitcher_vs_rival_home": {
+              "ok": true,
+              "pitcher_id": 694819,
+              "pitcher": "Jacob Misiorowski",
+              "rival_id": 144,
+              "gs": 1,
+              "ip": 6.0,
+              "era": 3.0,
+              "whip": 1.0,
+              "k": 7,
+              "bb": 1,
+              "hr": 0,
+              "ops_contra": 0.467,
+              "avg_contra": 0.217,
+              "calidad": "bueno",
+              "motivo": "ERA 3.0 en 6.0 IP vs rival",
+              "fechas": [
+                "2026-06-19"
+              ],
+              "resumenes": [
+                "6.0 IP, 2 ER, 7 K, BB"
+              ]
+            },
+            "alertas": [
+              "pvr_bueno_away",
+              "pvr_bueno_home"
+            ],
+            "riesgo": false,
+            "ajuste_away": 0.4,
+            "ajuste_home": 0.6,
+            "resumen": "L10 visita 4-6 · L10 local 5-5 · SP visita vs rival: ERA 0.0 en 5.7 IP vs rival · SP local vs rival: ERA 3.0 en 6.0 IP vs rival"
+          },
+          "ia_briefing": {
+            "ok": true,
+            "fase": "t60",
+            "creado_en": "2026-08-21T19:10:23.581600Z",
+            "alertas": [
+              "humanos",
+              "pvr_bueno_away",
+              "pvr_bueno_home",
+              "preferir_f5",
+              "f5_under"
+            ],
+            "resumen": "Pick Milwaukee Brewers ML @ 59.4% edge=0.9 · cuotas=draftkings · Elo 1511/1571 pitch +53/+55 → 38/62% · fusión 39/61% · Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 41/59% · MC totales μ=6.3 (F5 · alertas=humanos,pvr_bueno_away,pvr_bueno_home,preferir_f5,f5_under · AWAY: B2B · descanso 0d · road×5 · fat",
+            "pilares": {
+              "modelo": {
+                "pick": "Milwaukee Brewers ML",
+                "prob": 59.4,
+                "edge": 0.9,
+                "odds": 1.709,
+                "fuente_cuotas": "draftkings",
+                "motivo": "Sin valor (mínimo +6.0% edge)"
+              },
+              "clima": {
+                "ok": false,
+                "run_env": 0.0,
+                "motivo": "429 Client Error: Too Many Requests for url: https://api.open-meteo.com/v1/forecast?latitude=43.028&"
+              },
+              "lesiones": {
+                "ok": true,
+                "starter_riesgo": false,
+                "resumen": "Atlanta Braves: Spencer Schwellenbach(SP/60-Day-IL), Spencer Strider(SP/60-Day-IL), Joe Jimenez(RP/60-Day-IL), Joey Wentz(RP/60-Day-IL) | Mi"
+              },
+              "scratch": {
+                "ok": true,
+                "riesgo": false,
+                "resumen": "Lineup OK"
+              },
+              "humanos": {
+                "ok": true,
+                "riesgo": true,
+                "resumen": "AWAY: B2B · descanso 0d · road×5 · fatiga 0.75 | HOME: B2B · descanso 0d | Serie 1/3 | day | HP Todd Tichenor",
+                "fatiga_away": 0.75,
+                "fatiga_home": 0.35
+              },
+              "historico": {
+                "ok": true,
+                "riesgo": false,
+                "resumen": "L10 visita 4-6 · L10 local 5-5 · SP visita vs rival: ERA 0.0 en 5.7 IP vs rival · SP local vs rival: ERA 3.0 en 6.0 IP vs rival",
+                "l10_away": "4-6",
+                "l10_home": "5-5",
+                "pvr_away": "bueno",
+                "pvr_home": "bueno"
+              },
+              "elo": {
+                "ok": true,
+                "resumen": "Elo 1511/1571 pitch +53/+55 → 38/62% · fusión 39/61%",
+                "prob_elo_away": 37.96,
+                "prob_elo_home": 62.04,
+                "adj_pitcher_away": 52.92,
+                "adj_pitcher_home": 55.0,
+                "peso_elo": 0.4
+              },
+              "inteligencia": {
+                "ok": true,
+                "capas": [
+                  "bullpen",
+                  "park_umpire",
+                  "monte_carlo",
+                  "mc_totales",
+                  "consenso"
+                ],
+                "resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 41/59% · MC totales μ=6.3 (F5 3.6) vs 6.0 → neutro 43% · F5→under · preferir F5 (bullpen)",
+                "tipo_pick": "limpio",
+                "consenso_n": 1,
+                "mc": "MC×800 → 39/61%",
+                "totales": {
+                  "ok": true,
+                  "mu": 6.33,
+                  "mu_f5": 3.6,
+                  "señal": "neutro",
+                  "señal_f5": "under",
+                  "preferir_f5": true,
+                  "resumen": "MC totales μ=6.3 (F5 3.6) vs 6.0 → neutro 43% · F5→under · preferir F5 (bullpen)"
+                }
+              },
+              "pitchers": {
+                "away": "Chris Sale",
+                "home": "Jacob Misiorowski",
+                "fip": 2.16,
+                "fatiga_bullpen": 0.4
+              }
+            },
+            "lecciones_ids": [
+              "lec-oportunidad_perdida-824074-1787260203",
+              "lec-oportunidad_perdida-823747-1787260400",
+              "lec-oportunidad_perdida-824802-1787277003",
+              "lec-oportunidad_perdida-822861-1787279403",
+              "lec-fallo_postmortem-824153-1787281804",
+              "lec-veto_acertado-824153-1787281804"
+            ]
+          },
+          "ia_mente": {
+            "ok": true,
+            "decision": "PASAR",
+            "stake_pct": 0.0,
+            "razones": [
+              "Edge demasiado bajo vs mercado"
+            ],
+            "confianza": 4,
+            "lecciones_usadas": [
+              "edge_falso"
+            ],
+            "fuente": "regla-local",
+            "modelo": null,
+            "briefing": null,
+            "alertas": [
+              "humanos",
+              "pvr_bueno_away",
+              "pvr_bueno_home",
+              "preferir_f5",
+              "f5_under"
+            ],
+            "senales": [
+              "humanos",
+              "pvr_bueno_away",
+              "pvr_bueno_home",
+              "preferir_f5",
+              "f5_under",
+              "edge_bajo"
+            ],
+            "penalizacion_aprendizaje": -2,
+            "modo": "normal",
+            "min_confianza": 3,
+            "shadow": false,
+            "briefing_fase": "t60",
+            "autoriza_dinero": false
+          },
+          "ml_features": {
+            "era_pitcher": 1.75,
+            "whip_pitcher": 0.75,
+            "k9_pitcher": 13.6,
+            "woba_equipo": 0.335,
+            "ops_equipo": 0.734,
+            "win_pct_equipo": 0.617,
+            "es_local": 1.0,
+            "park_factor": 1.04,
+            "fatiga_bullpen": 0.4,
+            "matchup_zurdo_diestro": -1.020000000000001,
+            "edge_estadistico": 0.9,
+            "bb9_pitcher": 2.01,
+            "hr9_pitcher": 0.84,
+            "racha_equipo": 0.5,
+            "diferencia_run": 0.0,
+            "vs_pitcher_hand": 0.0,
+            "temp_f": 72.0,
+            "viento_mph": 5.0,
+            "run_env": 0.0,
+            "fip_pitcher": 2.16,
+            "xfip_pitcher": 1.65,
+            "k_pct_pitcher": 39.8,
+            "bb_pct_pitcher": 5.9,
+            "fatiga_viaje": 0.35,
+            "dias_descanso": 1.0,
+            "cambio_zona": 0.0,
+            "leverage_serie": 0.333,
+            "umpire_runs": 0.0
+          },
+          "tipo_pick": "limpio",
+          "inteligencia": {
+            "ok": true,
+            "capas": [
+              "bullpen",
+              "park_umpire",
+              "monte_carlo",
+              "mc_totales",
+              "consenso"
+            ],
+            "bullpen": {
+              "away": {
+                "ok": true,
+                "fatiga": 0.394,
+                "pitches_relevo": 39,
+                "relevistas": 3,
+                "horas_desde": 24.6,
+                "resumen": "Bullpen Atlanta Braves: 39 pitches relevo (3 brazos) · fatiga 0.39",
+                "nombre": "Atlanta Braves",
+                "game_pk": 824589
+              },
+              "home": {
+                "ok": true,
+                "fatiga": 0.713,
+                "pitches_relevo": 97,
+                "relevistas": 3,
+                "horas_desde": 24.6,
+                "resumen": "Bullpen Milwaukee Brewers: 97 pitches relevo (3 brazos) · fatiga 0.71",
+                "nombre": "Milwaukee Brewers",
+                "game_pk": 823747
+              },
+              "shift_hacia_away": 1.28
+            },
+            "park_umpire": {
+              "ok": true,
+              "adj_away": 0.11,
+              "adj_home": 0.18,
+              "park_factor": 1.04,
+              "sesgo_umpire": 0.0,
+              "resumen": "Park×1.04 ump +0.00 → 41/59%"
+            },
+            "monte_carlo": {
+              "ok": true,
+              "n": 800,
+              "prob_home": 60.75,
+              "prob_away": 39.25,
+              "resumen": "MC×800 → 39/61%"
+            },
+            "totales": {
+              "ok": true,
+              "n": 800,
+              "lambda_away": 3.08,
+              "lambda_home": 3.2,
+              "mu_total": 6.33,
+              "mu_f5": 3.6,
+              "p10": 3.0,
+              "p50": 6.0,
+              "p90": 10.0,
+              "linea_total": 6.0,
+              "linea_f5": 4.5,
+              "linea_fuente": "mercado",
+              "linea_es_default": false,
+              "p_over": 42.8,
+              "p_under": 39.9,
+              "p_over_f5": 30.0,
+              "p_under_f5": 70.0,
+              "señal": "neutro",
+              "señal_f5": "under",
+              "preferir_f5": true,
+              "resumen": "MC totales μ=6.3 (F5 3.6) vs 6.0 → neutro 43% · F5→under · preferir F5 (bullpen)",
+              "edge_over": -8.9,
+              "odds_over": 1.935,
+              "edge_under": -13.2,
+              "odds_under": 1.885
+            },
+            "preferir_f5": true,
+            "consenso": {
+              "ok": true,
+              "n_fuentes": 1,
+              "fuentes": [
+                "draftkings"
+              ],
+              "dec_away": 2.31,
+              "dec_home": 1.709,
+              "prob_away": 42.52,
+              "prob_home": 57.48,
+              "vig_pct": 1.8,
+              "discrepancia_casas_pct": 0.0,
+              "resumen": "Consenso 1 casa(s) · fair 42.52/57.48% · vig 1.8%"
+            },
+            "tipo_pre": "limpio",
+            "resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 41/59% · MC totales μ=6.3 (F5 3.6) vs 6.0 → neutro 43% · F5→under · preferir F5 (bullpen)",
+            "tipo_pick": "limpio"
+          },
+          "elo": {
+            "ok": true,
+            "activo": true,
+            "peso_elo": 0.4,
+            "elo_away": 1511.4,
+            "elo_home": 1570.7,
+            "adj_pitcher_away": 52.92,
+            "adj_pitcher_home": 55.0,
+            "elo_adj_away": 1564.3,
+            "elo_adj_home": 1625.7,
+            "prob_elo_away": 37.96,
+            "prob_elo_home": 62.04,
+            "prob_modelo_away": 40.4,
+            "prob_modelo_home": 59.6,
+            "prob_fusion_away": 39.42,
+            "prob_fusion_home": 60.58,
+            "fip_away": 2.31,
+            "fip_home": 2.16,
+            "resumen": "Elo 1511/1571 pitch +53/+55 → 38/62% · fusión 39/61%"
+          },
+          "mc_totales": {
+            "ok": true,
+            "n": 800,
+            "lambda_away": 3.08,
+            "lambda_home": 3.2,
+            "mu_total": 6.33,
+            "mu_f5": 3.6,
+            "p10": 3.0,
+            "p50": 6.0,
+            "p90": 10.0,
+            "linea_total": 6.0,
+            "linea_f5": 4.5,
+            "linea_fuente": "mercado",
+            "linea_es_default": false,
+            "p_over": 42.8,
+            "p_under": 39.9,
+            "p_over_f5": 30.0,
+            "p_under_f5": 70.0,
+            "señal": "neutro",
+            "señal_f5": "under",
+            "preferir_f5": true,
+            "resumen": "MC totales μ=6.3 (F5 3.6) vs 6.0 → neutro 43% · F5→under · preferir F5 (bullpen)",
+            "edge_over": -8.9,
+            "odds_over": 1.935,
+            "edge_under": -13.2,
+            "odds_under": 1.885
+          },
+          "preferir_f5": true,
+          "total_linea": 6.0,
+          "lineas_total": {
+            "linea": 6.0,
+            "over_american": -107,
+            "over_decimal": 1.935,
+            "under_american": -113,
+            "under_decimal": 1.885,
+            "casa": "draftkings",
+            "fuente": "espn"
+          },
+          "alerta_enviado": true,
+          "alerta_canal": "telegram",
+          "whatsapp_enviado": true,
+          "telegram_enviado": true,
+          "whatsapp_enviado_en": "2026-08-21T19:10:24.315741Z"
+        }
+      ],
       "resumen": {
         "jugadas": 0,
         "ganadas": 0,
@@ -50925,6 +51593,6 @@
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-21T18:21:54.168609Z"
+    "actualizado_en": "2026-08-21T18:48:42.090095Z"
   }
 }
