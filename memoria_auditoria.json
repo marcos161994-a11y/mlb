@@ -52270,9 +52270,9 @@
           "pitcher_away_id": 675512,
           "pitcher_home_id": 702070,
           "inicio_juego": "2026-08-21T20:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.86,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-21T17:35:56.365843-04:00",
@@ -52937,7 +52937,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-21T21:35:57.263738Z"
+          "whatsapp_enviado_en": "2026-08-21T21:35:57.263738Z",
+          "marcador_final": "Detroit Tigers 2 - Kansas City Royals 5",
+          "liquidado_en": "2026-08-21T22:47:07.997081-04:00"
         },
         {
           "game_id": "824152",
@@ -52956,9 +52958,9 @@
           "pitcher_away_id": 669372,
           "pitcher_home_id": 669713,
           "inicio_juego": "2026-08-21T20:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.82,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-21T17:35:57.265304-04:00",
@@ -53602,7 +53604,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-21T21:35:58.069548Z"
+          "whatsapp_enviado_en": "2026-08-21T21:35:58.069548Z",
+          "marcador_final": "Athletics 0 - Houston Astros 4",
+          "liquidado_en": "2026-08-21T23:10:07.691719-04:00"
         },
         {
           "game_id": "822857",
@@ -53621,9 +53625,9 @@
           "pitcher_away_id": 672282,
           "pitcher_home_id": 669022,
           "inicio_juego": "2026-08-21T20:15:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 3.68,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-21T17:35:58.071062-04:00",
@@ -54304,7 +54308,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-21T21:35:58.888641Z"
+          "whatsapp_enviado_en": "2026-08-21T21:35:58.888641Z",
+          "marcador_final": "Los Angeles Angels 1 - Texas Rangers 2",
+          "liquidado_en": "2026-08-21T23:29:00.388389-04:00"
         },
         {
           "game_id": "824317",
@@ -54323,9 +54329,9 @@
           "pitcher_away_id": 676282,
           "pitcher_home_id": 685299,
           "inicio_juego": "2026-08-21T20:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 3.33,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-21T17:35:58.890599-04:00",
@@ -54950,7 +54956,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-21T21:35:59.664444Z"
+          "whatsapp_enviado_en": "2026-08-21T21:35:59.664444Z",
+          "marcador_final": "Cleveland Guardians 9 - Colorado Rockies 1",
+          "liquidado_en": "2026-08-21T23:40:09.685673-04:00"
         },
         {
           "game_id": "825045",
@@ -56897,9 +56905,9 @@
           "pitcher_away_id": 687570,
           "pitcher_home_id": 681190,
           "inicio_juego": "2026-08-21T21:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.35,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-21T21:01:20.430159-04:00",
@@ -57550,7 +57558,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-22T01:01:21.359180Z"
+          "whatsapp_enviado_en": "2026-08-22T01:01:21.359180Z",
+          "marcador_final": "Minnesota Twins 2 - San Diego Padres 6",
+          "liquidado_en": "2026-08-22T00:00:08.392256-04:00"
         }
       ],
       "resumen": {
@@ -60924,6 +60934,106 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-22T02:30:04.626740Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-824072-1787366828",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-21",
+      "game_id": "824072",
+      "visitante": "Detroit Tigers",
+      "home": "Kansas City Royals",
+      "pick": "Kansas City Royals ML",
+      "probPick": 57.0,
+      "edge": 6.3,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Detroit Tigers 2 - Kansas City Royals 5",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-22T02:47:08.000722Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-824152-1787368207",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-21",
+      "game_id": "824152",
+      "visitante": "Athletics",
+      "home": "Houston Astros",
+      "pick": "Houston Astros ML",
+      "probPick": 63.7,
+      "edge": -0.2,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Athletics 0 - Houston Astros 4",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-22T03:10:07.691993Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-822857-1787369340",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-21",
+      "game_id": "822857",
+      "visitante": "Los Angeles Angels",
+      "home": "Texas Rangers",
+      "pick": "Texas Rangers ML",
+      "probPick": 55.6,
+      "edge": -2.0,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Los Angeles Angels 1 - Texas Rangers 2",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-22T03:29:00.388603Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-824317-1787370009",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-21",
+      "game_id": "824317",
+      "visitante": "Cleveland Guardians",
+      "home": "Colorado Rockies",
+      "pick": "Cleveland Guardians ML",
+      "probPick": 56.2,
+      "edge": -3.8,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Cleveland Guardians 9 - Colorado Rockies 1",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-22T03:40:09.685984Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-823262-1787371208",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-21",
+      "game_id": "823262",
+      "visitante": "Minnesota Twins",
+      "home": "San Diego Padres",
+      "pick": "San Diego Padres ML",
+      "probPick": 50.5,
+      "edge": -3.0,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Minnesota Twins 2 - San Diego Padres 6",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-22T04:00:08.392589Z"
     }
   ],
   "mente_stats": {
@@ -60934,21 +61044,21 @@
         "fallos": 0
       },
       "PASAR": {
-        "n": 6,
+        "n": 10,
         "evito_fallo": 0,
-        "oportunidad_perdida": 6
+        "oportunidad_perdida": 10
       },
       "ESPERAR": {
-        "n": 0,
-        "aciertos": 0,
+        "n": 1,
+        "aciertos": 1,
         "fallos": 0
       }
     },
     "patrones": {
       "scratch": {
-        "n": 1,
+        "n": 3,
         "pasar_ok": 0,
-        "pasar_miss": 1,
+        "pasar_miss": 3,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -60960,9 +61070,9 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 5,
+        "n": 10,
         "pasar_ok": 0,
-        "pasar_miss": 5,
+        "pasar_miss": 10,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -60974,16 +61084,16 @@
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 6,
+        "n": 10,
         "pasar_ok": 0,
-        "pasar_miss": 6,
+        "pasar_miss": 10,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "favorito_alto": {
-        "n": 3,
+        "n": 4,
         "pasar_ok": 0,
-        "pasar_miss": 3,
+        "pasar_miss": 4,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -61001,7 +61111,7 @@
       "humanos": -2,
       "sin_mercado": 0,
       "edge_bajo": -2,
-      "favorito_alto": 0,
+      "favorito_alto": -2,
       "limpio": 0
     },
     "vistos": [
@@ -61010,31 +61120,37 @@
       "824721:acierto",
       "823510:acierto",
       "823830:acierto",
-      "824559:acierto"
+      "824559:acierto",
+      "824072:acierto",
+      "824152:acierto",
+      "822857:acierto",
+      "824317:acierto",
+      "823262:acierto"
     ],
-    "actualizado_en": "2026-08-22T02:30:04.626793Z"
+    "actualizado_en": "2026-08-22T04:00:08.392667Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 76,
-    "muestras_reales": 76,
+    "muestras": 81,
+    "muestras_reales": 81,
     "schema": 4,
-    "mensaje": "Reentrenado con 76 muestras (76 reales, RF acc 100.0%, RF holdout 68.8%, XGB acc 98.7%, XGB holdout 68.8%)",
-    "accuracy_train": 1.0,
-    "accuracy_holdout": 0.688,
-    "accuracy_xgb_train": 0.987,
-    "accuracy_xgb_holdout": 0.688,
-    "ultimo_entreno": "2026-08-22T02:30:15.731540",
+    "mensaje": "Reentrenado con 81 muestras (81 reales, RF acc 98.8%, RF holdout 82.4%, XGB acc 98.8%, XGB holdout 76.5%)",
+    "accuracy_train": 0.988,
+    "accuracy_holdout": 0.824,
+    "accuracy_xgb_train": 0.988,
+    "accuracy_xgb_holdout": 0.765,
+    "ultimo_entreno": "2026-08-22T04:00:19.789450",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 76,
+    "muestras": 81,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
-        "ok": false,
-        "muestras": 11
+        "ok": true,
+        "muestras": 12,
+        "metodo": "isotonic"
       },
       "underdog": {
         "ok": true,
@@ -61043,23 +61159,23 @@
       },
       "scratch": {
         "ok": true,
-        "muestras": 25,
+        "muestras": 27,
         "metodo": "isotonic"
       },
       "limpio": {
         "ok": true,
-        "muestras": 18,
+        "muestras": 20,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 76 muestras (ECE≈0.09) · 3 tipos",
-    "ece": 0.086
+    "mensaje": "Calibrado isotonic con 81 muestras (ECE≈0.11) · 4 tipos",
+    "ece": 0.107
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-22T01:00:30.228483Z"
+    "actualizado_en": "2026-08-22T02:46:18.891481Z"
   }
 }
