@@ -47548,9 +47548,9 @@
           "pitcher_away_id": 519242,
           "pitcher_home_id": 694819,
           "inicio_juego": "2026-08-21T16:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 3.55,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-21T15:10:23.393306-04:00",
@@ -48196,7 +48196,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-21T19:10:24.315741Z"
+          "whatsapp_enviado_en": "2026-08-21T19:10:24.315741Z",
+          "marcador_final": "Atlanta Braves 1 - Milwaukee Brewers 2",
+          "liquidado_en": "2026-08-21T18:35:51.919613-04:00"
         },
         {
           "game_id": "823420",
@@ -60098,6 +60100,26 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-21T03:10:04.882837Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-823746-1787351751",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-21",
+      "game_id": "823746",
+      "visitante": "Atlanta Braves",
+      "home": "Milwaukee Brewers",
+      "pick": "Milwaukee Brewers ML",
+      "probPick": 59.4,
+      "edge": 0.9,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Atlanta Braves 1 - Milwaukee Brewers 2",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-21T22:35:51.924869Z"
     }
   ],
   "mente_stats": {
@@ -60173,20 +60195,20 @@
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 69,
-    "muestras_reales": 69,
+    "muestras": 70,
+    "muestras_reales": 70,
     "schema": 4,
-    "mensaje": "Reentrenado con 69 muestras (69 reales, RF acc 98.6%, RF holdout 64.3%, XGB acc 98.6%, XGB holdout 71.4%)",
+    "mensaje": "Reentrenado con 70 muestras (70 reales, RF acc 98.6%, RF holdout 64.3%, XGB acc 98.6%, XGB holdout 78.6%)",
     "accuracy_train": 0.986,
     "accuracy_holdout": 0.643,
     "accuracy_xgb_train": 0.986,
-    "accuracy_xgb_holdout": 0.714,
-    "ultimo_entreno": "2026-08-21T03:10:13.287362",
+    "accuracy_xgb_holdout": 0.786,
+    "ultimo_entreno": "2026-08-21T22:35:57.227890",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 69,
+    "muestras": 70,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
@@ -60205,18 +60227,18 @@
       },
       "limpio": {
         "ok": true,
-        "muestras": 15,
+        "muestras": 16,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 69 muestras (ECE≈0.10) · 3 tipos",
-    "ece": 0.1
+    "mensaje": "Calibrado isotonic con 70 muestras (ECE≈0.09) · 3 tipos",
+    "ece": 0.093
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-21T20:14:29.945867Z"
+    "actualizado_en": "2026-08-21T22:13:18.028530Z"
   }
 }
