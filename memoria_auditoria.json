@@ -2,7 +2,7 @@
   "modo": "simulacion",
   "capital": 91.57,
   "capital_inicial": 100.0,
-  "dia_actual": 8,
+  "dia_actual": 9,
   "dias_totales": 200,
   "stake_por_juego": 5.0,
   "experimento_activo": true,
@@ -65478,9 +65478,9 @@
           "pitcher_away_id": 695076,
           "pitcher_home_id": 647336,
           "inicio_juego": "2026-08-22T20:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-22T12:29:40.440921-04:00",
@@ -66121,7 +66121,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-22T16:29:41.839030Z"
+          "whatsapp_enviado_en": "2026-08-22T16:29:41.839030Z",
+          "marcador_final": "Cincinnati Reds 11 - Arizona Diamondbacks 5",
+          "liquidado_en": "2026-08-22T23:10:08.036158-04:00"
         },
         {
           "game_id": "824316",
@@ -66760,9 +66762,9 @@
           "pitcher_away_id": 665152,
           "pitcher_home_id": 663554,
           "inicio_juego": "2026-08-22T20:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 3.71,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-22T12:29:42.734378-04:00",
@@ -67402,7 +67404,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-22T16:29:43.626311Z"
+          "whatsapp_enviado_en": "2026-08-22T16:29:43.626311Z",
+          "marcador_final": "Minnesota Twins 5 - San Diego Padres 7",
+          "liquidado_en": "2026-08-22T23:40:08.733671-04:00"
         },
         {
           "game_id": "823422",
@@ -68066,6 +68070,22 @@
           "liquidado_en": "2026-08-22T20:34:00.317810-04:00"
         }
       ],
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
+    },
+    {
+      "dia": 9,
+      "fecha": "2026-08-23",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
       "resumen": {
         "jugadas": 0,
         "ganadas": 0,
@@ -71957,6 +71977,66 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-23T02:40:11.849580Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-825044-1787454608",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-08-22",
+      "game_id": "825044",
+      "visitante": "Cincinnati Reds",
+      "home": "Arizona Diamondbacks",
+      "pick": "Arizona Diamondbacks ML",
+      "probPick": 65.5,
+      "edge": 3.2,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Cincinnati Reds 11 - Arizona Diamondbacks 5",
+      "patron": "edge_falso",
+      "leccion": "Exigir edge >= 6% contra cuota real; edge bajo no basta.",
+      "motivo": "Heurística post-fallo (edge_falso)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-23T03:10:08.259590Z"
+    },
+    {
+      "id": "lec-veto_acertado-825044-1787454608",
+      "tipo": "veto_acertado",
+      "fecha": "2026-08-22",
+      "game_id": "825044",
+      "visitante": "Cincinnati Reds",
+      "home": "Arizona Diamondbacks",
+      "pick": "Arizona Diamondbacks ML",
+      "probPick": 65.5,
+      "edge": 3.2,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Cincinnati Reds 11 - Arizona Diamondbacks 5",
+      "patron": "veto_acertado",
+      "leccion": "Bloqueo de dinero acertó: el pick falló; mantener señales parecidas.",
+      "motivo": "mente bloqueó dinero + fallo",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-23T03:10:08.259801Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-823261-1787456408",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-22",
+      "game_id": "823261",
+      "visitante": "Minnesota Twins",
+      "home": "San Diego Padres",
+      "pick": "San Diego Padres ML",
+      "probPick": 63.0,
+      "edge": 5.6,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Minnesota Twins 5 - San Diego Padres 7",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-23T03:40:08.734024Z"
     }
   ],
   "mente_stats": {
@@ -71967,14 +72047,14 @@
         "fallos": 0
       },
       "PASAR": {
-        "n": 7,
+        "n": 8,
         "evito_fallo": 2,
-        "oportunidad_perdida": 5
+        "oportunidad_perdida": 6
       },
       "ESPERAR": {
-        "n": 3,
+        "n": 4,
         "aciertos": 0,
-        "fallos": 3
+        "fallos": 4
       }
     },
     "patrones": {
@@ -71993,9 +72073,9 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 7,
-        "pasar_ok": 4,
-        "pasar_miss": 3,
+        "n": 9,
+        "pasar_ok": 5,
+        "pasar_miss": 4,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -72007,16 +72087,16 @@
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 9,
-        "pasar_ok": 4,
+        "n": 10,
+        "pasar_ok": 5,
         "pasar_miss": 5,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "favorito_alto": {
-        "n": 5,
-        "pasar_ok": 2,
-        "pasar_miss": 3,
+        "n": 7,
+        "pasar_ok": 3,
+        "pasar_miss": 4,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -72033,7 +72113,7 @@
       "starter_riesgo": 0,
       "humanos": 0,
       "sin_mercado": 0,
-      "edge_bajo": -1,
+      "edge_bajo": 0,
       "favorito_alto": -1,
       "limpio": 0
     },
@@ -72048,31 +72128,33 @@
       "824151:fallo",
       "824718:acierto",
       "824560:fallo",
-      "824316:acierto"
+      "824316:acierto",
+      "825044:fallo",
+      "823261:acierto"
     ],
-    "actualizado_en": "2026-08-23T02:40:11.849633Z"
+    "actualizado_en": "2026-08-23T03:40:08.734110Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 97,
-    "muestras_reales": 97,
+    "muestras": 99,
+    "muestras_reales": 99,
     "schema": 4,
-    "mensaje": "Reentrenado con 97 muestras (97 reales, RF acc 97.9%, RF holdout 70.0%, XGB acc 99.0%, XGB holdout 70.0%)",
-    "accuracy_train": 0.979,
-    "accuracy_holdout": 0.7,
-    "accuracy_xgb_train": 0.99,
-    "accuracy_xgb_holdout": 0.7,
-    "ultimo_entreno": "2026-08-23T02:40:19.050556",
+    "mensaje": "Reentrenado con 99 muestras (99 reales, RF acc 99.0%, RF holdout 60.0%, XGB acc 100.0%, XGB holdout 65.0%)",
+    "accuracy_train": 0.99,
+    "accuracy_holdout": 0.6,
+    "accuracy_xgb_train": 1.0,
+    "accuracy_xgb_holdout": 0.65,
+    "ultimo_entreno": "2026-08-23T03:40:15.729760",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 97,
+    "muestras": 99,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
         "ok": true,
-        "muestras": 20,
+        "muestras": 22,
         "metodo": "isotonic"
       },
       "underdog": {
@@ -72091,14 +72173,14 @@
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 97 muestras (ECE≈0.09) · 4 tipos",
-    "ece": 0.093
+    "mensaje": "Calibrado isotonic con 99 muestras (ECE≈0.09) · 4 tipos",
+    "ece": 0.089
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-23T00:39:12.647921Z"
+    "actualizado_en": "2026-08-23T02:54:35.439857Z"
   }
 }
