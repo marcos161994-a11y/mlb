@@ -2,7 +2,7 @@
   "modo": "simulacion",
   "capital": 91.57,
   "capital_inicial": 100.0,
-  "dia_actual": 9,
+  "dia_actual": 10,
   "dias_totales": 200,
   "stake_por_juego": 5.0,
   "experimento_activo": true,
@@ -78104,6 +78104,22 @@
         "capital_arriesgado": 0,
         "total_apostado": 0
       }
+    },
+    {
+      "dia": 10,
+      "fecha": "2026-08-24",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
     }
   ],
   "lecciones": [
@@ -82532,6 +82548,6 @@
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-24T00:37:50.693823Z"
+    "actualizado_en": "2026-08-24T02:55:06.308691Z"
   }
 }
