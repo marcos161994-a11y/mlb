@@ -77444,9 +77444,9 @@
           "pitcher_away_id": 641816,
           "pitcher_home_id": 675660,
           "inicio_juego": "2026-08-23T19:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-23T12:31:31.314110-04:00",
@@ -78090,7 +78090,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-23T16:31:32.219618Z"
+          "whatsapp_enviado_en": "2026-08-23T16:31:32.219618Z",
+          "marcador_final": "Atlanta Braves 4 - Milwaukee Brewers 2",
+          "liquidado_en": "2026-08-23T22:20:05.099273-04:00"
         }
       ],
       "resumen": {
@@ -82364,14 +82366,34 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-23T23:30:06.371531Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-823745-1787538005",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-08-23",
+      "game_id": "823745",
+      "visitante": "Atlanta Braves",
+      "home": "Milwaukee Brewers",
+      "pick": "Milwaukee Brewers ML",
+      "probPick": 66.1,
+      "edge": 13.3,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Atlanta Braves 4 - Milwaukee Brewers 2",
+      "patron": "bullpen",
+      "leccion": "Desconfiar de favoritos con bullpen cargado / fatiga alta.",
+      "motivo": "Heurística post-fallo (bullpen)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-24T02:20:05.303925Z"
     }
   ],
   "mente_stats": {
     "decisiones": {
       "APOSTAR": {
-        "n": 0,
+        "n": 1,
         "aciertos": 0,
-        "fallos": 0
+        "fallos": 1
       },
       "PASAR": {
         "n": 13,
@@ -82400,11 +82422,11 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 14,
+        "n": 15,
         "pasar_ok": 2,
         "pasar_miss": 12,
         "apostar_ok": 0,
-        "apostar_fail": 0
+        "apostar_fail": 1
       },
       "sin_mercado": {
         "n": 0,
@@ -82421,11 +82443,11 @@
         "apostar_fail": 0
       },
       "favorito_alto": {
-        "n": 5,
+        "n": 6,
         "pasar_ok": 0,
         "pasar_miss": 5,
         "apostar_ok": 0,
-        "apostar_fail": 0
+        "apostar_fail": 1
       },
       "limpio": {
         "n": 0,
@@ -82458,31 +82480,32 @@
       "823909:acierto",
       "823258:acierto",
       "825043:acierto",
-      "823099:fallo"
+      "823099:fallo",
+      "823745:fallo"
     ],
-    "actualizado_en": "2026-08-23T23:30:06.371598Z"
+    "actualizado_en": "2026-08-24T02:20:06.404031Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 113,
-    "muestras_reales": 113,
+    "muestras": 114,
+    "muestras_reales": 114,
     "schema": 4,
-    "mensaje": "Reentrenado con 113 muestras (113 reales, RF acc 98.2%, RF holdout 69.6%, XGB acc 100.0%, XGB holdout 73.9%)",
-    "accuracy_train": 0.982,
+    "mensaje": "Reentrenado con 114 muestras (114 reales, RF acc 99.1%, RF holdout 69.6%, XGB acc 100.0%, XGB holdout 69.6%)",
+    "accuracy_train": 0.991,
     "accuracy_holdout": 0.696,
     "accuracy_xgb_train": 1.0,
-    "accuracy_xgb_holdout": 0.739,
-    "ultimo_entreno": "2026-08-23T23:30:24.705225",
+    "accuracy_xgb_holdout": 0.696,
+    "ultimo_entreno": "2026-08-24T02:20:17.794815",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 113,
+    "muestras": 114,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
         "ok": true,
-        "muestras": 25,
+        "muestras": 26,
         "metodo": "isotonic"
       },
       "underdog": {
@@ -82501,14 +82524,14 @@
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 113 muestras (ECE≈0.11) · 4 tipos",
-    "ece": 0.108
+    "mensaje": "Calibrado isotonic con 114 muestras (ECE≈0.10) · 4 tipos",
+    "ece": 0.102
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-23T22:11:41.011173Z"
+    "actualizado_en": "2026-08-24T00:37:50.693823Z"
   }
 }
