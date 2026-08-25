@@ -2,7 +2,7 @@
   "modo": "simulacion",
   "capital": 91.57,
   "capital_inicial": 100.0,
-  "dia_actual": 10,
+  "dia_actual": 11,
   "dias_totales": 200,
   "stake_por_juego": 5.0,
   "experimento_activo": true,
@@ -80188,9 +80188,9 @@
           "pitcher_away_id": 677958,
           "pitcher_home_id": 664353,
           "inicio_juego": "2026-08-24T19:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-24T17:28:03.127091-04:00",
@@ -80850,7 +80850,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-24T21:28:04.131413Z"
+          "whatsapp_enviado_en": "2026-08-24T21:28:04.131413Z",
+          "marcador_final": "Texas Rangers 11 - Chicago White Sox 2",
+          "liquidado_en": "2026-08-24T22:51:24.748042-04:00"
         },
         {
           "game_id": "823992",
@@ -84797,6 +84799,22 @@
           "whatsapp_enviado_en": "2026-08-24T21:28:10.635121Z"
         }
       ],
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
+    },
+    {
+      "dia": 11,
+      "fecha": "2026-08-25",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
       "resumen": {
         "jugadas": 0,
         "ganadas": 0,
@@ -89148,6 +89166,46 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-25T01:50:16.917461Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-824557-1787626284",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-08-24",
+      "game_id": "824557",
+      "visitante": "Texas Rangers",
+      "home": "Chicago White Sox",
+      "pick": "Chicago White Sox ML",
+      "probPick": 60.3,
+      "edge": 4.9,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Texas Rangers 11 - Chicago White Sox 2",
+      "patron": "edge_falso",
+      "leccion": "Exigir edge >= 6% contra cuota real; edge bajo no basta.",
+      "motivo": "Heurística post-fallo (edge_falso)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-25T02:51:24.937390Z"
+    },
+    {
+      "id": "lec-veto_acertado-824557-1787626284",
+      "tipo": "veto_acertado",
+      "fecha": "2026-08-24",
+      "game_id": "824557",
+      "visitante": "Texas Rangers",
+      "home": "Chicago White Sox",
+      "pick": "Chicago White Sox ML",
+      "probPick": 60.3,
+      "edge": 4.9,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Texas Rangers 11 - Chicago White Sox 2",
+      "patron": "veto_acertado",
+      "leccion": "Bloqueo de dinero acertó: el pick falló; mantener señales parecidas.",
+      "motivo": "mente bloqueó dinero + fallo",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-25T02:51:24.937575Z"
     }
   ],
   "mente_stats": {
@@ -89163,9 +89221,9 @@
         "oportunidad_perdida": 14
       },
       "ESPERAR": {
-        "n": 1,
+        "n": 2,
         "aciertos": 1,
-        "fallos": 0
+        "fallos": 1
       }
     },
     "patrones": {
@@ -89184,8 +89242,8 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 18,
-        "pasar_ok": 2,
+        "n": 19,
+        "pasar_ok": 3,
         "pasar_miss": 15,
         "apostar_ok": 0,
         "apostar_fail": 1
@@ -89198,8 +89256,8 @@
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 12,
-        "pasar_ok": 1,
+        "n": 13,
+        "pasar_ok": 2,
         "pasar_miss": 11,
         "apostar_ok": 0,
         "apostar_fail": 0
@@ -89246,26 +89304,27 @@
       "823745:fallo",
       "824235:acierto",
       "823828:acierto",
-      "822695:acierto"
+      "822695:acierto",
+      "824557:fallo"
     ],
-    "actualizado_en": "2026-08-25T01:50:16.917506Z"
+    "actualizado_en": "2026-08-25T02:51:24.941830Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 117,
-    "muestras_reales": 117,
+    "muestras": 118,
+    "muestras_reales": 118,
     "schema": 4,
-    "mensaje": "Reentrenado con 117 muestras (117 reales, RF acc 99.1%, RF holdout 66.7%, XGB acc 99.1%, XGB holdout 75.0%)",
-    "accuracy_train": 0.991,
+    "mensaje": "Reentrenado con 118 muestras (118 reales, RF acc 98.3%, RF holdout 66.7%, XGB acc 100.0%, XGB holdout 66.7%)",
+    "accuracy_train": 0.983,
     "accuracy_holdout": 0.667,
-    "accuracy_xgb_train": 0.991,
-    "accuracy_xgb_holdout": 0.75,
-    "ultimo_entreno": "2026-08-25T01:50:24.518283",
+    "accuracy_xgb_train": 1.0,
+    "accuracy_xgb_holdout": 0.667,
+    "ultimo_entreno": "2026-08-25T02:51:30.744278",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 117,
+    "muestras": 118,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
@@ -89285,18 +89344,18 @@
       },
       "limpio": {
         "ok": true,
-        "muestras": 26,
+        "muestras": 27,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 117 muestras (ECE≈0.11) · 4 tipos",
-    "ece": 0.11
+    "mensaje": "Calibrado isotonic con 118 muestras (ECE≈0.10) · 4 tipos",
+    "ece": 0.104
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-25T00:37:08.307911Z"
+    "actualizado_en": "2026-08-25T02:50:44.135957Z"
   }
 }
