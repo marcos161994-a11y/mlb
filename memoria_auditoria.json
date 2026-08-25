@@ -78128,9 +78128,9 @@
           "pitcher_away_id": 656876,
           "pitcher_home_id": 664285,
           "inicio_juego": "2026-08-24T18:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 3.93,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-24T17:27:59.711109-04:00",
@@ -78807,7 +78807,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-24T21:28:00.961688Z"
+          "whatsapp_enviado_en": "2026-08-24T21:28:00.961688Z",
+          "marcador_final": "Tampa Bay Rays 4 - Detroit Tigers 1",
+          "liquidado_en": "2026-08-24T21:20:13.308395-04:00"
         },
         {
           "game_id": "823828",
@@ -78826,9 +78828,9 @@
           "pitcher_away_id": 624133,
           "pitcher_home_id": 645261,
           "inicio_juego": "2026-08-24T18:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.2,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-24T17:28:00.965023-04:00",
@@ -79462,7 +79464,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-24T21:28:02.043022Z"
+          "whatsapp_enviado_en": "2026-08-24T21:28:02.043022Z",
+          "marcador_final": "Boston Red Sox 4 - Miami Marlins 2",
+          "liquidado_en": "2026-08-24T21:50:16.916802-04:00"
         },
         {
           "game_id": "822695",
@@ -79481,9 +79485,9 @@
           "pitcher_away_id": 663372,
           "pitcher_home_id": 676917,
           "inicio_juego": "2026-08-24T18:45:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.57,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-24T17:28:02.044509-04:00",
@@ -80163,7 +80167,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-24T21:28:03.125269Z"
+          "whatsapp_enviado_en": "2026-08-24T21:28:03.125269Z",
+          "marcador_final": "Colorado Rockies 3 - Washington Nationals 13",
+          "liquidado_en": "2026-08-24T21:50:16.917272-04:00"
         },
         {
           "game_id": "824557",
@@ -89082,6 +89088,66 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-24T02:20:05.303925Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-824235-1787620813",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-24",
+      "game_id": "824235",
+      "visitante": "Tampa Bay Rays",
+      "home": "Detroit Tigers",
+      "pick": "Tampa Bay Rays ML",
+      "probPick": 57.8,
+      "edge": 1.8,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Tampa Bay Rays 4 - Detroit Tigers 1",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-25T01:20:13.308617Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-823828-1787622616",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-24",
+      "game_id": "823828",
+      "visitante": "Boston Red Sox",
+      "home": "Miami Marlins",
+      "pick": "Boston Red Sox ML",
+      "probPick": 53.2,
+      "edge": -1.1,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Boston Red Sox 4 - Miami Marlins 2",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-25T01:50:16.917014Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-822695-1787622616",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-24",
+      "game_id": "822695",
+      "visitante": "Colorado Rockies",
+      "home": "Washington Nationals",
+      "pick": "Washington Nationals ML",
+      "probPick": 66.0,
+      "edge": -0.0,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Colorado Rockies 3 - Washington Nationals 13",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-25T01:50:16.917461Z"
     }
   ],
   "mente_stats": {
@@ -89092,9 +89158,9 @@
         "fallos": 1
       },
       "PASAR": {
-        "n": 13,
+        "n": 16,
         "evito_fallo": 2,
-        "oportunidad_perdida": 11
+        "oportunidad_perdida": 14
       },
       "ESPERAR": {
         "n": 1,
@@ -89104,9 +89170,9 @@
     },
     "patrones": {
       "scratch": {
-        "n": 4,
+        "n": 6,
         "pasar_ok": 1,
-        "pasar_miss": 3,
+        "pasar_miss": 5,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -89118,9 +89184,9 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 15,
+        "n": 18,
         "pasar_ok": 2,
-        "pasar_miss": 12,
+        "pasar_miss": 15,
         "apostar_ok": 0,
         "apostar_fail": 1
       },
@@ -89132,16 +89198,16 @@
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 9,
+        "n": 12,
         "pasar_ok": 1,
-        "pasar_miss": 8,
+        "pasar_miss": 11,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "favorito_alto": {
-        "n": 6,
+        "n": 7,
         "pasar_ok": 0,
-        "pasar_miss": 5,
+        "pasar_miss": 6,
         "apostar_ok": 0,
         "apostar_fail": 1
       },
@@ -89177,26 +89243,29 @@
       "823258:acierto",
       "825043:acierto",
       "823099:fallo",
-      "823745:fallo"
+      "823745:fallo",
+      "824235:acierto",
+      "823828:acierto",
+      "822695:acierto"
     ],
-    "actualizado_en": "2026-08-24T02:20:06.404031Z"
+    "actualizado_en": "2026-08-25T01:50:16.917506Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 114,
-    "muestras_reales": 114,
+    "muestras": 117,
+    "muestras_reales": 117,
     "schema": 4,
-    "mensaje": "Reentrenado con 114 muestras (114 reales, RF acc 99.1%, RF holdout 69.6%, XGB acc 100.0%, XGB holdout 69.6%)",
+    "mensaje": "Reentrenado con 117 muestras (117 reales, RF acc 99.1%, RF holdout 66.7%, XGB acc 99.1%, XGB holdout 75.0%)",
     "accuracy_train": 0.991,
-    "accuracy_holdout": 0.696,
-    "accuracy_xgb_train": 1.0,
-    "accuracy_xgb_holdout": 0.696,
-    "ultimo_entreno": "2026-08-24T02:20:17.794815",
+    "accuracy_holdout": 0.667,
+    "accuracy_xgb_train": 0.991,
+    "accuracy_xgb_holdout": 0.75,
+    "ultimo_entreno": "2026-08-25T01:50:24.518283",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 114,
+    "muestras": 117,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
@@ -89206,12 +89275,12 @@
       },
       "underdog": {
         "ok": true,
-        "muestras": 30,
+        "muestras": 31,
         "metodo": "isotonic"
       },
       "scratch": {
         "ok": true,
-        "muestras": 32,
+        "muestras": 34,
         "metodo": "isotonic"
       },
       "limpio": {
@@ -89220,14 +89289,14 @@
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 114 muestras (ECE≈0.10) · 4 tipos",
-    "ece": 0.102
+    "mensaje": "Calibrado isotonic con 117 muestras (ECE≈0.11) · 4 tipos",
+    "ece": 0.11
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-24T22:15:50.138809Z"
+    "actualizado_en": "2026-08-25T00:37:08.307911Z"
   }
 }
