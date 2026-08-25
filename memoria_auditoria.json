@@ -82182,9 +82182,9 @@
           "pitcher_away_id": 677952,
           "pitcher_home_id": 592662,
           "inicio_juego": "2026-08-24T21:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-24T17:28:06.735926-04:00",
@@ -82797,7 +82797,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-24T21:28:07.628647Z"
+          "whatsapp_enviado_en": "2026-08-24T21:28:07.628647Z",
+          "marcador_final": "Pittsburgh Pirates 3 - San Diego Padres 2",
+          "liquidado_en": "2026-08-25T02:00:05.405799-04:00"
         },
         {
           "game_id": "824964",
@@ -82816,9 +82818,9 @@
           "pitcher_away_id": 805673,
           "pitcher_home_id": 605488,
           "inicio_juego": "2026-08-24T21:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 3.57,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-24T17:28:07.630468-04:00",
@@ -83480,7 +83482,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-24T21:28:08.639379Z"
+          "whatsapp_enviado_en": "2026-08-24T21:28:08.639379Z",
+          "marcador_final": "Minnesota Twins 9 - Athletics 6",
+          "liquidado_en": "2026-08-25T00:40:04.405183-04:00"
         },
         {
           "game_id": "823097",
@@ -89334,6 +89338,66 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-25T04:22:38.607470Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-824964-1787632804",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-24",
+      "game_id": "824964",
+      "visitante": "Minnesota Twins",
+      "home": "Athletics",
+      "pick": "Minnesota Twins ML",
+      "probPick": 53.0,
+      "edge": -5.3,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Minnesota Twins 9 - Athletics 6",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-25T04:40:04.408613Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-823260-1787637605",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-08-24",
+      "game_id": "823260",
+      "visitante": "Pittsburgh Pirates",
+      "home": "San Diego Padres",
+      "pick": "San Diego Padres ML",
+      "probPick": 57.7,
+      "edge": 4.9,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Pittsburgh Pirates 3 - San Diego Padres 2",
+      "patron": "edge_falso",
+      "leccion": "Exigir edge >= 6% contra cuota real; edge bajo no basta.",
+      "motivo": "Heurística post-fallo (edge_falso)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-25T06:00:05.726923Z"
+    },
+    {
+      "id": "lec-veto_acertado-823260-1787637605",
+      "tipo": "veto_acertado",
+      "fecha": "2026-08-24",
+      "game_id": "823260",
+      "visitante": "Pittsburgh Pirates",
+      "home": "San Diego Padres",
+      "pick": "San Diego Padres ML",
+      "probPick": 57.7,
+      "edge": 4.9,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Pittsburgh Pirates 3 - San Diego Padres 2",
+      "patron": "veto_acertado",
+      "leccion": "Bloqueo de dinero acertó: el pick falló; mantener señales parecidas.",
+      "motivo": "mente bloqueó dinero + fallo",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-25T06:00:05.726982Z"
     }
   ],
   "mente_stats": {
@@ -89344,14 +89408,14 @@
         "fallos": 1
       },
       "PASAR": {
-        "n": 20,
+        "n": 21,
         "evito_fallo": 4,
-        "oportunidad_perdida": 16
+        "oportunidad_perdida": 17
       },
       "ESPERAR": {
-        "n": 2,
+        "n": 3,
         "aciertos": 1,
-        "fallos": 1
+        "fallos": 2
       }
     },
     "patrones": {
@@ -89370,9 +89434,9 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 23,
-        "pasar_ok": 5,
-        "pasar_miss": 17,
+        "n": 25,
+        "pasar_ok": 6,
+        "pasar_miss": 18,
         "apostar_ok": 0,
         "apostar_fail": 1
       },
@@ -89384,9 +89448,9 @@
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 16,
-        "pasar_ok": 3,
-        "pasar_miss": 13,
+        "n": 18,
+        "pasar_ok": 4,
+        "pasar_miss": 14,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -89437,26 +89501,28 @@
       "823183:fallo",
       "823992:acierto",
       "825041:acierto",
-      "823097:fallo"
+      "823097:fallo",
+      "824964:acierto",
+      "823260:fallo"
     ],
-    "actualizado_en": "2026-08-25T04:22:38.607538Z"
+    "actualizado_en": "2026-08-25T06:00:05.727044Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 122,
-    "muestras_reales": 122,
+    "muestras": 124,
+    "muestras_reales": 124,
     "schema": 4,
-    "mensaje": "Reentrenado con 122 muestras (122 reales, RF acc 98.4%, RF holdout 64.0%, XGB acc 100.0%, XGB holdout 64.0%)",
+    "mensaje": "Reentrenado con 124 muestras (124 reales, RF acc 98.4%, RF holdout 60.0%, XGB acc 100.0%, XGB holdout 64.0%)",
     "accuracy_train": 0.984,
-    "accuracy_holdout": 0.64,
+    "accuracy_holdout": 0.6,
     "accuracy_xgb_train": 1.0,
     "accuracy_xgb_holdout": 0.64,
-    "ultimo_entreno": "2026-08-25T04:22:44.675159",
+    "ultimo_entreno": "2026-08-25T06:00:17.995220",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 122,
+    "muestras": 124,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
@@ -89466,7 +89532,7 @@
       },
       "underdog": {
         "ok": true,
-        "muestras": 31,
+        "muestras": 32,
         "metodo": "isotonic"
       },
       "scratch": {
@@ -89476,18 +89542,18 @@
       },
       "limpio": {
         "ok": true,
-        "muestras": 29,
+        "muestras": 30,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 122 muestras (ECE≈0.10) · 4 tipos",
-    "ece": 0.097
+    "mensaje": "Calibrado isotonic con 124 muestras (ECE≈0.09) · 4 tipos",
+    "ece": 0.094
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-25T04:07:46.778515Z"
+    "actualizado_en": "2026-08-25T04:28:59.793681Z"
   }
 }
