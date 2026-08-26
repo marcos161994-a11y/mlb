@@ -90906,9 +90906,9 @@
           "pitcher_away_id": 668909,
           "pitcher_home_id": 700712,
           "inicio_juego": "2026-08-25T21:38:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 3.57,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-25T17:42:08.035080-04:00",
@@ -91521,7 +91521,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-25T21:42:09.242292Z"
+          "whatsapp_enviado_en": "2026-08-25T21:42:09.242292Z",
+          "marcador_final": "Cleveland Guardians 8 - Los Angeles Angels 6",
+          "liquidado_en": "2026-08-26T01:10:09.783491-04:00"
         },
         {
           "game_id": "825042",
@@ -99863,6 +99865,26 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-26T04:20:11.370786Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-823989-1787721009",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-25",
+      "game_id": "823989",
+      "visitante": "Cleveland Guardians",
+      "home": "Los Angeles Angels",
+      "pick": "Cleveland Guardians ML",
+      "probPick": 59.7,
+      "edge": 1.4,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Cleveland Guardians 8 - Los Angeles Angels 6",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-26T05:10:09.788245Z"
     }
   ],
   "mente_stats": {
@@ -99873,9 +99895,9 @@
         "fallos": 0
       },
       "PASAR": {
-        "n": 11,
+        "n": 12,
         "evito_fallo": 8,
-        "oportunidad_perdida": 3
+        "oportunidad_perdida": 4
       },
       "ESPERAR": {
         "n": 3,
@@ -99899,9 +99921,9 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 8,
+        "n": 9,
         "pasar_ok": 5,
-        "pasar_miss": 3,
+        "pasar_miss": 4,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -99913,9 +99935,9 @@
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 11,
+        "n": 12,
         "pasar_ok": 7,
-        "pasar_miss": 4,
+        "pasar_miss": 5,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -99937,9 +99959,9 @@
     "penalizacion": {
       "scratch": 1,
       "starter_riesgo": 0,
-      "humanos": 1,
+      "humanos": 0,
       "sin_mercado": 0,
-      "edge_bajo": 1,
+      "edge_bajo": 0,
       "favorito_alto": 0,
       "limpio": 0
     },
@@ -99957,26 +99979,27 @@
       "824962:fallo",
       "823181:acierto",
       "825042:fallo",
-      "823098:acierto"
+      "823098:acierto",
+      "823989:acierto"
     ],
-    "actualizado_en": "2026-08-26T04:20:11.370860Z"
+    "actualizado_en": "2026-08-26T05:10:09.791890Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 138,
-    "muestras_reales": 138,
+    "muestras": 139,
+    "muestras_reales": 139,
     "schema": 4,
-    "mensaje": "Reentrenado con 138 muestras (138 reales, RF acc 100.0%, RF holdout 53.6%, XGB acc 100.0%, XGB holdout 57.1%)",
-    "accuracy_train": 1.0,
+    "mensaje": "Reentrenado con 139 muestras (139 reales, RF acc 99.3%, RF holdout 53.6%, XGB acc 100.0%, XGB holdout 67.9%)",
+    "accuracy_train": 0.993,
     "accuracy_holdout": 0.536,
     "accuracy_xgb_train": 1.0,
-    "accuracy_xgb_holdout": 0.571,
-    "ultimo_entreno": "2026-08-26T04:20:20.677954",
+    "accuracy_xgb_holdout": 0.679,
+    "ultimo_entreno": "2026-08-26T05:10:19.788167",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 138,
+    "muestras": 139,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
@@ -99996,18 +100019,18 @@
       },
       "limpio": {
         "ok": true,
-        "muestras": 35,
+        "muestras": 36,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 138 muestras (ECE≈0.07) · 4 tipos",
-    "ece": 0.075
+    "mensaje": "Calibrado isotonic con 139 muestras (ECE≈0.07) · 4 tipos",
+    "ece": 0.071
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-26T04:09:43.880780Z"
+    "actualizado_en": "2026-08-26T04:30:17.188549Z"
   }
 }
