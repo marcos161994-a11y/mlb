@@ -2,7 +2,7 @@
   "modo": "simulacion",
   "capital": 91.57,
   "capital_inicial": 100.0,
-  "dia_actual": 11,
+  "dia_actual": 12,
   "dias_totales": 200,
   "stake_por_juego": 5.0,
   "experimento_activo": true,
@@ -89586,9 +89586,9 @@
           "pitcher_away_id": 594798,
           "pitcher_home_id": 641743,
           "inicio_juego": "2026-08-25T19:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-25T17:42:06.026282-04:00",
@@ -90256,7 +90256,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-25T21:42:07.037601Z"
+          "whatsapp_enviado_en": "2026-08-25T21:42:07.037601Z",
+          "marcador_final": "Texas Rangers 7 - Chicago White Sox 11",
+          "liquidado_en": "2026-08-25T23:00:06.081803-04:00"
         },
         {
           "game_id": "823016",
@@ -92212,9 +92214,9 @@
           "pitcher_away_id": 694973,
           "pitcher_home_id": 650633,
           "inicio_juego": "2026-08-25T21:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 5.55,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-25T17:42:10.239927-04:00",
@@ -92826,7 +92828,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-25T21:42:11.237914Z"
+          "whatsapp_enviado_en": "2026-08-25T21:42:11.237914Z",
+          "marcador_final": "Pittsburgh Pirates 1 - San Diego Padres 0",
+          "liquidado_en": "2026-08-26T00:05:58.523621-04:00"
         },
         {
           "game_id": "824962",
@@ -94804,6 +94808,22 @@
           "whatsapp_enviado_en": "2026-08-25T21:42:14.438425Z"
         }
       ],
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
+    },
+    {
+      "dia": 12,
+      "fecha": "2026-08-26",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
       "resumen": {
         "jugadas": 0,
         "ganadas": 0,
@@ -99655,6 +99675,66 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-26T02:50:15.007649Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-824556-1787713206",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-08-25",
+      "game_id": "824556",
+      "visitante": "Texas Rangers",
+      "home": "Chicago White Sox",
+      "pick": "Texas Rangers ML",
+      "probPick": 56.6,
+      "edge": 4.0,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Texas Rangers 7 - Chicago White Sox 11",
+      "patron": "edge_falso",
+      "leccion": "Exigir edge >= 6% contra cuota real; edge bajo no basta.",
+      "motivo": "Heurística post-fallo (edge_falso)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-26T03:00:06.472277Z"
+    },
+    {
+      "id": "lec-veto_acertado-824556-1787713206",
+      "tipo": "veto_acertado",
+      "fecha": "2026-08-25",
+      "game_id": "824556",
+      "visitante": "Texas Rangers",
+      "home": "Chicago White Sox",
+      "pick": "Texas Rangers ML",
+      "probPick": 56.6,
+      "edge": 4.0,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Texas Rangers 7 - Chicago White Sox 11",
+      "patron": "veto_acertado",
+      "leccion": "Bloqueo de dinero acertó: el pick falló; mantener señales parecidas.",
+      "motivo": "mente bloqueó dinero + fallo",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-26T03:00:06.472449Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-823259-1787717158",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-25",
+      "game_id": "823259",
+      "visitante": "Pittsburgh Pirates",
+      "home": "San Diego Padres",
+      "pick": "Pittsburgh Pirates ML",
+      "probPick": 50.6,
+      "edge": 3.2,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Pittsburgh Pirates 1 - San Diego Padres 0",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-26T04:05:58.568463Z"
     }
   ],
   "mente_stats": {
@@ -99665,13 +99745,13 @@
         "fallos": 0
       },
       "PASAR": {
-        "n": 7,
-        "evito_fallo": 5,
+        "n": 8,
+        "evito_fallo": 6,
         "oportunidad_perdida": 2
       },
       "ESPERAR": {
-        "n": 1,
-        "aciertos": 0,
+        "n": 2,
+        "aciertos": 1,
         "fallos": 1
       }
     },
@@ -99691,8 +99771,8 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 4,
-        "pasar_ok": 3,
+        "n": 5,
+        "pasar_ok": 4,
         "pasar_miss": 1,
         "apostar_ok": 0,
         "apostar_fail": 0
@@ -99705,9 +99785,9 @@
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 5,
-        "pasar_ok": 4,
-        "pasar_miss": 1,
+        "n": 7,
+        "pasar_ok": 5,
+        "pasar_miss": 2,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -99743,26 +99823,28 @@
       "822773:acierto",
       "823505:fallo",
       "823585:fallo",
-      "823016:fallo"
+      "823016:fallo",
+      "824556:fallo",
+      "823259:acierto"
     ],
-    "actualizado_en": "2026-08-26T02:50:15.007700Z"
+    "actualizado_en": "2026-08-26T04:05:58.568555Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 132,
-    "muestras_reales": 132,
+    "muestras": 134,
+    "muestras_reales": 134,
     "schema": 4,
-    "mensaje": "Reentrenado con 132 muestras (132 reales, RF acc 99.2%, RF holdout 55.6%, XGB acc 100.0%, XGB holdout 66.7%)",
-    "accuracy_train": 0.992,
-    "accuracy_holdout": 0.556,
+    "mensaje": "Reentrenado con 134 muestras (134 reales, RF acc 100.0%, RF holdout 59.3%, XGB acc 100.0%, XGB holdout 59.3%)",
+    "accuracy_train": 1.0,
+    "accuracy_holdout": 0.593,
     "accuracy_xgb_train": 1.0,
-    "accuracy_xgb_holdout": 0.667,
-    "ultimo_entreno": "2026-08-26T02:50:23.974080",
+    "accuracy_xgb_holdout": 0.593,
+    "ultimo_entreno": "2026-08-26T04:06:05.380774",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 132,
+    "muestras": 134,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
@@ -99772,7 +99854,7 @@
       },
       "underdog": {
         "ok": true,
-        "muestras": 33,
+        "muestras": 34,
         "metodo": "isotonic"
       },
       "scratch": {
@@ -99782,18 +99864,18 @@
       },
       "limpio": {
         "ok": true,
-        "muestras": 32,
+        "muestras": 33,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 132 muestras (ECE≈0.07) · 4 tipos",
-    "ece": 0.07
+    "mensaje": "Calibrado isotonic con 134 muestras (ECE≈0.08) · 4 tipos",
+    "ece": 0.077
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-26T00:38:05.776372Z"
+    "actualizado_en": "2026-08-26T02:57:13.173798Z"
   }
 }
