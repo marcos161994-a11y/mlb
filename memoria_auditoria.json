@@ -91540,9 +91540,9 @@
           "pitcher_away_id": 605280,
           "pitcher_home_id": 694297,
           "inicio_juego": "2026-08-25T21:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-25T17:42:09.243928-04:00",
@@ -92195,7 +92195,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-25T21:42:10.238448Z"
+          "whatsapp_enviado_en": "2026-08-25T21:42:10.238448Z",
+          "marcador_final": "Chicago Cubs 4 - Arizona Diamondbacks 5",
+          "liquidado_en": "2026-08-26T00:20:10.977816-04:00"
         },
         {
           "game_id": "823259",
@@ -92849,9 +92851,9 @@
           "pitcher_away_id": 671737,
           "pitcher_home_id": 695611,
           "inicio_juego": "2026-08-25T21:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-25T17:42:11.239935-04:00",
@@ -93489,7 +93491,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-25T21:42:12.331395Z"
+          "whatsapp_enviado_en": "2026-08-25T21:42:12.331395Z",
+          "marcador_final": "Minnesota Twins 2 - Athletics 4",
+          "liquidado_en": "2026-08-26T00:10:12.360406-04:00"
         },
         {
           "game_id": "823098",
@@ -93508,9 +93512,9 @@
           "pitcher_away_id": 605400,
           "pitcher_home_id": 669923,
           "inicio_juego": "2026-08-25T21:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.9,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-25T17:42:12.333141-04:00",
@@ -94153,7 +94157,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-25T21:42:13.426564Z"
+          "whatsapp_enviado_en": "2026-08-25T21:42:13.426564Z",
+          "marcador_final": "Philadelphia Phillies 1 - Seattle Mariners 4",
+          "liquidado_en": "2026-08-26T00:20:11.282442-04:00"
         },
         {
           "game_id": "823181",
@@ -94172,9 +94178,9 @@
           "pitcher_away_id": 663903,
           "pitcher_home_id": 605288,
           "inicio_juego": "2026-08-25T21:45:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.76,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-25T17:42:13.428358-04:00",
@@ -94805,7 +94811,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-25T21:42:14.438425Z"
+          "whatsapp_enviado_en": "2026-08-25T21:42:14.438425Z",
+          "marcador_final": "Cincinnati Reds 1 - San Francisco Giants 3",
+          "liquidado_en": "2026-08-26T00:10:12.577191-04:00"
         }
       ],
       "resumen": {
@@ -99735,6 +99743,126 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-26T04:05:58.568463Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-824962-1787717412",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-08-25",
+      "game_id": "824962",
+      "visitante": "Minnesota Twins",
+      "home": "Athletics",
+      "pick": "Minnesota Twins ML",
+      "probPick": 52.3,
+      "edge": -7.4,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Minnesota Twins 2 - Athletics 4",
+      "patron": "otro",
+      "leccion": "Revisar edge real vs cuota y contexto de roster antes de dinero.",
+      "motivo": "Heurística post-fallo (otro)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-26T04:10:12.571120Z"
+    },
+    {
+      "id": "lec-veto_acertado-824962-1787717412",
+      "tipo": "veto_acertado",
+      "fecha": "2026-08-25",
+      "game_id": "824962",
+      "visitante": "Minnesota Twins",
+      "home": "Athletics",
+      "pick": "Minnesota Twins ML",
+      "probPick": 52.3,
+      "edge": -7.4,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Minnesota Twins 2 - Athletics 4",
+      "patron": "veto_acertado",
+      "leccion": "Bloqueo de dinero acertó: el pick falló; mantener señales parecidas.",
+      "motivo": "mente bloqueó dinero + fallo",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-26T04:10:12.571311Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-823181-1787717412",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-25",
+      "game_id": "823181",
+      "visitante": "Cincinnati Reds",
+      "home": "San Francisco Giants",
+      "pick": "San Francisco Giants ML",
+      "probPick": 55.0,
+      "edge": 3.8,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Cincinnati Reds 1 - San Francisco Giants 3",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-26T04:10:12.577381Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-825042-1787718011",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-08-25",
+      "game_id": "825042",
+      "visitante": "Chicago Cubs",
+      "home": "Arizona Diamondbacks",
+      "pick": "Chicago Cubs ML",
+      "probPick": 54.4,
+      "edge": 2.5,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Chicago Cubs 4 - Arizona Diamondbacks 5",
+      "patron": "edge_falso",
+      "leccion": "Exigir edge >= 6% contra cuota real; edge bajo no basta.",
+      "motivo": "Heurística post-fallo (edge_falso)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-26T04:20:11.281043Z"
+    },
+    {
+      "id": "lec-veto_acertado-825042-1787718011",
+      "tipo": "veto_acertado",
+      "fecha": "2026-08-25",
+      "game_id": "825042",
+      "visitante": "Chicago Cubs",
+      "home": "Arizona Diamondbacks",
+      "pick": "Chicago Cubs ML",
+      "probPick": 54.4,
+      "edge": 2.5,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Chicago Cubs 4 - Arizona Diamondbacks 5",
+      "patron": "veto_acertado",
+      "leccion": "Bloqueo de dinero acertó: el pick falló; mantener señales parecidas.",
+      "motivo": "mente bloqueó dinero + fallo",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-26T04:20:11.281127Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-823098-1787718011",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-25",
+      "game_id": "823098",
+      "visitante": "Philadelphia Phillies",
+      "home": "Seattle Mariners",
+      "pick": "Seattle Mariners ML",
+      "probPick": 53.3,
+      "edge": 2.8,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Philadelphia Phillies 1 - Seattle Mariners 4",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-26T04:20:11.370786Z"
     }
   ],
   "mente_stats": {
@@ -99745,13 +99873,13 @@
         "fallos": 0
       },
       "PASAR": {
-        "n": 8,
-        "evito_fallo": 6,
-        "oportunidad_perdida": 2
+        "n": 11,
+        "evito_fallo": 8,
+        "oportunidad_perdida": 3
       },
       "ESPERAR": {
-        "n": 2,
-        "aciertos": 1,
+        "n": 3,
+        "aciertos": 2,
         "fallos": 1
       }
     },
@@ -99771,9 +99899,9 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 5,
-        "pasar_ok": 4,
-        "pasar_miss": 1,
+        "n": 8,
+        "pasar_ok": 5,
+        "pasar_miss": 3,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -99785,9 +99913,9 @@
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 7,
-        "pasar_ok": 5,
-        "pasar_miss": 2,
+        "n": 11,
+        "pasar_ok": 7,
+        "pasar_miss": 4,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -99825,26 +99953,30 @@
       "823585:fallo",
       "823016:fallo",
       "824556:fallo",
-      "823259:acierto"
+      "823259:acierto",
+      "824962:fallo",
+      "823181:acierto",
+      "825042:fallo",
+      "823098:acierto"
     ],
-    "actualizado_en": "2026-08-26T04:05:58.568555Z"
+    "actualizado_en": "2026-08-26T04:20:11.370860Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 134,
-    "muestras_reales": 134,
+    "muestras": 138,
+    "muestras_reales": 138,
     "schema": 4,
-    "mensaje": "Reentrenado con 134 muestras (134 reales, RF acc 100.0%, RF holdout 59.3%, XGB acc 100.0%, XGB holdout 59.3%)",
+    "mensaje": "Reentrenado con 138 muestras (138 reales, RF acc 100.0%, RF holdout 53.6%, XGB acc 100.0%, XGB holdout 57.1%)",
     "accuracy_train": 1.0,
-    "accuracy_holdout": 0.593,
+    "accuracy_holdout": 0.536,
     "accuracy_xgb_train": 1.0,
-    "accuracy_xgb_holdout": 0.593,
-    "ultimo_entreno": "2026-08-26T04:06:05.380774",
+    "accuracy_xgb_holdout": 0.571,
+    "ultimo_entreno": "2026-08-26T04:20:20.677954",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 134,
+    "muestras": 138,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
@@ -99854,7 +99986,7 @@
       },
       "underdog": {
         "ok": true,
-        "muestras": 34,
+        "muestras": 36,
         "metodo": "isotonic"
       },
       "scratch": {
@@ -99864,18 +99996,18 @@
       },
       "limpio": {
         "ok": true,
-        "muestras": 33,
+        "muestras": 35,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 134 muestras (ECE≈0.08) · 4 tipos",
-    "ece": 0.077
+    "mensaje": "Calibrado isotonic con 138 muestras (ECE≈0.07) · 4 tipos",
+    "ece": 0.075
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-26T02:57:13.173798Z"
+    "actualizado_en": "2026-08-26T04:09:43.880780Z"
   }
 }
