@@ -1,6 +1,6 @@
 {
   "modo": "simulacion",
-  "capital": 91.57,
+  "capital": 94.26,
   "capital_inicial": 100.0,
   "dia_actual": 12,
   "dias_totales": 200,
@@ -95440,9 +95440,609 @@
           "inicio_juego": "2026-08-26T15:40:00-04:00",
           "hora_bloqueo_plan": "2026-08-26T14:40:00-04:00",
           "stake": 2.75,
+          "estado": "ganada",
+          "profit": 2.69,
+          "bloqueado_en": "2026-08-26T14:40:26.590243-04:00",
+          "marcador_final": "Chicago Cubs 0 - Arizona Diamondbacks 2",
+          "liquidado_en": "2026-08-26T18:00:07.106542-04:00"
+        },
+        {
+          "game_id": "824878",
+          "visitante": "Los Angeles Dodgers",
+          "home": "Atlanta Braves",
+          "pick": "Atlanta Braves ML",
+          "odds": 2.19,
+          "odds_american": 119,
+          "lineas_fuente": "draftkings",
+          "casa": "BetMGM",
+          "edge": 10.2,
+          "probPick": 55.9,
+          "motivo_apuesta": "Prob. modelo bajo 58.0% · MENTE APOSTAR: Edge +10.2% con contexto limpio; Prob 56%; MC totales: entorno over (conf 4)",
+          "ia_veto": {
+            "ok": true,
+            "decision": "APOSTAR",
+            "motivo": "Edge +10.2% con contexto limpio; Prob 56%; MC totales: entorno over",
+            "confianza": 4,
+            "fuente": "mente"
+          },
+          "ia_mente": {
+            "ok": true,
+            "decision": "APOSTAR",
+            "stake_pct": 3.0,
+            "razones": [
+              "Edge +10.2% con contexto limpio",
+              "Prob 56%",
+              "MC totales: entorno over"
+            ],
+            "confianza": 4,
+            "lecciones_usadas": [
+              "lec-fallo_postmortem-825042-1787718011",
+              "lec-veto_acertado-825042-1787718011"
+            ],
+            "fuente": "heuristica",
+            "modelo": null,
+            "briefing": null,
+            "alertas": [
+              "scratch",
+              "humanos",
+              "tipo_scratch",
+              "mc_over"
+            ],
+            "senales": [
+              "scratch",
+              "humanos",
+              "tipo_scratch",
+              "mc_over"
+            ],
+            "penalizacion_aprendizaje": 0,
+            "modo": "normal",
+            "min_confianza": 3,
+            "shadow": false,
+            "briefing_fase": "bloqueo",
+            "autoriza_dinero": true
+          },
+          "ia_briefing": {
+            "ok": true,
+            "fase": "bloqueo",
+            "creado_en": "2026-08-26T22:15:14.007081Z",
+            "alertas": [
+              "scratch",
+              "humanos",
+              "tipo_scratch",
+              "mc_over"
+            ],
+            "resumen": "Pick Atlanta Braves ML @ 55.9% edge=10.2 · cuotas=draftkings · Elo 1563/1536 pitch -17/+27 → 44/56% · fusión 42/58% · Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 43/57% · MC totales μ=10.2 (F · alertas=scratch,humanos,tipo_scratch,mc_over · AWAY: B2B · descanso 0d · fatiga 0.58 | HOME: B2B · descanso 0",
+            "pilares": {
+              "modelo": {
+                "pick": "Atlanta Braves ML",
+                "prob": 55.9,
+                "edge": 10.2,
+                "odds": 2.19,
+                "fuente_cuotas": "draftkings",
+                "motivo": "Prob. modelo bajo 58.0%"
+              },
+              "clima": {
+                "ok": false,
+                "run_env": 0.0,
+                "motivo": "429 Client Error: Too Many Requests for url: https://api.open-meteo.com/v1/forecast?latitude=33.8907"
+              },
+              "lesiones": {
+                "ok": true,
+                "starter_riesgo": false,
+                "resumen": "Los Angeles Dodgers: Justin Wrobleski(SP/15-Day-IL), Will Smith(C/60-Day-IL), Jake Cousins(RP/60-Day-IL), Gavin Stone(SP/60-Day-IL) | Atlant"
+              },
+              "scratch": {
+                "ok": true,
+                "riesgo": true,
+                "resumen": "Estrellas out visitante: Enrique Hernández, Miguel Rojas"
+              },
+              "humanos": {
+                "ok": true,
+                "riesgo": true,
+                "resumen": "AWAY: B2B · descanso 0d · fatiga 0.58 | HOME: B2B · descanso 0d | Serie 2/3 | night | HP Erich Bacchus",
+                "fatiga_away": 0.58,
+                "fatiga_home": 0.35
+              },
+              "historico": {
+                "ok": true,
+                "riesgo": false,
+                "resumen": "L10 visita 7-3 · L10 local 4-6",
+                "l10_away": "7-3",
+                "l10_home": "4-6",
+                "pvr_away": "desconocido",
+                "pvr_home": "desconocido"
+              },
+              "elo": {
+                "ok": true,
+                "resumen": "Elo 1563/1536 pitch -17/+27 → 44/56% · fusión 42/58%",
+                "prob_elo_away": 44.04,
+                "prob_elo_home": 55.96,
+                "adj_pitcher_away": -17.08,
+                "adj_pitcher_home": 27.44,
+                "peso_elo": 0.4
+              },
+              "inteligencia": {
+                "ok": true,
+                "capas": [
+                  "bullpen",
+                  "park_umpire",
+                  "monte_carlo",
+                  "mc_totales",
+                  "consenso"
+                ],
+                "resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 43/57% · MC totales μ=10.2 (F5 5.6) vs 8.5 → over 68% · F5→over",
+                "tipo_pick": "scratch",
+                "consenso_n": 1,
+                "mc": "MC×800 → 43/57%",
+                "totales": {
+                  "ok": true,
+                  "mu": 10.17,
+                  "mu_f5": 5.62,
+                  "señal": "over",
+                  "señal_f5": "over",
+                  "preferir_f5": false,
+                  "resumen": "MC totales μ=10.2 (F5 5.6) vs 8.5 → over 68% · F5→over"
+                }
+              },
+              "pitchers": {
+                "away": "Roki Sasaki",
+                "home": "AJ Smith-Shawver",
+                "fip": 3.22,
+                "fatiga_bullpen": 0.4
+              }
+            },
+            "lecciones_ids": [
+              "lec-fallo_postmortem-825042-1787718011",
+              "lec-veto_acertado-825042-1787718011",
+              "lec-oportunidad_perdida-823098-1787718011",
+              "lec-oportunidad_perdida-823989-1787721009",
+              "lec-fallo_postmortem-824234-1787772014",
+              "lec-veto_acertado-824234-1787772014"
+            ]
+          },
+          "clima": {
+            "ok": false,
+            "fuente": "none",
+            "temp_f": null,
+            "viento_mph": null,
+            "humedad": null,
+            "run_env": 0.0,
+            "motivo": "429 Client Error: Too Many Requests for url: https://api.open-meteo.com/v1/forecast?latitude=33.8907&longitude=-84.4677&",
+            "estadio": "Truist Park",
+            "es_domo": false
+          },
+          "lesiones": {
+            "ok": true,
+            "fuente": "espn",
+            "motivo": "295 bajas indexadas",
+            "away": [
+              {
+                "jugador": "Justin Wrobleski",
+                "apellido": "wrobleski",
+                "pos": "SP",
+                "status": "15-Day-IL",
+                "comentario": "Wrobleski (forearm) will face hitters in a live batting practice session Wednesday, Fabian Ardaya of The Athletic reports.",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              },
+              {
+                "jugador": "Will Smith",
+                "apellido": "smith",
+                "pos": "C",
+                "status": "60-Day-IL",
+                "comentario": "Smith (neck) went 1-for-3 with a two-run home run Tuesday in a minor-league rehab appearance with Triple-A Oklahoma City.",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              },
+              {
+                "jugador": "Jake Cousins",
+                "apellido": "cousins",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Cousins (elbow) faced live hitters Saturday, Fabian Ardaya of The Athletic reports.",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              },
+              {
+                "jugador": "Gavin Stone",
+                "apellido": "stone",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Stone (shoulder) struck out five and allowed no hits and no walks over three shutout innings Thursday in a rehab start with Triple-A Oklahom",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              },
+              {
+                "jugador": "Bobby Miller",
+                "apellido": "miller",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Miller (shoulder) struck out three and allowed two hits and one walk over three scoreless innings in a rehab appearance Sunday with Triple-A",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              },
+              {
+                "jugador": "Blake Treinen",
+                "apellido": "treinen",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Treinen (elbow) kicked off a minor-league rehab assignment with Single-A Ontario on Saturday, MLB.com reports. He tossed a scoreless and hit",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              },
+              {
+                "jugador": "Kris Bubic",
+                "apellido": "bubic",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Bubic (shoulder/elbow) is hoping to begin a minor-league rehab assignment around early September, MLB.com reports.",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              },
+              {
+                "jugador": "Ben Casparius",
+                "apellido": "casparius",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Casparius (shoulder) made the third appearance of his rehab assignment Friday with Triple-A Oklahoma City, allowing one earned run on no hit",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              }
+            ],
+            "home": [
+              {
+                "jugador": "Joe Jimenez",
+                "apellido": "jimenez",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Jimenez (knee) recently completed his fifth bullpen session since undergoing left knee surgery in April, Grant McAuley of the Marietta Daily",
+                "severidad": 5,
+                "equipo": "Atlanta Braves"
+              },
+              {
+                "jugador": "Spencer Schwellenbach",
+                "apellido": "schwellenbach",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Schwellenbach (elbow) is still not feeling 100 percent and will have his throwing progression slowed, Grant McAuley of the Marietta Daily Jo",
+                "severidad": 5,
+                "equipo": "Atlanta Braves"
+              },
+              {
+                "jugador": "Spencer Strider",
+                "apellido": "strider",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Atlanta manager Walt Weiss said Monday that Strider (elbow) will begin a throwing progression this week, Chad Bishop of The Atlanta Journal-",
+                "severidad": 5,
+                "equipo": "Atlanta Braves"
+              },
+              {
+                "jugador": "Joey Wentz",
+                "apellido": "wentz",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Atlanta placed Wentz (knee) on the 60-day injured list Tuesday.",
+                "severidad": 5,
+                "equipo": "Atlanta Braves"
+              },
+              {
+                "jugador": "Robert Suarez",
+                "apellido": "suarez",
+                "pos": "RP",
+                "status": "15-Day-IL",
+                "comentario": "Atlanta manager Walt Weiss said Tuesday that Suarez (elbow) could begin throwing bullpen sessions soon, Grant McAuley of the Marietta Daily ",
+                "severidad": 4,
+                "equipo": "Atlanta Braves"
+              },
+              {
+                "jugador": "Reynaldo Lopez",
+                "apellido": "lopez",
+                "pos": "RP",
+                "status": "15-Day-IL",
+                "comentario": "Lopez (knee) pitched four scoreless innings, allowing three hits and a walk while striking out four batters in a minor-league rehab start wi",
+                "severidad": 4,
+                "equipo": "Atlanta Braves"
+              },
+              {
+                "jugador": "Jurickson Profar",
+                "apellido": "profar",
+                "pos": "LF",
+                "status": "suspension",
+                "comentario": "Profar will miss the full 2026 season after the appeal of his 162-game PED suspension was denied Thursday, Jeff Passan of ESPN.com reports.",
+                "severidad": 2,
+                "equipo": "Atlanta Braves"
+              }
+            ],
+            "resumen": "Los Angeles Dodgers: Justin Wrobleski(SP/15-Day-IL), Will Smith(C/60-Day-IL), Jake Cousins(RP/60-Day-IL), Gavin Stone(SP/60-Day-IL) | Atlanta Braves: Joe Jimenez(RP/60-Day-IL), Spencer Schwellenbach(SP/60-Day-IL), Spencer Strider(SP/60-Day-IL), Joey Wentz(RP/60-Day-IL)",
+            "ajuste_away": -3.9,
+            "ajuste_home": -3.25,
+            "starter_riesgo": false,
+            "starter_away_lesionado": false,
+            "starter_home_lesionado": false,
+            "alerta": ""
+          },
+          "factores_humanos": {
+            "ok": true,
+            "away": {
+              "ok": true,
+              "dias_descanso": 0.0,
+              "back_to_back": true,
+              "juegos_seguidos_visita": 2,
+              "cambio_zona": 0,
+              "fatiga_viaje": 0.58,
+              "ultimo_rival": "Atlanta Braves",
+              "ultimo_venue": "Truist Park",
+              "motivo": "B2B · descanso 0d · fatiga 0.58"
+            },
+            "home": {
+              "ok": true,
+              "dias_descanso": 0.0,
+              "back_to_back": true,
+              "juegos_seguidos_visita": 0,
+              "cambio_zona": 0,
+              "fatiga_viaje": 0.35,
+              "ultimo_rival": "Los Angeles Dodgers",
+              "ultimo_venue": "Truist Park",
+              "motivo": "B2B · descanso 0d"
+            },
+            "serie": {
+              "game_number": 2,
+              "games_in_series": 3,
+              "leverage": 0.667,
+              "rubber": false,
+              "day_night": "night"
+            },
+            "umpire": {
+              "ok": true,
+              "hp_nombre": "Erich Bacchus",
+              "hp_id": 623938,
+              "sesgo_runs": 0.0,
+              "motivo": "HP Erich Bacchus"
+            },
+            "ajuste_away": -1.28,
+            "ajuste_home": -0.49,
+            "sesgo_umpire_runs": 0.0,
+            "alertas": [
+              "Visita fatigada (B2B · descanso 0d · fatiga 0.58)"
+            ],
+            "resumen": "AWAY: B2B · descanso 0d · fatiga 0.58 | HOME: B2B · descanso 0d | Serie 2/3 | night | HP Erich Bacchus",
+            "riesgo": true,
+            "features_away": {
+              "fatiga_viaje": 0.58,
+              "dias_descanso": 0.0,
+              "cambio_zona": 0.0,
+              "leverage_serie": 0.667,
+              "umpire_runs": 0.0
+            },
+            "features_home": {
+              "fatiga_viaje": 0.35,
+              "dias_descanso": 0.0,
+              "cambio_zona": 0.0,
+              "leverage_serie": 0.667,
+              "umpire_runs": 0.0
+            }
+          },
+          "historico_oficial": {
+            "ok": true,
+            "season": 2026,
+            "l10_away": {
+              "ok": true,
+              "wins": 7,
+              "losses": 3,
+              "pct": 0.7,
+              "marca": "7-3",
+              "streak_code": "L1",
+              "streak_type": "losses",
+              "streak_n": 1,
+              "forma": "buena"
+            },
+            "l10_home": {
+              "ok": true,
+              "wins": 4,
+              "losses": 6,
+              "pct": 0.4,
+              "marca": "4-6",
+              "streak_code": "W2",
+              "streak_type": "wins",
+              "streak_n": 2,
+              "forma": "neutra"
+            },
+            "pitcher_vs_rival_away": {
+              "ok": true,
+              "pitcher_id": 808963,
+              "pitcher": "Roki Sasaki",
+              "rival_id": 144,
+              "gs": 0,
+              "ip": 0.0,
+              "era": null,
+              "whip": null,
+              "k": 0,
+              "bb": 0,
+              "hr": 0,
+              "ops_contra": null,
+              "avg_contra": null,
+              "calidad": "desconocido",
+              "motivo": "sin historial vs rival",
+              "fechas": [],
+              "resumenes": []
+            },
+            "pitcher_vs_rival_home": {
+              "ok": true,
+              "pitcher_id": 700363,
+              "pitcher": "AJ Smith-Shawver",
+              "rival_id": 119,
+              "gs": 0,
+              "ip": 0.0,
+              "era": null,
+              "whip": null,
+              "k": 0,
+              "bb": 0,
+              "hr": 0,
+              "ops_contra": null,
+              "avg_contra": null,
+              "calidad": "desconocido",
+              "motivo": "sin historial vs rival",
+              "fechas": [],
+              "resumenes": []
+            },
+            "alertas": [],
+            "riesgo": false,
+            "ajuste_away": 0.4,
+            "ajuste_home": -0.2,
+            "resumen": "L10 visita 7-3 · L10 local 4-6"
+          },
+          "ml_features": {
+            "era_pitcher": 6.23,
+            "whip_pitcher": 1.62,
+            "k9_pitcher": 7.27,
+            "woba_equipo": 0.33,
+            "ops_equipo": 0.722,
+            "win_pct_equipo": 0.583,
+            "es_local": 1.0,
+            "park_factor": 1.06,
+            "fatiga_bullpen": 0.4,
+            "matchup_zurdo_diestro": 0.2200000000000002,
+            "edge_estadistico": 18.0,
+            "bb9_pitcher": 5.19,
+            "hr9_pitcher": 0.0,
+            "racha_equipo": 0.4,
+            "diferencia_run": 0.0,
+            "vs_pitcher_hand": 0.0,
+            "temp_f": 72.0,
+            "viento_mph": 5.0,
+            "run_env": 0.0,
+            "fip_pitcher": 3.22,
+            "xfip_pitcher": 4.08,
+            "k_pct_pitcher": 17.5,
+            "bb_pct_pitcher": 12.5,
+            "fatiga_viaje": 0.35,
+            "dias_descanso": 1.0,
+            "cambio_zona": 0.0,
+            "leverage_serie": 0.667,
+            "umpire_runs": 0.0
+          },
+          "tipo_pick": "scratch",
+          "inteligencia": {
+            "ok": true,
+            "capas": [
+              "bullpen",
+              "park_umpire",
+              "monte_carlo",
+              "mc_totales",
+              "consenso"
+            ],
+            "bullpen": {
+              "away": {
+                "ok": true,
+                "fatiga": 0.494,
+                "pitches_relevo": 55,
+                "relevistas": 4,
+                "horas_desde": 20.9,
+                "resumen": "Bullpen Los Angeles Dodgers: 55 pitches relevo (4 brazos) · fatiga 0.49",
+                "nombre": "Los Angeles Dodgers",
+                "game_pk": 824881
+              },
+              "home": {
+                "ok": true,
+                "fatiga": 0.469,
+                "pitches_relevo": 51,
+                "relevistas": 4,
+                "horas_desde": 20.9,
+                "resumen": "Bullpen Atlanta Braves: 51 pitches relevo (4 brazos) · fatiga 0.47",
+                "nombre": "Atlanta Braves",
+                "game_pk": 824881
+              },
+              "shift_hacia_away": -0.1
+            },
+            "park_umpire": {
+              "ok": true,
+              "adj_away": 0.17,
+              "adj_home": 0.26,
+              "park_factor": 1.06,
+              "sesgo_umpire": 0.0,
+              "resumen": "Park×1.06 ump +0.00 → 42/58%"
+            },
+            "monte_carlo": {
+              "ok": true,
+              "n": 800,
+              "prob_home": 57.38,
+              "prob_away": 42.62,
+              "resumen": "MC×800 → 43/57%"
+            },
+            "totales": {
+              "ok": true,
+              "n": 800,
+              "lambda_away": 4.12,
+              "lambda_home": 6.09,
+              "mu_total": 10.17,
+              "mu_f5": 5.62,
+              "p10": 6.0,
+              "p50": 10.0,
+              "p90": 14.0,
+              "linea_total": 8.5,
+              "linea_f5": 4.5,
+              "linea_fuente": "mercado",
+              "linea_es_default": false,
+              "p_over": 67.8,
+              "p_under": 32.2,
+              "p_over_f5": 65.1,
+              "p_under_f5": 34.9,
+              "señal": "over",
+              "señal_f5": "over",
+              "preferir_f5": false,
+              "resumen": "MC totales μ=10.2 (F5 5.6) vs 8.5 → over 68% · F5→over",
+              "edge_over": 13.2,
+              "odds_over": 1.833,
+              "edge_under": -18.0,
+              "odds_under": 1.99
+            },
+            "consenso": {
+              "ok": true,
+              "n_fuentes": 1,
+              "fuentes": [
+                "draftkings"
+              ],
+              "dec_away": 1.833,
+              "dec_home": 2.12,
+              "prob_away": 53.63,
+              "prob_home": 46.37,
+              "vig_pct": 1.73,
+              "discrepancia_casas_pct": 0.0,
+              "resumen": "Consenso 1 casa(s) · fair 53.63/46.37% · vig 1.73%"
+            },
+            "tipo_pre": "limpio",
+            "resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 43/57% · MC totales μ=10.2 (F5 5.6) vs 8.5 → over 68% · F5→over",
+            "tipo_pick": "scratch"
+          },
+          "elo": {
+            "ok": true,
+            "activo": true,
+            "peso_elo": 0.4,
+            "elo_away": 1563.1,
+            "elo_home": 1536.2,
+            "adj_pitcher_away": -17.08,
+            "adj_pitcher_home": 27.44,
+            "elo_adj_away": 1546.0,
+            "elo_adj_home": 1563.6,
+            "prob_elo_away": 44.04,
+            "prob_elo_home": 55.96,
+            "prob_modelo_away": 41.2,
+            "prob_modelo_home": 58.8,
+            "prob_fusion_away": 42.34,
+            "prob_fusion_home": 57.66,
+            "fip_away": 4.81,
+            "fip_home": 3.22,
+            "resumen": "Elo 1563/1536 pitch -17/+27 → 44/56% · fusión 42/58%"
+          },
+          "pitcherAway": "Roki Sasaki",
+          "pitcherHome": "AJ Smith-Shawver",
+          "inicio_juego": "2026-08-26T19:15:00-04:00",
+          "hora_bloqueo_plan": "2026-08-26T18:15:00-04:00",
+          "stake": 2.83,
           "estado": "pendiente",
           "profit": null,
-          "bloqueado_en": "2026-08-26T14:40:26.590243-04:00"
+          "bloqueado_en": "2026-08-26T18:15:14.506833-04:00"
         }
       ],
       "predicciones": [
@@ -96182,11 +96782,11 @@
           "pitcher_away_id": 571510,
           "pitcher_home_id": 593958,
           "inicio_juego": "2026-08-26T15:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.9,
           "stake_virtual": 5.0,
-          "con_dinero": false,
+          "con_dinero": true,
           "predicho_en": "2026-08-26T12:03:41.241012-04:00",
           "congelado_en_gracia": false,
           "valida_stats": true,
@@ -96830,7 +97430,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-26T16:03:42.309310Z"
+          "whatsapp_enviado_en": "2026-08-26T16:03:42.309310Z",
+          "marcador_final": "Chicago Cubs 0 - Arizona Diamondbacks 2",
+          "liquidado_en": "2026-08-26T18:00:07.106695-04:00"
         },
         {
           "game_id": "823180",
@@ -110406,21 +111008,21 @@
         "fallos": 0
       },
       "PASAR": {
-        "n": 13,
-        "evito_fallo": 9,
-        "oportunidad_perdida": 4
+        "n": 0,
+        "evito_fallo": 0,
+        "oportunidad_perdida": 0
       },
       "ESPERAR": {
-        "n": 3,
-        "aciertos": 2,
-        "fallos": 1
+        "n": 0,
+        "aciertos": 0,
+        "fallos": 0
       }
     },
     "patrones": {
       "scratch": {
-        "n": 5,
-        "pasar_ok": 4,
-        "pasar_miss": 1,
+        "n": 0,
+        "pasar_ok": 0,
+        "pasar_miss": 0,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -110432,9 +111034,9 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 10,
-        "pasar_ok": 6,
-        "pasar_miss": 4,
+        "n": 0,
+        "pasar_ok": 0,
+        "pasar_miss": 0,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -110446,15 +111048,15 @@
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 13,
-        "pasar_ok": 8,
-        "pasar_miss": 5,
+        "n": 0,
+        "pasar_ok": 0,
+        "pasar_miss": 0,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "favorito_alto": {
-        "n": 2,
-        "pasar_ok": 2,
+        "n": 0,
+        "pasar_ok": 0,
         "pasar_miss": 0,
         "apostar_ok": 0,
         "apostar_fail": 0
@@ -110467,51 +111069,24 @@
         "apostar_fail": 0
       }
     },
-    "penalizacion": {
-      "scratch": 1,
-      "starter_riesgo": 0,
-      "humanos": 1,
-      "sin_mercado": 0,
-      "edge_bajo": 1,
-      "favorito_alto": 0,
-      "limpio": 0
-    },
-    "vistos": [
-      "824233:fallo",
-      "822693:fallo",
-      "824881:fallo",
-      "823826:acierto",
-      "822773:acierto",
-      "823505:fallo",
-      "823585:fallo",
-      "823016:fallo",
-      "824556:fallo",
-      "823259:acierto",
-      "824962:fallo",
-      "823181:acierto",
-      "825042:fallo",
-      "823098:acierto",
-      "823989:acierto",
-      "824234:fallo"
-    ],
-    "actualizado_en": "2026-08-26T19:20:14.938036Z"
+    "penalizacion": {}
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 140,
-    "muestras_reales": 140,
+    "muestras": 141,
+    "muestras_reales": 141,
     "schema": 4,
-    "mensaje": "Reentrenado con 140 muestras (140 reales, RF acc 99.3%, RF holdout 50.0%, XGB acc 100.0%, XGB holdout 64.3%)",
+    "mensaje": "Reentrenado con 141 muestras (141 reales, RF acc 99.3%, RF holdout 51.7%, XGB acc 100.0%, XGB holdout 58.6%)",
     "accuracy_train": 0.993,
-    "accuracy_holdout": 0.5,
+    "accuracy_holdout": 0.517,
     "accuracy_xgb_train": 1.0,
-    "accuracy_xgb_holdout": 0.643,
-    "ultimo_entreno": "2026-08-26T19:20:25.995679",
+    "accuracy_xgb_holdout": 0.586,
+    "ultimo_entreno": "2026-08-26T22:00:21.294383",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 140,
+    "muestras": 141,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
@@ -110521,7 +111096,7 @@
       },
       "underdog": {
         "ok": true,
-        "muestras": 36,
+        "muestras": 37,
         "metodo": "isotonic"
       },
       "scratch": {
@@ -110535,14 +111110,14 @@
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 140 muestras (ECE≈0.07) · 4 tipos",
-    "ece": 0.075
+    "mensaje": "Calibrado isotonic con 141 muestras (ECE≈0.07) · 4 tipos",
+    "ece": 0.071
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-26T19:31:10.010906Z"
+    "actualizado_en": "2026-08-26T20:09:21.006028Z"
   }
 }
