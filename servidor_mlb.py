@@ -3226,8 +3226,15 @@ def api_health():
         },
         "odds": {
             "activo": not bool(cfg.get("modo_solo_modelo")),
+            "desactivado": bool(cfg.get("modo_solo_modelo")),
+            "motivo": (
+                "modo_solo_modelo=true (sin Odds API)"
+                if cfg.get("modo_solo_modelo")
+                else None
+            ),
             "proveedor": (cfg.get("lineas") or {}).get("proveedor") or "oddspapi",
-            "requiere_mercado": bool((cfg.get("estrategia") or {}).get("requiere_betmgm", True)),
+            "requiere_mercado": bool((cfg.get("estrategia") or {}).get("requiere_betmgm", True))
+            and not bool(cfg.get("modo_solo_modelo")),
             "fallback_internet": bool((cfg.get("lineas") or {}).get("fallback_internet", True)),
             "bookmakers": (cfg.get("lineas") or {}).get("bookmakers") or "draftkings",
             "min_edge_pct": float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0)),
@@ -3345,13 +3352,13 @@ def api_lesiones_status():
 
 @app.get("/api/odds-status")
 def api_odds_status():
-    """Estado del proveedor de cuotas (OddsPapi / The Odds API)."""
+    """Estado del proveedor de cuotas. Con modo_solo_modelo no se usa ni se exige."""
     cfg = cargar_config()
     solo = bool(cfg.get("modo_solo_modelo"))
     requiere = bool((cfg.get("estrategia") or {}).get("requiere_betmgm", True))
     proveedor = str((cfg.get("lineas") or {}).get("proveedor") or "oddspapi").lower()
     base = {
-        "activo": not solo,
+        "activo": not solo and requiere,
         "requiere_mercado": requiere and not solo,
         "modo_solo_modelo": solo,
         "bookmakers": (cfg.get("lineas") or {}).get("bookmakers") or "draftkings",
@@ -3367,7 +3374,7 @@ def api_odds_status():
             **base,
             "ok": True,
             "desactivado": True,
-            "motivo": "Cuotas desactivadas (modo solo modelo)",
+            "motivo": "Odds API desactivada: dinero solo con % del modelo (≥ min_prob)",
         }
     try:
         def _con_espn(out: dict) -> dict:
