@@ -549,7 +549,8 @@
 </div>
 
 <div id="contenedor-juegos" class="grid-juegos">
-    <p style="color:var(--muted)">Despertando servidor…</p>
+    <p style="color:var(--muted)">Cargando…</p>
+    <p style="margin:10px 0"><button type="button" onclick="reintentarAhora()">↻ Reintentar ahora</button></p>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -561,10 +562,13 @@ const API = (!window.location.origin || window.location.protocol === 'file:')
     : window.location.origin;
 const ES_NUBE = API.includes('onrender.com') || API.includes('render.com');
 const REFRESH_MS = ES_NUBE ? 45000 : 8000;
-const CACHE_KEY = 'qmlb_last_state_v1';
+const CACHE_KEY = 'qmlb_last_state_v2';
+const PANEL_VER = '2026-08-27-boot';
 let cargandoEstado = false;
 let wakeIntentos = 0;
-const WAKE_MAX = 8;
+let wakeTimer = null;
+let lastWakeAt = 0;
+const WAKE_MAX = 12;
 
 function toast(msg) {
     const t = document.getElementById('toast');
@@ -573,10 +577,50 @@ function toast(msg) {
     setTimeout(() => t.style.display = 'none', 4000);
 }
 
+function cancelarReintento() {
+    if (wakeTimer) {
+        clearTimeout(wakeTimer);
+        wakeTimer = null;
+    }
+}
+
+/** Reintento fiable: NO espera al ping (Safari iOS congela timers/fetch largos). */
+function programarReintento(ms) {
+    cancelarReintento();
+    lastWakeAt = Date.now();
+    wakeTimer = setTimeout(() => {
+        wakeTimer = null;
+        cargandoEstado = false; // por si quedó trabado
+        cargarEstado();
+    }, ms);
+}
+
+function mostrarWakeUI(is502) {
+    const contenedor = document.getElementById('contenedor-juegos');
+    if (!contenedor) return;
+    contenedor.innerHTML =
+        '<p style="color:#ffaa00"><b>' +
+        (is502 ? 'Render reiniciando (502)…' : 'Cargando / despertando servidor…') +
+        '</b><br>Intento ' + wakeIntentos + '/' + WAKE_MAX +
+        ' · el historial no se borra.</p>' +
+        '<p style="margin:12px 0">' +
+        '<button type="button" onclick="reintentarAhora()" style="padding:12px 18px;font-size:1rem;font-weight:700">' +
+        '↻ Reintentar ahora</button></p>' +
+        '<p style="color:var(--muted);font-size:0.78rem">Si lleva más de 1 min: cierra la pestaña y ábrela de nuevo.</p>';
+}
+
+function reintentarAhora() {
+    cancelarReintento();
+    cargandoEstado = false;
+    despertarServidor(20000); // fire-and-forget corto
+    cargarEstado();
+}
+
 function guardarCacheEstado(state) {
     try {
         const slim = {
             ts: Date.now(),
+            ver: PANEL_VER,
             memoria: state.memoria,
             pl_split: state.pl_split,
             historial_sello: state.historial_sello,
@@ -596,18 +640,19 @@ function guardarCacheEstado(state) {
             lineas: state.lineas,
             fecha_hoy: state.fecha_hoy,
         };
-        sessionStorage.setItem(CACHE_KEY, JSON.stringify(slim));
+        // localStorage: sobrevive cerrar la pestaña (sessionStorage no)
+        localStorage.setItem(CACHE_KEY, JSON.stringify(slim));
     } catch (e) { /* quota */ }
 }
 
 function leerCacheEstado() {
     try {
-        const raw = sessionStorage.getItem(CACHE_KEY);
+        const raw = localStorage.getItem(CACHE_KEY) || sessionStorage.getItem('qmlb_last_state_v1');
         if (!raw) return null;
         const s = JSON.parse(raw);
         if (!s || !s.memoria) return null;
-        // Cache válida 6 h
-        if (s.ts && Date.now() - s.ts > 6 * 3600 * 1000) return null;
+        // Cache válida 48 h (historial no debe “desaparecer” al despertar)
+        if (s.ts && Date.now() - s.ts > 48 * 3600 * 1000) return null;
         return s;
     } catch (e) {
         return null;
@@ -635,10 +680,10 @@ function pintarDesdeCache(motivo) {
     }
 }
 
-/** Ping ligero: despierta Render free sin cargar todo el panel. */
+/** Ping ligero: despierta Render free (timeout corto — no bloquear UI). */
 async function despertarServidor(ms) {
     const ctrl = new AbortController();
-    const t = setTimeout(() => ctrl.abort(), ms || 120000);
+    const t = setTimeout(() => ctrl.abort(), ms || 25000);
     try {
         const r = await fetch(API + '/api/health', { cache: 'no-store', signal: ctrl.signal });
         return r.ok;
@@ -858,24 +903,51 @@ function fmtAmer(a) {
 async function cargarEstado() {
     if (cargandoEstado) return;
     cargandoEstado = true;
+    cancelarReintento();
     const contenedor = document.getElementById('contenedor-juegos');
     const yaCargo = contenedor.dataset.loaded === '1';
+    const teniaCache = pintarDesdeCache('cache');
     if (!yaCargo) {
-        // Si hay cache, pinta historial YA (no dejes «Sin predicciones» en un 502)
-        if (!pintarDesdeCache('cache')) {
-            contenedor.innerHTML = ES_NUBE
-                ? '<p style="color:var(--muted)">Despertando servidor… (Render free · 15–60 s la 1ª vez)</p>'
-                : '<p style="color:var(--muted)">Conectando con el motor...</p>';
-        } else {
+        if (teniaCache) {
             contenedor.innerHTML =
-                '<p style="color:var(--muted)">Actualizando juegos… (historial en cache)</p>';
+                '<p style="color:var(--muted)">Actualizando juegos… (historial en cache)</p>' +
+                '<p style="margin:10px 0"><button type="button" onclick="reintentarAhora()">↻ Reintentar ahora</button></p>';
+        } else if (ES_NUBE) {
+            wakeIntentos = Math.max(wakeIntentos, 1);
+            lastWakeAt = Date.now();
+            mostrarWakeUI(false);
+        } else {
+            contenedor.innerHTML = '<p style="color:var(--muted)">Conectando con el motor...</p>';
         }
     }
     const ctrl = new AbortController();
-    const timeoutMs = ES_NUBE ? 180000 : 45000;
+    // Boot rápido 25s; state completo 55s. Si cuelga, reintentar (no 120s).
+    const timeoutMs = ES_NUBE ? 55000 : 45000;
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
-        if (ES_NUBE) {
+        // 1) Boot liviano: pinta historial YA (sin esperar /api/state ~14s+)
+        let bootOk = false;
+        try {
+            const bootCtrl = new AbortController();
+            const bootTimer = setTimeout(() => bootCtrl.abort(), ES_NUBE ? 25000 : 15000);
+            const br = await fetch(API + '/api/panel-boot', { cache: 'no-store', signal: bootCtrl.signal });
+            clearTimeout(bootTimer);
+            if (br.ok) {
+                const boot = await br.json();
+                bootOk = true;
+                guardarCacheEstado(boot);
+                pintarEstado(boot);
+                if (!yaCargo) {
+                    contenedor.innerHTML =
+                        '<p style="color:var(--muted)">Historial OK · cargando juegos del día…</p>';
+                }
+            } else if (br.status === 502 || br.status === 503) {
+                throw new Error('Servidor respondió ' + br.status);
+            }
+        } catch (eBoot) {
+            const bm = String(eBoot.message || eBoot);
+            if (bm.includes('502') || bm.includes('503')) throw eBoot;
+            // Fallback health + cache
             try {
                 const hr = await fetch(API + '/api/health', { cache: 'no-store', signal: ctrl.signal });
                 if (hr.ok) {
@@ -894,10 +966,6 @@ async function cargarEstado() {
                         hs.style.color = seal.nivel === 'ok' ? '#00ff88' : (seal.nivel === 'aviso' ? '#ffbc00' : '#ff4466');
                         hs.textContent = (seal.nivel === 'ok' ? '✓ ' : '⚠ ') + seal.mensaje;
                     }
-                    if (!yaCargo) {
-                        contenedor.innerHTML =
-                            '<p style="color:var(--muted)">Servidor despierto · cargando juegos…</p>';
-                    }
                 } else if (hr.status === 502 || hr.status === 503) {
                     throw new Error('Servidor respondió ' + hr.status);
                 }
@@ -906,12 +974,18 @@ async function cargarEstado() {
                     throw eHealth;
                 }
             }
+            if (!bootOk && !teniaCache) {
+                try { await cargarHistorialFallback(ctrl.signal); } catch (_) {}
+            }
         }
+
+        // 2) Estado completo (juegos / picks). Si falla pero ya hay boot, no vaciar historial.
         const stateRes = await fetch(API + '/api/state', { cache: 'no-store', signal: ctrl.signal });
         if (!stateRes.ok) throw new Error('Servidor respondió ' + stateRes.status);
         const state = await stateRes.json();
         contenedor.dataset.loaded = '1';
         wakeIntentos = 0;
+        cancelarReintento();
         guardarCacheEstado(state);
         pintarEstado(state);
         pintarPicksHoy(state.games || [], state);
@@ -919,29 +993,24 @@ async function cargarEstado() {
     } catch (e) {
         const msg = String(e.message || e);
         const is502 = msg.includes('502') || msg.includes('503') || msg.includes('504');
-        // Nunca dejes el historial vacío por un 502: cache o endpoint liviano
         const okCache = pintarDesdeCache(is502 ? '502 · reintento' : 'reintento');
         if (!okCache) {
-            await cargarHistorialFallback(ctrl.signal);
+            try { await cargarHistorialFallback(ctrl.signal); } catch (_) {}
         }
         if (ES_NUBE && wakeIntentos < WAKE_MAX) {
             wakeIntentos += 1;
-            contenedor.innerHTML =
-                '<p style="color:#ffaa00"><b>' +
-                (is502 ? 'Render reiniciando (502)…' : 'El servidor está despertando...') +
-                '</b><br>Intento ' + wakeIntentos + '/' + WAKE_MAX +
-                ' · el historial no se borra; reintentando.</p>' +
-                '<p style="color:var(--muted);font-size:0.8rem">Si ves esto mucho: cierra la pestaña y abre de nuevo (evita cache vieja).</p>';
-            despertarServidor(120000).finally(() => {
-                setTimeout(cargarEstado, is502 ? 8000 : 6000);
-            });
+            mostrarWakeUI(is502);
+            // Ping en segundo plano — NO esperar (bug iOS: fetch largo nunca vuelve)
+            despertarServidor(15000);
+            programarReintento(is502 ? 3500 : 2500);
             return;
         }
         contenedor.innerHTML =
             '<p style="color:#ff4466"><b>No conecta con el servidor.</b><br>' +
             (ES_NUBE
-                ? 'Recarga forzando (Safari: mantén el botón recargar). Historial intacto en disco.<br>'
+                ? 'Pulsa el botón o cierra/abre la pestaña. Historial intacto en disco.<br>'
                 : '1) Doble clic en <b>iniciar.bat</b><br>2) Abre <b>http://localhost:8000</b><br>') +
+            '<p style="margin:12px 0"><button type="button" onclick="reintentarAhora()">↻ Reintentar ahora</button></p>' +
             '<small>' + msg + '</small></p>';
     } finally {
         clearTimeout(timer);
@@ -1757,12 +1826,26 @@ async function reiniciar() {
 
 cargarEstado();
 setInterval(cargarEstado, REFRESH_MS);
-// Al volver a la pestaña: despertar Render antes de refrescar el panel
+// Safari iOS congela timers en segundo plano: al volver, reintenta YA
 document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && ES_NUBE) {
-        despertarServidor(90000).then(() => cargarEstado());
+        cancelarReintento();
+        cargandoEstado = false;
+        despertarServidor(15000);
+        cargarEstado();
     }
 });
+// Watchdog: si el mensaje de wake lleva >20s, fuerza otro intento
+setInterval(() => {
+    if (!ES_NUBE || wakeIntentos <= 0 || wakeIntentos > WAKE_MAX) return;
+    const c = document.getElementById('contenedor-juegos');
+    if (!c || c.dataset.loaded === '1') return;
+    if (!lastWakeAt || Date.now() - lastWakeAt < 20000) return;
+    if (cargandoEstado) {
+        cargandoEstado = false;
+    }
+    reintentarAhora();
+}, 10000);
 
 </script>
 </body>
