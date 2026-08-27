@@ -2630,7 +2630,15 @@ app.add_middleware(
 
 @app.get("/")
 def panel():
-    return FileResponse("QuantumMLB.html")
+    # Sin cache: Safari iOS retiene HTML/JS viejo y el panel se queda en «Despertando…»
+    return FileResponse(
+        "QuantumMLB.html",
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
 
 
 def obtener_juegos_para_panel(fecha: str, ligero: bool = False) -> list[dict]:
@@ -2910,6 +2918,75 @@ def api_historial_status():
         "snapshots_locales": snaps,
         "capital": mem.get("capital"),
         "dia_actual": mem.get("dia_actual"),
+    }
+
+
+@app.get("/api/panel-boot")
+def api_panel_boot():
+    """Arranque del panel en <1s: historial+capital sin ML ni juegos.
+
+    Evita que Safari iOS se quede en «Despertando…» mientras /api/state
+    tarda 10–60s (cold start / registrar predicciones / ESPN).
+    """
+    try:
+        _intentar_recuperar_wipe()
+    except Exception:
+        pass
+    memoria = cargar_memoria()
+    pl_split = resumen_predicciones_y_dinero(memoria)
+    pl_split.pop("_mutado", None)
+    fecha_hoy = fecha_str()
+    dia = dia_por_fecha(memoria, fecha_hoy) or dia_operativo(memoria)
+    dia_panel = None
+    if dia:
+        if not dia.get("resumen"):
+            try:
+                dia["resumen"] = resumen_dia(dia)
+            except Exception:
+                pass
+        dia_panel = {
+            "dia": dia.get("dia"),
+            "fecha": dia.get("fecha"),
+            "bloqueado_en": dia.get("bloqueado_en"),
+            "resumen": dia.get("resumen"),
+            "predicciones": [
+                _recortar_dict(p, _PRED_PANEL_KEYS)
+                for p in (dia.get("predicciones") or [])
+                if isinstance(p, dict)
+            ],
+            "apuestas": [
+                _recortar_dict(a, _APUESTA_PANEL_KEYS)
+                for a in (dia.get("apuestas") or [])
+                if isinstance(a, dict)
+            ],
+        }
+    cfg = cargar_config()
+    return {
+        "ok": True,
+        "boot": True,
+        "memoria": _memoria_para_panel(memoria),
+        "banca": resumen_banca(memoria),
+        "dia_hoy": dia_panel,
+        "pl_split": pl_split,
+        "historial_sello": _resumen_sello(memoria),
+        "fecha_hoy": fecha_hoy,
+        "config": {
+            k: cfg.get(k)
+            for k in (
+                "capital_inicial",
+                "dias_totales",
+                "stake_por_juego",
+                "minutos_antes_juego",
+                "timezone",
+                "modo_solo_modelo",
+                "usar_ia_veto",
+                "usar_mente",
+            )
+            if k in cfg
+        },
+        "estrategia": cfg.get("estrategia", {}),
+        "games": [],
+        "minutos_antes_juego": cfg.get("minutos_antes_juego", 60),
     }
 
 
