@@ -2760,6 +2760,10 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
         juegos = fusionar_apuestas_con_juegos(
             obtener_juegos_para_panel(fecha_hoy, ligero=ligero), memoria
         )
+        try:
+            _guardar_juegos_panel_disk(fecha_hoy, juegos)
+        except Exception:
+            pass
     except Exception as e:
         print(f"Error cargando juegos: {e}")
 
@@ -3074,6 +3078,10 @@ def api_juegos_hoy(fresh: bool = False):
         juegos = fusionar_apuestas_con_juegos(
             obtener_juegos_para_panel(fecha_hoy, ligero=True), memoria
         )
+        try:
+            _guardar_juegos_panel_disk(fecha_hoy, juegos)
+        except Exception:
+            pass
     except Exception as e:
         disk = _leer_juegos_panel_disk(fecha_hoy, max_age_sec=6 * 3600)
         if disk:
