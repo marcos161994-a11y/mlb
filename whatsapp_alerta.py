@@ -745,7 +745,9 @@ def enviar_telegram(
         if "permission denied" in low or "authorize" in low:
             ok = False
             motivo = (
-                "CallMeBot bloqueado. Usa BotFather: TELEGRAM_BOT_TOKEN + /api/telegram-vincular"
+                "CallMeBot sin permiso. Mejor: BotFather → TELEGRAM_BOT_TOKEN + "
+                "/api/telegram-vincular. O autoriza CallMeBot: @CallMeBot_txtbot → Start "
+                "(https://api2.callmebot.com/txt/login.php)"
             )
         if "denied" in low or "permission" in low or "invalid" in low or "error:" in low:
             ok = False
