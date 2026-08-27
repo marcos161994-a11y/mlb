@@ -52,22 +52,50 @@ def _creds_file() -> Path:
 def leer_chat_id_guardado() -> str:
     creds = _leer_creds()
     if creds.get("chat_id"):
-        return str(creds["chat_id"])
+        return normalizar_chat_id(creds.get("chat_id"))
     p = _chat_id_file()
     try:
         if p.exists():
-            return p.read_text(encoding="utf-8").strip()
+            return normalizar_chat_id(p.read_text(encoding="utf-8"))
     except Exception:
         pass
     return ""
 
 
 def guardar_chat_id(chat_id: str | int) -> None:
+    limpio = normalizar_chat_id(chat_id)
+    if not limpio:
+        return
     _data_dir().mkdir(parents=True, exist_ok=True)
-    _chat_id_file().write_text(str(chat_id).strip(), encoding="utf-8")
+    _chat_id_file().write_text(limpio, encoding="utf-8")
     creds = _leer_creds()
-    creds["chat_id"] = str(chat_id).strip()
+    creds["chat_id"] = limpio
     _guardar_creds(creds)
+
+
+def normalizar_chat_id(raw: Any) -> str:
+    """
+    Acepta '5423229687' o valores mal pegados tipo
+    'TELEGRAM_CHAT_ID = 5423229687' / 'chat_id: 5423229687'.
+    Devuelve solo dígitos (con '-' inicial si es chat de grupo).
+    """
+    s = str(raw or "").strip()
+    if not s:
+        return ""
+    # Caso limpio
+    if re.fullmatch(r"-?\d{1,20}", s):
+        return s
+    # Extrae el primer número del texto
+    m = re.search(r"-?\d{1,20}", s)
+    return m.group(0) if m else ""
+
+
+def _chat_id_desde_fuentes(*candidatos: Any) -> str:
+    for c in candidatos:
+        limpio = normalizar_chat_id(c)
+        if limpio:
+            return limpio
+    return ""
 
 
 def leer_bot_token_guardado() -> str:
@@ -117,7 +145,7 @@ def telegram_a_memoria(memoria: dict | None, *, token: str = "", chat_id: str = 
     if token:
         tg["bot_token"] = token
     if chat_id:
-        tg["chat_id"] = str(chat_id)
+        tg["chat_id"] = normalizar_chat_id(chat_id) or str(chat_id)
     if bot:
         tg["bot"] = bot
     tg["actualizado_en"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -179,11 +207,11 @@ def sincronizar_telegram_persistencia(
         or str(cfg_tg.get("bot_token") or cfg_tg.get("token") or "").strip()
         or leer_bot_token_guardado()
     )
-    chat_id = (
-        os.environ.get("TELEGRAM_CHAT_ID", "").strip()
-        or str(mem_tg.get("chat_id") or "").strip()
-        or str(cfg_tg.get("chat_id") or "").strip()
-        or leer_chat_id_guardado()
+    chat_id = _chat_id_desde_fuentes(
+        os.environ.get("TELEGRAM_CHAT_ID", ""),
+        mem_tg.get("chat_id"),
+        cfg_tg.get("chat_id"),
+        leer_chat_id_guardado(),
     )
 
     wrote_token = False
@@ -257,11 +285,11 @@ def _cfg_telegram(cfg: dict | None) -> dict[str, Any]:
         or leer_bot_token_guardado()
         or str(mem_tg.get("bot_token") or "").strip()
     )
-    chat_id = (
-        str(tg.get("chat_id") or "").strip()
-        or os.environ.get("TELEGRAM_CHAT_ID", "").strip()
-        or leer_chat_id_guardado()
-        or str(mem_tg.get("chat_id") or "").strip()
+    chat_id = _chat_id_desde_fuentes(
+        tg.get("chat_id"),
+        os.environ.get("TELEGRAM_CHAT_ID", ""),
+        leer_chat_id_guardado(),
+        mem_tg.get("chat_id"),
     )
     user = (
         str(tg.get("user") or tg.get("username") or "").strip()

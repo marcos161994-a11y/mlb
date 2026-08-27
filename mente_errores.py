@@ -2,10 +2,12 @@
 Mente de errores — director operativo de la aplicación (no decide apuestas).
 
 Detecta fallos recurrentes (OddsPapi quemado, circuito, Telegram caído,
-T-60 sin congelar, shadow accidental) y aplica remediaciones seguras:
+T-60 sin congelar, juegos perdidos por sueño Render, shadow accidental)
+y aplica remediaciones seguras:
   - forzar proveedor ESPN + fallback internet
   - respetar/abrir circuito OddsPapi
   - apagar shadow de la mente de picks
+  - forzar registro T-60 al despertar
   - registrar incidentes en DATA_DIR
   - avisar por Telegram con cooldown (opcional)
 
@@ -32,6 +34,8 @@ ACCION_ACTIVAR_FALLBACK = "activar_fallback_internet"
 ACCION_APAGAR_SHADOW = "apagar_shadow"
 ACCION_RESPETAR_CIRCUITO = "respetar_circuito"
 ACCION_RESTAURAR_TELEGRAM = "restaurar_telegram"
+ACCION_FORZAR_REGISTRO_T60 = "forzar_registro_t60"
+ACCION_RESTAURAR_HISTORIAL = "restaurar_historial"
 ACCION_NOTIFICAR = "notificar"
 ACCION_REGISTRAR = "registrar"
 
@@ -296,18 +300,88 @@ def diagnosticar(
         except Exception:
             pass
 
-    if isinstance(vigilancia, dict) and vigilancia.get("nivel") == "alerta":
-        hallazgos.append(
-            {
-                "codigo": "vigilancia_t60",
-                "severidad": "alta",
-                "mensaje": str(vigilancia.get("mensaje") or "Juegos sin pick fijo cerca de T-60")[
-                    :180
-                ],
-                "acciones": [ACCION_REGISTRAR, ACCION_NOTIFICAR],
-                "meta": {"total_riesgo": vigilancia.get("total_riesgo")},
-            }
+    # Historial wipeado en Render (días del backup del repo que el disco ya no tiene)
+    try:
+        from servidor_mlb import (
+            BASE_DIR,
+            MEMORIA_PATH,
+            _backup_tiene_dias_que_el_disco_perdio,
+            _contar_historial,
+            _fechas_con_historial,
         )
+
+        origen = BASE_DIR / "memoria_auditoria.json"
+        if origen.exists() and MEMORIA_PATH.exists():
+            bundled = json.loads(origen.read_text(encoding="utf-8"))
+            disk = json.loads(MEMORIA_PATH.read_text(encoding="utf-8"))
+            if not disk.get("reinicio_manual") and _backup_tiene_dias_que_el_disco_perdio(
+                bundled, disk
+            ):
+                b_ap, b_pr = _contar_historial(bundled)
+                perdidas = sorted(_fechas_con_historial(bundled) - _fechas_con_historial(disk))
+                hallazgos.append(
+                    {
+                        "codigo": "historial_wipeado",
+                        "severidad": "alta",
+                        "mensaje": (
+                            "El disco perdió días con predicciones "
+                            f"({', '.join(perdidas[:4])}{'…' if len(perdidas) > 4 else ''}). "
+                            f"Backup tiene {b_pr} preds / {b_ap} apuestas. Restaurando."
+                        )[:180],
+                        "acciones": [
+                            ACCION_RESTAURAR_HISTORIAL,
+                            ACCION_REGISTRAR,
+                            ACCION_NOTIFICAR,
+                        ],
+                    }
+                )
+    except Exception:
+        pass
+
+    if isinstance(vigilancia, dict) and vigilancia.get("nivel") == "alerta":
+        total_riesgo = int(vigilancia.get("total_riesgo") or 0)
+        total_perdidos = int(vigilancia.get("total_perdidos") or 0)
+        if total_riesgo > 0:
+            hallazgos.append(
+                {
+                    "codigo": "vigilancia_t60",
+                    "severidad": "alta",
+                    "mensaje": str(
+                        vigilancia.get("mensaje") or "Juegos sin pick fijo cerca de T-60"
+                    )[:180],
+                    "acciones": [
+                        ACCION_FORZAR_REGISTRO_T60,
+                        ACCION_REGISTRAR,
+                        ACCION_NOTIFICAR,
+                    ],
+                    "meta": {
+                        "total_riesgo": total_riesgo,
+                        "en_riesgo": (vigilancia.get("en_riesgo") or [])[:5],
+                    },
+                    "cooldown_min": 45,
+                }
+            )
+        if total_perdidos > 0:
+            muestras = vigilancia.get("perdidos") or []
+            nombres = ", ".join(
+                f"{p.get('visitante')}@{p.get('home')}" for p in muestras[:3]
+            )
+            hallazgos.append(
+                {
+                    "codigo": "juegos_sin_pick_perdidos",
+                    "severidad": "alta",
+                    "mensaje": (
+                        f"{total_perdidos} juego(s) sin predicción "
+                        f"(posible Render dormido): {nombres}"
+                    )[:180],
+                    "acciones": [ACCION_REGISTRAR, ACCION_NOTIFICAR],
+                    "meta": {
+                        "total_perdidos": total_perdidos,
+                        "perdidos": muestras[:5],
+                    },
+                    "cooldown_min": 120,
+                }
+            )
 
     if isinstance(lineas_meta, dict) and lineas_meta.get("ok") is False:
         msg = str(lineas_meta.get("mensaje") or "Sin cuotas")[:160]
@@ -416,6 +490,46 @@ def _aplicar_acciones(
                 except Exception as e:
                     hechas.append(acc)
                     h["mensaje"] = f"Restore Telegram falló: {e}"[:160]
+            elif acc == ACCION_RESTAURAR_HISTORIAL:
+                try:
+                    from servidor_mlb import _intentar_recuperar_wipe
+
+                    ok = bool(_intentar_recuperar_wipe())
+                    hechas.append(acc)
+                    h["mensaje"] = (
+                        "Historial fusionado desde backup del repo"
+                        if ok
+                        else "No se pudo restaurar historial (¿reinicio_manual?)"
+                    )[:160]
+                except Exception as e:
+                    hechas.append(acc)
+                    h["mensaje"] = f"Restore historial falló: {e}"[:160]
+            elif acc == ACCION_FORZAR_REGISTRO_T60:
+                try:
+                    # Lazy import: evita ciclo mente_errores ↔ servidor_mlb
+                    from servidor_mlb import (
+                        registrar_predicciones_del_dia,
+                        bloquear_apuestas_del_dia,
+                    )
+
+                    reg = registrar_predicciones_del_dia(forzar=True)
+                    try:
+                        bloquear_apuestas_del_dia(forzar=False)
+                    except Exception:
+                        pass
+                    hechas.append(acc)
+                    nuevas = int((reg or {}).get("predicciones_nuevas") or 0)
+                    h["meta"] = {
+                        **(h.get("meta") if isinstance(h.get("meta"), dict) else {}),
+                        "predicciones_nuevas": nuevas,
+                    }
+                    if nuevas:
+                        h["mensaje"] = (
+                            f"Forzado T-60: +{nuevas} predicción(es) congelada(s)"
+                        )[:160]
+                except Exception as e:
+                    hechas.append(acc)
+                    h["mensaje"] = f"Forzar registro T-60 falló: {e}"[:160]
             elif acc == ACCION_REGISTRAR:
                 hechas.append(acc)
             elif acc == ACCION_NOTIFICAR:
@@ -462,7 +576,26 @@ def _notificar_si_cabe(
     # Un mensaje agrupado; cooldown por el código más grave
     codigo = str(criticos[0].get("codigo") or "ops")
     clave = f"alerta:{codigo}"
+    # Vigilancia / picks perdidos: avisar más seguido (Render free duerme)
     mins = int(opts.get("cooldown_alerta_min") or DEFAULT_COOLDOWN_ALERTA_MIN)
+    for a in criticos:
+        try:
+            cm = int((a.get("meta") or {}).get("cooldown_min") or 0)
+        except (TypeError, ValueError):
+            cm = 0
+        # hallazgo puede traer cooldown_min en el propio dict (no solo meta)
+        try:
+            # recuperar del hallazgo original vía aplicadas no tiene cooldown;
+            # usar defaults por código
+            pass
+        except Exception:
+            pass
+        if a.get("codigo") == "vigilancia_t60":
+            mins = min(mins, 45)
+        elif a.get("codigo") == "juegos_sin_pick_perdidos":
+            mins = min(mins, 120)
+        elif a.get("codigo") == "historial_wipeado":
+            mins = min(mins, 60)
     if not _cooldown_ok(estado, clave, mins):
         return {"omitido": True, "motivo": "cooldown", "codigo": codigo}
     lineas = []
@@ -471,7 +604,8 @@ def _notificar_si_cabe(
     texto = (
         "🛠 MENTE ERRORES Quantum MLB\n"
         + "\n".join(lineas)
-        + "\nRemediación automática aplicada (ESPN/fallback/shadow si aplica)."
+        + "\nRemediación: ESPN/fallback/shadow/registro T-60 si aplica."
+        + "\nSi Render free duerme: cron externo cada 5 min a /api/health o /api/cron."
     )
     try:
         from whatsapp_alerta import enviar_alerta
@@ -553,6 +687,30 @@ def ejecutar_ciclo(
     elif sync_info.get("ok"):
         # Ya listo vía env/memoria/disco: no reportar falso positivo
         hallazgos = [h for h in hallazgos if h.get("codigo") != "telegram_no_listo"]
+
+    # Si se restauró historial, re-evaluar y no dejar el panel en "alerta" eterna
+    if any(ACCION_RESTAURAR_HISTORIAL in (a.get("acciones") or []) for a in aplicadas):
+        try:
+            from servidor_mlb import (
+                BASE_DIR,
+                MEMORIA_PATH,
+                _backup_tiene_dias_que_el_disco_perdio,
+            )
+
+            origen = BASE_DIR / "memoria_auditoria.json"
+            if origen.exists() and MEMORIA_PATH.exists():
+                bundled = json.loads(origen.read_text(encoding="utf-8"))
+                disk = json.loads(MEMORIA_PATH.read_text(encoding="utf-8"))
+                if disk.get("reinicio_manual") or not _backup_tiene_dias_que_el_disco_perdio(
+                    bundled, disk
+                ):
+                    hallazgos = [h for h in hallazgos if h.get("codigo") != "historial_wipeado"]
+                    for a in aplicadas:
+                        if a.get("codigo") == "historial_wipeado":
+                            a["severidad"] = "baja"
+                            a["mensaje"] = "Historial restaurado desde backup del repo"
+        except Exception:
+            pass
 
     aviso = _notificar_si_cabe(estado, aplicadas, cfg_eff, opts) if aplicadas else None
 

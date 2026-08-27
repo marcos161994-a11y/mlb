@@ -457,6 +457,7 @@
     <p class="meta-line" id="lineas-status" style="color:#ffbc00;"></p>
     <p class="meta-line" id="vigilancia-status" style="color:#8899aa;"></p>
     <p class="meta-line" id="mente-errores-status" style="color:#8899aa;"></p>
+    <p class="meta-line" id="historial-sello" style="color:#8899aa;font-weight:700;"></p>
     <p class="meta-line" id="telegram-banner" style="color:#ffbc00;"></p>
     <p class="meta-line" id="proximo-bloqueo"></p>
 </div>
@@ -548,7 +549,8 @@
 </div>
 
 <div id="contenedor-juegos" class="grid-juegos">
-    <p style="color:var(--muted)">Conectando con el motor...</p>
+    <p style="color:var(--muted)">Cargando…</p>
+    <p style="margin:10px 0"><button type="button" onclick="reintentarAhora()">↻ Reintentar ahora</button></p>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -560,13 +562,167 @@ const API = (!window.location.origin || window.location.protocol === 'file:')
     : window.location.origin;
 const ES_NUBE = API.includes('onrender.com') || API.includes('render.com');
 const REFRESH_MS = ES_NUBE ? 45000 : 8000;
+const CACHE_KEY = 'qmlb_last_state_v2';
+const PANEL_VER = '2026-08-27-boot';
 let cargandoEstado = false;
+let wakeIntentos = 0;
+let wakeTimer = null;
+let lastWakeAt = 0;
+const WAKE_MAX = 12;
 
 function toast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg;
     t.style.display = 'block';
     setTimeout(() => t.style.display = 'none', 4000);
+}
+
+function cancelarReintento() {
+    if (wakeTimer) {
+        clearTimeout(wakeTimer);
+        wakeTimer = null;
+    }
+}
+
+/** Reintento fiable: NO espera al ping (Safari iOS congela timers/fetch largos). */
+function programarReintento(ms) {
+    cancelarReintento();
+    lastWakeAt = Date.now();
+    wakeTimer = setTimeout(() => {
+        wakeTimer = null;
+        cargandoEstado = false; // por si quedó trabado
+        cargarEstado();
+    }, ms);
+}
+
+function mostrarWakeUI(is502) {
+    const contenedor = document.getElementById('contenedor-juegos');
+    if (!contenedor) return;
+    contenedor.innerHTML =
+        '<p style="color:#ffaa00"><b>' +
+        (is502 ? 'Render reiniciando (502)…' : 'Cargando / despertando servidor…') +
+        '</b><br>Intento ' + wakeIntentos + '/' + WAKE_MAX +
+        ' · el historial no se borra.</p>' +
+        '<p style="margin:12px 0">' +
+        '<button type="button" onclick="reintentarAhora()" style="padding:12px 18px;font-size:1rem;font-weight:700">' +
+        '↻ Reintentar ahora</button></p>' +
+        '<p style="color:var(--muted);font-size:0.78rem">Si lleva más de 1 min: cierra la pestaña y ábrela de nuevo.</p>';
+}
+
+function reintentarAhora() {
+    cancelarReintento();
+    cargandoEstado = false;
+    despertarServidor(20000); // fire-and-forget corto
+    cargarEstado();
+}
+
+function guardarCacheEstado(state) {
+    try {
+        const slim = {
+            ts: Date.now(),
+            ver: PANEL_VER,
+            memoria: state.memoria,
+            pl_split: state.pl_split,
+            historial_sello: state.historial_sello,
+            banca: state.banca,
+            dia_hoy: state.dia_hoy,
+            lecciones: state.lecciones,
+            mente: state.mente,
+            games: state.games,
+            favorables_hoy: state.favorables_hoy,
+            oportunidades_valor_hoy: state.oportunidades_valor_hoy,
+            estrategia: state.estrategia,
+            config: state.config,
+            vigilancia: state.vigilancia,
+            mente_errores: state.mente_errores,
+            telegram: state.telegram,
+            alertas: state.alertas,
+            lineas: state.lineas,
+            fecha_hoy: state.fecha_hoy,
+        };
+        // localStorage: sobrevive cerrar la pestaña (sessionStorage no)
+        localStorage.setItem(CACHE_KEY, JSON.stringify(slim));
+    } catch (e) { /* quota */ }
+}
+
+function leerCacheEstado() {
+    try {
+        const raw = localStorage.getItem(CACHE_KEY) || sessionStorage.getItem('qmlb_last_state_v1');
+        if (!raw) return null;
+        const s = JSON.parse(raw);
+        if (!s || !s.memoria) return null;
+        // Cache válida 48 h (historial no debe “desaparecer” al despertar)
+        if (s.ts && Date.now() - s.ts > 48 * 3600 * 1000) return null;
+        return s;
+    } catch (e) {
+        return null;
+    }
+}
+
+function pintarDesdeCache(motivo) {
+    const cached = leerCacheEstado();
+    if (!cached) return false;
+    try {
+        pintarEstado(cached);
+        if (cached.games) {
+            pintarPicksHoy(cached.games, cached);
+            // No pisa contenedor-juegos si estamos mostrando error de wake
+        }
+        const hs = document.getElementById('historial-sello');
+        if (hs && cached.historial_sello && cached.historial_sello.mensaje) {
+            const seal = cached.historial_sello;
+            hs.style.color = seal.nivel === 'ok' ? '#00ff88' : '#ffbc00';
+            hs.textContent = (seal.nivel === 'ok' ? '✓ ' : '⚠ ') + seal.mensaje + (motivo ? ' · ' + motivo : '');
+        }
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+/** Ping ligero: despierta Render free (timeout corto — no bloquear UI). */
+async function despertarServidor(ms) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), ms || 25000);
+    try {
+        const r = await fetch(API + '/api/health', { cache: 'no-store', signal: ctrl.signal });
+        return r.ok;
+    } catch (e) {
+        return false;
+    } finally {
+        clearTimeout(t);
+    }
+}
+
+/** Fallback: historial desde /api/predicciones si /api/state falla (502). */
+async function cargarHistorialFallback(signal) {
+    try {
+        const r = await fetch(API + '/api/predicciones', { cache: 'no-store', signal });
+        if (!r.ok) return false;
+        const d = await r.json();
+        const dias = (d.historial || []).map(h => ({
+            dia: h.dia,
+            fecha: h.fecha,
+            predicciones: h.predicciones || [],
+            apuestas: h.apuestas || [],
+        }));
+        if (!dias.length) return false;
+        const memoria = {
+            capital: d.capital,
+            capital_inicial: 100,
+            dia_actual: d.dia_actual,
+            dias_totales: 200,
+            stake_por_juego: 5,
+            experimento_activo: true,
+            dias,
+        };
+        pintarPredicciones(memoria, null);
+        const capEl = document.getElementById('capital-display');
+        if (capEl && d.capital != null) capEl.textContent = '$' + Number(d.capital).toFixed(2);
+        return true;
+    } catch (e) {
+        return false;
+    }
 }
 
 async function guardarTokenTelegram() {
@@ -747,37 +903,115 @@ function fmtAmer(a) {
 async function cargarEstado() {
     if (cargandoEstado) return;
     cargandoEstado = true;
+    cancelarReintento();
     const contenedor = document.getElementById('contenedor-juegos');
     const yaCargo = contenedor.dataset.loaded === '1';
+    const teniaCache = pintarDesdeCache('cache');
     if (!yaCargo) {
-        contenedor.innerHTML = ES_NUBE
-            ? '<p style="color:var(--muted)">Conectando con el motor... (la nube puede tardar ~1 min al despertar)</p>'
-            : '<p style="color:var(--muted)">Conectando con el motor...</p>';
+        if (teniaCache) {
+            contenedor.innerHTML =
+                '<p style="color:var(--muted)">Actualizando juegos… (historial en cache)</p>' +
+                '<p style="margin:10px 0"><button type="button" onclick="reintentarAhora()">↻ Reintentar ahora</button></p>';
+        } else if (ES_NUBE) {
+            wakeIntentos = Math.max(wakeIntentos, 1);
+            lastWakeAt = Date.now();
+            mostrarWakeUI(false);
+        } else {
+            contenedor.innerHTML = '<p style="color:var(--muted)">Conectando con el motor...</p>';
+        }
     }
     const ctrl = new AbortController();
-    const timeoutMs = ES_NUBE ? 180000 : 45000;
+    // Boot rápido 25s; state completo 55s. Si cuelga, reintentar (no 120s).
+    const timeoutMs = ES_NUBE ? 55000 : 45000;
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
+        // 1) Boot liviano: pinta historial YA (sin esperar /api/state ~14s+)
+        let bootOk = false;
+        try {
+            const bootCtrl = new AbortController();
+            const bootTimer = setTimeout(() => bootCtrl.abort(), ES_NUBE ? 25000 : 15000);
+            const br = await fetch(API + '/api/panel-boot', { cache: 'no-store', signal: bootCtrl.signal });
+            clearTimeout(bootTimer);
+            if (br.ok) {
+                const boot = await br.json();
+                bootOk = true;
+                guardarCacheEstado(boot);
+                pintarEstado(boot);
+                if (!yaCargo) {
+                    contenedor.innerHTML =
+                        '<p style="color:var(--muted)">Historial OK · cargando juegos del día…</p>';
+                }
+            } else if (br.status === 502 || br.status === 503) {
+                throw new Error('Servidor respondió ' + br.status);
+            }
+        } catch (eBoot) {
+            const bm = String(eBoot.message || eBoot);
+            if (bm.includes('502') || bm.includes('503')) throw eBoot;
+            // Fallback health + cache
+            try {
+                const hr = await fetch(API + '/api/health', { cache: 'no-store', signal: ctrl.signal });
+                if (hr.ok) {
+                    const h = await hr.json();
+                    if (h.capital != null) {
+                        const capEl = document.getElementById('capital-display');
+                        if (capEl) capEl.textContent = '$' + Number(h.capital).toFixed(2);
+                    }
+                    if (h.dia_actual != null) {
+                        const dEl = document.getElementById('dia-actual');
+                        if (dEl) dEl.textContent = 'DÍA ' + h.dia_actual;
+                    }
+                    const hs = document.getElementById('historial-sello');
+                    const seal = h.historial || {};
+                    if (hs && seal.mensaje) {
+                        hs.style.color = seal.nivel === 'ok' ? '#00ff88' : (seal.nivel === 'aviso' ? '#ffbc00' : '#ff4466');
+                        hs.textContent = (seal.nivel === 'ok' ? '✓ ' : '⚠ ') + seal.mensaje;
+                    }
+                } else if (hr.status === 502 || hr.status === 503) {
+                    throw new Error('Servidor respondió ' + hr.status);
+                }
+            } catch (eHealth) {
+                if (String(eHealth.message || '').includes('502') || String(eHealth.message || '').includes('503')) {
+                    throw eHealth;
+                }
+            }
+            if (!bootOk && !teniaCache) {
+                try { await cargarHistorialFallback(ctrl.signal); } catch (_) {}
+            }
+        }
+
+        // 2) Estado completo (juegos / picks). Si falla pero ya hay boot, no vaciar historial.
         const stateRes = await fetch(API + '/api/state', { cache: 'no-store', signal: ctrl.signal });
         if (!stateRes.ok) throw new Error('Servidor respondió ' + stateRes.status);
         const state = await stateRes.json();
         contenedor.dataset.loaded = '1';
+        wakeIntentos = 0;
+        cancelarReintento();
+        guardarCacheEstado(state);
         pintarEstado(state);
         pintarPicksHoy(state.games || [], state);
         pintarJuegos(state.games || []);
     } catch (e) {
-        if (e.name === 'AbortError' && ES_NUBE) {
-            contenedor.innerHTML =
-                '<p style="color:#ffaa00"><b>El servidor está despertando...</b><br>Reintentando en unos segundos.</p>';
-            setTimeout(cargarEstado, 8000);
+        const msg = String(e.message || e);
+        const is502 = msg.includes('502') || msg.includes('503') || msg.includes('504');
+        const okCache = pintarDesdeCache(is502 ? '502 · reintento' : 'reintento');
+        if (!okCache) {
+            try { await cargarHistorialFallback(ctrl.signal); } catch (_) {}
+        }
+        if (ES_NUBE && wakeIntentos < WAKE_MAX) {
+            wakeIntentos += 1;
+            mostrarWakeUI(is502);
+            // Ping en segundo plano — NO esperar (bug iOS: fetch largo nunca vuelve)
+            despertarServidor(15000);
+            programarReintento(is502 ? 3500 : 2500);
             return;
         }
         contenedor.innerHTML =
-            '<p style="color:#ff4466"><b>Servidor apagado.</b><br>' +
+            '<p style="color:#ff4466"><b>No conecta con el servidor.</b><br>' +
             (ES_NUBE
-                ? 'Abre <b>https://mlb-1-en7i.onrender.com</b> y espera ~1 min.<br>'
+                ? 'Pulsa el botón o cierra/abre la pestaña. Historial intacto en disco.<br>'
                 : '1) Doble clic en <b>iniciar.bat</b><br>2) Abre <b>http://localhost:8000</b><br>') +
-            '<small>' + (e.message || e) + '</small></p>';
+            '<p style="margin:12px 0"><button type="button" onclick="reintentarAhora()">↻ Reintentar ahora</button></p>' +
+            '<small>' + msg + '</small></p>';
     } finally {
         clearTimeout(timer);
         cargandoEstado = false;
@@ -801,9 +1035,13 @@ function rendCard(titulo, w, l, wr, ganado, perdido, neto) {
 }
 
 function pintarEstado(data) {
-    const m = data.memoria;
+    const m = data && data.memoria;
+    if (!m) return;
     const dia = data.dia_hoy;
     const res = dia?.resumen || { profit_dia: 0, ganadas: 0, pendientes: 0, jugadas: 0, capital_arriesgado: 0 };
+    const estr = data.estrategia || {};
+    const cfg = data.config || {};
+    const soloModelo = !!cfg.modo_solo_modelo;
 
     const b = data.banca || {};
     document.getElementById('capital-display').textContent = '$' + m.capital.toFixed(2);
@@ -950,6 +1188,22 @@ function pintarEstado(data) {
         }
     }
 
+    const hs = document.getElementById('historial-sello');
+    const seal = data.historial_sello || (data.historial) || {};
+    if (hs) {
+        const nivel = seal.nivel || (seal.ok ? 'ok' : 'aviso');
+        if (nivel === 'ok') {
+            hs.style.color = '#00ff88';
+            hs.textContent = '✓ ' + (seal.mensaje || 'Historial OK');
+        } else if (nivel === 'aviso') {
+            hs.style.color = '#ffbc00';
+            hs.textContent = '⚠ ' + (seal.mensaje || 'Historial corto');
+        } else {
+            hs.style.color = '#ff4466';
+            hs.textContent = '✗ ' + (seal.mensaje || 'Historial en peligro');
+        }
+    }
+
     const tb = document.getElementById('telegram-banner');
     const tg = data.telegram || (data.alertas && data.alertas.telegram) || {};
     const stTg = document.getElementById('tg-status');
@@ -998,9 +1252,15 @@ function pintarEstado(data) {
     // Nota corta de hoy
     const fav = data.favorables_hoy ?? data.oportunidades_valor_hoy ?? 0;
     const maxP = estr.max_apuestas_dia || 5;
+    const fechasHist = (m.dias || [])
+        .filter(d => (d.predicciones || []).length > 0 || (d.apuestas || []).length > 0)
+        .map(d => `${d.fecha} (${(d.predicciones || []).length})`);
+    const histTxt = fechasHist.length
+        ? ` · historial ${fechasHist.join(' · ')}`
+        : ' · historial vacío';
     document.getElementById('favorables-hoy').textContent =
         `Hoy: ${fav} listo(s) / máx ${maxP} · papel ${ganadas}✓ ${perdidas}✗ ${pendientes}⏳ ${fmtMoney(profitHoy)}` +
-        ` · dinero ${gDin}✓ ${pDin}✗ ${pendDin}⏳ ${fmtMoney(profitDin)}`;
+        ` · dinero ${gDin}✓ ${pDin}✗ ${pendDin}⏳ ${fmtMoney(profitDin)}` + histTxt;
 
     const lista = document.getElementById('lista-historial');
     const diasDinero = (m.dias || []).filter(d => (d.apuestas || []).length > 0);
@@ -1256,7 +1516,8 @@ function pintarPredicciones(memoria, plSplit) {
         Ganado <span style="color:var(--green)">$${(din.ganado||0).toFixed(2)}</span> ·
         Perdido <span style="color:var(--red)">$${(din.perdido||0).toFixed(2)}</span> ·
         Neto <b>$${(din.neto||0).toFixed(2)}</b></div>
-        <div style="margin-top:6px;color:var(--muted);font-size:0.75rem">💰 = apuesta con dinero · sin badge = solo predicción</div>
+        <div style="margin-top:6px;color:var(--muted);font-size:0.75rem">💰 = apuesta con dinero · sin badge = solo predicción · días pasados abiertos</div>
+        <div style="margin-top:4px;color:var(--cyan);font-size:0.78rem">Días: ${diasOrden.map(d => `${d.fecha} (${(d.predicciones||[]).length})`).join(' · ') || 'ninguno'}</div>
     </div>`;
 
     let hayFilas = false;
@@ -1333,9 +1594,14 @@ function pintarPredicciones(memoria, plSplit) {
             ? `papel n/a (${nTarde} retroactivos · no cuentan)`
             : `pred ${gPapel}✓/${pPapel}✗ · papel ${fmtMoney(netoPapel)}` + (nTarde ? ` · ${nTarde} tardíos ignorados` : '');
 
+<<<<<<< HEAD
         // Abrir días con resultados (y el más reciente) para que en móvil se vean los juegos
         const tieneResultados = filas.some(f => f.resultado === 'acierto' || f.resultado === 'fallo');
         const abierto = tieneResultados || diaIdx === 0;
+=======
+        // Siempre abiertos: en móvil el historial colapsado parecía “no hay juegos”
+        const abierto = true;
+>>>>>>> origin/main
         diaIdx += 1;
 
         html += `<div style="margin-bottom:14px;padding:12px;background:var(--panel);border-radius:8px;border:1px solid var(--border);">
@@ -1544,14 +1810,48 @@ async function procesarExperiencias() {
 }
 
 async function reiniciar() {
-    if (!confirm('¿Reiniciar el experimento a $100 y día 1?')) return;
-    await fetch(API + '/api/reiniciar', { method: 'POST' });
+    const ok1 = confirm(
+        'PELIGRO: esto borra el historial del experimento.\n\n' +
+        'Solo úsalo si quieres empezar de cero. ¿Continuar?'
+    );
+    if (!ok1) return;
+    const typed = prompt('Escribe BORRAR (en mayúsculas) para confirmar el wipe del historial:');
+    if ((typed || '').trim().toUpperCase() !== 'BORRAR') {
+        toast('Reinicio cancelado · historial intacto');
+        return;
+    }
+    const res = await fetch(API + '/api/reiniciar?confirm=BORRAR', { method: 'POST' });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast(err.detail || 'Reinicio bloqueado');
+        return;
+    }
     toast('Experimento reiniciado');
     cargarEstado();
 }
 
 cargarEstado();
 setInterval(cargarEstado, REFRESH_MS);
+// Safari iOS congela timers en segundo plano: al volver, reintenta YA
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && ES_NUBE) {
+        cancelarReintento();
+        cargandoEstado = false;
+        despertarServidor(15000);
+        cargarEstado();
+    }
+});
+// Watchdog: si el mensaje de wake lleva >20s, fuerza otro intento
+setInterval(() => {
+    if (!ES_NUBE || wakeIntentos <= 0 || wakeIntentos > WAKE_MAX) return;
+    const c = document.getElementById('contenedor-juegos');
+    if (!c || c.dataset.loaded === '1') return;
+    if (!lastWakeAt || Date.now() - lastWakeAt < 20000) return;
+    if (cargandoEstado) {
+        cargandoEstado = false;
+    }
+    reintentarAhora();
+}, 10000);
 
 </script>
 </body>

@@ -2,7 +2,12 @@
 
 from __future__ import annotations
 
-from lineas_betmgm import american_a_decimal, normalizar_nombre_equipo
+from lineas_betmgm import (
+    american_a_decimal,
+    normalizar_nombre_equipo,
+    _sanear_api_key,
+    enmascarar_api_key,
+)
 from lineup_scratch import analizar_scratch_lineup, pick_afectado_por_scratch, parsear_lineups_juego
 from modelo_mlb import edge_pct, prob_implicita
 
@@ -80,3 +85,13 @@ def test_estrellas_fuera_bloquea_pick():
 
 def test_prob_implicita():
     assert abs(prob_implicita(2.0) - 50.0) < 0.01
+
+
+def test_sanear_api_key():
+    assert _sanear_api_key('  "abc123def456"  ') == "abc123def456"
+    assert _sanear_api_key("Bearer xyz789abc012") == "xyz789abc012"
+    assert _sanear_api_key("YOUR_API_KEY") is None
+    prev = enmascarar_api_key("abcdefghijklmnop")
+    assert prev["key_len"] == 16
+    assert prev["key_preview"].startswith("abcd")
+    assert "efghijklmn" not in prev["key_preview"]

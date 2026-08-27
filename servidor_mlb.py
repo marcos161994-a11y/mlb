@@ -15,6 +15,7 @@ import time
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import requests
@@ -27,6 +28,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from lineas_betmgm import aplicar_lineas_a_juegos
 from lineas_betmgm import normalizar_nombre_equipo as norm_nombre
+from memoria_fusion import (
+    backup_tiene_dias_que_el_disco_perdio as _backup_tiene_dias_que_el_disco_perdio,
+    contar_historial as _contar_historial,
+    escribir_snapshot as _escribir_snapshot,
+    fechas_con_historial as _fechas_con_historial,
+    fusionar_memoria as _fusionar_memoria,
+    mejor_snapshot as _mejor_snapshot,
+    memoria_parece_reinicio as _memoria_parece_reinicio,
+    proteger_escritura as _proteger_escritura,
+    resumen_sello as _resumen_sello,
+)
 from modelo_mlb import (
     evaluar_juegos,
     calcular_stake_dinamico,
@@ -78,94 +90,70 @@ _juegos_ui_cache: dict = {"fecha": "", "ts": 0.0, "juegos": []}
 _JUEGOS_UI_TTL_SEC = 90
 
 
-def _contar_historial(memoria: dict) -> tuple[int, int]:
-    """(apuestas liquidadas, predicciones con resultado) para comparar backups."""
-    apuestas = 0
-    preds = 0
-    for dia in memoria.get("dias") or []:
-        for a in dia.get("apuestas") or []:
-            if a.get("estado") in ("ganada", "perdida"):
-                apuestas += 1
-        for p in dia.get("predicciones") or []:
-            if p.get("resultado") in ("acierto", "fallo"):
-                preds += 1
-    return apuestas, preds
-
-
-def _memoria_parece_reinicio(memoria: dict) -> bool:
-    """True si parece un wipe/reinicio (día 1, banca inicial, sin historial dinero)."""
-    dias = memoria.get("dias") or []
-    capital = float(memoria.get("capital") or 0)
-    inicial = float(memoria.get("capital_inicial") or 100)
-    apuestas, preds = _contar_historial(memoria)
-    return (
-        int(memoria.get("dia_actual") or 1) <= 1
-        and abs(capital - inicial) < 0.01
-        and apuestas == 0
-        and len(dias) <= 2
-        and preds <= 10  # solo el día recién creado tras el wipe
-    )
-
-
-def _fusionar_memoria(base: dict, extra: dict) -> dict:
-    """Une historial base con días más nuevos de extra (p.ej. picks de hoy tras wipe)."""
-    out = copy.deepcopy(base)
-    by_fecha = {d["fecha"]: d for d in out.get("dias") or [] if d.get("fecha")}
-    for dia in extra.get("dias") or []:
-        fecha = dia.get("fecha")
-        if not fecha:
-            continue
-        if fecha not in by_fecha:
-            by_fecha[fecha] = copy.deepcopy(dia)
-            continue
-        dest = by_fecha[fecha]
-        preds = {str(p.get("game_id")): p for p in (dest.get("predicciones") or [])}
-        for p in dia.get("predicciones") or []:
-            gid = str(p.get("game_id") or "")
-            cur = preds.get(gid)
-            if cur is None or (
-                cur.get("estado") == "pendiente" and p.get("estado") == "liquidado"
-            ):
-                preds[gid] = p
-        dest["predicciones"] = list(preds.values())
-        if not dest.get("apuestas") and dia.get("apuestas"):
-            dest["apuestas"] = copy.deepcopy(dia["apuestas"])
-    dias = sorted(by_fecha.values(), key=lambda d: d["fecha"])
-    for i, d in enumerate(dias, 1):
-        d["dia"] = i
-    out["dias"] = dias
-    # Capital real solo de apuestas con dinero
-    cap = float(out.get("capital_inicial") or 100)
-    for d in dias:
-        for a in d.get("apuestas") or []:
-            if a.get("estado") in ("ganada", "perdida") and a.get("profit") is not None:
-                cap += float(a["profit"])
-    out["capital"] = round(cap, 2)
-    return out
-
-
 def _intentar_recuperar_wipe() -> bool:
-    """Si el disco parece reinicio y el repo tiene historial, restaura + fusiona hoy."""
+    """
+    Recupera historial del JSON del repo / snapshots locales si Render wipeó
+    o arrancó un experimento nuevo sin los días anteriores.
+    """
+    disk: dict | None = None
+    if MEMORIA_PATH.exists():
+        try:
+            disk = json.loads(MEMORIA_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            disk = None
+    if isinstance(disk, dict) and disk.get("reinicio_manual"):
+        return False
+
+    candidatos: list[dict] = []
     origen = BASE_DIR / "memoria_auditoria.json"
-    if not origen.exists() or not MEMORIA_PATH.exists():
+    if origen.exists():
+        try:
+            bundled = json.loads(origen.read_text(encoding="utf-8"))
+            if isinstance(bundled, dict):
+                b_ap, b_pr = _contar_historial(bundled)
+                if (b_ap + b_pr) > 0:
+                    candidatos.append(bundled)
+        except Exception:
+            pass
+    snap = _mejor_snapshot(DATA_DIR)
+    if isinstance(snap, dict):
+        candidatos.append(snap)
+
+    if not candidatos:
         return False
-    try:
-        bundled = json.loads(origen.read_text(encoding="utf-8"))
-        disk = json.loads(MEMORIA_PATH.read_text(encoding="utf-8"))
-    except Exception:
+
+    candidatos.sort(key=lambda m: len(_fechas_con_historial(m)), reverse=True)
+    merged = copy.deepcopy(candidatos[0])
+    for c in candidatos[1:]:
+        merged = _fusionar_memoria(merged, c)
+    if isinstance(disk, dict):
+        merged = _fusionar_memoria(merged, disk)
+        wipe_clasico = _memoria_parece_reinicio(disk)
+        dias_perdidos = _backup_tiene_dias_que_el_disco_perdio(merged, disk)
+        if not wipe_clasico and not dias_perdidos:
+            return False
+        if _fechas_con_historial(merged) <= _fechas_con_historial(disk) and not wipe_clasico:
+            return False
+    elif not MEMORIA_PATH.exists():
+        wipe_clasico = True
+        dias_perdidos = True
+    else:
         return False
-    if disk.get("reinicio_manual"):
-        return False
-    b_ap, b_pr = _contar_historial(bundled)
-    if not _memoria_parece_reinicio(disk) or (b_ap + b_pr) <= 0:
-        return False
-    merged = _fusionar_memoria(bundled, disk)
+
+    MEMORIA_PATH.parent.mkdir(parents=True, exist_ok=True)
     MEMORIA_PATH.write_text(
         json.dumps(merged, indent=2, ensure_ascii=False), encoding="utf-8"
     )
+    try:
+        _escribir_snapshot(DATA_DIR, merged)
+    except Exception:
+        pass
+    b_ap, b_pr = _contar_historial(merged)
     print(
-        f"[CLOUD] Memoria recuperada desde repo "
-        f"(backup {b_ap} apuestas / {b_pr} preds + día en disco)"
+        f"[CLOUD] Memoria recuperada "
+        f"(merged {b_ap} apuestas / {b_pr} preds · "
+        f"wipe={wipe_clasico} dias_perdidos={dias_perdidos} "
+        f"fuentes={len(candidatos)})"
     )
     return True
 
@@ -285,19 +273,187 @@ def _memoria_sin_secretos(memoria: dict) -> dict:
     return out
 
 
-def guardar_memoria(memoria: dict) -> None:
+_PRED_PANEL_KEYS = (
+    "game_id",
+    "visitante",
+    "home",
+    "pick",
+    "odds",
+    "odds_american",
+    "probPick",
+    "resultado",
+    "estado",
+    "profit",
+    "marcador_final",
+    "con_dinero",
+    "invalida_tarde",
+    "valida_stats",
+    "retroactivo",
+    "stake_virtual",
+    "predicho_en",
+    "liquidado_en",
+)
+_APUESTA_PANEL_KEYS = (
+    "game_id",
+    "visitante",
+    "home",
+    "pick",
+    "odds",
+    "odds_american",
+    "probPick",
+    "estado",
+    "profit",
+    "stake",
+    "marcador_final",
+    "liquidado_en",
+)
+_JUEGO_PANEL_KEYS = (
+    "id",
+    "visitante",
+    "home",
+    "estado",
+    "estado_apuesta",
+    "pick",
+    "probPick",
+    "odds",
+    "odds_american",
+    "edge",
+    "apostable",
+    "motivo_apuesta",
+    "hora_inicio_txt",
+    "hora_bloqueo_txt",
+    "inicio_juego",
+    "scoreAway",
+    "scoreHome",
+    "ganador",
+    "profit",
+    "stake",
+    "solo_papel",
+    "resultado_papel",
+    "invalida_tarde",
+    "logoAway",
+    "logoHome",
+    "pitcherAway",
+    "pitcherHome",
+    "lineas_fuente",
+    "pick_congelado",
+)
+
+
+def _recortar_dict(src: dict, keys: tuple[str, ...]) -> dict:
+    return {k: src[k] for k in keys if k in src}
+
+
+def _memoria_para_panel(memoria: dict) -> dict:
+    """Memoria liviana para el panel (sin IA/clima/lesiones anidados ~1MB)."""
+    base = _memoria_sin_secretos(memoria)
+    dias_out = []
+    for dia in base.get("dias") or []:
+        if not isinstance(dia, dict):
+            continue
+        d = {
+            "dia": dia.get("dia"),
+            "fecha": dia.get("fecha"),
+            "bloqueado_en": dia.get("bloqueado_en"),
+            "resumen": dia.get("resumen"),
+            "predicciones": [
+                _recortar_dict(p, _PRED_PANEL_KEYS)
+                for p in (dia.get("predicciones") or [])
+                if isinstance(p, dict)
+            ],
+            "apuestas": [
+                _recortar_dict(a, _APUESTA_PANEL_KEYS)
+                for a in (dia.get("apuestas") or [])
+                if isinstance(a, dict)
+            ],
+        }
+        dias_out.append(d)
+    base["dias"] = dias_out
+    # Lecciones: solo lo que pinta el panel
+    lecs = []
+    for lec in base.get("lecciones") or []:
+        if not isinstance(lec, dict):
+            continue
+        lecs.append(
+            {
+                k: lec.get(k)
+                for k in (
+                    "id",
+                    "patron",
+                    "titulo",
+                    "resumen",
+                    "detalle",
+                    "game_id",
+                    "fecha",
+                    "creado_en",
+                )
+                if k in lec
+            }
+        )
+    if lecs:
+        base["lecciones"] = lecs
+    return base
+
+
+def _juegos_para_panel(juegos: list) -> list:
+    out = []
+    for j in juegos or []:
+        if not isinstance(j, dict):
+            continue
+        row = _recortar_dict(j, _JUEGO_PANEL_KEYS)
+        # Mantener un peinado corto de mente si existe
+        im = j.get("ia_mente") if isinstance(j.get("ia_mente"), dict) else None
+        if im:
+            row["ia_mente"] = {
+                k: im.get(k)
+                for k in ("ok", "decision", "motivo", "confianza", "fuente")
+                if k in im
+            }
+        out.append(row)
+    return out
+
+
+def guardar_memoria(memoria: dict, *, permitir_wipe: bool = False) -> None:
+    """Persiste memoria con candado anti-wipe + snapshot rotativo.
+
+    Si 'memoria' borraría días que ya están en disco, se fusiona en vez de pisar
+    (salvo permitir_wipe=True en reinicio confirmado).
+    """
     with _memoria_lock:
+        actual: dict | None = None
+        if MEMORIA_PATH.exists():
+            try:
+                actual = json.loads(MEMORIA_PATH.read_text(encoding="utf-8"))
+            except Exception:
+                actual = None
+        final, meta = _proteger_escritura(
+            actual, memoria, permitir_wipe=permitir_wipe
+        )
+        if meta.get("protegido"):
+            print(
+                f"[GUARDAR] Candado anti-wipe: se salvaron fechas "
+                f"{meta.get('fechas_salvadas')}"
+            )
+        MEMORIA_PATH.parent.mkdir(parents=True, exist_ok=True)
         with open(MEMORIA_PATH, "w", encoding="utf-8") as f:
             print(
-                f"[GUARDAR] Guardando memoria. Capital: {memoria['capital']:.2f}, "
-                f"Día: {memoria['dia_actual']}"
+                f"[GUARDAR] Guardando memoria. Capital: {float(final.get('capital') or 0):.2f}, "
+                f"Día: {final.get('dia_actual')} · "
+                f"fechas={sorted(_fechas_con_historial(final))}"
             )
-            json.dump(memoria, f, indent=2, ensure_ascii=False)
+            json.dump(final, f, indent=2, ensure_ascii=False)
+        try:
+            _escribir_snapshot(DATA_DIR, final)
+        except Exception as e:
+            print(f"[GUARDAR] snapshot: {e}")
         js_path = DATA_DIR / "memoria_dashboard.js"
         js_path.write_text(
-            f"const datosMemoria = {json.dumps(_memoria_sin_secretos(memoria), ensure_ascii=False)};",
+            f"const datosMemoria = {json.dumps(_memoria_sin_secretos(final), ensure_ascii=False)};",
             encoding="utf-8",
         )
+        if final is not memoria:
+            memoria.clear()
+            memoria.update(final)
 
 
 def tz_experimento() -> ZoneInfo:
@@ -1416,7 +1572,7 @@ def vigilancia_t60(
 ) -> dict:
     """
     Detecta juegos PROGRAMADOS cerca del T-60 / inicio sin pick congelado.
-    Sirve para avisar en el panel antes de que se pierda el paper.
+    También lista FINALIZADOS del día sin predicción (Render dormido).
     """
     cfg = cfg or {}
     memoria = memoria or {}
@@ -1439,21 +1595,18 @@ def vigilancia_t60(
 
     ahora = ahora_simulado()
     en_riesgo: list[dict] = []
+    perdidos: list[dict] = []
     congelados = 0
     programados = 0
 
     for j in juegos or []:
-        estado = j.get("estado")
+        estado = str(j.get("estado") or "")
         gid = str(j.get("id") or "")
         if estado == "PROGRAMADO":
             programados += 1
         if gid in ya:
             if estado in ("PROGRAMADO", "EN VIVO"):
                 congelados += 1
-            continue
-        if estado not in ("PROGRAMADO", "EN VIVO"):
-            continue
-        if not (j.get("pick") or "").strip():
             continue
 
         mins_a_inicio = None
@@ -1467,20 +1620,51 @@ def vigilancia_t60(
         except Exception:
             mins_a_inicio = None
 
+        # Ya terminó y nunca hubo pick → perdido por sueño/ops (no inventamos pick)
+        if estado == "FINALIZADO":
+            perdidos.append(
+                {
+                    "id": gid,
+                    "visitante": j.get("visitante"),
+                    "home": j.get("home"),
+                    "estado": estado,
+                    "hora_inicio_txt": j.get("hora_inicio_txt"),
+                    "mins_a_inicio": round(mins_a_inicio, 1) if mins_a_inicio is not None else None,
+                    "motivo": "FINAL sin predicción (posible Render dormido / T-60 perdido)",
+                }
+            )
+            continue
+
+        if estado not in ("PROGRAMADO", "EN VIVO"):
+            continue
+
+        # Antes se exigía pick en el objeto juego: si el motor no corrió, no alertaba.
         riesgo = False
         motivo = ""
         if estado == "PROGRAMADO" and mins_a_inicio is not None:
             if -gracia <= mins_a_inicio <= ventana_pre:
                 riesgo = True
                 if mins_a_inicio <= mins_antes:
-                    motivo = f"T-60 pasado · faltan {mins_a_inicio:.0f} min al inicio"
+                    motivo = f"T-60 pasado · faltan {mins_a_inicio:.0f} min al inicio · sin congelar"
                 else:
-                    motivo = f"Se acerca T-60 · faltan {mins_a_inicio:.0f} min"
+                    motivo = f"Se acerca T-60 · faltan {mins_a_inicio:.0f} min · sin congelar"
         elif estado == "EN VIVO":
             mins_desde = _minutos_desde_inicio(j)
             if mins_desde is not None and mins_desde <= gracia:
                 riesgo = True
                 motivo = f"EN VIVO sin congelar · {mins_desde:.0f} min de juego (gracia)"
+            elif mins_desde is not None and mins_desde > gracia:
+                perdidos.append(
+                    {
+                        "id": gid,
+                        "visitante": j.get("visitante"),
+                        "home": j.get("home"),
+                        "estado": estado,
+                        "hora_inicio_txt": j.get("hora_inicio_txt"),
+                        "mins_a_inicio": round(mins_a_inicio, 1) if mins_a_inicio is not None else None,
+                        "motivo": f"EN VIVO fuera de gracia ({mins_desde:.0f} min) sin pick",
+                    }
+                )
 
         if riesgo:
             en_riesgo.append(
@@ -1498,29 +1682,45 @@ def vigilancia_t60(
 
     en_riesgo.sort(key=lambda x: (x.get("mins_a_inicio") is None, x.get("mins_a_inicio") or 0))
     n = len(en_riesgo)
-    if n == 0:
+    n_perd = len(perdidos)
+    if n > 0:
+        nivel = "alerta"
+        if n == 1:
+            g0 = en_riesgo[0]
+            mensaje = (
+                f"⚠ Sin pick fijo: {g0.get('visitante')} @ {g0.get('home')} "
+                f"· {g0.get('motivo')}"
+            )
+        else:
+            mensaje = f"⚠ {n} juegos sin pick congelado cerca del T-60 / inicio"
+    elif n_perd > 0:
+        nivel = "alerta"
+        p0 = perdidos[0]
+        if n_perd == 1:
+            mensaje = (
+                f"⚠ Pick perdido: {p0.get('visitante')} @ {p0.get('home')} "
+                f"(sin predicción · posible sueño Render)"
+            )
+        else:
+            mensaje = f"⚠ {n_perd} juegos del día sin predicción (posible sueño Render)"
+    else:
         mensaje = "Vigilancia T-60 OK · sin juegos en riesgo ahora"
         nivel = "ok"
-    elif n == 1:
-        g0 = en_riesgo[0]
-        mensaje = (
-            f"⚠ Sin pick fijo: {g0.get('visitante')} @ {g0.get('home')} "
-            f"· {g0.get('motivo')}"
-        )
-        nivel = "alerta"
-    else:
-        mensaje = f"⚠ {n} juegos sin pick congelado cerca del T-60 / inicio"
-        nivel = "alerta"
 
     return {
-        "ok": n == 0,
+        "ok": n == 0 and n_perd == 0,
         "nivel": nivel,
         "mensaje": mensaje,
         "en_riesgo": en_riesgo[:8],
         "total_riesgo": n,
+        "perdidos": perdidos[:12],
+        "total_perdidos": n_perd,
         "congelados_activos": congelados,
         "programados": programados,
         "cron_cada_min": 5,
+        "accion_sugerida": (
+            "forzar_registro_t60" if n > 0 else ("cron_externo" if n_perd > 0 else None)
+        ),
     }
 
 
@@ -2430,7 +2630,15 @@ app.add_middleware(
 
 @app.get("/")
 def panel():
-    return FileResponse("QuantumMLB.html")
+    # Sin cache: Safari iOS retiene HTML/JS viejo y el panel se queda en «Despertando…»
+    return FileResponse(
+        "QuantumMLB.html",
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
 
 
 def obtener_juegos_para_panel(fecha: str, ligero: bool = False) -> list[dict]:
@@ -2576,11 +2784,12 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
             resumen_lecciones,
         )
 
-        n_bf = backfill_lecciones_si_vacio(memoria)
-        n_neg = backfill_negativas_si_falta(memoria)
-        if n_bf or n_neg:
-            guardar_memoria(memoria)
-            print(f"[LECCIONES] Backfill: fallos={n_bf} total_scan={n_neg}")
+        if not ligero:
+            n_bf = backfill_lecciones_si_vacio(memoria)
+            n_neg = backfill_negativas_si_falta(memoria)
+            if n_bf or n_neg:
+                guardar_memoria(memoria)
+                print(f"[LECCIONES] Backfill: fallos={n_bf} total_scan={n_neg}")
         lecciones_meta = resumen_lecciones(memoria)
     except Exception as e:
         print(f"[LECCIONES] aviso estado: {e}")
@@ -2589,7 +2798,7 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
     try:
         from mente_aprendizaje import resumen_mente_stats, recomputar_stats_desde_historial
 
-        if not (memoria.get("mente_stats") or {}).get("actualizado_en"):
+        if (not ligero) and not (memoria.get("mente_stats") or {}).get("actualizado_en"):
             n_ms = recomputar_stats_desde_historial(memoria)
             if n_ms:
                 guardar_memoria(memoria)
@@ -2600,30 +2809,66 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
 
     vigilancia = vigilancia_t60(juegos, memoria, cfg)
     cfg_ops = _cfg_con_telegram_memoria(cfg)
-    try:
-        me_out = ejecutar_ciclo_mente_errores(
-            cfg_ops,
-            vigilancia=vigilancia,
-            lineas_meta=_lineas_meta_cache if isinstance(_lineas_meta_cache, dict) else None,
-            memoria=memoria,
-        )
-        if me_out.get("telegram_restaurado") or me_out.get("memoria_telegram_dirty"):
-            guardar_memoria(memoria)
-    except Exception as e:
-        print(f"[MENTE-ERRORES] aviso estado: {e}")
+    # En panel ligero el cron ya corre mente/T-60; no bloquear la UI 10–20s
+    if not ligero:
+        try:
+            me_out = ejecutar_ciclo_mente_errores(
+                cfg_ops,
+                vigilancia=vigilancia,
+                lineas_meta=_lineas_meta_cache if isinstance(_lineas_meta_cache, dict) else None,
+                memoria=memoria,
+            )
+            if me_out.get("telegram_restaurado") or me_out.get("memoria_telegram_dirty"):
+                guardar_memoria(memoria)
+        except Exception as e:
+            print(f"[MENTE-ERRORES] aviso estado: {e}")
+
+    memoria_panel = _memoria_para_panel(memoria)
+    dia_panel = None
+    if dia:
+        dia_panel = {
+            "dia": dia.get("dia"),
+            "fecha": dia.get("fecha"),
+            "bloqueado_en": dia.get("bloqueado_en"),
+            "resumen": dia.get("resumen"),
+            "predicciones": [
+                _recortar_dict(p, _PRED_PANEL_KEYS)
+                for p in (dia.get("predicciones") or [])
+                if isinstance(p, dict)
+            ],
+            "apuestas": [
+                _recortar_dict(a, _APUESTA_PANEL_KEYS)
+                for a in (dia.get("apuestas") or [])
+                if isinstance(a, dict)
+            ],
+        }
 
     return {
-        "memoria": _memoria_sin_secretos(memoria),
+        "memoria": memoria_panel,
         "banca": resumen_banca(memoria),
-        "dia_hoy": dia,
-        "config": cfg,
+        "dia_hoy": dia_panel,
+        "config": {
+            k: cfg.get(k)
+            for k in (
+                "capital_inicial",
+                "dias_totales",
+                "stake_por_juego",
+                "minutos_antes_juego",
+                "timezone",
+                "modo_solo_modelo",
+                "usar_ia_veto",
+                "usar_mente",
+            )
+            if k in cfg
+        },
         "lineas": _lineas_meta_cache,
         "estrategia": cfg.get("estrategia", {}),
         "total_juegos_bloqueados": len(dia["apuestas"]) if dia else 0,
         "oportunidades_valor_hoy": sum(1 for j in juegos if j.get("apostable")),
+        "favorables_hoy": sum(1 for j in juegos if j.get("apostable")),
         "minutos_antes_juego": cfg.get("minutos_antes_juego", 60),
         "fecha_hoy": fecha_hoy,
-        "games": juegos,
+        "games": _juegos_para_panel(juegos),
         "stats_modelo": stats_modelo,
         "pl_split": pl_split,
         "ml_meta": memoria.get("ml_meta"),
@@ -2645,17 +2890,113 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
         },
         "vigilancia": vigilancia,
         "mente_errores": _resumen_mente_errores(cfg_ops),
+        "historial_sello": _resumen_sello(memoria),
         "telegram": telegram_disponible(cfg_ops),
         "alertas": alerta_disponible(cfg_ops),
     }
 
 
+@app.get("/api/historial-status")
+def api_historial_status():
+    """Sello rápido: ¿el historial está sano? (para ti / cron / Telegram)."""
+    try:
+        _intentar_recuperar_wipe()
+    except Exception:
+        pass
+    mem = cargar_memoria()
+    sello = _resumen_sello(mem)
+    snaps = 0
+    try:
+        from memoria_fusion import listar_snapshots
+
+        snaps = len(listar_snapshots(DATA_DIR))
+    except Exception:
+        pass
+    return {
+        "ok": True,
+        **sello,
+        "snapshots_locales": snaps,
+        "capital": mem.get("capital"),
+        "dia_actual": mem.get("dia_actual"),
+    }
+
+
+@app.get("/api/panel-boot")
+def api_panel_boot():
+    """Arranque del panel en <1s: historial+capital sin ML ni juegos.
+
+    Evita que Safari iOS se quede en «Despertando…» mientras /api/state
+    tarda 10–60s (cold start / registrar predicciones / ESPN).
+    """
+    try:
+        _intentar_recuperar_wipe()
+    except Exception:
+        pass
+    memoria = cargar_memoria()
+    pl_split = resumen_predicciones_y_dinero(memoria)
+    pl_split.pop("_mutado", None)
+    fecha_hoy = fecha_str()
+    dia = dia_por_fecha(memoria, fecha_hoy) or dia_operativo(memoria)
+    dia_panel = None
+    if dia:
+        if not dia.get("resumen"):
+            try:
+                dia["resumen"] = resumen_dia(dia)
+            except Exception:
+                pass
+        dia_panel = {
+            "dia": dia.get("dia"),
+            "fecha": dia.get("fecha"),
+            "bloqueado_en": dia.get("bloqueado_en"),
+            "resumen": dia.get("resumen"),
+            "predicciones": [
+                _recortar_dict(p, _PRED_PANEL_KEYS)
+                for p in (dia.get("predicciones") or [])
+                if isinstance(p, dict)
+            ],
+            "apuestas": [
+                _recortar_dict(a, _APUESTA_PANEL_KEYS)
+                for a in (dia.get("apuestas") or [])
+                if isinstance(a, dict)
+            ],
+        }
+    cfg = cargar_config()
+    return {
+        "ok": True,
+        "boot": True,
+        "memoria": _memoria_para_panel(memoria),
+        "banca": resumen_banca(memoria),
+        "dia_hoy": dia_panel,
+        "pl_split": pl_split,
+        "historial_sello": _resumen_sello(memoria),
+        "fecha_hoy": fecha_hoy,
+        "config": {
+            k: cfg.get(k)
+            for k in (
+                "capital_inicial",
+                "dias_totales",
+                "stake_por_juego",
+                "minutos_antes_juego",
+                "timezone",
+                "modo_solo_modelo",
+                "usar_ia_veto",
+                "usar_mente",
+            )
+            if k in cfg
+        },
+        "estrategia": cfg.get("estrategia", {}),
+        "games": [],
+        "minutos_antes_juego": cfg.get("minutos_antes_juego", 60),
+    }
+
+
 @app.get("/api/state")
-def api_state():
-    """Estado del panel. Liquida pendientes barato (solo marcadores MLB)."""
-    # En Render free el cron a veces no corre si el servicio duerme:
-    # liquidar aquí garantiza que al abrir/refrescar el panel salgan resultados.
-    return construir_estado_completo(liquidar=True, ligero=True)
+def api_state(liquidar: bool = False):
+    """Estado del panel (liviano). Por defecto no liquida: el cron ya lo hace.
+
+    ?liquidar=1 fuerza liquidación (botón Actualizar resultados / catch-up).
+    """
+    return construir_estado_completo(liquidar=bool(liquidar), ligero=True)
 
 
 @app.get("/api/picks-hoy")
@@ -2728,13 +3069,25 @@ def api_liquidar():
 
 
 @app.post("/api/reiniciar")
-def api_reiniciar():
-    """Reinicia el experimento por completo, borrando historial previo."""
+def api_reiniciar(confirm: str | None = None):
+    """Reinicia el experimento. Requiere confirm=BORRAR para no borrar por accidente."""
+    if (confirm or "").strip().upper() != "BORRAR":
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Reinicio bloqueado. Para borrar el historial llama "
+                "/api/reiniciar?confirm=BORRAR (irreversible)."
+            ),
+        )
     cfg = cargar_config()
-    # Borrar archivos de reporte antiguos
+    try:
+        prev = cargar_memoria()
+        _escribir_snapshot(DATA_DIR, prev)
+    except Exception as e:
+        print(f"[REINICIAR] snapshot previo: {e}")
     for f in DATA_DIR.glob("reporte_dia_*.txt"):
         f.unlink(missing_ok=True)
-        
+
     memoria = {
         "modo": "simulacion",
         "capital": cfg["capital_inicial"],
@@ -2745,10 +3098,9 @@ def api_reiniciar():
         "experimento_activo": True,
         "ultimo_bloqueo": None,
         "dias": [],
-        # Evita que el auto-restore del backup deshaga un reinicio deliberado
         "reinicio_manual": True,
     }
-    guardar_memoria(memoria)
+    guardar_memoria(memoria, permitir_wipe=True)
     return {"ok": True, "memoria": memoria}
 
 
@@ -2791,7 +3143,18 @@ def api_predicciones():
 
 @app.get("/api/health")
 def api_health():
-    """Ping para Render + cron externo (mantiene el servicio despierto en plan free)."""
+    """Ping para Render + cron externo (mantiene el servicio despierto en plan free).
+
+    Ligero a propósito: Render usa este path como healthCheck. Si aquí corre ML
+    o T-60, el check timeout mata el servicio y parece que siempre hay un error.
+    El trabajo pesado va en /api/auto-bloqueo-externo (cron cada 5 min).
+    """
+    wake: dict[str, Any] = {"restore": False}
+    try:
+        wake["restore"] = bool(_intentar_recuperar_wipe())
+    except Exception as e:
+        wake["error"] = str(e)[:120]
+
     cfg = _cfg_con_telegram_memoria()
     circ: dict = {"abierto": False}
     try:
@@ -2800,11 +3163,22 @@ def api_health():
         circ = estado_circuito()
     except Exception:
         pass
+    mem_h = cargar_memoria()
+    hist_fechas = sorted(_fechas_con_historial(mem_h))
+    hist_ap, hist_pr = _contar_historial(mem_h)
     return {
         "ok": True,
         "servicio": "quantum-mlb",
-        "capital": cargar_memoria().get("capital"),
-        "dia_actual": cargar_memoria().get("dia_actual"),
+        "wake": wake,
+        "capital": mem_h.get("capital"),
+        "dia_actual": mem_h.get("dia_actual"),
+        "historial": {
+            "fechas": hist_fechas,
+            "n_dias": len(hist_fechas),
+            "apuestas_liquidadas": hist_ap,
+            "preds_liquidadas": hist_pr,
+            **{k: v for k, v in _resumen_sello(mem_h).items() if k not in ("fechas", "n_dias", "apuestas_liquidadas", "preds_liquidadas")},
+        },
         "hora": datetime.now(tz_experimento()).isoformat(),
         "ia_veto": {
             "activo": bool(cfg.get("usar_ia_veto")),
@@ -2852,8 +3226,15 @@ def api_health():
         },
         "odds": {
             "activo": not bool(cfg.get("modo_solo_modelo")),
+            "desactivado": bool(cfg.get("modo_solo_modelo")),
+            "motivo": (
+                "modo_solo_modelo=true (sin Odds API)"
+                if cfg.get("modo_solo_modelo")
+                else None
+            ),
             "proveedor": (cfg.get("lineas") or {}).get("proveedor") or "oddspapi",
-            "requiere_mercado": bool((cfg.get("estrategia") or {}).get("requiere_betmgm", True)),
+            "requiere_mercado": bool((cfg.get("estrategia") or {}).get("requiere_betmgm", True))
+            and not bool(cfg.get("modo_solo_modelo")),
             "fallback_internet": bool((cfg.get("lineas") or {}).get("fallback_internet", True)),
             "bookmakers": (cfg.get("lineas") or {}).get("bookmakers") or "draftkings",
             "min_edge_pct": float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0)),
@@ -2971,13 +3352,13 @@ def api_lesiones_status():
 
 @app.get("/api/odds-status")
 def api_odds_status():
-    """Estado del proveedor de cuotas (OddsPapi / The Odds API)."""
+    """Estado del proveedor de cuotas. Con modo_solo_modelo no se usa ni se exige."""
     cfg = cargar_config()
     solo = bool(cfg.get("modo_solo_modelo"))
     requiere = bool((cfg.get("estrategia") or {}).get("requiere_betmgm", True))
     proveedor = str((cfg.get("lineas") or {}).get("proveedor") or "oddspapi").lower()
     base = {
-        "activo": not solo,
+        "activo": not solo and requiere,
         "requiere_mercado": requiere and not solo,
         "modo_solo_modelo": solo,
         "bookmakers": (cfg.get("lineas") or {}).get("bookmakers") or "draftkings",
@@ -2993,7 +3374,7 @@ def api_odds_status():
             **base,
             "ok": True,
             "desactivado": True,
-            "motivo": "Cuotas desactivadas (modo solo modelo)",
+            "motivo": "Odds API desactivada: dinero solo con % del modelo (≥ min_prob)",
         }
     try:
         def _con_espn(out: dict) -> dict:
@@ -3100,23 +3481,32 @@ def api_odds_status():
                 ),
             })
 
-        from lineas_betmgm import cargar_api_key, obtener_lineas_betmgm
+        # Legacy The Odds API (proveedor betmgm / the-odds-api)
+        from lineas_betmgm import cargar_api_key, enmascarar_api_key, obtener_lineas_betmgm
 
         key = cargar_api_key(cfg)
+        diag = enmascarar_api_key(key)
         if not key:
             return _con_espn({
                 **base,
                 "ok": False,
-                "key_presente": False,
+                **diag,
                 "motivo": "Falta ODDS_API_KEY · se intenta ESPN/DraftKings",
+                "ayuda": (
+                    "Crea key en https://the-odds-api.com → pégala en Render "
+                    "como ODDS_API_KEY (sin comillas) → Save → Manual Deploy."
+                ),
             })
         _, meta = obtener_lineas_betmgm(cfg)
         return _con_espn({
             **base,
             "ok": bool(meta.get("ok")),
-            "key_presente": True,
+            **diag,
             "partidos": meta.get("partidos"),
             "mensaje": meta.get("mensaje"),
+            "error_code": meta.get("error_code"),
+            "http_status": meta.get("http_status"),
+            "ayuda": meta.get("ayuda"),
             "requests_restantes": meta.get("requests_restantes"),
             "cache": meta.get("cache"),
         })
@@ -3573,6 +3963,10 @@ def api_ia_status():
 
 def ejecutar_trabajo_cron_externo() -> dict:
     """Sincroniza fecha, predicciones, bloqueos y liquidacion."""
+    try:
+        _intentar_recuperar_wipe()
+    except Exception as e:
+        print(f"[CRON] restore wipe: {e}")
     sincronizar_experimento_a_hoy()
     reparar_odds_papel(cargar_memoria())
     rellenar_predicciones_recientes(cargar_memoria(), dias_atras=7)
@@ -3582,11 +3976,27 @@ def ejecutar_trabajo_cron_externo() -> dict:
     liquidar_todo(cargar_memoria())
     memoria = cargar_memoria()
     cfg = _cfg_con_telegram_memoria()
+    # Vigilancia real (antes el cron pasaba vigilancia=None → mente ciega al sueño)
+    vigilancia: dict = {}
+    try:
+        juegos = obtener_juegos_fecha(fecha_str())
+        vigilancia = vigilancia_t60(juegos, memoria, cfg)
+        if vigilancia.get("nivel") == "alerta" and int(vigilancia.get("total_riesgo") or 0) > 0:
+            registrar_predicciones_del_dia(forzar=True)
+            try:
+                bloquear_apuestas_del_dia(forzar=False)
+            except Exception:
+                pass
+            memoria = cargar_memoria()
+            vigilancia = vigilancia_t60(juegos, memoria, cfg)
+    except Exception as e:
+        print(f"[CRON] vigilancia: {e}")
+        vigilancia = {"ok": False, "nivel": "ok", "mensaje": str(e)[:120]}
     mente_err: dict = {}
     try:
         mente_err = ejecutar_ciclo_mente_errores(
             cfg,
-            vigilancia=None,
+            vigilancia=vigilancia if isinstance(vigilancia, dict) else None,
             lineas_meta=_lineas_meta_cache if isinstance(_lineas_meta_cache, dict) else None,
             memoria=memoria,
         )
@@ -3605,6 +4015,12 @@ def ejecutar_trabajo_cron_externo() -> dict:
         "capital": memoria["capital"],
         "dia_actual": memoria.get("dia_actual"),
         "fecha_hoy": fecha_str(),
+        "vigilancia": {
+            "nivel": (vigilancia or {}).get("nivel"),
+            "total_riesgo": (vigilancia or {}).get("total_riesgo"),
+            "total_perdidos": (vigilancia or {}).get("total_perdidos"),
+            "mensaje": (vigilancia or {}).get("mensaje"),
+        },
         "mente_errores": {
             "nivel": (mente_err or {}).get("nivel"),
             "mensaje": (mente_err or {}).get("mensaje"),
@@ -3718,12 +4134,13 @@ def api_subir_memoria(
 ):
     """Sube memoria_auditoria.json desde la PC local a Render (requiere CRON_SECRET).
 
-    modo=replace (default) | aprendizaje (fusiona como paper retroactivo, plan 4)
+    modo=fusionar (default, une días) | replace | aprendizaje (paper retroactivo)
     """
     _verificar_cron_secreto(secret)
     if not isinstance(payload, dict) or "capital" not in payload:
         raise HTTPException(status_code=400, detail="JSON de memoria invalido")
-    if (modo or "replace").lower() in ("aprendizaje", "merge", "import"):
+    modo_n = (modo or "fusionar").lower()
+    if modo_n in ("aprendizaje", "import"):
         from ia_importar import importar_dump_aprendizaje
         from ia_lecciones import escanear_experiencias_negativas
 
@@ -3742,6 +4159,21 @@ def api_subir_memoria(
             "lecciones_nuevas": n_lec,
             "capital": memoria.get("capital"),
             "dias": len(memoria.get("dias", [])),
+        }
+    if modo_n in ("fusionar", "merge", "union"):
+        disk = cargar_memoria()
+        merged = _fusionar_memoria(payload, disk)
+        guardar_memoria(merged)
+        sincronizar_experimento_a_hoy(merged)
+        memoria = cargar_memoria()
+        ap, pr = _contar_historial(memoria)
+        return {
+            "ok": True,
+            "modo": "fusionar",
+            "capital": memoria.get("capital"),
+            "dia_actual": memoria.get("dia_actual"),
+            "dias": len(memoria.get("dias", [])),
+            "historial": {"apuestas": ap, "preds": pr},
         }
     guardar_memoria(payload)
     memoria = cargar_memoria()
@@ -3838,7 +4270,7 @@ def api_procesar_experiencias(forzar: bool = False):
 
 @app.post("/api/restaurar-backup")
 def api_restaurar_backup(secret: str | None = None):
-    """Restaura memoria desde el JSON del repo si el disco parece un reinicio/wipe."""
+    """Fusiona el JSON del repo con el disco si faltan días (wipe o redeploy)."""
     _verificar_cron_secreto(secret)
     origen = BASE_DIR / "memoria_auditoria.json"
     if not origen.exists():
@@ -3848,11 +4280,22 @@ def api_restaurar_backup(secret: str | None = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Backup ilegible: {e}") from e
     disk = cargar_memoria()
-    if not _memoria_parece_reinicio(disk):
+    if disk.get("reinicio_manual"):
         ap, pr = _contar_historial(disk)
         return {
             "ok": False,
-            "motivo": "La memoria actual no parece un reinicio; no se sobrescribe",
+            "motivo": "reinicio_manual=true; no se restaura el backup",
+            "dia_actual": disk.get("dia_actual"),
+            "capital": disk.get("capital"),
+            "historial": {"apuestas": ap, "preds": pr},
+        }
+    wipe_clasico = _memoria_parece_reinicio(disk)
+    dias_perdidos = _backup_tiene_dias_que_el_disco_perdio(bundled, disk)
+    if not wipe_clasico and not dias_perdidos:
+        ap, pr = _contar_historial(disk)
+        return {
+            "ok": True,
+            "motivo": "Nada que restaurar; el disco ya tiene los días del backup",
             "dia_actual": disk.get("dia_actual"),
             "capital": disk.get("capital"),
             "historial": {"apuestas": ap, "preds": pr},
@@ -3875,6 +4318,8 @@ def api_restaurar_backup(secret: str | None = None):
         "dias": len(memoria.get("dias", [])),
         "historial": {"apuestas": ap, "preds": pr},
         "lecciones": len(memoria.get("lecciones") or []),
+        "wipe_clasico": wipe_clasico,
+        "dias_perdidos": dias_perdidos,
     }
 
 
