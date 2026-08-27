@@ -1594,14 +1594,8 @@ function pintarPredicciones(memoria, plSplit) {
             ? `papel n/a (${nTarde} retroactivos · no cuentan)`
             : `pred ${gPapel}✓/${pPapel}✗ · papel ${fmtMoney(netoPapel)}` + (nTarde ? ` · ${nTarde} tardíos ignorados` : '');
 
-<<<<<<< HEAD
-        // Abrir días con resultados (y el más reciente) para que en móvil se vean los juegos
-        const tieneResultados = filas.some(f => f.resultado === 'acierto' || f.resultado === 'fallo');
-        const abierto = tieneResultados || diaIdx === 0;
-=======
         // Siempre abiertos: en móvil el historial colapsado parecía “no hay juegos”
         const abierto = true;
->>>>>>> origin/main
         diaIdx += 1;
 
         html += `<div style="margin-bottom:14px;padding:12px;background:var(--panel);border-radius:8px;border:1px solid var(--border);">
