@@ -563,11 +563,14 @@ const API = (!window.location.origin || window.location.protocol === 'file:')
 const ES_NUBE = API.includes('onrender.com') || API.includes('render.com');
 const REFRESH_MS = ES_NUBE ? 45000 : 8000;
 const CACHE_KEY = 'qmlb_last_state_v2';
-const PANEL_VER = '2026-08-27-boot';
+const PANEL_VER = '2026-08-27-boot2';
 let cargandoEstado = false;
+let cargandoBoot = false;
+let cargandoJuegos = false;
 let wakeIntentos = 0;
 let wakeTimer = null;
 let lastWakeAt = 0;
+let historialPintado = false;
 const WAKE_MAX = 12;
 
 function toast(msg) {
@@ -612,8 +615,41 @@ function mostrarWakeUI(is502) {
 function reintentarAhora() {
     cancelarReintento();
     cargandoEstado = false;
-    despertarServidor(20000); // fire-and-forget corto
+    cargandoBoot = false;
+    cargandoJuegos = false;
+    despertarServidor(15000); // fire-and-forget corto
     cargarEstado();
+}
+
+function aplicarHealthRapido(h) {
+    if (!h || typeof h !== 'object') return;
+    try {
+        if (h.capital != null) {
+            const capEl = document.getElementById('capital-display');
+            if (capEl) capEl.textContent = '$' + Number(h.capital).toFixed(2);
+        }
+        if (h.dia_actual != null) {
+            const dEl = document.getElementById('dia-actual');
+            if (dEl) dEl.textContent = 'DÍA ' + h.dia_actual;
+        }
+        const hs = document.getElementById('historial-sello');
+        const seal = h.historial || h.historial_sello || {};
+        if (hs && seal.mensaje) {
+            hs.style.color = seal.nivel === 'ok' ? '#00ff88' : (seal.nivel === 'aviso' ? '#ffbc00' : '#ff4466');
+            hs.textContent = (seal.nivel === 'ok' ? '✓ ' : '⚠ ') + seal.mensaje;
+        }
+    } catch (_) { /* no tumbar el panel */ }
+}
+
+function pintarEstadoSeguro(data, motivo) {
+    try {
+        pintarEstado(data);
+        historialPintado = true;
+        return true;
+    } catch (e) {
+        console.warn('pintarEstado', motivo || '', e);
+        return false;
+    }
 }
 
 function guardarCacheEstado(state) {
@@ -719,6 +755,9 @@ async function cargarHistorialFallback(signal) {
         pintarPredicciones(memoria, null);
         const capEl = document.getElementById('capital-display');
         if (capEl && d.capital != null) capEl.textContent = '$' + Number(d.capital).toFixed(2);
+        const dEl = document.getElementById('dia-actual');
+        if (dEl && d.dia_actual != null) dEl.textContent = 'DÍA ' + d.dia_actual;
+        historialPintado = true;
         return true;
     } catch (e) {
         return false;
@@ -907,10 +946,11 @@ async function cargarEstado() {
     const contenedor = document.getElementById('contenedor-juegos');
     const yaCargo = contenedor.dataset.loaded === '1';
     const teniaCache = pintarDesdeCache('cache');
+    if (teniaCache) historialPintado = true;
     if (!yaCargo) {
-        if (teniaCache) {
+        if (teniaCache || historialPintado) {
             contenedor.innerHTML =
-                '<p style="color:var(--muted)">Actualizando juegos… (historial en cache)</p>' +
+                '<p style="color:var(--muted)">Actualizando juegos… (historial OK)</p>' +
                 '<p style="margin:10px 0"><button type="button" onclick="reintentarAhora()">↻ Reintentar ahora</button></p>';
         } else if (ES_NUBE) {
             wakeIntentos = Math.max(wakeIntentos, 1);
@@ -920,66 +960,67 @@ async function cargarEstado() {
             contenedor.innerHTML = '<p style="color:var(--muted)">Conectando con el motor...</p>';
         }
     }
-    const ctrl = new AbortController();
-    // Boot rápido 25s; state completo 55s. Si cuelga, reintentar (no 120s).
-    const timeoutMs = ES_NUBE ? 55000 : 45000;
-    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+
+    let bootOk = false;
+    // 1) Health + boot en paralelo (no esperar /api/state)
     try {
-        // 1) Boot liviano: pinta historial YA (sin esperar /api/state ~14s+)
-        let bootOk = false;
-        try {
-            const bootCtrl = new AbortController();
-            const bootTimer = setTimeout(() => bootCtrl.abort(), ES_NUBE ? 25000 : 15000);
-            const br = await fetch(API + '/api/panel-boot', { cache: 'no-store', signal: bootCtrl.signal });
-            clearTimeout(bootTimer);
-            if (br.ok) {
-                const boot = await br.json();
-                bootOk = true;
-                guardarCacheEstado(boot);
-                pintarEstado(boot);
-                if (!yaCargo) {
-                    contenedor.innerHTML =
-                        '<p style="color:var(--muted)">Historial OK · cargando juegos del día…</p>';
-                }
-            } else if (br.status === 502 || br.status === 503) {
-                throw new Error('Servidor respondió ' + br.status);
+        const bootCtrl = new AbortController();
+        const bootMs = ES_NUBE ? 20000 : 12000;
+        const bootTimer = setTimeout(() => bootCtrl.abort(), bootMs);
+        const healthP = fetch(API + '/api/health', { cache: 'no-store', signal: bootCtrl.signal })
+            .then(r => (r.ok ? r.json() : null))
+            .catch(() => null);
+        const bootP = fetch(API + '/api/panel-boot', { cache: 'no-store', signal: bootCtrl.signal })
+            .then(async r => {
+                if (r.status === 502 || r.status === 503) throw new Error('Servidor respondió ' + r.status);
+                if (!r.ok) return null;
+                return r.json();
+            })
+            .then(b => ({ ok: true, boot: b }))
+            .catch(e => ({ ok: false, err: e }));
+        const [h, bootRes] = await Promise.all([healthP, bootP]);
+        clearTimeout(bootTimer);
+        if (h) aplicarHealthRapido(h);
+        if (bootRes.ok && bootRes.boot && bootRes.boot.memoria) {
+            bootOk = true;
+            guardarCacheEstado(bootRes.boot);
+            pintarEstadoSeguro(bootRes.boot, 'boot');
+            if (!yaCargo) {
+                contenedor.innerHTML =
+                    '<p style="color:#00ff88">✓ Historial cargado · trayendo juegos…</p>' +
+                    '<p style="margin:10px 0"><button type="button" onclick="reintentarAhora()">↻ Reintentar ahora</button></p>';
             }
-        } catch (eBoot) {
-            const bm = String(eBoot.message || eBoot);
-            if (bm.includes('502') || bm.includes('503')) throw eBoot;
-            // Fallback health + cache
-            try {
-                const hr = await fetch(API + '/api/health', { cache: 'no-store', signal: ctrl.signal });
-                if (hr.ok) {
-                    const h = await hr.json();
-                    if (h.capital != null) {
-                        const capEl = document.getElementById('capital-display');
-                        if (capEl) capEl.textContent = '$' + Number(h.capital).toFixed(2);
-                    }
-                    if (h.dia_actual != null) {
-                        const dEl = document.getElementById('dia-actual');
-                        if (dEl) dEl.textContent = 'DÍA ' + h.dia_actual;
-                    }
-                    const hs = document.getElementById('historial-sello');
-                    const seal = h.historial || {};
-                    if (hs && seal.mensaje) {
-                        hs.style.color = seal.nivel === 'ok' ? '#00ff88' : (seal.nivel === 'aviso' ? '#ffbc00' : '#ff4466');
-                        hs.textContent = (seal.nivel === 'ok' ? '✓ ' : '⚠ ') + seal.mensaje;
-                    }
-                } else if (hr.status === 502 || hr.status === 503) {
-                    throw new Error('Servidor respondió ' + hr.status);
-                }
-            } catch (eHealth) {
-                if (String(eHealth.message || '').includes('502') || String(eHealth.message || '').includes('503')) {
-                    throw eHealth;
-                }
+        } else if (!bootRes.ok) {
+            const bm = String(bootRes.err && (bootRes.err.message || bootRes.err));
+            if ((bm.includes('502') || bm.includes('503')) && !historialPintado) {
+                throw bootRes.err;
             }
-            if (!bootOk && !teniaCache) {
-                try { await cargarHistorialFallback(ctrl.signal); } catch (_) {}
+            if (!historialPintado) {
+                try { await cargarHistorialFallback(undefined); } catch (_) {}
             }
         }
+    } catch (eBoot) {
+        if (!bootOk) {
+            try {
+                const hr = await fetch(API + '/api/health', { cache: 'no-store' });
+                if (hr.ok) aplicarHealthRapido(await hr.json());
+            } catch (_) {}
+            if (!historialPintado) {
+                try { await cargarHistorialFallback(undefined); } catch (_) {}
+            }
+        }
+    }
 
-        // 2) Estado completo (juegos / picks). Si falla pero ya hay boot, no vaciar historial.
+    // Liberar candado de boot YA: el state no debe bloquear reintentos iOS
+    cargandoEstado = false;
+
+    // 2) State (juegos). Si falla, el historial YA pintado se conserva.
+    if (cargandoJuegos) return;
+    cargandoJuegos = true;
+    const ctrl = new AbortController();
+    const timeoutMs = ES_NUBE ? 35000 : 45000;
+    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    try {
         const stateRes = await fetch(API + '/api/state', { cache: 'no-store', signal: ctrl.signal });
         if (!stateRes.ok) throw new Error('Servidor respondió ' + stateRes.status);
         const state = await stateRes.json();
@@ -987,20 +1028,38 @@ async function cargarEstado() {
         wakeIntentos = 0;
         cancelarReintento();
         guardarCacheEstado(state);
-        pintarEstado(state);
-        pintarPicksHoy(state.games || [], state);
-        pintarJuegos(state.games || []);
+        pintarEstadoSeguro(state, 'state');
+        try { pintarPicksHoy(state.games || [], state); } catch (_) {}
+        try { pintarJuegos(state.games || []); } catch (_) {}
     } catch (e) {
         const msg = String(e.message || e);
-        const is502 = msg.includes('502') || msg.includes('503') || msg.includes('504');
-        const okCache = pintarDesdeCache(is502 ? '502 · reintento' : 'reintento');
-        if (!okCache) {
-            try { await cargarHistorialFallback(ctrl.signal); } catch (_) {}
+        const is502 = msg.includes('502') || msg.includes('503') || msg.includes('504') || msg.includes('abort');
+        if (!historialPintado) {
+            const okCache = pintarDesdeCache(is502 ? '502 · reintento' : 'reintento');
+            if (okCache) historialPintado = true;
+            if (!okCache) {
+                try { await cargarHistorialFallback(ctrl.signal); } catch (_) {}
+            }
+        }
+        if (historialPintado) {
+            // Historial visible: solo avisar juegos y reintentar suave
+            if (!yaCargo && contenedor.dataset.loaded !== '1') {
+                contenedor.innerHTML =
+                    '<p style="color:#ffaa00"><b>Historial OK · juegos tardando (Render).</b></p>' +
+                    '<p style="margin:12px 0"><button type="button" onclick="reintentarAhora()" style="padding:12px 18px;font-weight:700">↻ Reintentar juegos</button></p>' +
+                    '<small style="color:var(--muted)">' + msg + '</small>';
+            }
+            if (ES_NUBE && wakeIntentos < WAKE_MAX) {
+                wakeIntentos += 1;
+                lastWakeAt = Date.now();
+                despertarServidor(12000);
+                programarReintento(is502 ? 4000 : 5000);
+            }
+            return;
         }
         if (ES_NUBE && wakeIntentos < WAKE_MAX) {
             wakeIntentos += 1;
             mostrarWakeUI(is502);
-            // Ping en segundo plano — NO esperar (bug iOS: fetch largo nunca vuelve)
             despertarServidor(15000);
             programarReintento(is502 ? 3500 : 2500);
             return;
@@ -1014,6 +1073,7 @@ async function cargarEstado() {
             '<small>' + msg + '</small></p>';
     } finally {
         clearTimeout(timer);
+        cargandoJuegos = false;
         cargandoEstado = false;
     }
 }
@@ -1044,9 +1104,9 @@ function pintarEstado(data) {
     const soloModelo = !!cfg.modo_solo_modelo;
 
     const b = data.banca || {};
-    document.getElementById('capital-display').textContent = '$' + m.capital.toFixed(2);
-    document.getElementById('bm-disponible').textContent = '$' + (b.disponible ?? m.capital).toFixed(2);
-    document.getElementById('bm-enjuego').textContent = '$' + (b.en_juego_hoy || 0).toFixed(2);
+    document.getElementById('capital-display').textContent = '$' + Number(m.capital || 0).toFixed(2);
+    document.getElementById('bm-disponible').textContent = '$' + Number(b.disponible ?? m.capital ?? 0).toFixed(2);
+    document.getElementById('bm-enjuego').textContent = '$' + Number(b.en_juego_hoy || 0).toFixed(2);
     document.getElementById('bm-stake').textContent = '$' + Number(m.stake_por_juego || 5).toFixed(0);
 
     // Stats: dos tarjetas claras (papel vs dinero)
@@ -1831,6 +1891,7 @@ document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && ES_NUBE) {
         cancelarReintento();
         cargandoEstado = false;
+        cargandoJuegos = false;
         despertarServidor(15000);
         cargarEstado();
     }
@@ -1841,9 +1902,8 @@ setInterval(() => {
     const c = document.getElementById('contenedor-juegos');
     if (!c || c.dataset.loaded === '1') return;
     if (!lastWakeAt || Date.now() - lastWakeAt < 20000) return;
-    if (cargandoEstado) {
-        cargandoEstado = false;
-    }
+    cargandoEstado = false;
+    cargandoJuegos = false;
     reintentarAhora();
 }, 10000);
 
