@@ -56,10 +56,16 @@ FEATURE_COLUMNS = [
     "xfip_pitcher",
     "k_pct_pitcher",
     "bb_pct_pitcher",
+    # Factores humanos (viaje / descanso / serie / umpire)
+    "fatiga_viaje",
+    "dias_descanso",
+    "cambio_zona",
+    "leverage_serie",
+    "umpire_runs",
 ]
 
 
-FEATURE_SCHEMA_VERSION = 3  # v3 = + FIP/xFIP/K%/BB%
+FEATURE_SCHEMA_VERSION = 4  # v4 = + factores humanos
 
 
 def _modelo_path() -> Path:
@@ -129,6 +135,11 @@ def _features_sinteticas_desde_registro(reg: Dict[str, Any]) -> Dict[str, Any]:
         "xfip_pitcher": 4.5 - edge / 200.0,
         "k_pct_pitcher": 20.0 + edge / 10.0,
         "bb_pct_pitcher": 8.0 - edge / 40.0,
+        "fatiga_viaje": float((reg.get("factores_humanos") or {}).get("features_away", {}).get("fatiga_viaje") or 0.0),
+        "dias_descanso": 1.0,
+        "cambio_zona": 0.0,
+        "leverage_serie": float(((reg.get("factores_humanos") or {}).get("serie") or {}).get("leverage") or 0.0),
+        "umpire_runs": float((reg.get("factores_humanos") or {}).get("sesgo_umpire_runs") or 0.0),
     }
 
 
@@ -705,4 +716,9 @@ def extraer_features_ml(juego: Dict[str, Any], stats_pitcher: Dict[str, Any],
         'xfip_pitcher': stats_pitcher.get('xfip', stats_pitcher.get('fip', stats_pitcher.get('era', 4.5))),
         'k_pct_pitcher': stats_pitcher.get('k_pct', float(stats_pitcher.get('k9', 7.5)) * 2.4),
         'bb_pct_pitcher': stats_pitcher.get('bb_pct', float(stats_pitcher.get('bb9', 3.0)) * 2.5),
+        'fatiga_viaje': float(juego.get('fatiga_viaje', 0.0) or 0.0),
+        'dias_descanso': float(juego.get('dias_descanso', 1.0) or 1.0),
+        'cambio_zona': float(juego.get('cambio_zona', 0.0) or 0.0),
+        'leverage_serie': float(juego.get('leverage_serie', 0.0) or 0.0),
+        'umpire_runs': float(juego.get('umpire_runs', 0.0) or 0.0),
     }
