@@ -3043,15 +3043,33 @@ def api_panel_boot():
     }
 
 
+def _warm_juegos_full_async(fecha: str) -> None:
+    """Recalcula MLB+ML en background para llenar cache (no bloquea el panel)."""
+
+    def _run() -> None:
+        try:
+            mem = cargar_memoria()
+            juegos = fusionar_apuestas_con_juegos(
+                obtener_juegos_para_panel(fecha, ligero=True), mem
+            )
+            _guardar_juegos_panel_disk(fecha, juegos)
+            print(f"[JUEGOS-CACHE] warm ok fecha={fecha} n={len(juegos)}")
+        except Exception as e:
+            print(f"[JUEGOS-CACHE] warm fail: {e}")
+
+    threading.Thread(target=_run, daemon=True, name="warm-juegos").start()
+
+
 @app.get("/api/juegos-hoy")
 def api_juegos_hoy(fresh: bool = False):
     """Juegos del día para el panel. Prioriza cache (memoria/disco) para iPhone.
 
+    Sin cache: responde YA con schedule MLB (sin ML ~1–2s) y calienta ML en background.
     ?fresh=1 fuerza recálculo MLB+ML (más lento; puede 502 en Render free).
     """
     fecha_hoy = fecha_str()
     if not fresh:
-        # 1) RAM
+        # 1) RAM (juegos con ML)
         ahora = time.monotonic()
         if (
             _juegos_ui_cache["fecha"] == fecha_hoy
@@ -3074,6 +3092,25 @@ def api_juegos_hoy(fresh: bool = False):
             return disk
 
     memoria = cargar_memoria()
+
+    # 3) Rápido: schedule MLB sin evaluar_juegos (evita 502 / 15s en el móvil)
+    if not fresh:
+        try:
+            raw = obtener_juegos_fecha(fecha_hoy, solo_resultados=True)
+            fused = fusionar_apuestas_con_juegos(raw, memoria)
+            _warm_juegos_full_async(fecha_hoy)
+            return {
+                "ok": True,
+                "fecha": fecha_hoy,
+                "games": _juegos_para_panel(fused),
+                "n": len(fused),
+                "cache": "schedule",
+                "parcial": True,
+            }
+        except Exception as e:
+            print(f"[JUEGOS-HOY] schedule rápido falló: {e}")
+
+    # 4) Completo (fresh o fallback)
     try:
         juegos = fusionar_apuestas_con_juegos(
             obtener_juegos_para_panel(fecha_hoy, ligero=True), memoria
