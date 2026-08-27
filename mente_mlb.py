@@ -105,6 +105,7 @@ def construir_briefing(juego: dict[str, Any], memoria: dict | None = None) -> di
     lesiones = juego.get("lesiones") if isinstance(juego.get("lesiones"), dict) else {}
     scratch = juego.get("scratch_lineup") if isinstance(juego.get("scratch_lineup"), dict) else {}
     humanos = juego.get("factores_humanos") if isinstance(juego.get("factores_humanos"), dict) else {}
+    historico = juego.get("historico_oficial") if isinstance(juego.get("historico_oficial"), dict) else {}
     feats = juego.get("ml_features") if isinstance(juego.get("ml_features"), dict) else {}
 
     pilares = {
@@ -138,6 +139,50 @@ def construir_briefing(juego: dict[str, Any], memoria: dict | None = None) -> di
             "fatiga_away": (humanos.get("away") or {}).get("fatiga_viaje"),
             "fatiga_home": (humanos.get("home") or {}).get("fatiga_viaje"),
         },
+        "historico": {
+            "ok": bool(historico.get("ok")),
+            "riesgo": bool(historico.get("riesgo")),
+            "resumen": (historico.get("resumen") or "")[:200],
+            "l10_away": (historico.get("l10_away") or {}).get("marca"),
+            "l10_home": (historico.get("l10_home") or {}).get("marca"),
+            "pvr_away": (historico.get("pitcher_vs_rival_away") or {}).get("calidad"),
+            "pvr_home": (historico.get("pitcher_vs_rival_home") or {}).get("calidad"),
+        },
+        "elo": {
+            "ok": bool((juego.get("elo") or {}).get("ok")),
+            "resumen": str((juego.get("elo") or {}).get("resumen") or "")[:160],
+            "prob_elo_away": (juego.get("elo") or {}).get("prob_elo_away"),
+            "prob_elo_home": (juego.get("elo") or {}).get("prob_elo_home"),
+            "adj_pitcher_away": (juego.get("elo") or {}).get("adj_pitcher_away"),
+            "adj_pitcher_home": (juego.get("elo") or {}).get("adj_pitcher_home"),
+            "peso_elo": (juego.get("elo") or {}).get("peso_elo"),
+        },
+        "inteligencia": {
+            "ok": bool((juego.get("inteligencia") or {}).get("ok")),
+            "capas": list((juego.get("inteligencia") or {}).get("capas") or [])[:8],
+            "resumen": str((juego.get("inteligencia") or {}).get("resumen") or "")[:160],
+            "tipo_pick": juego.get("tipo_pick")
+            or (juego.get("inteligencia") or {}).get("tipo_pick")
+            or (juego.get("inteligencia") or {}).get("tipo_pre"),
+            "consenso_n": ((juego.get("inteligencia") or {}).get("consenso") or {}).get("n_fuentes"),
+            "mc": str(((juego.get("inteligencia") or {}).get("monte_carlo") or {}).get("resumen") or "")[:80],
+            "totales": {
+                "ok": bool((juego.get("mc_totales") or (juego.get("inteligencia") or {}).get("totales") or {}).get("ok")),
+                "mu": (juego.get("mc_totales") or (juego.get("inteligencia") or {}).get("totales") or {}).get("mu_total"),
+                "mu_f5": (juego.get("mc_totales") or (juego.get("inteligencia") or {}).get("totales") or {}).get("mu_f5"),
+                "señal": (juego.get("mc_totales") or (juego.get("inteligencia") or {}).get("totales") or {}).get("señal"),
+                "señal_f5": (juego.get("mc_totales") or (juego.get("inteligencia") or {}).get("totales") or {}).get("señal_f5"),
+                "preferir_f5": bool(
+                    juego.get("preferir_f5")
+                    or (juego.get("mc_totales") or {}).get("preferir_f5")
+                    or (juego.get("inteligencia") or {}).get("preferir_f5")
+                ),
+                "resumen": str(
+                    (juego.get("mc_totales") or (juego.get("inteligencia") or {}).get("totales") or {}).get("resumen")
+                    or ""
+                )[:120],
+            },
+        },
         "pitchers": {
             "away": juego.get("pitcherAway"),
             "home": juego.get("pitcherHome"),
@@ -153,18 +198,71 @@ def construir_briefing(juego: dict[str, Any], memoria: dict | None = None) -> di
         alertas.append("scratch")
     if pilares["humanos"]["riesgo"]:
         alertas.append("humanos")
+    if pilares["historico"]["riesgo"]:
+        alertas.append("historico")
+    for a in historico.get("alertas") or []:
+        if a not in alertas:
+            alertas.append(str(a))
     fuente = str(pilares["modelo"]["fuente_cuotas"] or "").lower()
     if fuente in ("modelo", "", "none"):
         alertas.append("sin_mercado")
+    elo_p = pilares.get("elo") or {}
+    if elo_p.get("ok"):
+        try:
+            pick = str(juego.get("pick") or "")
+            home = str(juego.get("home") or "")
+            elo_raw = juego.get("elo") if isinstance(juego.get("elo"), dict) else {}
+            if home and home in pick:
+                modelo_lado = float(elo_raw.get("prob_modelo_home") or juego.get("probPick") or 0)
+                elo_lado = float(elo_p.get("prob_elo_home") or 0)
+            else:
+                modelo_lado = float(elo_raw.get("prob_modelo_away") or juego.get("probPick") or 0)
+                elo_lado = float(elo_p.get("prob_elo_away") or 0)
+            if abs(modelo_lado - elo_lado) >= 12:
+                alertas.append("elo_discrepa")
+        except (TypeError, ValueError):
+            pass
+    intel_p = pilares.get("inteligencia") or {}
+    if intel_p.get("ok") and intel_p.get("capas"):
+        cons_n = intel_p.get("consenso_n") or 0
+        try:
+            disc = float(
+                ((juego.get("inteligencia") or {}).get("consenso") or {}).get(
+                    "discrepancia_casas_pct"
+                )
+                or 0
+            )
+        except (TypeError, ValueError):
+            disc = 0.0
+        if cons_n >= 2 and disc >= 6:
+            alertas.append("mercado_dividido")
+        if intel_p.get("tipo_pick") == "scratch":
+            alertas.append("tipo_scratch")
+        tot_p = intel_p.get("totales") if isinstance(intel_p.get("totales"), dict) else {}
+        if tot_p.get("ok"):
+            if tot_p.get("señal") == "over":
+                alertas.append("mc_over")
+            elif tot_p.get("señal") == "under":
+                alertas.append("mc_under")
+            if tot_p.get("preferir_f5"):
+                alertas.append("preferir_f5")
+            if tot_p.get("señal_f5") in ("over", "under") and tot_p.get("señal_f5") != tot_p.get("señal"):
+                alertas.append(f"f5_{tot_p['señal_f5']}")
 
     resumen_bits = [
         f"Pick {juego.get('pick') or '?'} @ {juego.get('probPick')}% edge={juego.get('edge')}",
         f"cuotas={fuente or 'n/a'}",
     ]
+    if elo_p.get("ok") and elo_p.get("resumen"):
+        resumen_bits.append(str(elo_p["resumen"])[:90])
+    if intel_p.get("ok") and intel_p.get("resumen"):
+        resumen_bits.append(str(intel_p["resumen"])[:90])
     if alertas:
-        resumen_bits.append("alertas=" + ",".join(alertas))
+        resumen_bits.append("alertas=" + ",".join(alertas[:8]))
     if humanos.get("resumen"):
         resumen_bits.append(str(humanos["resumen"])[:80])
+    if historico.get("resumen"):
+        resumen_bits.append(str(historico["resumen"])[:100])
 
     return {
         "ok": True,
@@ -314,6 +412,45 @@ def _reglas_duras(juego: dict, briefing: dict, modo: dict) -> dict[str, Any] | N
                 briefing=briefing,
             )
 
+    # Historial oficial: forma fría del pick o SP castigado vs rival
+    historico = juego.get("historico_oficial") if isinstance(juego.get("historico_oficial"), dict) else {}
+    if historico.get("ok"):
+        try:
+            edge_h = float(juego.get("edge") or 0)
+        except (TypeError, ValueError):
+            edge_h = 0.0
+        l10_key = "l10_away" if lado == "away" else ("l10_home" if lado == "home" else None)
+        pvr_key = (
+            "pitcher_vs_rival_away"
+            if lado == "away"
+            else ("pitcher_vs_rival_home" if lado == "home" else None)
+        )
+        if l10_key:
+            forma = str((historico.get(l10_key) or {}).get("forma") or "")
+            marca = (historico.get(l10_key) or {}).get("marca")
+            if forma == "fria" and edge_h < 10:
+                return _pack(
+                    "PASAR",
+                    0,
+                    [f"Pick en L10 fría ({marca or '≤2-8'})"],
+                    4,
+                    ["forma_fria"],
+                    fuente="regla-local",
+                    briefing=briefing,
+                )
+        if pvr_key:
+            pvr = historico.get(pvr_key) if isinstance(historico.get(pvr_key), dict) else {}
+            if pvr.get("calidad") == "malo" and edge_h < 12:
+                return _pack(
+                    "PASAR",
+                    0,
+                    [f"SP del pick malo vs rival ({(pvr.get('motivo') or '')[:50]})"],
+                    4,
+                    ["pitcher_vs_rival"],
+                    fuente="regla-local",
+                    briefing=briefing,
+                )
+
     fuente = str(juego.get("lineas_fuente") or "modelo").lower()
     sin_mercado = fuente in ("modelo", "", "none", "import")
     if modo.get("requiere_mercado") and sin_mercado:
@@ -425,8 +562,9 @@ def _conclusion_groq(
     prompt = (
         "Eres la MENTE de un sistema de apuestas MLB. El modelo ya propuso un pick.\n"
         "Debes concluir UNA decisión con dinero en mente: APOSTAR, PASAR o ESPERAR.\n"
-        "Sé estricto: sin cuota real, scratch del pick, starter en riesgo, fatiga alta o "
-        "parecido a lecciones de fallos → PASAR. Edge sólido + contexto limpio → APOSTAR.\n"
+        "Sé estricto: sin cuota real, scratch del pick, starter en riesgo, fatiga alta, "
+        "L10 fría del pick, pitcher malo vs rival o parecido a lecciones de fallos → PASAR. "
+        "Edge sólido + contexto limpio + forma/historial a favor → APOSTAR.\n"
         "ESPERAR solo si faltan datos clave (pitcher TBD, lineup vacío).\n\n"
         f"Partido: {juego.get('visitante')} @ {juego.get('home')}\n"
         f"Pick: {juego.get('pick')} | prob={juego.get('probPick')} edge={juego.get('edge')} "
@@ -497,6 +635,36 @@ def _conclusion_groq(
         return None
 
 
+def _scratch_afecta_pick(juego: dict) -> bool:
+    """Solo cuenta scratch/estrellas del lado del pick (no del rival)."""
+    scratch = juego.get("scratch_lineup") if isinstance(juego.get("scratch_lineup"), dict) else {}
+    if not scratch.get("riesgo"):
+        return False
+    pick = str(juego.get("pick") or "")
+    visitante = str(juego.get("visitante") or "")
+    home = str(juego.get("home") or "")
+    try:
+        from lineup_scratch import pick_afectado_por_scratch
+
+        return bool(pick_afectado_por_scratch(pick, visitante, home, scratch))
+    except ImportError:
+        return True
+
+
+def _starter_riesgo_del_pick(juego: dict) -> bool:
+    lesiones = juego.get("lesiones") if isinstance(juego.get("lesiones"), dict) else {}
+    if not lesiones.get("starter_riesgo"):
+        return False
+    pick = str(juego.get("pick") or "")
+    visitante = str(juego.get("visitante") or "")
+    home = str(juego.get("home") or "")
+    if lesiones.get("starter_away_lesionado") and visitante and visitante in pick:
+        return True
+    if lesiones.get("starter_home_lesionado") and home and home in pick:
+        return True
+    return False
+
+
 def _heuristica_conclusion(juego: dict, briefing: dict, modo: dict) -> dict[str, Any]:
     """Fallback sin Groq: decide con señales locales."""
     try:
@@ -507,39 +675,89 @@ def _heuristica_conclusion(juego: dict, briefing: dict, modo: dict) -> dict[str,
     alertas = briefing.get("alertas") or []
     lec_ids = briefing.get("lecciones_ids") or []
 
-    if "scratch" in alertas or "starter_riesgo" in alertas:
-        return _pack("PASAR", 0, ["Alerta de roster/scratch"], 4, lec_ids[:2], fuente="heuristica", briefing=briefing)
+    # Scratch/starter del RIVAL no debe tumbar el pick.
+    if _scratch_afecta_pick(juego) or _starter_riesgo_del_pick(juego):
+        return _pack(
+            "PASAR",
+            0,
+            ["Alerta de roster/scratch en el lado del pick"],
+            4,
+            lec_ids[:2],
+            fuente="heuristica",
+            briefing=briefing,
+        )
     if "humanos" in alertas and edge < 8:
         return _pack("PASAR", 0, ["Contexto humano feo y edge justo"], 3, lec_ids[:2], fuente="heuristica", briefing=briefing)
+
+    lado = _lado_del_pick(juego)
+    contra_pick = False
+    a_favor = False
+    if lado == "away":
+        contra_pick = any(a in alertas for a in ("l10_fria_away", "pvr_malo_away"))
+        a_favor = any(a in alertas for a in ("l10_caliente_away", "pvr_bueno_away", "l10_fria_home", "pvr_malo_home"))
+    elif lado == "home":
+        contra_pick = any(a in alertas for a in ("l10_fria_home", "pvr_malo_home"))
+        a_favor = any(a in alertas for a in ("l10_caliente_home", "pvr_bueno_home", "l10_fria_away", "pvr_malo_away"))
+
+    if contra_pick and edge < 10:
+        return _pack(
+            "PASAR",
+            0,
+            ["Historial oficial en contra del pick"],
+            4,
+            ["historico_oficial"],
+            fuente="heuristica",
+            briefing=briefing,
+        )
     if "sin_mercado" in alertas and modo.get("requiere_mercado"):
         return _pack("PASAR", 0, ["Sin mercado"], 5, ["sin_cuota_real"], fuente="heuristica", briefing=briefing)
+
+    conf_bonus = 1 if a_favor else 0
+    razones_extra: list[str] = []
+    if "preferir_f5" in alertas:
+        razones_extra.append("Bullpen cargado → entorno F5 más estable")
+        conf_bonus = max(0, conf_bonus)  # no sube confianza del ML full
+    if "mc_under" in alertas:
+        razones_extra.append("MC totales: entorno under")
+    elif "mc_over" in alertas:
+        razones_extra.append("MC totales: entorno over")
+    # Señal O/U fuerte + edge ML justo → más cautela (no tumba solo)
+    if ("mc_under" in alertas or "mc_over" in alertas) and edge < 7:
+        conf_bonus = min(conf_bonus, 0)
 
     if edge >= 6 and prob >= 55 and "sin_mercado" not in alertas:
         stake = 2.0 if edge < 8 else (3.0 if edge < 12 else 4.0)
         conf = 3 if edge < 8 else (4 if edge < 12 else 5)
+        conf = min(5, conf + conf_bonus)
+        razones = [f"Edge +{edge:.1f}% con contexto limpio", f"Prob {prob:.0f}%"]
+        razones.extend(razones_extra[:2])
         return _pack(
             "APOSTAR",
             stake,
-            [f"Edge +{edge:.1f}% con contexto limpio", f"Prob {prob:.0f}%"],
+            razones,
             conf,
             lec_ids[:2],
             fuente="heuristica",
             briefing=briefing,
         )
     if edge >= 4 and prob >= 58:
+        razones = ["Spot marginal: esperar mejor precio o confirmación"]
+        razones.extend(razones_extra[:1])
         return _pack(
             "ESPERAR",
             0,
-            ["Spot marginal: esperar mejor precio o confirmación"],
+            razones,
             2,
             lec_ids[:1],
             fuente="heuristica",
             briefing=briefing,
         )
+    razones = ["No hay valor claro"]
+    razones.extend(razones_extra[:1])
     return _pack(
         "PASAR",
         0,
-        ["No hay valor claro"],
+        razones,
         3,
         lec_ids[:1],
         fuente="heuristica",
@@ -636,11 +854,16 @@ def mente_conclusion(
     )
     out["autoriza_dinero"] = bool(autoriza)
     if out.get("decision") == "APOSTAR" and not autoriza:
-        out["razones"] = list(out.get("razones") or []) + [
-            f"Conf {out.get('confianza')} < mínimo {modo['min_confianza']}"
-            + (" (shadow)" if modo.get("shadow") else "")
-        ]
-        out["dinero_bloqueado_por"] = "shadow" if modo.get("shadow") else "confianza"
+        razones = list(out.get("razones") or [])
+        if modo.get("shadow"):
+            razones.append("Modo shadow: decide sin mover dinero")
+            out["dinero_bloqueado_por"] = "shadow"
+        else:
+            razones.append(
+                f"Conf {out.get('confianza')} < mínimo {modo['min_confianza']}"
+            )
+            out["dinero_bloqueado_por"] = "confianza"
+        out["razones"] = razones
 
     if gid and not solo_local:
         _mente_cache[gid] = dict(out)

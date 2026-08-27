@@ -63,11 +63,37 @@ except ImportError:
 try:
     from factores_humanos import (
         analizar_factores_humanos,
-        aplicar_ajustes_fuerza,
+        aplicar_ajustes_fuerza as aplicar_ajustes_humanos,
     )
     HAS_HUMANOS = True
 except ImportError:
     HAS_HUMANOS = False
+
+try:
+    from historico_oficial import (
+        analizar_historico_oficial,
+        aplicar_ajustes_fuerza as aplicar_ajustes_historico,
+        cargar_l10,
+    )
+    HAS_HISTORICO = True
+except ImportError:
+    HAS_HISTORICO = False
+
+try:
+    from elo_mlb import fusionar_probs_elo, actualizar_elo_desde_juego
+    HAS_ELO = True
+except ImportError:
+    HAS_ELO = False
+    fusionar_probs_elo = None  # type: ignore
+    actualizar_elo_desde_juego = None  # type: ignore
+
+try:
+    from inteligencia_mlb import enriquecer_probs, clasificar_tipo_pick
+    HAS_INTEL = True
+except ImportError:
+    HAS_INTEL = False
+    enriquecer_probs = None  # type: ignore
+    clasificar_tipo_pick = None  # type: ignore
 
 try:
     import vertexai
@@ -621,6 +647,65 @@ def cuota_desde_prob(prob: float) -> tuple[float, int]:
     return dec, amer
 
 
+_FUENTES_SIN_MERCADO = frozenset({"", "modelo", "none", "null", "import"})
+
+
+def fuente_es_mercado(fuente: Any) -> bool:
+    """True solo si la fuente es una casa/API real (Pinnacle, DK, OddsPapi…)."""
+    return str(fuente or "").strip().lower() not in _FUENTES_SIN_MERCADO
+
+
+def tiene_cuota_mercado(juego: dict[str, Any] | None) -> bool:
+    """Hay cuota de casa para medir valor. Cuota inventada del modelo no cuenta."""
+    if not isinstance(juego, dict):
+        return False
+    if not fuente_es_mercado(juego.get("lineas_fuente")):
+        return False
+    if juego.get("odds_away_decimal") or juego.get("odds_home_decimal"):
+        return True
+    try:
+        return float(juego.get("odds") or 0) > 1.0
+    except (TypeError, ValueError):
+        return False
+
+
+def apostable_con_mercado(juego: dict[str, Any] | None) -> bool:
+    """Candidato de dinero: el modelo lo marcó y hay cuota real."""
+    if not isinstance(juego, dict):
+        return False
+    return bool(juego.get("apostable")) and tiene_cuota_mercado(juego)
+
+
+def marcar_estudio_sin_mercado(
+    juego: dict[str, Any],
+    *,
+    pick: str,
+    prob: float,
+    min_prob: float,
+) -> dict[str, Any]:
+    """Predicción de estudio: % del modelo, sin edge ni apostable.
+
+    La cuota justa sirve para P/L de papel; no es valor vs una casa.
+    """
+    dec, amer = cuota_desde_prob(prob)
+    juego["lineas_fuente"] = "modelo"
+    juego["pick"] = pick
+    juego["probPick"] = float(prob)
+    juego["odds"] = dec
+    juego["odds_american"] = amer
+    juego["edge"] = 0
+    juego["apostable"] = False
+    if float(prob) >= float(min_prob):
+        juego["motivo_apuesta"] = (
+            f"Modelo {float(prob):.0f}% sin cuota real — no es valor (no apostar)"
+        )
+    else:
+        juego["motivo_apuesta"] = (
+            f"Prob. modelo bajo {min_prob}% · sin cuota real"
+        )
+    return juego
+
+
 def _modo_solo_modelo(cfg: dict[str, Any]) -> bool:
     estrategia = cfg.get("estrategia", {})
     if cfg.get("modo_solo_modelo"):
@@ -674,6 +759,7 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         # Inicializamos valores para evitar signos de pregunta en la interfaz
         juego.setdefault("probPick", 0)
         juego.setdefault("edge", 0)
+        juego["elo"] = {"ok": False, "motivo": "esperando_pitchers", "activo": True}
         return juego
 
     # Precarga de datos para la IA
@@ -768,7 +854,7 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
     if usar_humanos:
         try:
             humanos_info = analizar_factores_humanos(juego)
-            f_away, f_home = aplicar_ajustes_fuerza(f_away, f_home, humanos_info)
+            f_away, f_home = aplicar_ajustes_humanos(f_away, f_home, humanos_info)
             if humanos_info.get("ok") and (
                 humanos_info.get("riesgo")
                 or abs(float(humanos_info.get("ajuste_away") or 0)) >= 0.5
@@ -783,6 +869,27 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             humanos_info = {"ok": False, "motivo": str(e)[:80], "resumen": "", "riesgo": False}
     juego["factores_humanos"] = humanos_info
 
+    # Historial oficial: L10 + pitcher vs rival
+    historico_info: dict[str, Any] = {"ok": False, "resumen": "", "riesgo": False}
+    usar_hist = bool(cfg.get("usar_historico_oficial", True)) and HAS_HISTORICO
+    if usar_hist:
+        try:
+            historico_info = analizar_historico_oficial(juego, season=season)
+            f_away, f_home = aplicar_ajustes_historico(f_away, f_home, historico_info)
+            if historico_info.get("ok") and (
+                historico_info.get("riesgo")
+                or abs(float(historico_info.get("ajuste_away") or 0)) >= 0.4
+                or abs(float(historico_info.get("ajuste_home") or 0)) >= 0.4
+            ):
+                print(
+                    f"[HISTORICO] {juego.get('visitante')}@{juego.get('home')}: "
+                    f"{historico_info.get('resumen')[:180]}"
+                )
+        except Exception as e:
+            print(f"[HISTORICO] Error: {e}")
+            historico_info = {"ok": False, "motivo": str(e)[:80], "resumen": "", "riesgo": False}
+    juego["historico_oficial"] = historico_info
+
     prob_away, prob_home = prob_logistica(f_away, f_home)
     prob_est_away, prob_est_home = prob_away, prob_home
 
@@ -795,10 +902,26 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             park = PARK_FACTORS.get(home_id, 1.0)
             rec_away = cargar_records(season).get(away_id, {"win_pct": 0.5})
             rec_home = cargar_records(season).get(home_id, {"win_pct": 0.5})
-            racha_away = cargar_rachas(season).get(away_id, 0)
-            racha_home = cargar_rachas(season).get(home_id, 0)
-            ba_ml = {**ba, "win_pct": rec_away.get("win_pct", 0.5), "racha_ultimos_10": racha_away}
-            bh_ml = {**bh, "win_pct": rec_home.get("win_pct", 0.5), "racha_ultimos_10": racha_home}
+            # Preferir L10 oficial (0-1); fallback a racha de standings escalada
+            l10_pct_away = None
+            l10_pct_home = None
+            if HAS_HISTORICO:
+                try:
+                    l10m = cargar_l10(season)
+                    if away_id in l10m and l10m[away_id].get("ok"):
+                        l10_pct_away = float(l10m[away_id].get("pct") or 0.5)
+                    if home_id in l10m and l10m[home_id].get("ok"):
+                        l10_pct_home = float(l10m[home_id].get("pct") or 0.5)
+                except Exception:
+                    pass
+            if l10_pct_away is None:
+                racha_away = cargar_rachas(season).get(away_id, 0) if away_id else 0
+                l10_pct_away = max(0.0, min(1.0, 0.5 + float(racha_away) * 0.05))
+            if l10_pct_home is None:
+                racha_home = cargar_rachas(season).get(home_id, 0) if home_id else 0
+                l10_pct_home = max(0.0, min(1.0, 0.5 + float(racha_home) * 0.05))
+            ba_ml = {**ba, "win_pct": rec_away.get("win_pct", 0.5), "racha_ultimos_10": l10_pct_away}
+            bh_ml = {**bh, "win_pct": rec_home.get("win_pct", 0.5), "racha_ultimos_10": l10_pct_home}
             clima_feats = {
                 "temp_f": clima_info.get("temp_f") if clima_info.get("ok") else 72.0,
                 "viento_mph": clima_info.get("viento_mph") if clima_info.get("ok") else 5.0,
@@ -896,11 +1019,75 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             print(f"[ML] Error en ensemble prediction: {e}")
             prob_away, prob_home = prob_est_away, prob_est_home
 
-    # Calibración: ajusta % para que reflejen frecuencia real de aciertos
+    # Fusión Elo + ajuste pitcher (estilo 538 ligero)
+    elo_meta: dict[str, Any] = {"ok": False, "activo": False}
+    if HAS_ELO and fusionar_probs_elo and cfg.get("usar_elo", True):
+        try:
+            # Semilla Elo con win% oficial si aún no hay rating
+            try:
+                recs = cargar_records(season)
+                juego.setdefault(
+                    "win_pct_away",
+                    float((recs.get(away_id) or {}).get("win_pct") or 0.5),
+                )
+                juego.setdefault(
+                    "win_pct_home",
+                    float((recs.get(home_id) or {}).get("win_pct") or 0.5),
+                )
+            except Exception:
+                pass
+            antes_a, antes_h = prob_away, prob_home
+            prob_away, prob_home, elo_meta = fusionar_probs_elo(
+                juego, prob_away, prob_home, pa, ph, cfg
+            )
+            if abs(prob_away - antes_a) >= 0.5 or abs(prob_home - antes_h) >= 0.5:
+                print(
+                    f"[ELO] {juego.get('visitante')}@{juego.get('home')}: "
+                    f"{antes_a:.0f}/{antes_h:.0f} → {prob_away:.0f}/{prob_home:.0f} "
+                    f"({elo_meta.get('resumen', '')})"
+                )
+        except Exception as e:
+            print(f"[ELO] Error: {e}")
+            elo_meta = {"ok": False, "motivo": str(e)[:100]}
+    juego["elo"] = elo_meta
+
+    # 5 capas de inteligencia (mercado, bullpen día, park/ump, tipo, Monte Carlo)
+    intel_meta: dict[str, Any] = {"ok": False, "capas": []}
+    if HAS_INTEL and enriquecer_probs and cfg.get("usar_inteligencia", True):
+        try:
+            park_pf = float(PARK_FACTORS.get(home_id, 1.0) or 1.0)
+            antes_a, antes_h = prob_away, prob_home
+            prob_away, prob_home, intel_meta = enriquecer_probs(
+                juego,
+                prob_away,
+                prob_home,
+                cfg,
+                park_factor=park_pf,
+                season=season,
+                pitcher_away=pa,
+                pitcher_home=ph,
+            )
+            if abs(prob_away - antes_a) >= 0.4 or abs(prob_home - antes_h) >= 0.4:
+                print(
+                    f"[INTEL] {juego.get('visitante')}@{juego.get('home')}: "
+                    f"{antes_a:.0f}/{antes_h:.0f} → {prob_away:.0f}/{prob_home:.0f} "
+                    f"({intel_meta.get('resumen', '')})"
+                )
+        except Exception as e:
+            print(f"[INTEL] Error: {e}")
+            intel_meta = {"ok": False, "motivo": str(e)[:120], "capas": []}
+    juego["inteligencia"] = intel_meta
+
+    # Calibración (global + por tipo_pick si hay datos)
     if HAS_CALIB and cfg.get("usar_calibracion", True):
         try:
+            tipo_pre = None
+            if isinstance(intel_meta, dict):
+                tipo_pre = intel_meta.get("tipo_pre") or intel_meta.get("tipo_pick")
             antes_a, antes_h = prob_away, prob_home
-            prob_away, prob_home = calibrar_par(prob_away, prob_home, cfg)
+            prob_away, prob_home = calibrar_par(
+                prob_away, prob_home, cfg, tipo_pick=tipo_pre
+            )
             if abs(prob_away - antes_a) >= 0.3 or abs(prob_home - antes_h) >= 0.3:
                 print(f"[CALIB] {antes_a}/{antes_h} → {prob_away}/{prob_home}")
         except Exception as e:
@@ -934,30 +1121,14 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
     preferir_underdogs = estrategia.get("preferir_underdogs", False)
     solo_modelo = _modo_solo_modelo(cfg)
 
-    if solo_modelo:
-        juego["lineas_fuente"] = "modelo"
-        # Un solo favorito por partido (el de mayor prob). Evita picks <50% o ambos lados.
+    # Sin cuota de casa: el % es estudio. Nunca inventar edge = prob-50
+    # (eso convirtió un 72% en un falso "+22% de valor").
+    if solo_modelo or (not dec_away and not dec_home):
         if prob_away >= prob_home:
             pick, prob = f"{juego['visitante']} ML", prob_away
         else:
             pick, prob = f"{juego['home']} ML", prob_home
-        if prob >= min_prob and prob >= 50.0:
-            dec, amer = cuota_desde_prob(prob)
-            conf = round(prob - 50.0, 1)
-            bonus = 0.0
-            if preferir_underdogs and dec >= float(estrategia.get("min_cuota_underdog", 1.5)):
-                bonus = 2.0
-            candidatos.append(
-                {
-                    "pick": pick,
-                    "prob": prob,
-                    "edge": conf + bonus,
-                    "edge_base": conf,
-                    "odds": dec,
-                    "american": amer,
-                    "es_underdog": dec >= float(estrategia.get("min_cuota_underdog", 1.5)),
-                }
-            )
+        marcar_estudio_sin_mercado(juego, pick=pick, prob=prob, min_prob=min_prob)
     else:
         if dec_away and edge_away >= min_edge and prob_away >= min_prob:
             es_underdog = es_underdog_con_valor(dec_away, prob_away, cfg)
@@ -998,15 +1169,25 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         juego["edge"] = mejor["edge_base"]
         juego["probPick"] = mejor["prob"]
         juego["apostable"] = True
-        if solo_modelo:
-            juego["motivo_apuesta"] = (
-                f"Modelo {mejor['prob']:.0f}% (solo stats+ML, sin mercado)"
+        fuente = juego.get("lineas_fuente") or "mercado"
+        juego["motivo_apuesta"] = (
+            f"Valor +{mejor['edge_base']:.1f}% vs {fuente} "
+            f"(modelo {mejor['prob']:.0f}% vs mercado {prob_implicita(mejor['odds']):.0f}%)"
+        )
+        if elo_meta.get("ok"):
+            juego["motivo_apuesta"] += f" · Elo {elo_meta.get('resumen', '')[:70]}"
+        if intel_meta.get("ok") and intel_meta.get("capas"):
+            juego["motivo_apuesta"] += f" · Intel[{','.join(intel_meta.get('capas') or [])}]"
+        tot = intel_meta.get("totales") if isinstance(intel_meta.get("totales"), dict) else {}
+        if tot.get("ok") and tot.get("señal") in ("over", "under"):
+            juego["motivo_apuesta"] += (
+                f" · MC {tot['señal']} μ={tot.get('mu_total')} vs {tot.get('linea_total')}"
             )
-        else:
-            fuente = juego.get("lineas_fuente") or "mercado"
-            juego["motivo_apuesta"] = (
-                f"Valor +{mejor['edge']:.1f}% vs {fuente} "
-                f"(modelo {mejor['prob']:.0f}% vs mercado {prob_implicita(mejor['odds']):.0f}%)"
+        if juego.get("preferir_f5") or intel_meta.get("preferir_f5"):
+            juego["motivo_apuesta"] += " · entorno F5 (bullpen)"
+        if not tiene_cuota_mercado(juego):
+            marcar_estudio_sin_mercado(
+                juego, pick=mejor["pick"], prob=mejor["prob"], min_prob=min_prob
             )
         # Lesiones / scratch / estrellas out → no dinero (mensaje neutro en panel)
         if lesiones_info.get("starter_riesgo") and _pick_sobre_starter_lesionado(
@@ -1019,7 +1200,7 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         ):
             juego["apostable"] = False
             juego["motivo_apuesta"] = "Spot no apto para dinero ahora"
-    else:
+    elif not juego.get("pick"):
         # SIEMPRE hacer una predicción, aunque no sea apostable
         if prob_away >= prob_home:
             juego["pick"] = f"{juego['visitante']} ML"
@@ -1046,8 +1227,14 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
                 juego["odds_american"] = amer
         
         juego["apostable"] = False
-        if solo_modelo or (not dec_away and not dec_home):
-            juego["motivo_apuesta"] = f"Prob. modelo bajo {min_prob}%"
+        if solo_modelo or (not dec_away and not dec_home) or not tiene_cuota_mercado(juego):
+            juego["lineas_fuente"] = "modelo"
+            juego["edge"] = 0
+            juego["motivo_apuesta"] = (
+                f"Modelo {float(juego.get('probPick') or 0):.0f}% sin cuota real — no es valor (no apostar)"
+                if float(juego.get("probPick") or 0) >= min_prob
+                else f"Prob. modelo bajo {min_prob}% · sin cuota real"
+            )
         elif edge_away < min_edge and edge_home < min_edge:
             juego["motivo_apuesta"] = f"Sin valor (mínimo +{min_edge}% edge)"
         else:
@@ -1066,6 +1253,21 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         if packed:
             juego["ml_features"] = packed
 
+    # Capa 4: clasificar tipo de pick (para calibración / mente)
+    if HAS_INTEL and clasificar_tipo_pick:
+        try:
+            juego["tipo_pick"] = clasificar_tipo_pick(
+                juego,
+                prob=juego.get("probPick"),
+                odds=juego.get("odds"),
+            )
+            if isinstance(juego.get("inteligencia"), dict):
+                juego["inteligencia"]["tipo_pick"] = juego["tipo_pick"]
+        except Exception:
+            juego.setdefault("tipo_pick", "limpio")
+    else:
+        juego.setdefault("tipo_pick", "limpio")
+
     juego.pop("_features_away", None)
     juego.pop("_features_home", None)
     return juego
@@ -1080,13 +1282,10 @@ def seleccionar_favorables_del_dia(juegos: list[dict[str, Any]], cfg: dict[str, 
     favorables: list[dict[str, Any]] = [
         j
         for j in juegos
-        if j.get("apostable") and j.get("estado") == "PROGRAMADO"
+        if apostable_con_mercado(j) and j.get("estado") == "PROGRAMADO"
     ]
-    # Solo-modelo: priorizar % más alto. Con BetMGM: priorizar edge de valor.
-    if solo_modelo:
-        favorables.sort(key=lambda x: float(x.get("probPick") or 0), reverse=True)
-    else:
-        favorables.sort(key=lambda x: x.get("edge", 0), reverse=True)
+    # Sin mercado no hay apostables. Con cuota real: priorizar edge de valor.
+    favorables.sort(key=lambda x: x.get("edge", 0), reverse=True)
 
     ids_top = {j["id"] for j in favorables[:max_apuestas]}
     for j in juegos:

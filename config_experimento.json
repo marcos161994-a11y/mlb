@@ -18,11 +18,11 @@
 
   "lineas": {
 
-    "casa": "pinnacle",
+    "casa": "draftkings",
 
-    "bookmakers": "pinnacle,draftkings",
+    "bookmakers": "draftkings",
 
-    "proveedor": "oddspapi",
+    "proveedor": "espn",
 
     "api_version": "v5",
 
@@ -34,7 +34,9 @@
 
     "tournament_id": 109,
 
-    "api_key": ""
+    "api_key": "",
+
+    "fallback_internet": true
 
   },
 
@@ -46,7 +48,7 @@
 
     "min_prob_modelo": 58.0,
 
-    "requiere_betmgm": true,
+    "requiere_betmgm": false,
 
     "fallback_solo_modelo": true,
 
@@ -84,15 +86,52 @@
 
   "usar_factores_humanos": true,
 
+  "usar_historico_oficial": true,
+
   "usar_ia_veto": true,
 
   "usar_mente": true,
 
+  "usar_mente_errores": true,
+
+  "usar_elo": true,
+
+  "usar_inteligencia": true,
+
+  "elo": {
+    "peso_elo": 0.40,
+    "k": 20,
+    "home_adv": 24,
+    "fip_liga": 4.20,
+    "pitcher_scale": 28
+  },
+
+  "inteligencia": {
+    "consenso_mercado": true,
+    "bullpen_dia": true,
+    "park_umpire": true,
+    "monte_carlo": true,
+    "monte_carlo_totales": true,
+    "peso_consenso": 0.10,
+    "peso_mc": 0.22,
+    "mc_sims": 800,
+    "linea_total_default": 8.5,
+    "linea_f5_default": 4.5,
+    "umbral_señal_total": 0.58
+  },
+
   "mente": {
-    "modo": "shadow",
+    "modo": "normal",
     "min_confianza": 3,
     "requiere_mercado": true,
-    "shadow": true
+    "shadow": false
+  },
+
+  "mente_errores": {
+    "activo": true,
+    "auto_remediar": true,
+    "notificar": true,
+    "cooldown_alerta_min": 360
   },
 
   "whatsapp": {
@@ -106,6 +145,8 @@
 
   "telegram": {
     "activo": true,
+    "bot_token": "",
+    "chat_id": "",
     "user": "",
     "solo_apostables": false,
     "incluir_mente": true
@@ -121,7 +162,7 @@
     "api_key": ""
   },
 
-  "modo_solo_modelo": false,
+  "modo_solo_modelo": true,
 
   "usar_ml": true,
 

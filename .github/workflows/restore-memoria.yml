@@ -1,15 +1,10 @@
 # Sube memoria_auditoria.json del repo a Render (recuperación tras wipe).
-# Se dispara al pushear este workflow o la memoria en la rama del fix.
+# Fusiona días; no pisa el historial más nuevo del disco.
+# Manual: Actions → Restore memoria Render → Run workflow
+# (automático al arrancar el servidor + cron + /api/health)
 name: Restore memoria Render
 
 on:
-  push:
-    branches:
-      - cursor/fix-paper-odds-bloqueo-db50
-      - cursor/ia-veto-status-db50
-    paths:
-      - memoria_auditoria.json
-      - .github/workflows/restore-memoria.yml
   workflow_dispatch:
 
 jobs:
@@ -19,7 +14,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Subir memoria a Render
+      - name: Subir memoria a Render (fusionar)
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
@@ -27,13 +22,14 @@ jobs:
             echo "::error::Falta CRON_SECRET en GitHub Secrets (mismo valor que Render)."
             exit 1
           fi
-          echo "Subiendo memoria_auditoria.json..."
+          echo "Fusionando memoria_auditoria.json en Render..."
           curl -fsS --retry 3 --retry-delay 10 --max-time 120 \
             -X POST \
             -H "Content-Type: application/json; charset=utf-8" \
             --data-binary @"memoria_auditoria.json" \
-            "https://mlb-1-en7i.onrender.com/api/subir-memoria?secret=${CRON_SECRET}"
+            "https://mlb-1-en7i.onrender.com/api/subir-memoria?secret=${CRON_SECRET}&modo=fusionar"
           echo
           echo "Verificando..."
-          curl -fsS --max-time 60 "https://mlb-1-en7i.onrender.com/api/health"
+          curl -fsS --max-time 60 "https://mlb-1-en7i.onrender.com/api/predicciones" \
+            | python3 -c "import json,sys; d=json.load(sys.stdin); print('dias', [(x.get('fecha'), len(x.get('predicciones') or [])) for x in d.get('historial') or []])"
           echo

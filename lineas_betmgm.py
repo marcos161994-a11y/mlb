@@ -86,17 +86,57 @@ def _match_key(away: str, home: str) -> tuple[str, str]:
     return normalizar_nombre_equipo(away), normalizar_nombre_equipo(home)
 
 
+def _sanear_api_key(raw: str | None) -> str | None:
+    """Quita espacios, comillas y prefijos que suelen pegarse al copiar en Render."""
+    if not raw:
+        return None
+    key = str(raw).strip()
+    # BOM / saltos
+    key = key.replace("\ufeff", "").replace("\r", "").replace("\n", "").strip()
+    if (key.startswith('"') and key.endswith('"')) or (key.startswith("'") and key.endswith("'")):
+        key = key[1:-1].strip()
+    if key.lower().startswith("bearer "):
+        key = key[7:].strip()
+    # Placeholder típico del docs
+    if not key or key.upper() in ("YOUR_API_KEY", "APIKEY", "{APIKEY}", "XXX"):
+        return None
+    return key or None
+
+
+def enmascarar_api_key(key: str | None) -> dict:
+    """Diagnóstico seguro: largo + preview, sin exponer la key."""
+    if not key:
+        return {"key_presente": False, "key_len": 0, "key_preview": None}
+    n = len(key)
+    if n <= 8:
+        preview = "*" * n
+    else:
+        preview = f"{key[:4]}…{key[-4:]}"
+    return {
+        "key_presente": True,
+        "key_len": n,
+        "key_preview": preview,
+        "key_tiene_espacios": (" " in key),
+    }
+
+
 def cargar_api_key(cfg: dict) -> str | None:
-    key = (cfg.get("lineas") or {}).get("api_key", "").strip()
-    if key:
-        return key
-    if KEY_FILE.exists():
-        key = KEY_FILE.read_text(encoding="utf-8").strip()
-        if key and not key.startswith("#"):
-            return key
+    """Prioriza ODDS_API_KEY (Render). Config/archivo solo si env vacío."""
     import os
 
-    return os.environ.get("ODDS_API_KEY", "").strip() or None
+    for candidate in (
+        os.environ.get("ODDS_API_KEY"),
+        (cfg.get("lineas") or {}).get("api_key"),
+        KEY_FILE.read_text(encoding="utf-8") if KEY_FILE.exists() else None,
+    ):
+        if candidate is None:
+            continue
+        if isinstance(candidate, str) and candidate.lstrip().startswith("#"):
+            continue
+        key = _sanear_api_key(candidate if isinstance(candidate, str) else str(candidate))
+        if key:
+            return key
+    return None
 
 
 def american_a_decimal(price: float | int) -> float:
@@ -159,8 +199,13 @@ def obtener_lineas_betmgm(cfg: dict) -> tuple[dict[tuple[str, str], dict], dict]
     meta = {"ok": False, "fuente": "odds-api", "mensaje": "", "partidos": 0}
 
     api_key = cargar_api_key(cfg)
+    meta.update(enmascarar_api_key(api_key))
     if not api_key:
-        meta["mensaje"] = "Falta ODDS_API_KEY en Render (o odds_api_key.txt)"
+        meta["mensaje"] = "Falta ODDS_API_KEY en Render (the-odds-api.com)"
+        meta["ayuda"] = (
+            "Crea key gratis en https://the-odds-api.com → Account → API Key. "
+            "En Render: Environment → ODDS_API_KEY = (pegar sin comillas) → Save → Manual Deploy."
+        )
         return {}, meta
 
     ahora = datetime.now()
@@ -188,7 +233,35 @@ def obtener_lineas_betmgm(cfg: dict) -> tuple[dict[tuple[str, str], dict], dict]
     try:
         r = requests.get(ODDS_URL, params=params, timeout=25)
         if r.status_code == 401:
-            meta["mensaje"] = "API key inválida (ODDS_API_KEY)"
+            err_code = None
+            err_msg = None
+            try:
+                body = r.json()
+                err_code = body.get("error_code")
+                err_msg = body.get("message")
+            except Exception:
+                pass
+            meta["http_status"] = 401
+            meta["error_code"] = err_code or "INVALID_KEY"
+            if err_code == "DEACTIVATED_KEY":
+                meta["mensaje"] = "ODDS_API_KEY desactivada (suscripción cancelada)"
+            elif err_code in ("OUT_OF_USAGE_CREDITS",) or "usage" in (err_msg or "").lower():
+                meta["mensaje"] = "Sin créditos en The Odds API (cuota mensual agotada)"
+            else:
+                meta["mensaje"] = "API key inválida (ODDS_API_KEY)"
+            meta["ayuda"] = (
+                "The Odds API rechazó la key (401). "
+                "1) Entra a https://the-odds-api.com y copia la API Key actual. "
+                "2) Render → Environment → ODDS_API_KEY: pega SOLO la key, sin comillas ni espacios. "
+                "3) Save + Manual Deploy. "
+                "Prueba en el navegador: "
+                "https://api.the-odds-api.com/v4/sports?apiKey=TU_KEY"
+            )
+            return {}, meta
+        if r.status_code == 429:
+            meta["http_status"] = 429
+            meta["mensaje"] = "Odds API rate limit / sin créditos"
+            meta["ayuda"] = "Espera el reset mensual o reduce llamadas; revisa x-requests-remaining en el dashboard."
             return {}, meta
         r.raise_for_status()
         eventos = r.json()
@@ -231,37 +304,130 @@ def buscar_lineas_partido(
         return mapa[(ka, kh)]
     if (kh, ka) in mapa:
         m = mapa[(kh, ka)]
-        return {"away": m.get("home"), "home": m.get("away")}
+        out = {"away": m.get("home"), "home": m.get("away")}
+        # Total O/U no depende del lado; conservar si existe
+        if isinstance(m.get("total"), dict):
+            out["total"] = dict(m["total"])
+        if isinstance(m.get("libros"), list):
+            out["libros"] = [
+                {
+                    "casa": b.get("casa"),
+                    "away": b.get("home"),
+                    "home": b.get("away"),
+                }
+                for b in m["libros"]
+                if isinstance(b, dict)
+            ]
+        return out
     return None
 
 
+def _juegos_con_cuota(juegos: list[dict]) -> int:
+    return sum(
+        1
+        for j in juegos
+        if j.get("odds_away_decimal") and j.get("odds_home_decimal")
+    )
+
+
 def aplicar_lineas_a_juegos(juegos: list[dict], cfg: dict) -> tuple[list[dict], dict]:
-    """Enruta al proveedor configurado (oddspapi | the-odds-api)."""
-    proveedor = str((cfg.get("lineas") or {}).get("proveedor") or "oddspapi").lower()
+    """OddsPapi / The Odds API, y si faltan líneas: ESPN (DraftKings, sin key)."""
+    lineas_cfg = cfg.get("lineas") or {}
+    proveedor = str(lineas_cfg.get("proveedor") or "oddspapi").lower()
+    usar_espn = bool(lineas_cfg.get("fallback_internet", True))
+
+    if proveedor in ("espn", "espn-draftkings", "internet"):
+        from lineas_espn import aplicar_lineas_espn
+
+        return aplicar_lineas_espn(juegos, cfg, solo_vacios=False)
+
     if proveedor in ("oddspapi", "odds-papi", "odds_papi"):
-        from lineas_oddspapi import aplicar_lineas_oddspapi
+        from lineas_oddspapi import aplicar_lineas_oddspapi, circuito_abierto, estado_circuito
 
-        return aplicar_lineas_oddspapi(juegos, cfg)
+        if circuito_abierto():
+            st = estado_circuito()
+            meta = {
+                "ok": False,
+                "fuente": "oddspapi",
+                "circuito": True,
+                "circuito_hasta": st.get("hasta"),
+                "circuito_hasta_hora": st.get("hasta_hora"),
+                "http_status": st.get("http_status"),
+                "mensaje": st.get("mensaje") or "OddsPapi en pausa automática",
+                "partidos": 0,
+            }
+        else:
+            juegos, meta = aplicar_lineas_oddspapi(juegos, cfg)
+    else:
+        mapa, meta = obtener_lineas_betmgm(cfg)
+        for juego in juegos:
+            lineas = buscar_lineas_partido(mapa, juego["visitante"], juego["home"])
+            juego["lineas_betmgm"] = lineas
+            juego["odds_away_american"] = None
+            juego["odds_home_american"] = None
+            juego["odds_away_decimal"] = None
+            juego["odds_home_decimal"] = None
+            juego["lineas_fuente"] = "modelo"
 
-    mapa, meta = obtener_lineas_betmgm(cfg)
-    for juego in juegos:
-        lineas = buscar_lineas_partido(mapa, juego["visitante"], juego["home"])
-        juego["lineas_betmgm"] = lineas
-        juego["odds_away_american"] = None
-        juego["odds_home_american"] = None
-        juego["odds_away_decimal"] = None
-        juego["odds_home_decimal"] = None
-        juego["lineas_fuente"] = "modelo"
+            if lineas:
+                away_l = lineas.get("away")
+                home_l = lineas.get("home")
+                if away_l:
+                    juego["odds_away_american"] = away_l["american"]
+                    juego["odds_away_decimal"] = away_l["decimal"]
+                if home_l:
+                    juego["odds_home_american"] = home_l["american"]
+                    juego["odds_home_decimal"] = home_l["decimal"]
+                juego["lineas_fuente"] = away_l.get("casa") or home_l.get("casa") or "odds-api"
 
-        if lineas:
-            away_l = lineas.get("away")
-            home_l = lineas.get("home")
-            if away_l:
-                juego["odds_away_american"] = away_l["american"]
-                juego["odds_away_decimal"] = away_l["decimal"]
-            if home_l:
-                juego["odds_home_american"] = home_l["american"]
-                juego["odds_home_decimal"] = home_l["decimal"]
-            juego["lineas_fuente"] = away_l.get("casa") or home_l.get("casa") or "odds-api"
+    n_ok = _juegos_con_cuota(juegos)
+    if usar_espn and n_ok < len(juegos):
+        try:
+            from lineas_espn import aplicar_lineas_espn
 
+            juegos, meta_e = aplicar_lineas_espn(juegos, cfg, solo_vacios=True)
+        except Exception as e:
+            meta_e = {"ok": False, "mensaje": f"ESPN fallback: {e}"[:160]}
+        n2 = _juegos_con_cuota(juegos)
+        aviso_papi = str((meta or {}).get("mensaje") or "OddsPapi no disponible")
+        # Nunca reenviar la URL/key de OddsPapi al panel.
+        try:
+            from lineas_oddspapi import redactar_secretos
+
+            aviso_papi = redactar_secretos(aviso_papi)
+        except Exception:
+            aviso_papi = "OddsPapi no disponible"
+        if len(aviso_papi) > 80:
+            aviso_papi = "OddsPapi no disponible"
+        if meta_e.get("ok") or n2 > n_ok:
+            meta = {
+                **(meta or {}),
+                "ok": n2 > 0,
+                "fallback_espn": True,
+                "espn_partidos": meta_e.get("partidos_aplicados") or (n2 - n_ok),
+                "partidos": n2,
+                "fuente": "espn" if n_ok == 0 else (meta or {}).get("fuente") or "mixto",
+                "mensaje": (
+                    (
+                        f"OddsPapi en pausa automática hasta {(meta or {}).get('circuito_hasta_hora') or 'luego'} · "
+                        if (meta or {}).get("circuito")
+                        else ""
+                    )
+                    + f"ESPN/DraftKings · {n2} partidos con cuota real"
+                    + (
+                        f" ({aviso_papi})"
+                        if n_ok == 0 and not (meta or {}).get("circuito")
+                        else ""
+                    )
+                ),
+            }
+        elif n_ok == 0:
+            meta = {
+                **(meta or {}),
+                "ok": False,
+                "fallback_espn": True,
+                "mensaje": (
+                    f"{aviso_papi} · {meta_e.get('mensaje') or 'ESPN sin cuotas'}"
+                )[:200],
+            }
     return juegos, meta

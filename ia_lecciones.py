@@ -10,7 +10,7 @@ from __future__ import annotations
 import json
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Any
 
 import requests
@@ -164,9 +164,9 @@ def _base_item(
 ) -> dict[str, Any]:
     game_id = pred.get("game_id")
     return {
-        "id": f"lec-{tipo}-{game_id or 'x'}-{int(datetime.utcnow().timestamp())}",
+        "id": f"lec-{tipo}-{game_id or 'x'}-{int(datetime.now(timezone.utc).timestamp())}",
         "tipo": tipo,
-        "fecha": cuando or datetime.utcnow().strftime("%Y-%m-%d"),
+        "fecha": cuando or datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         "game_id": game_id,
         "visitante": pred.get("visitante"),
         "home": pred.get("home"),
@@ -181,7 +181,7 @@ def _base_item(
         "confianza": confianza,
         "fuente": fuente,
         "modelo": None,
-        "creada_en": datetime.utcnow().isoformat() + "Z",
+        "creada_en": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
     }
 
 

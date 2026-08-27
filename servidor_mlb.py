@@ -15,6 +15,7 @@ import time
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from typing import Any
 from zoneinfo import ZoneInfo
 
 import requests
@@ -27,7 +28,24 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from lineas_betmgm import aplicar_lineas_a_juegos
 from lineas_betmgm import normalizar_nombre_equipo as norm_nombre
-from modelo_mlb import evaluar_juegos, calcular_stake_dinamico, cuota_desde_prob
+from memoria_fusion import (
+    backup_tiene_dias_que_el_disco_perdio as _backup_tiene_dias_que_el_disco_perdio,
+    contar_historial as _contar_historial,
+    escribir_snapshot as _escribir_snapshot,
+    fechas_con_historial as _fechas_con_historial,
+    fusionar_memoria as _fusionar_memoria,
+    mejor_snapshot as _mejor_snapshot,
+    memoria_parece_reinicio as _memoria_parece_reinicio,
+    proteger_escritura as _proteger_escritura,
+    resumen_sello as _resumen_sello,
+)
+from modelo_mlb import (
+    evaluar_juegos,
+    calcular_stake_dinamico,
+    cuota_desde_prob,
+    tiene_cuota_mercado,
+    apostable_con_mercado,
+)
 from ml_predictor import auto_entrenar_ml
 from ia_groq import ia_veto_disponible, probar_conexion_groq, veto_apuesta
 from mente_mlb import (
@@ -35,6 +53,12 @@ from mente_mlb import (
     mente_disponible,
     aplicar_stake_mente,
     generar_briefing_juego,
+)
+from mente_errores import (
+    mente_errores_disponible,
+    resumen_para_panel as resumen_mente_errores_panel,
+    ejecutar_ciclo as ejecutar_ciclo_mente_errores,
+    registrar_error_runtime,
 )
 from whatsapp_alerta import (
     notificar_pick_t60,
@@ -45,6 +69,9 @@ from whatsapp_alerta import (
     enviar_whatsapp,
     enviar_telegram,
     enviar_alerta,
+    vincular_telegram_chat,
+    restaurar_telegram_desde_memoria,
+    telegram_a_memoria,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -63,120 +90,126 @@ _juegos_ui_cache: dict = {"fecha": "", "ts": 0.0, "juegos": []}
 _JUEGOS_UI_TTL_SEC = 90
 
 
-def _contar_historial(memoria: dict) -> tuple[int, int]:
-    """(apuestas liquidadas, predicciones con resultado) para comparar backups."""
-    apuestas = 0
-    preds = 0
-    for dia in memoria.get("dias") or []:
-        for a in dia.get("apuestas") or []:
-            if a.get("estado") in ("ganada", "perdida"):
-                apuestas += 1
-        for p in dia.get("predicciones") or []:
-            if p.get("resultado") in ("acierto", "fallo"):
-                preds += 1
-    return apuestas, preds
-
-
-def _memoria_parece_reinicio(memoria: dict) -> bool:
-    """True si parece un wipe/reinicio (día 1, banca inicial, sin historial dinero)."""
-    dias = memoria.get("dias") or []
-    capital = float(memoria.get("capital") or 0)
-    inicial = float(memoria.get("capital_inicial") or 100)
-    apuestas, preds = _contar_historial(memoria)
-    return (
-        int(memoria.get("dia_actual") or 1) <= 1
-        and abs(capital - inicial) < 0.01
-        and apuestas == 0
-        and len(dias) <= 2
-        and preds <= 10  # solo el día recién creado tras el wipe
-    )
-
-
-def _fusionar_memoria(base: dict, extra: dict) -> dict:
-    """Une historial base con días más nuevos de extra (p.ej. picks de hoy tras wipe)."""
-    out = copy.deepcopy(base)
-    by_fecha = {d["fecha"]: d for d in out.get("dias") or [] if d.get("fecha")}
-    for dia in extra.get("dias") or []:
-        fecha = dia.get("fecha")
-        if not fecha:
-            continue
-        if fecha not in by_fecha:
-            by_fecha[fecha] = copy.deepcopy(dia)
-            continue
-        dest = by_fecha[fecha]
-        preds = {str(p.get("game_id")): p for p in (dest.get("predicciones") or [])}
-        for p in dia.get("predicciones") or []:
-            gid = str(p.get("game_id") or "")
-            cur = preds.get(gid)
-            if cur is None or (
-                cur.get("estado") == "pendiente" and p.get("estado") == "liquidado"
-            ):
-                preds[gid] = p
-        dest["predicciones"] = list(preds.values())
-        if not dest.get("apuestas") and dia.get("apuestas"):
-            dest["apuestas"] = copy.deepcopy(dia["apuestas"])
-    dias = sorted(by_fecha.values(), key=lambda d: d["fecha"])
-    for i, d in enumerate(dias, 1):
-        d["dia"] = i
-    out["dias"] = dias
-    # Capital real solo de apuestas con dinero
-    cap = float(out.get("capital_inicial") or 100)
-    for d in dias:
-        for a in d.get("apuestas") or []:
-            if a.get("estado") in ("ganada", "perdida") and a.get("profit") is not None:
-                cap += float(a["profit"])
-    out["capital"] = round(cap, 2)
-    return out
-
-
 def _intentar_recuperar_wipe() -> bool:
-    """Si el disco parece reinicio y el repo tiene historial, restaura + fusiona hoy."""
+    """
+    Recupera historial del JSON del repo / snapshots locales si Render wipeó
+    o arrancó un experimento nuevo sin los días anteriores.
+    """
+    disk: dict | None = None
+    if MEMORIA_PATH.exists():
+        try:
+            disk = json.loads(MEMORIA_PATH.read_text(encoding="utf-8"))
+        except Exception:
+            disk = None
+    if isinstance(disk, dict) and disk.get("reinicio_manual"):
+        return False
+
+    candidatos: list[dict] = []
     origen = BASE_DIR / "memoria_auditoria.json"
-    if not origen.exists() or not MEMORIA_PATH.exists():
+    if origen.exists():
+        try:
+            bundled = json.loads(origen.read_text(encoding="utf-8"))
+            if isinstance(bundled, dict):
+                b_ap, b_pr = _contar_historial(bundled)
+                if (b_ap + b_pr) > 0:
+                    candidatos.append(bundled)
+        except Exception:
+            pass
+    snap = _mejor_snapshot(DATA_DIR)
+    if isinstance(snap, dict):
+        candidatos.append(snap)
+
+    if not candidatos:
         return False
-    try:
-        bundled = json.loads(origen.read_text(encoding="utf-8"))
-        disk = json.loads(MEMORIA_PATH.read_text(encoding="utf-8"))
-    except Exception:
+
+    candidatos.sort(key=lambda m: len(_fechas_con_historial(m)), reverse=True)
+    merged = copy.deepcopy(candidatos[0])
+    for c in candidatos[1:]:
+        merged = _fusionar_memoria(merged, c)
+    if isinstance(disk, dict):
+        merged = _fusionar_memoria(merged, disk)
+        wipe_clasico = _memoria_parece_reinicio(disk)
+        dias_perdidos = _backup_tiene_dias_que_el_disco_perdio(merged, disk)
+        if not wipe_clasico and not dias_perdidos:
+            return False
+        if _fechas_con_historial(merged) <= _fechas_con_historial(disk) and not wipe_clasico:
+            return False
+    elif not MEMORIA_PATH.exists():
+        wipe_clasico = True
+        dias_perdidos = True
+    else:
         return False
-    if disk.get("reinicio_manual"):
-        return False
-    b_ap, b_pr = _contar_historial(bundled)
-    if not _memoria_parece_reinicio(disk) or (b_ap + b_pr) <= 0:
-        return False
-    merged = _fusionar_memoria(bundled, disk)
+
+    MEMORIA_PATH.parent.mkdir(parents=True, exist_ok=True)
     MEMORIA_PATH.write_text(
         json.dumps(merged, indent=2, ensure_ascii=False), encoding="utf-8"
     )
+    try:
+        _escribir_snapshot(DATA_DIR, merged)
+    except Exception:
+        pass
+    b_ap, b_pr = _contar_historial(merged)
     print(
-        f"[CLOUD] Memoria recuperada desde repo "
-        f"(backup {b_ap} apuestas / {b_pr} preds + día en disco)"
+        f"[CLOUD] Memoria recuperada "
+        f"(merged {b_ap} apuestas / {b_pr} preds · "
+        f"wipe={wipe_clasico} dias_perdidos={dias_perdidos} "
+        f"fuentes={len(candidatos)})"
     )
     return True
 
 
 def _inicializar_datos_persistencia() -> None:
     """Copia memoria local a DATA_DIR; restaura backup del repo si hubo wipe."""
-    if DATA_DIR.resolve() == BASE_DIR.resolve():
-        return
-    origen = BASE_DIR / "memoria_auditoria.json"
-    if origen.exists() and not MEMORIA_PATH.exists():
-        try:
-            bundled = json.loads(origen.read_text(encoding="utf-8"))
-            MEMORIA_PATH.write_text(
-                json.dumps(bundled, indent=2, ensure_ascii=False), encoding="utf-8"
-            )
-            print(f"[CLOUD] Memoria copiada a {MEMORIA_PATH}")
-        except Exception as e:
-            print(f"[CLOUD] No se pudo copiar memoria: {e}")
-    else:
-        _intentar_recuperar_wipe()
-    for nombre in ("modelo_rf_mlb.pkl", "scaler_rf_mlb.pkl"):
-        src = BASE_DIR / nombre
-        dst = DATA_DIR / nombre
-        if src.exists() and not dst.exists():
-            dst.write_bytes(src.read_bytes())
-            print(f"[CLOUD] Modelo ML copiado a {dst}")
+    if DATA_DIR.resolve() != BASE_DIR.resolve():
+        origen = BASE_DIR / "memoria_auditoria.json"
+        if origen.exists() and not MEMORIA_PATH.exists():
+            try:
+                bundled = json.loads(origen.read_text(encoding="utf-8"))
+                MEMORIA_PATH.write_text(
+                    json.dumps(bundled, indent=2, ensure_ascii=False), encoding="utf-8"
+                )
+                print(f"[CLOUD] Memoria copiada a {MEMORIA_PATH}")
+            except Exception as e:
+                print(f"[CLOUD] No se pudo copiar memoria: {e}")
+        else:
+            _intentar_recuperar_wipe()
+        for nombre in ("modelo_rf_mlb.pkl", "scaler_rf_mlb.pkl"):
+            src = BASE_DIR / nombre
+            dst = DATA_DIR / nombre
+            if src.exists() and not dst.exists():
+                dst.write_bytes(src.read_bytes())
+                print(f"[CLOUD] Modelo ML copiado a {dst}")
+    try:
+        mem = cargar_memoria()
+        from whatsapp_alerta import sincronizar_telegram_persistencia
+
+        r = sincronizar_telegram_persistencia(_cfg_con_telegram_memoria(), mem)
+        if r.get("tiene_token") and r.get("tiene_chat"):
+            guardar_memoria(mem)
+            print(f"[TELEGRAM] Sync persistencia OK ({r.get('fuente')}): {r}")
+        elif r.get("restored_token") or r.get("restored_chat"):
+            print(f"[TELEGRAM] Sync parcial: {r}")
+        else:
+            r2 = restaurar_telegram_desde_memoria(mem)
+            if r2.get("ok"):
+                print(f"[TELEGRAM] Restaurado desde memoria: {r2}")
+            else:
+                print(f"[TELEGRAM] Sin credenciales aún: {r.get('motivo') or r2}")
+    except Exception as e:
+        print(f"[TELEGRAM] restore: {e}")
+
+
+def _cfg_con_telegram_memoria(cfg: dict | None = None) -> dict:
+    """Inyecta telegram guardado en memoria para status/envío."""
+    cfg = dict(cfg or cargar_config())
+    try:
+        mem = cargar_memoria()
+        tg = mem.get("telegram") if isinstance(mem.get("telegram"), dict) else {}
+        if tg:
+            cfg["_memoria_telegram"] = tg
+    except Exception:
+        pass
+    return cfg
 
 
 def _verificar_cron_secreto(secret: str | None) -> None:
@@ -193,7 +226,14 @@ def cargar_config() -> dict:
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
             json.dump(cfg_base, f, indent=2)
     with open(CONFIG_PATH, encoding="utf-8") as f:
-        return json.load(f)
+        cfg = json.load(f)
+    try:
+        from mente_errores import aplicar_overrides_config
+
+        cfg = aplicar_overrides_config(cfg)
+    except Exception as e:
+        print(f"[MENTE-ERRORES] aviso al aplicar overrides: {e}")
+    return cfg
 
 
 def cargar_memoria() -> dict:
@@ -220,19 +260,200 @@ def cargar_memoria() -> dict:
     }
 
 
-def guardar_memoria(memoria: dict) -> None:
+def _memoria_sin_secretos(memoria: dict) -> dict:
+    """Copia de memoria segura para panel/API (sin token de Telegram)."""
+    out = copy.deepcopy(memoria)
+    tg = out.get("telegram")
+    if isinstance(tg, dict) and tg.get("bot_token"):
+        tok = str(tg["bot_token"])
+        tg = dict(tg)
+        tg["bot_token"] = (tok[:6] + "…" + tok[-4:]) if len(tok) > 12 else "***"
+        tg["token_guardado"] = True
+        out["telegram"] = tg
+    return out
+
+
+_PRED_PANEL_KEYS = (
+    "game_id",
+    "visitante",
+    "home",
+    "pick",
+    "odds",
+    "odds_american",
+    "probPick",
+    "resultado",
+    "estado",
+    "profit",
+    "marcador_final",
+    "con_dinero",
+    "invalida_tarde",
+    "valida_stats",
+    "retroactivo",
+    "stake_virtual",
+    "predicho_en",
+    "liquidado_en",
+)
+_APUESTA_PANEL_KEYS = (
+    "game_id",
+    "visitante",
+    "home",
+    "pick",
+    "odds",
+    "odds_american",
+    "probPick",
+    "estado",
+    "profit",
+    "stake",
+    "marcador_final",
+    "liquidado_en",
+)
+_JUEGO_PANEL_KEYS = (
+    "id",
+    "visitante",
+    "home",
+    "estado",
+    "estado_apuesta",
+    "pick",
+    "probPick",
+    "odds",
+    "odds_american",
+    "edge",
+    "apostable",
+    "motivo_apuesta",
+    "hora_inicio_txt",
+    "hora_bloqueo_txt",
+    "inicio_juego",
+    "scoreAway",
+    "scoreHome",
+    "ganador",
+    "profit",
+    "stake",
+    "solo_papel",
+    "resultado_papel",
+    "invalida_tarde",
+    "logoAway",
+    "logoHome",
+    "pitcherAway",
+    "pitcherHome",
+    "lineas_fuente",
+    "pick_congelado",
+)
+
+
+def _recortar_dict(src: dict, keys: tuple[str, ...]) -> dict:
+    return {k: src[k] for k in keys if k in src}
+
+
+def _memoria_para_panel(memoria: dict) -> dict:
+    """Memoria liviana para el panel (sin IA/clima/lesiones anidados ~1MB)."""
+    base = _memoria_sin_secretos(memoria)
+    dias_out = []
+    for dia in base.get("dias") or []:
+        if not isinstance(dia, dict):
+            continue
+        d = {
+            "dia": dia.get("dia"),
+            "fecha": dia.get("fecha"),
+            "bloqueado_en": dia.get("bloqueado_en"),
+            "resumen": dia.get("resumen"),
+            "predicciones": [
+                _recortar_dict(p, _PRED_PANEL_KEYS)
+                for p in (dia.get("predicciones") or [])
+                if isinstance(p, dict)
+            ],
+            "apuestas": [
+                _recortar_dict(a, _APUESTA_PANEL_KEYS)
+                for a in (dia.get("apuestas") or [])
+                if isinstance(a, dict)
+            ],
+        }
+        dias_out.append(d)
+    base["dias"] = dias_out
+    # Lecciones: solo lo que pinta el panel
+    lecs = []
+    for lec in base.get("lecciones") or []:
+        if not isinstance(lec, dict):
+            continue
+        lecs.append(
+            {
+                k: lec.get(k)
+                for k in (
+                    "id",
+                    "patron",
+                    "titulo",
+                    "resumen",
+                    "detalle",
+                    "game_id",
+                    "fecha",
+                    "creado_en",
+                )
+                if k in lec
+            }
+        )
+    if lecs:
+        base["lecciones"] = lecs
+    return base
+
+
+def _juegos_para_panel(juegos: list) -> list:
+    out = []
+    for j in juegos or []:
+        if not isinstance(j, dict):
+            continue
+        row = _recortar_dict(j, _JUEGO_PANEL_KEYS)
+        # Mantener un peinado corto de mente si existe
+        im = j.get("ia_mente") if isinstance(j.get("ia_mente"), dict) else None
+        if im:
+            row["ia_mente"] = {
+                k: im.get(k)
+                for k in ("ok", "decision", "motivo", "confianza", "fuente")
+                if k in im
+            }
+        out.append(row)
+    return out
+
+
+def guardar_memoria(memoria: dict, *, permitir_wipe: bool = False) -> None:
+    """Persiste memoria con candado anti-wipe + snapshot rotativo.
+
+    Si 'memoria' borraría días que ya están en disco, se fusiona en vez de pisar
+    (salvo permitir_wipe=True en reinicio confirmado).
+    """
     with _memoria_lock:
+        actual: dict | None = None
+        if MEMORIA_PATH.exists():
+            try:
+                actual = json.loads(MEMORIA_PATH.read_text(encoding="utf-8"))
+            except Exception:
+                actual = None
+        final, meta = _proteger_escritura(
+            actual, memoria, permitir_wipe=permitir_wipe
+        )
+        if meta.get("protegido"):
+            print(
+                f"[GUARDAR] Candado anti-wipe: se salvaron fechas "
+                f"{meta.get('fechas_salvadas')}"
+            )
+        MEMORIA_PATH.parent.mkdir(parents=True, exist_ok=True)
         with open(MEMORIA_PATH, "w", encoding="utf-8") as f:
             print(
-                f"[GUARDAR] Guardando memoria. Capital: {memoria['capital']:.2f}, "
-                f"Día: {memoria['dia_actual']}"
+                f"[GUARDAR] Guardando memoria. Capital: {float(final.get('capital') or 0):.2f}, "
+                f"Día: {final.get('dia_actual')} · "
+                f"fechas={sorted(_fechas_con_historial(final))}"
             )
-            json.dump(memoria, f, indent=2, ensure_ascii=False)
+            json.dump(final, f, indent=2, ensure_ascii=False)
+        try:
+            _escribir_snapshot(DATA_DIR, final)
+        except Exception as e:
+            print(f"[GUARDAR] snapshot: {e}")
         js_path = DATA_DIR / "memoria_dashboard.js"
         js_path.write_text(
-            f"const datosMemoria = {json.dumps(memoria, ensure_ascii=False)};",
+            f"const datosMemoria = {json.dumps(_memoria_sin_secretos(final), ensure_ascii=False)};",
             encoding="utf-8",
         )
+        if final is not memoria:
+            memoria.clear()
+            memoria.update(final)
 
 
 def tz_experimento() -> ZoneInfo:
@@ -671,9 +892,18 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
             juegos = evaluar_juegos(juegos, cfg, bias)
         else:
             juegos, _lineas_meta_cache = aplicar_lineas_a_juegos(juegos, cfg)
+            try:
+                from lineas_oddspapi import redactar_secretos
+
+                if isinstance(_lineas_meta_cache, dict) and _lineas_meta_cache.get("mensaje"):
+                    _lineas_meta_cache["mensaje"] = redactar_secretos(
+                        _lineas_meta_cache["mensaje"]
+                    )
+            except Exception:
+                pass
             bias = calcular_bias_aprendizaje(memoria)
             cfg_eval = cfg
-            # Si OddsPapi/API falla: degradar a solo modelo (no tumbar el día)
+            # Si OddsPapi/API falla Y ESPN no trajo cuotas: estudio, no apostar.
             if not (_lineas_meta_cache or {}).get("ok") and (cfg.get("estrategia") or {}).get(
                 "fallback_solo_modelo", True
             ):
@@ -681,10 +911,7 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
                 _lineas_meta_cache = {
                     **(_lineas_meta_cache or {}),
                     "fallback_solo_modelo": True,
-                    "mensaje": (
-                        f"{(_lineas_meta_cache or {}).get('mensaje') or 'Sin cuotas'} "
-                        "· fallback solo modelo"
-                    ),
+                    "mensaje": "Sin cuota de casa ahora · estudio (no apostar). ESPN/OddsPapi no disponibles.",
                 }
             juegos = evaluar_juegos(juegos, cfg_eval, bias)
     else:
@@ -830,6 +1057,27 @@ def _liquidar_dia_con_juegos(memoria: dict, dia: dict, juegos: list) -> int:
     preds = dia.get("predicciones", [])
     por_id = {str(g["id"]): g for g in juegos}
     cambios = 0
+
+    # Elo: actualizar ratings con finales (idempotente por game_id)
+    try:
+        from elo_mlb import actualizar_elo_desde_juego
+
+        cfg_elo = cargar_config()
+        if cfg_elo.get("usar_elo", True):
+            for juego in juegos:
+                if not _juego_finalizado(juego):
+                    continue
+                if not _ganador_oficial(juego):
+                    continue
+                r = actualizar_elo_desde_juego(juego, cfg_elo)
+                if r.get("ok") and not r.get("omitido"):
+                    print(
+                        f"[ELO] Actualizado {juego.get('visitante')}@{juego.get('home')}: "
+                        f"{r.get('ganador')} away {r.get('away')} home {r.get('home')}"
+                    )
+    except Exception as e:
+        print(f"[ELO] aviso liquidación: {e}")
+
     for apuesta in dia.get("apuestas", []):
         juego = por_id.get(str(apuesta.get("game_id") or ""))
         if not juego:
@@ -1074,6 +1322,7 @@ def guardar_prediccion(
     *,
     con_dinero: bool = False,
     stake_virtual: float | None = None,
+    permitir_gracia: bool = False,
 ) -> bool:
     """Guarda/actualiza predicción de un juego. No mueve capital."""
     pick = (juego.get("pick") or "").strip()
@@ -1108,14 +1357,43 @@ def guardar_prediccion(
                 print(f"[BRIEFING] backfill: {e}")
         return False
 
-    # Seguridad: no crear pick nuevo si el juego ya empezó (o está EN VIVO/FINAL)
+    # No inventar pick a posteriori cuando el partido ya terminó.
     estado = juego.get("estado")
-    if estado in ("EN VIVO", "FINALIZADO", "POSPUESTO"):
-        print(f"[PREDICCIONES] No se congela pick nuevo en estado {estado} ({juego.get('visitante')}@{juego.get('home')})")
+    if estado in ("FINALIZADO", "POSPUESTO"):
+        print(
+            f"[PREDICCIONES] No se congela pick nuevo en estado {estado} "
+            f"({juego.get('visitante')}@{juego.get('home')})"
+        )
         return False
+
+    cfg = cargar_config()
+    gracia_min = float(cfg.get("minutos_gracia_bloqueo", 30))
     inicio = _parse_iso_dt(juego.get("inicio_juego"))
-    if inicio and (ahora_dt - inicio).total_seconds() > 5 * 60:
-        print(f"[PREDICCIONES] No se congela pick post-inicio ({juego.get('visitante')}@{juego.get('home')})")
+    mins_despues = (
+        (ahora_dt - inicio).total_seconds() / 60.0 if inicio else None
+    )
+
+    # EN VIVO: solo con gracia explícita (Render dormido en T-60).
+    if estado == "EN VIVO":
+        if not permitir_gracia:
+            print(
+                f"[PREDICCIONES] No se congela pick nuevo en estado EN VIVO "
+                f"({juego.get('visitante')}@{juego.get('home')})"
+            )
+            return False
+        if mins_despues is None or mins_despues > gracia_min:
+            print(
+                f"[PREDICCIONES] EN VIVO fuera de gracia "
+                f"({mins_despues} min > {gracia_min}) "
+                f"({juego.get('visitante')}@{juego.get('home')})"
+            )
+            return False
+    elif mins_despues is not None and mins_despues > gracia_min:
+        print(
+            f"[PREDICCIONES] No se congela pick post-inicio "
+            f"({mins_despues:.0f}m > gracia {gracia_min:.0f}m) "
+            f"({juego.get('visitante')}@{juego.get('home')})"
+        )
         return False
 
     prob = float(juego.get("probPick") or 50)
@@ -1124,11 +1402,8 @@ def guardar_prediccion(
     if not odds or float(odds) <= 1.0:
         odds, odds_amer = cuota_desde_prob(prob)
 
-    # Apostable por umbral de % aunque el juego ya esté EN VIVO (motivo "Juego EN VIVO"
-    # no debe impedir marcar candidatos de dinero al recuperar del sueño de Render).
-    cfg = cargar_config()
-    min_prob = float((cfg.get("estrategia") or {}).get("min_prob_modelo", 58.0))
-    apostable_flag = bool(juego.get("apostable")) or prob >= min_prob
+    # Apostable solo con cuota de casa. Un 72% sin mercado no es valor.
+    apostable_flag = apostable_con_mercado(juego)
 
     # Briefing T-60 interno (para la mente). No se muestra en el panel.
     briefing = None
@@ -1141,6 +1416,14 @@ def guardar_prediccion(
     except Exception as e:
         print(f"[BRIEFING] aviso T-60: {e}")
 
+    motivo = juego.get("motivo_apuesta") or ""
+    if estado == "EN VIVO" and permitir_gracia:
+        extra = (
+            f"Congelado en gracia EN VIVO "
+            f"({(mins_despues or 0):.0f} min tras inicio)"
+        )
+        motivo = f"{motivo} · {extra}".strip(" ·")
+
     dia["predicciones"].append(
         {
             "game_id": juego["id"],
@@ -1149,10 +1432,11 @@ def guardar_prediccion(
             "pick": juego["pick"],
             "odds": float(odds),
             "odds_american": odds_amer if odds_amer is not None else 150,
-            "edge": juego.get("edge", 0),
+            "edge": 0 if not tiene_cuota_mercado(juego) else juego.get("edge", 0),
             "probPick": prob,
             "apostable": apostable_flag,
-            "motivo_apuesta": juego.get("motivo_apuesta", ""),
+            "lineas_fuente": juego.get("lineas_fuente") or "modelo",
+            "motivo_apuesta": motivo,
             "pitcherAway": juego.get("pitcherAway"),
             "pitcherHome": juego.get("pitcherHome"),
             "pitcher_away_id": juego.get("pitcher_away_id"),
@@ -1164,6 +1448,7 @@ def guardar_prediccion(
             "stake_virtual": stake_v,
             "con_dinero": bool(con_dinero),
             "predicho_en": ahora,
+            "congelado_en_gracia": bool(estado == "EN VIVO" and permitir_gracia),
             "valida_stats": True,
             "invalida_tarde": False,
             "clima": juego.get("clima") if isinstance(juego.get("clima"), dict) else None,
@@ -1172,9 +1457,25 @@ def guardar_prediccion(
             "factores_humanos": juego.get("factores_humanos")
             if isinstance(juego.get("factores_humanos"), dict)
             else None,
+            "historico_oficial": juego.get("historico_oficial")
+            if isinstance(juego.get("historico_oficial"), dict)
+            else None,
             "ia_briefing": briefing if isinstance(briefing, dict) else None,
             "ia_mente": juego.get("ia_mente") if isinstance(juego.get("ia_mente"), dict) else None,
             "ml_features": juego.get("ml_features") if isinstance(juego.get("ml_features"), dict) else None,
+            "tipo_pick": juego.get("tipo_pick"),
+            "inteligencia": juego.get("inteligencia")
+            if isinstance(juego.get("inteligencia"), dict)
+            else None,
+            "elo": juego.get("elo") if isinstance(juego.get("elo"), dict) else None,
+            "mc_totales": juego.get("mc_totales")
+            if isinstance(juego.get("mc_totales"), dict)
+            else None,
+            "preferir_f5": bool(juego.get("preferir_f5")),
+            "total_linea": juego.get("total_linea"),
+            "lineas_total": juego.get("lineas_total")
+            if isinstance(juego.get("lineas_total"), dict)
+            else None,
         }
     )
     return True
@@ -1182,8 +1483,8 @@ def guardar_prediccion(
 
 def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     """
-    Registra un pick en PAPEL solo para juegos PROGRAMADOS (tras T-60).
-    Nunca congela EN VIVO: el pick en vivo cambia (lineup/scratch/marcador) y sesga.
+    Registra pick en PAPEL para juegos PROGRAMADOS (tras T-60).
+    Si Render dormía: también EN VIVO dentro de minutos_gracia_bloqueo.
     FINALIZADO: no se inventa pick a posteriori.
     """
     memoria = cargar_memoria()
@@ -1195,34 +1496,51 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     ya = {str(p.get("game_id")) for p in dia.get("predicciones", [])}
     nuevas = 0
     omitidas_vivo = 0
+    cfg = cargar_config()
+    gracia = float(cfg.get("minutos_gracia_bloqueo", 30))
 
     for juego in juegos:
         estado = juego.get("estado")
         gid = str(juego.get("id") or "")
+        permitir_gracia = False
         if estado == "EN VIVO":
-            if gid not in ya:
-                omitidas_vivo += 1
-            continue
-        if estado != "PROGRAMADO":
+            mins = _minutos_desde_inicio(juego)
+            if mins is None or mins > gracia:
+                if gid not in ya:
+                    omitidas_vivo += 1
+                continue
+            permitir_gracia = True
+        elif estado != "PROGRAMADO":
             continue
         if not (juego.get("pick") or "").strip():
             continue
         if gid in ya and not forzar:
             continue
-        try:
-            hb = datetime.fromisoformat(juego["hora_bloqueo"])
-        except Exception:
-            continue
-        if not forzar and hb > ahora:
-            continue
-        if guardar_prediccion(dia, juego, con_dinero=False, stake_virtual=stake_v):
+        if estado == "PROGRAMADO" and not forzar:
+            try:
+                hb = datetime.fromisoformat(juego["hora_bloqueo"])
+            except Exception:
+                continue
+            if hb > ahora:
+                continue
+        if guardar_prediccion(
+            dia,
+            juego,
+            con_dinero=False,
+            stake_virtual=stake_v,
+            permitir_gracia=permitir_gracia,
+        ):
             # Marca validez: solo PROGRAMADO pre-inicio
             pred = next(p for p in dia["predicciones"] if str(p.get("game_id")) == gid)
-            pred["valida_stats"] = True
-            pred["invalida_tarde"] = False
+            if permitir_gracia:
+                pred["valida_stats"] = prediccion_valida_para_stats(pred)
+                pred["invalida_tarde"] = not pred["valida_stats"]
+            else:
+                pred["valida_stats"] = True
+                pred["invalida_tarde"] = False
             # Mente local para el aviso (sin Groq) + WhatsApp del equipo elegido
             try:
-                cfg_wa = cargar_config()
+                cfg_wa = _cfg_con_telegram_memoria(cfg)
                 if cfg_wa.get("usar_mente", True) and not isinstance(pred.get("ia_mente"), dict):
                     mente_t60 = mente_conclusion(
                         juego, cfg_wa, memoria, forzar=True, solo_local=True
@@ -1238,13 +1556,185 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     if nuevas:
         guardar_memoria(memoria)
     if omitidas_vivo:
-        print(f"[PREDICCIONES] Omitidas {omitidas_vivo} EN VIVO (no se congela pick a mitad).")
+        print(f"[PREDICCIONES] Omitidas {omitidas_vivo} EN VIVO (fuera de gracia / ya empezados).")
     return {
         "ok": True,
         "predicciones_nuevas": nuevas,
         "omitidas_en_vivo": omitidas_vivo,
         "fecha": hoy,
     }
+
+
+def vigilancia_t60(
+    juegos: list[dict],
+    memoria: dict | None = None,
+    cfg: dict | None = None,
+) -> dict:
+    """
+    Detecta juegos PROGRAMADOS cerca del T-60 / inicio sin pick congelado.
+    También lista FINALIZADOS del día sin predicción (Render dormido).
+    """
+    cfg = cfg or {}
+    memoria = memoria or {}
+    mins_antes = int(cfg.get("minutos_antes_juego", 60))
+    gracia = float(cfg.get("minutos_gracia_bloqueo", 30))
+    ventana_pre = float(mins_antes) + 30.0  # p.ej. 90 min si T-60
+
+    fecha = fecha_str()
+    dia = dia_por_fecha(memoria, fecha) if memoria else None
+    if not dia and memoria:
+        try:
+            dia = dia_operativo(memoria)
+        except Exception:
+            dia = None
+    ya = {
+        str(p.get("game_id"))
+        for p in ((dia or {}).get("predicciones") or [])
+        if (p.get("pick") or "").strip()
+    }
+
+    ahora = ahora_simulado()
+    en_riesgo: list[dict] = []
+    perdidos: list[dict] = []
+    congelados = 0
+    programados = 0
+
+    for j in juegos or []:
+        estado = str(j.get("estado") or "")
+        gid = str(j.get("id") or "")
+        if estado == "PROGRAMADO":
+            programados += 1
+        if gid in ya:
+            if estado in ("PROGRAMADO", "EN VIVO"):
+                congelados += 1
+            continue
+
+        mins_a_inicio = None
+        raw_ini = j.get("inicio_juego")
+        try:
+            if raw_ini:
+                ini = datetime.fromisoformat(str(raw_ini))
+                if ini.tzinfo is None:
+                    ini = ini.replace(tzinfo=tz_experimento())
+                mins_a_inicio = (ini - ahora).total_seconds() / 60.0
+        except Exception:
+            mins_a_inicio = None
+
+        # Ya terminó y nunca hubo pick → perdido por sueño/ops (no inventamos pick)
+        if estado == "FINALIZADO":
+            perdidos.append(
+                {
+                    "id": gid,
+                    "visitante": j.get("visitante"),
+                    "home": j.get("home"),
+                    "estado": estado,
+                    "hora_inicio_txt": j.get("hora_inicio_txt"),
+                    "mins_a_inicio": round(mins_a_inicio, 1) if mins_a_inicio is not None else None,
+                    "motivo": "FINAL sin predicción (posible Render dormido / T-60 perdido)",
+                }
+            )
+            continue
+
+        if estado not in ("PROGRAMADO", "EN VIVO"):
+            continue
+
+        # Antes se exigía pick en el objeto juego: si el motor no corrió, no alertaba.
+        riesgo = False
+        motivo = ""
+        if estado == "PROGRAMADO" and mins_a_inicio is not None:
+            if -gracia <= mins_a_inicio <= ventana_pre:
+                riesgo = True
+                if mins_a_inicio <= mins_antes:
+                    motivo = f"T-60 pasado · faltan {mins_a_inicio:.0f} min al inicio · sin congelar"
+                else:
+                    motivo = f"Se acerca T-60 · faltan {mins_a_inicio:.0f} min · sin congelar"
+        elif estado == "EN VIVO":
+            mins_desde = _minutos_desde_inicio(j)
+            if mins_desde is not None and mins_desde <= gracia:
+                riesgo = True
+                motivo = f"EN VIVO sin congelar · {mins_desde:.0f} min de juego (gracia)"
+            elif mins_desde is not None and mins_desde > gracia:
+                perdidos.append(
+                    {
+                        "id": gid,
+                        "visitante": j.get("visitante"),
+                        "home": j.get("home"),
+                        "estado": estado,
+                        "hora_inicio_txt": j.get("hora_inicio_txt"),
+                        "mins_a_inicio": round(mins_a_inicio, 1) if mins_a_inicio is not None else None,
+                        "motivo": f"EN VIVO fuera de gracia ({mins_desde:.0f} min) sin pick",
+                    }
+                )
+
+        if riesgo:
+            en_riesgo.append(
+                {
+                    "id": gid,
+                    "visitante": j.get("visitante"),
+                    "home": j.get("home"),
+                    "pick": j.get("pick"),
+                    "estado": estado,
+                    "hora_inicio_txt": j.get("hora_inicio_txt"),
+                    "mins_a_inicio": round(mins_a_inicio, 1) if mins_a_inicio is not None else None,
+                    "motivo": motivo,
+                }
+            )
+
+    en_riesgo.sort(key=lambda x: (x.get("mins_a_inicio") is None, x.get("mins_a_inicio") or 0))
+    n = len(en_riesgo)
+    n_perd = len(perdidos)
+    if n > 0:
+        nivel = "alerta"
+        if n == 1:
+            g0 = en_riesgo[0]
+            mensaje = (
+                f"⚠ Sin pick fijo: {g0.get('visitante')} @ {g0.get('home')} "
+                f"· {g0.get('motivo')}"
+            )
+        else:
+            mensaje = f"⚠ {n} juegos sin pick congelado cerca del T-60 / inicio"
+    elif n_perd > 0:
+        nivel = "alerta"
+        p0 = perdidos[0]
+        if n_perd == 1:
+            mensaje = (
+                f"⚠ Pick perdido: {p0.get('visitante')} @ {p0.get('home')} "
+                f"(sin predicción · posible sueño Render)"
+            )
+        else:
+            mensaje = f"⚠ {n_perd} juegos del día sin predicción (posible sueño Render)"
+    else:
+        mensaje = "Vigilancia T-60 OK · sin juegos en riesgo ahora"
+        nivel = "ok"
+
+    return {
+        "ok": n == 0 and n_perd == 0,
+        "nivel": nivel,
+        "mensaje": mensaje,
+        "en_riesgo": en_riesgo[:8],
+        "total_riesgo": n,
+        "perdidos": perdidos[:12],
+        "total_perdidos": n_perd,
+        "congelados_activos": congelados,
+        "programados": programados,
+        "cron_cada_min": 5,
+        "accion_sugerida": (
+            "forzar_registro_t60" if n > 0 else ("cron_externo" if n_perd > 0 else None)
+        ),
+    }
+
+
+def _resumen_mente_errores(cfg: dict | None = None) -> dict:
+    try:
+        return resumen_mente_errores_panel(cfg or cargar_config())
+    except Exception as e:
+        return {
+            "activo": False,
+            "nivel": "aviso",
+            "mensaje": f"Mente errores no disponible: {e}"[:120],
+            "overrides": {},
+            "incidentes_recientes": [],
+        }
 
 
 def rellenar_predicciones_fecha(memoria: dict, fecha: str) -> int:
@@ -1462,18 +1952,24 @@ def _bloquear_juego_locked(
         }
 
     stake_v = stake_virtual_prediccion(memoria)
-    # Solo congelar papel en PROGRAMADO. EN VIVO (gracia) no debe crear pick nuevo
-    # — eso fue el caso Yankees / Twins de hoy (cambia a mitad y sesga).
+    # Congelar papel en PROGRAMADO; EN VIVO solo dentro de la gracia (Render dormido).
+    ok_gracia, _motivo_g = _permite_bloqueo_dinero(juego, forzar=forzar)
     if juego.get("estado") == "PROGRAMADO":
         guardar_prediccion(dia, juego, con_dinero=False, stake_virtual=stake_v)
+    elif juego.get("estado") == "EN VIVO" and ok_gracia:
+        guardar_prediccion(
+            dia,
+            juego,
+            con_dinero=False,
+            stake_virtual=stake_v,
+            permitir_gracia=True,
+        )
 
     # Si ya había predicción congelada, la apuesta con dinero debe usar ESE pick
     pred_existente = next(
         (p for p in dia.get("predicciones", []) if str(p.get("game_id")) == gid),
         None,
     )
-    cfg_estr = cfg.get("estrategia") or {}
-    min_prob = float(cfg_estr.get("min_prob_modelo", 58.0))
     if pred_existente and (pred_existente.get("pick") or "").strip():
         juego["pick"] = pred_existente["pick"]
         if pred_existente.get("odds"):
@@ -1486,12 +1982,20 @@ def _bloquear_juego_locked(
             juego["edge"] = pred_existente["edge"]
         if pred_existente.get("motivo_apuesta"):
             juego["motivo_apuesta"] = pred_existente["motivo_apuesta"]
-        # Respetar el veredicto congelado: no perder la apuesta porque el % vivo bajó un poco
-        prob_f = float(pred_existente.get("probPick") or 0)
-        if pred_existente.get("apostable") or prob_f >= min_prob:
+        if pred_existente.get("lineas_fuente"):
+            juego["lineas_fuente"] = pred_existente["lineas_fuente"]
+        if pred_existente.get("odds_away_decimal"):
+            juego["odds_away_decimal"] = pred_existente["odds_away_decimal"]
+        if pred_existente.get("odds_home_decimal"):
+            juego["odds_home_decimal"] = pred_existente["odds_home_decimal"]
+        # Congelado apostable solo si había cuota real. El % alto no basta.
+        if apostable_con_mercado(pred_existente) or apostable_con_mercado(juego):
             juego["apostable"] = True
-            if not pred_existente.get("apostable"):
-                pred_existente["apostable"] = True
+        else:
+            juego["apostable"] = False
+            juego["edge"] = 0
+            if pred_existente.get("apostable"):
+                pred_existente["apostable"] = False
 
     if not juego.get("apostable"):
         print(f"[DEBUG BLOQUEO] Juego {game_id} no apostable. Motivo: {juego.get('motivo_apuesta', 'Desconocido')}")
@@ -1580,15 +2084,11 @@ def _bloquear_juego_locked(
         except Exception as e:
             print(f"[SCRATCH] refresh bloqueo: {e}")
 
-    # Con mercado: exigir edge. Si no hay cuotas y hay fallback → solo % modelo.
+    # Con mercado: exigir edge. Sin cuota de casa: nunca dinero (ni con % alto).
     if not cfg.get("modo_solo_modelo") and (cfg.get("estrategia") or {}).get("requiere_betmgm", True):
         min_edge = float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0))
-        min_prob = float((cfg.get("estrategia") or {}).get("min_prob_modelo", 58.0))
         edge_now = juego.get("edge")
-        tiene_cuota_mkt = bool(
-            juego.get("odds_away_decimal") or juego.get("odds_home_decimal")
-        ) and (juego.get("lineas_fuente") not in (None, "", "modelo"))
-        if tiene_cuota_mkt:
+        if tiene_cuota_mercado(juego) or tiene_cuota_mercado(pred_existente or {}):
             if edge_now is None or float(edge_now) < min_edge:
                 motivo = "Sin valor vs mercado ahora"
                 if pred_existente is not None:
@@ -1600,10 +2100,14 @@ def _bloquear_juego_locked(
                     "juego": juego["visitante"] + " vs " + juego["home"],
                     "prediccion_guardada": True,
                 }
-        elif not (cfg.get("estrategia") or {}).get("fallback_solo_modelo", True):
-            motivo = "Sin cuota de mercado ahora"
+        else:
+            motivo = "Sin cuota real de mercado — el % del modelo no es valor"
             if pred_existente is not None:
                 pred_existente["apostable"] = False
+                pred_existente["edge"] = 0
+                pred_existente["motivo_apuesta"] = (
+                    f"{pred_existente.get('motivo_apuesta') or ''} · {motivo}"
+                ).strip(" ·")
             guardar_memoria(memoria)
             return {
                 "ok": False,
@@ -1611,23 +2115,6 @@ def _bloquear_juego_locked(
                 "juego": juego["visitante"] + " vs " + juego["home"],
                 "prediccion_guardada": True,
             }
-        else:
-            # Fallback: dinero solo si el % del modelo alcanza el umbral
-            if pred_existente and pred_existente.get("probPick") is not None:
-                prob_now = float(pred_existente.get("probPick") or 0)
-            else:
-                prob_now = float(juego.get("probPick") or 0)
-            if prob_now < min_prob:
-                motivo = f"Sin mercado · modelo bajo {min_prob}%"
-                if pred_existente is not None:
-                    pred_existente["apostable"] = False
-                guardar_memoria(memoria)
-                return {
-                    "ok": False,
-                    "motivo": motivo,
-                    "juego": juego["visitante"] + " vs " + juego["home"],
-                    "prediccion_guardada": True,
-                }
 
     # Modelo propone → MENTE concluye (APOSTAR/PASAR/ESPERAR) → solo entonces dinero.
     # Si mente off: cae al veto Groq legacy (con lecciones en memoria).
@@ -1649,7 +2136,7 @@ def _bloquear_juego_locked(
             pred_existente["ia_mente"] = mente
             # Si el paper se congeló sin WhatsApp (Render dormido), avisar ahora
             try:
-                notificar_pick_t60(juego, pred_existente, cfg, fase="bloqueo")
+                notificar_pick_t60(juego, pred_existente, _cfg_con_telegram_memoria(cfg), fase="bloqueo")
             except Exception as e:
                 print(f"[WHATSAPP] aviso bloqueo: {e}")
         if not mente.get("autoriza_dinero"):
@@ -1751,7 +2238,15 @@ def _bloquear_juego_locked(
             "factores_humanos": juego.get("factores_humanos")
             if isinstance(juego.get("factores_humanos"), dict)
             else None,
+            "historico_oficial": juego.get("historico_oficial")
+            if isinstance(juego.get("historico_oficial"), dict)
+            else None,
             "ml_features": juego.get("ml_features") if isinstance(juego.get("ml_features"), dict) else None,
+            "tipo_pick": juego.get("tipo_pick"),
+            "inteligencia": juego.get("inteligencia")
+            if isinstance(juego.get("inteligencia"), dict)
+            else None,
+            "elo": juego.get("elo") if isinstance(juego.get("elo"), dict) else None,
             "pitcherAway": juego.get("pitcherAway"),
             "pitcherHome": juego.get("pitcherHome"),
             "inicio_juego": juego.get("inicio_juego"),
@@ -1794,7 +2289,6 @@ def bloquear_apuestas_del_dia(forzar: bool = False) -> dict:
     hoy = fecha_str()
     ahora = ahora_simulado()
     cfg = cargar_config()
-    min_prob = float((cfg.get("estrategia") or {}).get("min_prob_modelo", 58.0))
     juegos = obtener_juegos_fecha(hoy)
     dia = asegurar_dia_operativo(memoria, hoy)
     preds_por_id = {
@@ -1815,16 +2309,10 @@ def bloquear_apuestas_del_dia(forzar: bool = False) -> dict:
                 continue
         gid = str(juego["id"])
         pred = preds_por_id.get(gid)
-        # Apostable vivo O predicción congelada ≥ umbral (no perder el % alto del paper)
-        apostable = bool(juego.get("apostable"))
-        prob_live = float(juego.get("probPick") or 0)
-        if not apostable and prob_live >= min_prob:
-            apostable = True
-            juego["apostable"] = True
+        apostable = apostable_con_mercado(juego)
         if not apostable and pred is not None:
-            prob_f = float(pred.get("probPick") or 0)
-            if pred.get("apostable") or prob_f >= min_prob:
-                apostable = True
+            apostable = apostable_con_mercado(pred)
+            if apostable:
                 juego["apostable"] = True
         if not apostable:
             continue
@@ -1971,7 +2459,14 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
             copia["probPick"] = pred.get("probPick", copia.get("probPick"))
             copia["edge"] = pred.get("edge", copia.get("edge"))
             copia["motivo_apuesta"] = pred.get("motivo_apuesta", copia.get("motivo_apuesta", ""))
+            if pred.get("lineas_fuente"):
+                copia["lineas_fuente"] = pred.get("lineas_fuente")
             copia["pick_congelado"] = True
+            if not tiene_cuota_mercado(copia) and not tiene_cuota_mercado(pred):
+                copia["apostable"] = False
+                copia["edge"] = 0
+            else:
+                copia["apostable"] = apostable_con_mercado(pred) or apostable_con_mercado(copia)
             copia["resultado_papel"] = pred.get("resultado")
             copia["invalida_tarde"] = bool(
                 pred.get("invalida_tarde") or not prediccion_valida_para_stats(pred)
@@ -2018,6 +2513,9 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
             if copia.get("estado") in ("EN VIVO", "FINALIZADO"):
                 copia["solo_orientativo"] = True
         copia["apostable"] = copia.get("apostable", False)
+        if copia.get("apostable") and not ap and not tiene_cuota_mercado(copia):
+            copia["apostable"] = False
+            copia["edge"] = 0
         if not copia.get("motivo_apuesta"):
             copia["motivo_apuesta"] = ""
         mente_guardada = None
@@ -2132,7 +2630,15 @@ app.add_middleware(
 
 @app.get("/")
 def panel():
-    return FileResponse("QuantumMLB.html")
+    # Sin cache: Safari iOS retiene HTML/JS viejo y el panel se queda en «Despertando…»
+    return FileResponse(
+        "QuantumMLB.html",
+        headers={
+            "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
 
 
 def obtener_juegos_para_panel(fecha: str, ligero: bool = False) -> list[dict]:
@@ -2278,11 +2784,12 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
             resumen_lecciones,
         )
 
-        n_bf = backfill_lecciones_si_vacio(memoria)
-        n_neg = backfill_negativas_si_falta(memoria)
-        if n_bf or n_neg:
-            guardar_memoria(memoria)
-            print(f"[LECCIONES] Backfill: fallos={n_bf} total_scan={n_neg}")
+        if not ligero:
+            n_bf = backfill_lecciones_si_vacio(memoria)
+            n_neg = backfill_negativas_si_falta(memoria)
+            if n_bf or n_neg:
+                guardar_memoria(memoria)
+                print(f"[LECCIONES] Backfill: fallos={n_bf} total_scan={n_neg}")
         lecciones_meta = resumen_lecciones(memoria)
     except Exception as e:
         print(f"[LECCIONES] aviso estado: {e}")
@@ -2291,7 +2798,7 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
     try:
         from mente_aprendizaje import resumen_mente_stats, recomputar_stats_desde_historial
 
-        if not (memoria.get("mente_stats") or {}).get("actualizado_en"):
+        if (not ligero) and not (memoria.get("mente_stats") or {}).get("actualizado_en"):
             n_ms = recomputar_stats_desde_historial(memoria)
             if n_ms:
                 guardar_memoria(memoria)
@@ -2299,19 +2806,69 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
         mente_stats_meta = resumen_mente_stats(memoria)
     except Exception as e:
         print(f"[MENTE-APRENDIZAJE] aviso estado: {e}")
-    
+
+    vigilancia = vigilancia_t60(juegos, memoria, cfg)
+    cfg_ops = _cfg_con_telegram_memoria(cfg)
+    # En panel ligero el cron ya corre mente/T-60; no bloquear la UI 10–20s
+    if not ligero:
+        try:
+            me_out = ejecutar_ciclo_mente_errores(
+                cfg_ops,
+                vigilancia=vigilancia,
+                lineas_meta=_lineas_meta_cache if isinstance(_lineas_meta_cache, dict) else None,
+                memoria=memoria,
+            )
+            if me_out.get("telegram_restaurado") or me_out.get("memoria_telegram_dirty"):
+                guardar_memoria(memoria)
+        except Exception as e:
+            print(f"[MENTE-ERRORES] aviso estado: {e}")
+
+    memoria_panel = _memoria_para_panel(memoria)
+    dia_panel = None
+    if dia:
+        dia_panel = {
+            "dia": dia.get("dia"),
+            "fecha": dia.get("fecha"),
+            "bloqueado_en": dia.get("bloqueado_en"),
+            "resumen": dia.get("resumen"),
+            "predicciones": [
+                _recortar_dict(p, _PRED_PANEL_KEYS)
+                for p in (dia.get("predicciones") or [])
+                if isinstance(p, dict)
+            ],
+            "apuestas": [
+                _recortar_dict(a, _APUESTA_PANEL_KEYS)
+                for a in (dia.get("apuestas") or [])
+                if isinstance(a, dict)
+            ],
+        }
+
     return {
-        "memoria": memoria,
+        "memoria": memoria_panel,
         "banca": resumen_banca(memoria),
-        "dia_hoy": dia,
-        "config": cfg,
+        "dia_hoy": dia_panel,
+        "config": {
+            k: cfg.get(k)
+            for k in (
+                "capital_inicial",
+                "dias_totales",
+                "stake_por_juego",
+                "minutos_antes_juego",
+                "timezone",
+                "modo_solo_modelo",
+                "usar_ia_veto",
+                "usar_mente",
+            )
+            if k in cfg
+        },
         "lineas": _lineas_meta_cache,
         "estrategia": cfg.get("estrategia", {}),
         "total_juegos_bloqueados": len(dia["apuestas"]) if dia else 0,
         "oportunidades_valor_hoy": sum(1 for j in juegos if j.get("apostable")),
+        "favorables_hoy": sum(1 for j in juegos if j.get("apostable")),
         "minutos_antes_juego": cfg.get("minutos_antes_juego", 60),
         "fecha_hoy": fecha_hoy,
-        "games": juegos,
+        "games": _juegos_para_panel(juegos),
         "stats_modelo": stats_modelo,
         "pl_split": pl_split,
         "ml_meta": memoria.get("ml_meta"),
@@ -2331,15 +2888,115 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
             "shadow": bool((cfg.get("mente") or {}).get("shadow", False)),
             "stats": mente_stats_meta,
         },
+        "vigilancia": vigilancia,
+        "mente_errores": _resumen_mente_errores(cfg_ops),
+        "historial_sello": _resumen_sello(memoria),
+        "telegram": telegram_disponible(cfg_ops),
+        "alertas": alerta_disponible(cfg_ops),
+    }
+
+
+@app.get("/api/historial-status")
+def api_historial_status():
+    """Sello rápido: ¿el historial está sano? (para ti / cron / Telegram)."""
+    try:
+        _intentar_recuperar_wipe()
+    except Exception:
+        pass
+    mem = cargar_memoria()
+    sello = _resumen_sello(mem)
+    snaps = 0
+    try:
+        from memoria_fusion import listar_snapshots
+
+        snaps = len(listar_snapshots(DATA_DIR))
+    except Exception:
+        pass
+    return {
+        "ok": True,
+        **sello,
+        "snapshots_locales": snaps,
+        "capital": mem.get("capital"),
+        "dia_actual": mem.get("dia_actual"),
+    }
+
+
+@app.get("/api/panel-boot")
+def api_panel_boot():
+    """Arranque del panel en <1s: historial+capital sin ML ni juegos.
+
+    Evita que Safari iOS se quede en «Despertando…» mientras /api/state
+    tarda 10–60s (cold start / registrar predicciones / ESPN).
+    """
+    try:
+        _intentar_recuperar_wipe()
+    except Exception:
+        pass
+    memoria = cargar_memoria()
+    pl_split = resumen_predicciones_y_dinero(memoria)
+    pl_split.pop("_mutado", None)
+    fecha_hoy = fecha_str()
+    dia = dia_por_fecha(memoria, fecha_hoy) or dia_operativo(memoria)
+    dia_panel = None
+    if dia:
+        if not dia.get("resumen"):
+            try:
+                dia["resumen"] = resumen_dia(dia)
+            except Exception:
+                pass
+        dia_panel = {
+            "dia": dia.get("dia"),
+            "fecha": dia.get("fecha"),
+            "bloqueado_en": dia.get("bloqueado_en"),
+            "resumen": dia.get("resumen"),
+            "predicciones": [
+                _recortar_dict(p, _PRED_PANEL_KEYS)
+                for p in (dia.get("predicciones") or [])
+                if isinstance(p, dict)
+            ],
+            "apuestas": [
+                _recortar_dict(a, _APUESTA_PANEL_KEYS)
+                for a in (dia.get("apuestas") or [])
+                if isinstance(a, dict)
+            ],
+        }
+    cfg = cargar_config()
+    return {
+        "ok": True,
+        "boot": True,
+        "memoria": _memoria_para_panel(memoria),
+        "banca": resumen_banca(memoria),
+        "dia_hoy": dia_panel,
+        "pl_split": pl_split,
+        "historial_sello": _resumen_sello(memoria),
+        "fecha_hoy": fecha_hoy,
+        "config": {
+            k: cfg.get(k)
+            for k in (
+                "capital_inicial",
+                "dias_totales",
+                "stake_por_juego",
+                "minutos_antes_juego",
+                "timezone",
+                "modo_solo_modelo",
+                "usar_ia_veto",
+                "usar_mente",
+            )
+            if k in cfg
+        },
+        "estrategia": cfg.get("estrategia", {}),
+        "games": [],
+        "minutos_antes_juego": cfg.get("minutos_antes_juego", 60),
     }
 
 
 @app.get("/api/state")
-def api_state():
-    """Estado del panel. Liquida pendientes barato (solo marcadores MLB)."""
-    # En Render free el cron a veces no corre si el servicio duerme:
-    # liquidar aquí garantiza que al abrir/refrescar el panel salgan resultados.
-    return construir_estado_completo(liquidar=True, ligero=True)
+def api_state(liquidar: bool = False):
+    """Estado del panel (liviano). Por defecto no liquida: el cron ya lo hace.
+
+    ?liquidar=1 fuerza liquidación (botón Actualizar resultados / catch-up).
+    """
+    return construir_estado_completo(liquidar=bool(liquidar), ligero=True)
 
 
 @app.get("/api/picks-hoy")
@@ -2358,8 +3015,8 @@ def api_picks_hoy():
         vistos.add(g["id"])
         juegos.append(g)
     apostables = sorted(
-        [g for g in juegos if g.get("apostable") and (g.get("probPick") or 0) >= min_prob],
-        key=lambda x: x.get("probPick", 0),
+        [g for g in juegos if apostable_con_mercado(g) and (g.get("probPick") or 0) >= min_prob],
+        key=lambda x: x.get("edge", 0) or 0,
         reverse=True,
     )[:max_dia]
     return {
@@ -2412,13 +3069,25 @@ def api_liquidar():
 
 
 @app.post("/api/reiniciar")
-def api_reiniciar():
-    """Reinicia el experimento por completo, borrando historial previo."""
+def api_reiniciar(confirm: str | None = None):
+    """Reinicia el experimento. Requiere confirm=BORRAR para no borrar por accidente."""
+    if (confirm or "").strip().upper() != "BORRAR":
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                "Reinicio bloqueado. Para borrar el historial llama "
+                "/api/reiniciar?confirm=BORRAR (irreversible)."
+            ),
+        )
     cfg = cargar_config()
-    # Borrar archivos de reporte antiguos
+    try:
+        prev = cargar_memoria()
+        _escribir_snapshot(DATA_DIR, prev)
+    except Exception as e:
+        print(f"[REINICIAR] snapshot previo: {e}")
     for f in DATA_DIR.glob("reporte_dia_*.txt"):
         f.unlink(missing_ok=True)
-        
+
     memoria = {
         "modo": "simulacion",
         "capital": cfg["capital_inicial"],
@@ -2429,10 +3098,9 @@ def api_reiniciar():
         "experimento_activo": True,
         "ultimo_bloqueo": None,
         "dias": [],
-        # Evita que el auto-restore del backup deshaga un reinicio deliberado
         "reinicio_manual": True,
     }
-    guardar_memoria(memoria)
+    guardar_memoria(memoria, permitir_wipe=True)
     return {"ok": True, "memoria": memoria}
 
 
@@ -2475,13 +3143,42 @@ def api_predicciones():
 
 @app.get("/api/health")
 def api_health():
-    """Ping para Render + cron externo (mantiene el servicio despierto en plan free)."""
-    cfg = cargar_config()
+    """Ping para Render + cron externo (mantiene el servicio despierto en plan free).
+
+    Ligero a propósito: Render usa este path como healthCheck. Si aquí corre ML
+    o T-60, el check timeout mata el servicio y parece que siempre hay un error.
+    El trabajo pesado va en /api/auto-bloqueo-externo (cron cada 5 min).
+    """
+    wake: dict[str, Any] = {"restore": False}
+    try:
+        wake["restore"] = bool(_intentar_recuperar_wipe())
+    except Exception as e:
+        wake["error"] = str(e)[:120]
+
+    cfg = _cfg_con_telegram_memoria()
+    circ: dict = {"abierto": False}
+    try:
+        from lineas_oddspapi import estado_circuito
+
+        circ = estado_circuito()
+    except Exception:
+        pass
+    mem_h = cargar_memoria()
+    hist_fechas = sorted(_fechas_con_historial(mem_h))
+    hist_ap, hist_pr = _contar_historial(mem_h)
     return {
         "ok": True,
         "servicio": "quantum-mlb",
-        "capital": cargar_memoria().get("capital"),
-        "dia_actual": cargar_memoria().get("dia_actual"),
+        "wake": wake,
+        "capital": mem_h.get("capital"),
+        "dia_actual": mem_h.get("dia_actual"),
+        "historial": {
+            "fechas": hist_fechas,
+            "n_dias": len(hist_fechas),
+            "apuestas_liquidadas": hist_ap,
+            "preds_liquidadas": hist_pr,
+            **{k: v for k, v in _resumen_sello(mem_h).items() if k not in ("fechas", "n_dias", "apuestas_liquidadas", "preds_liquidadas")},
+        },
         "hora": datetime.now(tz_experimento()).isoformat(),
         "ia_veto": {
             "activo": bool(cfg.get("usar_ia_veto")),
@@ -2502,13 +3199,43 @@ def api_health():
             "activo": True,
             "metricas": ["fip", "xfip", "k_pct", "bb_pct"],
         },
+        "elo": {
+            "activo": bool(cfg.get("usar_elo", True)),
+            "peso_elo": float((cfg.get("elo") or {}).get("peso_elo") or 0.40),
+            "home_adv": float((cfg.get("elo") or {}).get("home_adv") or 24),
+        },
+        "inteligencia": {
+            "activo": bool(cfg.get("usar_inteligencia", True)),
+            "capas": [
+                "consenso_mercado",
+                "bullpen_dia",
+                "park_umpire",
+                "tipo_pick",
+                "monte_carlo",
+                "mc_totales_f5",
+            ],
+            "peso_consenso": float((cfg.get("inteligencia") or {}).get("peso_consenso") or 0.10),
+            "peso_mc": float((cfg.get("inteligencia") or {}).get("peso_mc") or 0.22),
+            "mc_sims": int((cfg.get("inteligencia") or {}).get("mc_sims") or 800),
+            "monte_carlo_totales": bool(
+                (cfg.get("inteligencia") or {}).get("monte_carlo_totales", True)
+            ),
+            "linea_total_default": float(
+                (cfg.get("inteligencia") or {}).get("linea_total_default") or 8.5
+            ),
+        },
         "odds": {
             "activo": not bool(cfg.get("modo_solo_modelo")),
-            "proveedor": (cfg.get("lineas") or {}).get("proveedor") or "oddspapi",
-            "requiere_mercado": bool((cfg.get("estrategia") or {}).get("requiere_betmgm", True)),
-            "fallback_solo_modelo": bool(
-                (cfg.get("estrategia") or {}).get("fallback_solo_modelo", True)
+            "desactivado": bool(cfg.get("modo_solo_modelo")),
+            "motivo": (
+                "modo_solo_modelo=true (sin Odds API)"
+                if cfg.get("modo_solo_modelo")
+                else None
             ),
+            "proveedor": (cfg.get("lineas") or {}).get("proveedor") or "oddspapi",
+            "requiere_mercado": bool((cfg.get("estrategia") or {}).get("requiere_betmgm", True))
+            and not bool(cfg.get("modo_solo_modelo")),
+            "fallback_internet": bool((cfg.get("lineas") or {}).get("fallback_internet", True)),
             "bookmakers": (cfg.get("lineas") or {}).get("bookmakers") or "draftkings",
             "min_edge_pct": float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0)),
             "key_presente": bool(
@@ -2517,6 +3244,8 @@ def api_health():
                 or ((cfg.get("lineas") or {}).get("api_key") or "").strip()
                 or (DATA_DIR / "oddspapi_api_key.txt").exists()
             ),
+            "circuito": bool(circ.get("abierto")),
+            "circuito_hasta_hora": circ.get("hasta_hora"),
         },
         "scratch_lineup": {
             "activo": bool(cfg.get("usar_scratch_lineup", True)),
@@ -2528,12 +3257,18 @@ def api_health():
             "activo": bool(cfg.get("usar_factores_humanos", True)),
             "señales": ["viaje", "descanso", "zona", "serie", "umpire"],
         },
+        "historico_oficial": {
+            "activo": bool(cfg.get("usar_historico_oficial", True)),
+            "señales": ["L10", "pitcher_vs_rival"],
+        },
         "mente": {
             "activo": bool(cfg.get("usar_mente", True)),
             "modo": ((cfg.get("mente") or {}).get("modo") or "normal"),
             "min_confianza": int((cfg.get("mente") or {}).get("min_confianza") or 3),
             "shadow": bool((cfg.get("mente") or {}).get("shadow", False)),
         },
+        "mente_errores": _resumen_mente_errores(cfg),
+        "vigilancia_cron_min": 5,
         "whatsapp": whatsapp_disponible(cfg),
         "telegram": telegram_disponible(cfg),
         "alertas": alerta_disponible(cfg),
@@ -2541,6 +3276,37 @@ def api_health():
             "activo": bool(cfg.get("usar_xgboost", True)),
         },
     }
+
+
+@app.get("/api/mente-errores")
+def api_mente_errores_status():
+    """Estado de la mente operativa (errores de la app, no picks)."""
+    cfg = cargar_config()
+    return {
+        "ok": True,
+        "disponible": mente_errores_disponible(cfg),
+        **_resumen_mente_errores(cfg),
+    }
+
+
+@app.post("/api/mente-errores/ciclo")
+@app.get("/api/mente-errores/ciclo")
+def api_mente_errores_ciclo(secret: str | None = None, forzar: bool = False):
+    """Fuerza un ciclo de diagnóstico + remediación (opcional CRON_SECRET)."""
+    if secret:
+        _verificar_cron_secreto(secret)
+    cfg = _cfg_con_telegram_memoria()
+    mem = cargar_memoria()
+    out = ejecutar_ciclo_mente_errores(
+        cfg,
+        vigilancia=None,
+        lineas_meta=_lineas_meta_cache if isinstance(_lineas_meta_cache, dict) else None,
+        memoria=mem,
+        forzar=forzar,
+    )
+    if out.get("telegram_restaurado") or out.get("memoria_telegram_dirty"):
+        guardar_memoria(mem)
+    return out
 
 
 @app.get("/api/clima-status")
@@ -2586,18 +3352,19 @@ def api_lesiones_status():
 
 @app.get("/api/odds-status")
 def api_odds_status():
-    """Estado del proveedor de cuotas (OddsPapi / The Odds API)."""
+    """Estado del proveedor de cuotas. Con modo_solo_modelo no se usa ni se exige."""
     cfg = cargar_config()
     solo = bool(cfg.get("modo_solo_modelo"))
     requiere = bool((cfg.get("estrategia") or {}).get("requiere_betmgm", True))
     proveedor = str((cfg.get("lineas") or {}).get("proveedor") or "oddspapi").lower()
     base = {
-        "activo": not solo,
+        "activo": not solo and requiere,
         "requiere_mercado": requiere and not solo,
         "modo_solo_modelo": solo,
         "bookmakers": (cfg.get("lineas") or {}).get("bookmakers") or "draftkings",
         "min_edge_pct": float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0)),
         "proveedor": proveedor,
+        "fallback_internet": bool((cfg.get("lineas") or {}).get("fallback_internet", True)),
         "fallback_solo_modelo": bool(
             (cfg.get("estrategia") or {}).get("fallback_solo_modelo", True)
         ),
@@ -2607,23 +3374,85 @@ def api_odds_status():
             **base,
             "ok": True,
             "desactivado": True,
-            "motivo": "Cuotas desactivadas (modo solo modelo)",
+            "motivo": "Odds API desactivada: dinero solo con % del modelo (≥ min_prob)",
         }
     try:
+        def _con_espn(out: dict) -> dict:
+            if out.get("ok") or not bool((cfg.get("lineas") or {}).get("fallback_internet", True)):
+                return out
+            try:
+                from lineas_espn import obtener_lineas_espn
+
+                _, me = obtener_lineas_espn()
+            except Exception as e:
+                out["espn_error"] = str(e)[:120]
+                return out
+            if me.get("ok"):
+                out["ok"] = True
+                out["fallback_espn"] = True
+                out["espn_partidos"] = me.get("partidos")
+                out["mensaje"] = (
+                    f"{out.get('mensaje') or out.get('motivo') or 'OddsPapi no disponible'} · "
+                    f"{me.get('mensaje')}"
+                )
+                out["motivo"] = None
+            else:
+                out["fallback_espn"] = False
+                out["espn_mensaje"] = me.get("mensaje")
+            return out
+
+        if proveedor in ("espn", "espn-draftkings", "internet"):
+            from lineas_espn import obtener_lineas_espn
+
+            _, me = obtener_lineas_espn()
+            return {
+                **base,
+                "ok": bool(me.get("ok")),
+                "key_presente": False,
+                "fallback_espn": True,
+                "partidos": me.get("partidos"),
+                "mensaje": me.get("mensaje"),
+            }
+
         if proveedor in ("oddspapi", "odds-papi", "odds_papi"):
-            from lineas_oddspapi import cargar_api_key, fingerprint_key, obtener_lineas_oddspapi
+            from lineas_oddspapi import (
+                cargar_api_key,
+                circuito_abierto,
+                estado_circuito,
+                fingerprint_key,
+                obtener_lineas_oddspapi,
+            )
 
             key = cargar_api_key(cfg)
+            if circuito_abierto():
+                st = estado_circuito()
+                return _con_espn({
+                    **base,
+                    "ok": False,
+                    "key_presente": bool(key),
+                    "key_fingerprint": fingerprint_key(key) if key else None,
+                    "circuito": True,
+                    "circuito_hasta": st.get("hasta"),
+                    "circuito_hasta_hora": st.get("hasta_hora"),
+                    "http_status": st.get("http_status"),
+                    "motivo": st.get("mensaje"),
+                    "mensaje": st.get("mensaje"),
+                    "ayuda": (
+                        "OddsPapi se pausó sola (401/429). "
+                        "Las cuotas salen de ESPN/DraftKings. "
+                        "Se reintenta al vencer la pausa o al pegar una key nueva."
+                    ),
+                })
             if not key:
-                return {
+                return _con_espn({
                     **base,
                     "ok": False,
                     "key_presente": False,
-                    "motivo": "Falta ODDSPAPI_API_KEY en Render (oddspapi.io)",
-                    "ayuda": "Crea key en https://oddspapi.io → Render ODDSPAPI_API_KEY → Save + Deploy",
-                }
+                    "motivo": "Falta ODDSPAPI_API_KEY · se intenta ESPN/DraftKings",
+                    "ayuda": "Crea key en https://oddspapi.io o usa el fallback ESPN (sin key)",
+                })
             _, meta = obtener_lineas_oddspapi(cfg)
-            return {
+            return _con_espn({
                 **base,
                 "ok": bool(meta.get("ok")),
                 "key_presente": True,
@@ -2640,37 +3469,47 @@ def api_odds_status():
                 "mensaje": meta.get("mensaje"),
                 "cache": meta.get("cache"),
                 "intentos": meta.get("intentos"),
+                "circuito": bool(meta.get("circuito")),
+                "circuito_hasta": meta.get("circuito_hasta"),
                 "ayuda": (
                     None
                     if meta.get("ok")
                     else (
-                        "Key incompleta o rechazada. Opción fácil: GitHub → Actions → "
-                        "'Configurar OddsPapi' → Run workflow → pega la UUID completa. "
-                        "O en Render ODDSPAPI_API_KEY (36 caracteres) + Manual Deploy."
+                        "Si OddsPapi falla, se usan cuotas ESPN/DraftKings de internet. "
+                        "Key incompleta: GitHub Action 'Configurar OddsPapi' o UUID de 36 caracteres."
                     )
                 ),
-            }
+            })
 
-        from lineas_betmgm import cargar_api_key, obtener_lineas_betmgm
+        # Legacy The Odds API (proveedor betmgm / the-odds-api)
+        from lineas_betmgm import cargar_api_key, enmascarar_api_key, obtener_lineas_betmgm
 
         key = cargar_api_key(cfg)
+        diag = enmascarar_api_key(key)
         if not key:
-            return {
+            return _con_espn({
                 **base,
                 "ok": False,
-                "key_presente": False,
-                "motivo": "Falta ODDS_API_KEY en Render",
-            }
+                **diag,
+                "motivo": "Falta ODDS_API_KEY · se intenta ESPN/DraftKings",
+                "ayuda": (
+                    "Crea key en https://the-odds-api.com → pégala en Render "
+                    "como ODDS_API_KEY (sin comillas) → Save → Manual Deploy."
+                ),
+            })
         _, meta = obtener_lineas_betmgm(cfg)
-        return {
+        return _con_espn({
             **base,
             "ok": bool(meta.get("ok")),
-            "key_presente": True,
+            **diag,
             "partidos": meta.get("partidos"),
             "mensaje": meta.get("mensaje"),
+            "error_code": meta.get("error_code"),
+            "http_status": meta.get("http_status"),
+            "ayuda": meta.get("ayuda"),
             "requests_restantes": meta.get("requests_restantes"),
             "cache": meta.get("cache"),
-        }
+        })
     except Exception as e:
         return {**base, "ok": False, "motivo": str(e)[:120]}
 
@@ -2754,6 +3593,38 @@ def api_humanos_status():
         return {"ok": False, "activo": True, "motivo": str(e)[:120]}
 
 
+@app.get("/api/historico-status")
+def api_historico_status():
+    """Ping L10 + pitcher vs rival (StatsAPI oficial)."""
+    cfg = cargar_config()
+    if not cfg.get("usar_historico_oficial", True):
+        return {"ok": False, "activo": False, "motivo": "usar_historico_oficial=false"}
+    try:
+        from historico_oficial import cargar_l10, analizar_historico_oficial
+
+        season = int(cfg.get("temporada_mlb") or 2026)
+        l10 = cargar_l10(season)
+        demo = analizar_historico_oficial(
+            {
+                "away_id": 136,
+                "home_id": 147,
+                "pitcher_away_id": 669358,
+                "pitcher_home_id": 543037,
+                "fecha": f"{season}-08-12",
+            },
+            season=season,
+        )
+        return {
+            "ok": bool(demo.get("ok")),
+            "activo": True,
+            "señales": ["L10", "pitcher_vs_rival"],
+            "equipos_l10": len(l10),
+            "demo_resumen": (demo.get("resumen") or "")[:180],
+        }
+    except Exception as e:
+        return {"ok": False, "activo": True, "motivo": str(e)[:120]}
+
+
 @app.get("/api/mente-status")
 def api_mente_status():
     """Estado de la mente (director APOSTAR/PASAR/ESPERAR)."""
@@ -2819,27 +3690,104 @@ def api_whatsapp_status():
 
 @app.get("/api/telegram-status")
 def api_telegram_status():
-    """Estado de alertas Telegram (CallMeBot txtbot)."""
-    cfg = cargar_config()
+    """Estado de alertas Telegram (BotFather oficial)."""
+    cfg = _cfg_con_telegram_memoria()
     tg = cfg.get("telegram") if isinstance(cfg.get("telegram"), dict) else {}
     disp = telegram_disponible(cfg)
     return {
         **disp,
         "activo_config": bool(tg.get("activo", True)),
-        "setup": (
-            "1) Abre Telegram y busca @CallMeBot_txtbot. "
-            "2) Pulsa Start o envía /start. "
-            "3) En Render pon TELEGRAM_USER=@tuusuario (el de Telegram, con @)."
+        "setup": disp.get("setup")
+        or (
+            "1) Panel → 📱 Telegram → pega token de @BotFather\n"
+            "2) Guardar token\n"
+            "3) Escribe hola a tu bot\n"
+            "4) Vincular\n"
+            "5) Probar"
         ),
     }
+
+
+@app.get("/api/telegram-vincular")
+def api_telegram_vincular():
+    """
+    Tras crear el bot y escribirle 'hola', esto guarda tu chat_id
+    y te manda un mensaje de confirmación.
+    """
+    cfg = _cfg_con_telegram_memoria()
+    res = vincular_telegram_chat(cfg)
+    if res.get("ok") and res.get("chat_id"):
+        try:
+            mem = cargar_memoria()
+            # token ya en disco; leerlo para memoria
+            from whatsapp_alerta import leer_bot_token_guardado
+
+            mem = telegram_a_memoria(
+                mem,
+                token=leer_bot_token_guardado(),
+                chat_id=str(res.get("chat_id")),
+                bot=str(res.get("usuario") or ""),
+            )
+            guardar_memoria(mem)
+        except Exception as e:
+            print(f"[TELEGRAM] no se pudo persistir en memoria: {e}")
+    return res
+
+
+@app.get("/api/telegram-guardar-token")
+def api_telegram_guardar_token(token: str = "", secret: str = ""):
+    """
+    Guarda el token del bot en disco + memoria.
+    GET con ?secret= solo si CRON_SECRET está definido (automatizaciones).
+    Preferir POST desde el panel (sin secret).
+    """
+    from whatsapp_alerta import configurar_bot_token
+
+    esperado = os.environ.get("CRON_SECRET", "").strip()
+    if esperado:
+        _verificar_cron_secreto(secret or None)
+    res = configurar_bot_token(token, cargar_config())
+    if res.get("ok") and res.get("bot_token"):
+        try:
+            mem = cargar_memoria()
+            mem = telegram_a_memoria(mem, token=str(res["bot_token"]), bot=str(res.get("bot") or ""))
+            guardar_memoria(mem)
+            res.pop("bot_token", None)
+        except Exception as e:
+            print(f"[TELEGRAM] persist memoria: {e}")
+            res.pop("bot_token", None)
+    else:
+        res.pop("bot_token", None)
+    return res
+
+
+@app.post("/api/telegram-guardar-token")
+async def api_telegram_guardar_token_post(request: Request):
+    """JSON: {"token":"123:AA..."}. Sin CRON_SECRET: el token ya es la credencial."""
+    from whatsapp_alerta import configurar_bot_token
+
+    body = {}
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    res = configurar_bot_token(str((body or {}).get("token") or ""), cargar_config())
+    if res.get("ok") and res.get("bot_token"):
+        try:
+            mem = cargar_memoria()
+            mem = telegram_a_memoria(mem, token=str(res["bot_token"]), bot=str(res.get("bot") or ""))
+            guardar_memoria(mem)
+        except Exception as e:
+            print(f"[TELEGRAM] persist memoria: {e}")
+    res.pop("bot_token", None)
+    return res
 
 
 @app.get("/api/alertas-status")
 def api_alertas_status():
     """Canal de alerta activo (Telegram preferido, WhatsApp fallback)."""
-    cfg = cargar_config()
+    cfg = _cfg_con_telegram_memoria()
     return alerta_disponible(cfg)
-
 
 @app.post("/api/whatsapp-test")
 async def api_whatsapp_test(request: Request):
@@ -2877,7 +3825,7 @@ async def api_whatsapp_test(request: Request):
 @app.post("/api/telegram-test")
 async def api_telegram_test(request: Request):
     """Envía un mensaje de prueba por Telegram."""
-    cfg = cargar_config()
+    cfg = _cfg_con_telegram_memoria()
     disp = telegram_disponible(cfg)
     if not disp.get("ok"):
         return {**disp, "enviado": False}
@@ -2910,7 +3858,7 @@ async def api_telegram_test(request: Request):
 @app.post("/api/alerta-test")
 async def api_alerta_test(request: Request):
     """Prueba el canal activo (Telegram o WhatsApp)."""
-    cfg = cargar_config()
+    cfg = _cfg_con_telegram_memoria()
     disp = alerta_disponible(cfg)
     if not disp.get("ok"):
         return {**disp, "enviado": False}
@@ -3015,6 +3963,10 @@ def api_ia_status():
 
 def ejecutar_trabajo_cron_externo() -> dict:
     """Sincroniza fecha, predicciones, bloqueos y liquidacion."""
+    try:
+        _intentar_recuperar_wipe()
+    except Exception as e:
+        print(f"[CRON] restore wipe: {e}")
     sincronizar_experimento_a_hoy()
     reparar_odds_papel(cargar_memoria())
     rellenar_predicciones_recientes(cargar_memoria(), dias_atras=7)
@@ -3023,6 +3975,39 @@ def ejecutar_trabajo_cron_externo() -> dict:
     resultado = bloquear_apuestas_del_dia(forzar=False)
     liquidar_todo(cargar_memoria())
     memoria = cargar_memoria()
+    cfg = _cfg_con_telegram_memoria()
+    # Vigilancia real (antes el cron pasaba vigilancia=None → mente ciega al sueño)
+    vigilancia: dict = {}
+    try:
+        juegos = obtener_juegos_fecha(fecha_str())
+        vigilancia = vigilancia_t60(juegos, memoria, cfg)
+        if vigilancia.get("nivel") == "alerta" and int(vigilancia.get("total_riesgo") or 0) > 0:
+            registrar_predicciones_del_dia(forzar=True)
+            try:
+                bloquear_apuestas_del_dia(forzar=False)
+            except Exception:
+                pass
+            memoria = cargar_memoria()
+            vigilancia = vigilancia_t60(juegos, memoria, cfg)
+    except Exception as e:
+        print(f"[CRON] vigilancia: {e}")
+        vigilancia = {"ok": False, "nivel": "ok", "mensaje": str(e)[:120]}
+    mente_err: dict = {}
+    try:
+        mente_err = ejecutar_ciclo_mente_errores(
+            cfg,
+            vigilancia=vigilancia if isinstance(vigilancia, dict) else None,
+            lineas_meta=_lineas_meta_cache if isinstance(_lineas_meta_cache, dict) else None,
+            memoria=memoria,
+        )
+        if mente_err.get("telegram_restaurado") or mente_err.get("memoria_telegram_dirty"):
+            guardar_memoria(memoria)
+    except Exception as e:
+        print(f"[MENTE-ERRORES] ciclo cron: {e}")
+        try:
+            registrar_error_runtime("cron", str(e))
+        except Exception:
+            pass
     return {
         "ok": True,
         "mensaje": "Auto-bloqueo ejecutado",
@@ -3030,6 +4015,18 @@ def ejecutar_trabajo_cron_externo() -> dict:
         "capital": memoria["capital"],
         "dia_actual": memoria.get("dia_actual"),
         "fecha_hoy": fecha_str(),
+        "vigilancia": {
+            "nivel": (vigilancia or {}).get("nivel"),
+            "total_riesgo": (vigilancia or {}).get("total_riesgo"),
+            "total_perdidos": (vigilancia or {}).get("total_perdidos"),
+            "mensaje": (vigilancia or {}).get("mensaje"),
+        },
+        "mente_errores": {
+            "nivel": (mente_err or {}).get("nivel"),
+            "mensaje": (mente_err or {}).get("mensaje"),
+            "n_hallazgos": len((mente_err or {}).get("hallazgos") or []),
+            "telegram_restaurado": (mente_err or {}).get("telegram_restaurado"),
+        },
     }
 
 
@@ -3039,6 +4036,10 @@ def _cron_externo_en_fondo() -> None:
         ejecutar_trabajo_cron_externo()
     except Exception as e:
         print(f"[CRON] Error en trabajo externo: {e}")
+        try:
+            registrar_error_runtime("cron_fondo", str(e))
+        except Exception:
+            pass
     finally:
         _cron_externo_activo = False
 
@@ -3080,6 +4081,17 @@ async def api_configurar_oddspapi(request: Request, secret: str | None = None, k
         "mensaje": meta.get("mensaje"),
         "key_fingerprint": meta.get("key_fingerprint") or info.get("key_fingerprint"),
         "key_source": meta.get("key_source"),
+        "circuito": bool(meta.get("circuito")),
+        "aviso_env": info.get("aviso_env"),
+        "ayuda": (
+            None
+            if meta.get("ok")
+            else (
+                "Si sigue en 401: crea key nueva en https://oddspapi.io, "
+                "revoca la vieja, y borra ODDSPAPI_API_KEY en Render Environment "
+                "(la del disco ya tiene prioridad)."
+            )
+        ),
     }
 
 
@@ -3122,12 +4134,13 @@ def api_subir_memoria(
 ):
     """Sube memoria_auditoria.json desde la PC local a Render (requiere CRON_SECRET).
 
-    modo=replace (default) | aprendizaje (fusiona como paper retroactivo, plan 4)
+    modo=fusionar (default, une días) | replace | aprendizaje (paper retroactivo)
     """
     _verificar_cron_secreto(secret)
     if not isinstance(payload, dict) or "capital" not in payload:
         raise HTTPException(status_code=400, detail="JSON de memoria invalido")
-    if (modo or "replace").lower() in ("aprendizaje", "merge", "import"):
+    modo_n = (modo or "fusionar").lower()
+    if modo_n in ("aprendizaje", "import"):
         from ia_importar import importar_dump_aprendizaje
         from ia_lecciones import escanear_experiencias_negativas
 
@@ -3146,6 +4159,21 @@ def api_subir_memoria(
             "lecciones_nuevas": n_lec,
             "capital": memoria.get("capital"),
             "dias": len(memoria.get("dias", [])),
+        }
+    if modo_n in ("fusionar", "merge", "union"):
+        disk = cargar_memoria()
+        merged = _fusionar_memoria(payload, disk)
+        guardar_memoria(merged)
+        sincronizar_experimento_a_hoy(merged)
+        memoria = cargar_memoria()
+        ap, pr = _contar_historial(memoria)
+        return {
+            "ok": True,
+            "modo": "fusionar",
+            "capital": memoria.get("capital"),
+            "dia_actual": memoria.get("dia_actual"),
+            "dias": len(memoria.get("dias", [])),
+            "historial": {"apuestas": ap, "preds": pr},
         }
     guardar_memoria(payload)
     memoria = cargar_memoria()
@@ -3242,7 +4270,7 @@ def api_procesar_experiencias(forzar: bool = False):
 
 @app.post("/api/restaurar-backup")
 def api_restaurar_backup(secret: str | None = None):
-    """Restaura memoria desde el JSON del repo si el disco parece un reinicio/wipe."""
+    """Fusiona el JSON del repo con el disco si faltan días (wipe o redeploy)."""
     _verificar_cron_secreto(secret)
     origen = BASE_DIR / "memoria_auditoria.json"
     if not origen.exists():
@@ -3252,11 +4280,22 @@ def api_restaurar_backup(secret: str | None = None):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Backup ilegible: {e}") from e
     disk = cargar_memoria()
-    if not _memoria_parece_reinicio(disk):
+    if disk.get("reinicio_manual"):
         ap, pr = _contar_historial(disk)
         return {
             "ok": False,
-            "motivo": "La memoria actual no parece un reinicio; no se sobrescribe",
+            "motivo": "reinicio_manual=true; no se restaura el backup",
+            "dia_actual": disk.get("dia_actual"),
+            "capital": disk.get("capital"),
+            "historial": {"apuestas": ap, "preds": pr},
+        }
+    wipe_clasico = _memoria_parece_reinicio(disk)
+    dias_perdidos = _backup_tiene_dias_que_el_disco_perdio(bundled, disk)
+    if not wipe_clasico and not dias_perdidos:
+        ap, pr = _contar_historial(disk)
+        return {
+            "ok": True,
+            "motivo": "Nada que restaurar; el disco ya tiene los días del backup",
             "dia_actual": disk.get("dia_actual"),
             "capital": disk.get("capital"),
             "historial": {"apuestas": ap, "preds": pr},
@@ -3279,6 +4318,8 @@ def api_restaurar_backup(secret: str | None = None):
         "dias": len(memoria.get("dias", [])),
         "historial": {"apuestas": ap, "preds": pr},
         "lecciones": len(memoria.get("lecciones") or []),
+        "wipe_clasico": wipe_clasico,
+        "dias_perdidos": dias_perdidos,
     }
 
 
