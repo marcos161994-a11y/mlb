@@ -563,7 +563,7 @@ const API = (!window.location.origin || window.location.protocol === 'file:')
 const ES_NUBE = API.includes('onrender.com') || API.includes('render.com');
 const REFRESH_MS = ES_NUBE ? 45000 : 8000;
 const CACHE_KEY = 'qmlb_last_state_v2';
-const PANEL_VER = '2026-08-27-boot2';
+const PANEL_VER = '2026-08-27-juegos';
 let cargandoEstado = false;
 let cargandoBoot = false;
 let cargandoJuegos = false;
@@ -985,7 +985,10 @@ async function cargarEstado() {
             bootOk = true;
             guardarCacheEstado(bootRes.boot);
             pintarEstadoSeguro(bootRes.boot, 'boot');
-            if (!yaCargo) {
+            if (bootRes.boot.games && bootRes.boot.games.length) {
+                try { pintarPicksHoy(bootRes.boot.games, bootRes.boot); } catch (_) {}
+                try { pintarJuegos(bootRes.boot.games); } catch (_) {}
+            } else if (!yaCargo) {
                 contenedor.innerHTML =
                     '<p style="color:#00ff88">✓ Historial cargado · trayendo juegos…</p>' +
                     '<p style="margin:10px 0"><button type="button" onclick="reintentarAhora()">↻ Reintentar ahora</button></p>';
@@ -1014,23 +1017,48 @@ async function cargarEstado() {
     // Liberar candado de boot YA: el state no debe bloquear reintentos iOS
     cargandoEstado = false;
 
-    // 2) State (juegos). Si falla, el historial YA pintado se conserva.
+    // 2) Juegos rápidos (cache) — NO esperar /api/state (~15s / 502 en iPhone)
     if (cargandoJuegos) return;
     cargandoJuegos = true;
     const ctrl = new AbortController();
-    const timeoutMs = ES_NUBE ? 35000 : 45000;
+    const timeoutMs = ES_NUBE ? 25000 : 45000;
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    let juegosOk = contenedor.dataset.loaded === '1';
+    try {
+        const jr = await fetch(API + '/api/juegos-hoy', { cache: 'no-store', signal: ctrl.signal });
+        if (jr.ok) {
+            const jd = await jr.json();
+            const games = jd.games || [];
+            if (games.length) {
+                try { pintarPicksHoy(games, { games }); } catch (_) {}
+                try { pintarJuegos(games); } catch (_) {}
+                juegosOk = true;
+                wakeIntentos = 0;
+            }
+        } else if (jr.status === 502 || jr.status === 503) {
+            throw new Error('Servidor respondió ' + jr.status);
+        }
+    } catch (eJ) {
+        // seguir a state / reintento
+        if (!juegosOk && historialPintado) {
+            contenedor.innerHTML =
+                '<p style="color:#ffaa00"><b>Historial OK · cargando juegos…</b></p>' +
+                '<p style="margin:12px 0"><button type="button" onclick="reintentarAhora()" style="padding:12px 18px;font-weight:700">↻ Reintentar juegos</button></p>';
+        }
+    }
+
+    // 3) State completo (opcional). Si falla, juegos/historial ya pintados se conservan.
     try {
         const stateRes = await fetch(API + '/api/state', { cache: 'no-store', signal: ctrl.signal });
         if (!stateRes.ok) throw new Error('Servidor respondió ' + stateRes.status);
         const state = await stateRes.json();
-        contenedor.dataset.loaded = '1';
         wakeIntentos = 0;
         cancelarReintento();
         guardarCacheEstado(state);
         pintarEstadoSeguro(state, 'state');
         try { pintarPicksHoy(state.games || [], state); } catch (_) {}
         try { pintarJuegos(state.games || []); } catch (_) {}
+        juegosOk = true;
     } catch (e) {
         const msg = String(e.message || e);
         const is502 = msg.includes('502') || msg.includes('503') || msg.includes('504') || msg.includes('abort');
@@ -1041,15 +1069,14 @@ async function cargarEstado() {
                 try { await cargarHistorialFallback(ctrl.signal); } catch (_) {}
             }
         }
-        if (historialPintado) {
-            // Historial visible: solo avisar juegos y reintentar suave
-            if (!yaCargo && contenedor.dataset.loaded !== '1') {
+        if (juegosOk || historialPintado) {
+            if (!juegosOk && contenedor.dataset.loaded !== '1') {
                 contenedor.innerHTML =
                     '<p style="color:#ffaa00"><b>Historial OK · juegos tardando (Render).</b></p>' +
                     '<p style="margin:12px 0"><button type="button" onclick="reintentarAhora()" style="padding:12px 18px;font-weight:700">↻ Reintentar juegos</button></p>' +
                     '<small style="color:var(--muted)">' + msg + '</small>';
             }
-            if (ES_NUBE && wakeIntentos < WAKE_MAX) {
+            if (!juegosOk && ES_NUBE && wakeIntentos < WAKE_MAX) {
                 wakeIntentos += 1;
                 lastWakeAt = Date.now();
                 despertarServidor(12000);
@@ -1718,10 +1745,12 @@ function pintarPredicciones(memoria, plSplit) {
 
 function pintarJuegos(juegos) {
     const c = document.getElementById('contenedor-juegos');
-    if (!juegos.length) {
+    if (!c) return;
+    if (!juegos || !juegos.length) {
         c.innerHTML = '<p style="color:var(--muted)">No hay juegos MLB hoy.</p>';
         return;
     }
+    c.dataset.loaded = '1';
     const orden = [...juegos].sort((a, b) => (b.apostable ? 1 : 0) - (a.apostable ? 1 : 0));
     c.innerHTML = orden.map(j => {
         const estudio = sinCuotaMercado(j) && !j.apostable;

@@ -88,6 +88,8 @@ _cron_externo_lock = threading.Lock()
 _cron_externo_activo = False
 _juegos_ui_cache: dict = {"fecha": "", "ts": 0.0, "juegos": []}
 _JUEGOS_UI_TTL_SEC = 90
+_JUEGOS_PANEL_CACHE_PATH = DATA_DIR / "juegos_panel_cache.json"
+_JUEGOS_PANEL_DISK_MAX_AGE_SEC = 20 * 60
 
 
 def _intentar_recuperar_wipe() -> bool:
@@ -2663,6 +2665,42 @@ def obtener_juegos_para_panel(fecha: str, ligero: bool = False) -> list[dict]:
     return juegos
 
 
+def _guardar_juegos_panel_disk(fecha: str, juegos: list[dict]) -> None:
+    """Snapshot en disco para que el móvil pinte juegos aunque /api/state falle."""
+    payload = {
+        "fecha": fecha,
+        "ts": time.time(),
+        "games": _juegos_para_panel(juegos),
+        "n": len(juegos or []),
+    }
+    _JUEGOS_PANEL_CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
+    tmp = _JUEGOS_PANEL_CACHE_PATH.with_suffix(".tmp")
+    tmp.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(_JUEGOS_PANEL_CACHE_PATH)
+
+
+def _leer_juegos_panel_disk(fecha: str | None = None, max_age_sec: float | None = None) -> dict | None:
+    path = _JUEGOS_PANEL_CACHE_PATH
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
+    if not isinstance(data, dict) or not data.get("games"):
+        return None
+    if fecha and data.get("fecha") and data.get("fecha") != fecha:
+        return None
+    age = time.time() - float(data.get("ts") or 0)
+    limit = _JUEGOS_PANEL_DISK_MAX_AGE_SEC if max_age_sec is None else max_age_sec
+    if age > limit:
+        return None
+    data["age_sec"] = round(age, 1)
+    data["ok"] = True
+    data["cache"] = "disk"
+    return data
+
+
 def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> dict:
     # Si Render/free borró el historial (o se pulsó reinicio por error), recuperar.
     try:
@@ -2693,13 +2731,9 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
         except Exception as e:
             print(f"Aviso predicciones: {e}")
     else:
-        # Panel ligero: igual registrar/catch-up (incluye FINALIZADO sin pred)
-        # para que los resultados del día no se queden en "pendiente".
-        try:
-            registrar_predicciones_del_dia(forzar=False)
-            memoria = cargar_memoria()
-        except Exception as e:
-            print(f"Aviso predicciones (ligero): {e}")
+        # Panel ligero: NO registrar aquí (MLB+ML ~10–15s → 502 en Render free / iPhone).
+        # El cron /api/auto-bloqueo-externo hace el catch-up de predicciones.
+        pass
 
     if liquidar:
         try:
@@ -2968,6 +3002,14 @@ def api_panel_boot():
             ],
         }
     cfg = cargar_config()
+    # Si hay snapshot reciente de juegos, adjuntarlo (0 coste) para el móvil
+    games_boot: list = []
+    try:
+        cached = _leer_juegos_panel_disk(fecha_hoy)
+        if cached:
+            games_boot = cached.get("games") or []
+    except Exception:
+        pass
     return {
         "ok": True,
         "boot": True,
@@ -2992,8 +3034,59 @@ def api_panel_boot():
             if k in cfg
         },
         "estrategia": cfg.get("estrategia", {}),
-        "games": [],
+        "games": games_boot,
         "minutos_antes_juego": cfg.get("minutos_antes_juego", 60),
+    }
+
+
+@app.get("/api/juegos-hoy")
+def api_juegos_hoy(fresh: bool = False):
+    """Juegos del día para el panel. Prioriza cache (memoria/disco) para iPhone.
+
+    ?fresh=1 fuerza recálculo MLB+ML (más lento; puede 502 en Render free).
+    """
+    fecha_hoy = fecha_str()
+    if not fresh:
+        # 1) RAM
+        ahora = time.monotonic()
+        if (
+            _juegos_ui_cache["fecha"] == fecha_hoy
+            and (ahora - _juegos_ui_cache["ts"]) < _JUEGOS_UI_TTL_SEC
+            and _juegos_ui_cache.get("juegos")
+        ):
+            juegos = _juegos_ui_cache["juegos"]
+            mem = cargar_memoria()
+            fused = fusionar_apuestas_con_juegos(juegos, mem)
+            return {
+                "ok": True,
+                "fecha": fecha_hoy,
+                "games": _juegos_para_panel(fused),
+                "n": len(fused),
+                "cache": "ram",
+            }
+        # 2) Disco
+        disk = _leer_juegos_panel_disk(fecha_hoy)
+        if disk:
+            return disk
+
+    memoria = cargar_memoria()
+    try:
+        juegos = fusionar_apuestas_con_juegos(
+            obtener_juegos_para_panel(fecha_hoy, ligero=True), memoria
+        )
+    except Exception as e:
+        disk = _leer_juegos_panel_disk(fecha_hoy, max_age_sec=6 * 3600)
+        if disk:
+            disk["motivo"] = str(e)[:120]
+            disk["stale"] = True
+            return disk
+        return {"ok": False, "fecha": fecha_hoy, "games": [], "motivo": str(e)[:120]}
+    return {
+        "ok": True,
+        "fecha": fecha_hoy,
+        "games": _juegos_para_panel(juegos),
+        "n": len(juegos),
+        "cache": "fresh" if fresh else "computed",
     }
 
 
@@ -3050,8 +3143,8 @@ def api_picks_hoy():
 
 @app.get("/api/live-data")
 def api_live_data():
-    estado = construir_estado_completo(ligero=True)
-    return {"games": estado["games"]}
+    """Scores/juegos ligeros (usa /api/juegos-hoy)."""
+    return api_juegos_hoy(fresh=False)
 
 
 @app.post("/api/bloquear-hoy")
