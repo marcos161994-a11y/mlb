@@ -193,6 +193,24 @@
             margin-bottom: 20px;
         }
         .historial h3 { margin: 0 0 10px; font-size: 0.9rem; }
+        .leccion-fila {
+            padding: 8px 0;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.82rem;
+            line-height: 1.35;
+        }
+        .leccion-fila .patron {
+            display: inline-block;
+            font-size: 0.68rem;
+            color: var(--cyan);
+            border: 1px solid rgba(0, 242, 255, 0.35);
+            padding: 1px 6px;
+            border-radius: 4px;
+            margin-right: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.02em;
+        }
+        .leccion-fila .meta { color: var(--muted); font-size: 0.72rem; margin-top: 3px; }
         .dia-fila {
             display: flex;
             justify-content: space-between;
@@ -215,8 +233,10 @@
         .card.perdida { border-color: var(--red); }
         .card.apostable { border: 2px solid var(--green); box-shadow: 0 0 12px rgba(0,255,136,0.15); }
         .card.no-apostable { opacity: 0.55; }
+        .card.estudio { opacity: 1; border: 1px solid rgba(255,188,0,0.45); }
         .tag-apostar { background: rgba(0,255,136,0.2); color: var(--green); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
         .tag-skip { background: rgba(136,153,170,0.2); color: #8899aa; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; }
+        .tag-estudio { background: rgba(255,188,0,0.18); color: var(--gold); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
         .estado { color: var(--gold); font-size: 0.75rem; font-weight: bold; }
         .estado-apuesta { font-size: 0.7rem; margin-top: 4px; }
         .estado-apuesta.ganada { color: var(--green); }
@@ -435,8 +455,33 @@
     </details>
 
     <p class="meta-line" id="lineas-status" style="color:#ffbc00;"></p>
+    <p class="meta-line" id="vigilancia-status" style="color:#8899aa;"></p>
+    <p class="meta-line" id="mente-errores-status" style="color:#8899aa;"></p>
+    <p class="meta-line" id="historial-sello" style="color:#8899aa;font-weight:700;"></p>
+    <p class="meta-line" id="telegram-banner" style="color:#ffbc00;"></p>
     <p class="meta-line" id="proximo-bloqueo"></p>
 </div>
+
+<details class="rendimiento" id="telegram-setup" open>
+    <summary>📱 Telegram — avisos T-60 (obligatorio para alertas)</summary>
+    <div class="rendimiento-body" style="display:flex;flex-direction:column;gap:8px;">
+        <p style="color:var(--muted);font-size:0.85rem;margin:0;">
+            <b>1.</b> Telegram → busca <code>@BotFather</code> → <code>/newbot</code> o <code>/token</code> → copia el token<br/>
+            <b>2.</b> Pégalo abajo → <b>Guardar token</b><br/>
+            <b>3.</b> Abre <b>tu bot</b> → escribe <code>hola</code> → <b>Vincular</b> → <b>Probar</b><br/>
+            <b>4.</b> (Anti-wipe) En Render → Environment pon <code>TELEGRAM_BOT_TOKEN</code> y <code>TELEGRAM_CHAT_ID</code>
+            para que un redeploy no borre las alertas. La mente de errores también intenta restaurar sola desde env/memoria.
+        </p>
+        <input id="tg-token" type="password" autocomplete="off" placeholder="Token BotFather (123456:AA...)"
+            style="width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#111;color:#eee;font-size:0.9rem;" />
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button onclick="guardarTokenTelegram()">1) Guardar token</button>
+            <button onclick="vincularTelegram()">2) Vincular</button>
+            <button onclick="probarTelegram()">3) Probar</button>
+        </div>
+        <p id="tg-status" style="color:var(--muted);font-size:0.8rem;margin:0;">Estado: cargando…</p>
+    </div>
+</details>
 
 <div class="aviso" id="aviso-real">
     <details>
@@ -444,7 +489,7 @@
         <div class="aviso-body" id="aviso-body">
             El tag <strong>PICK</strong> es la predicción (fija al apostar).
             <strong>GANÓ</strong> solo aparece cuando MLB confirma el final.
-            Verdes (≥58%) son apostables. Bloqueo 1 h antes.
+            Verdes = valor vs cuota real. Sin cuota = estudio, no apostar. Bloqueo 1 h antes.
         </div>
     </details>
 </div>
@@ -475,6 +520,7 @@
 <div class="controls">
     <button onclick="bloquearHoy()">Forzar bloqueos pendientes ahora</button>
     <button onclick="liquidar()">Actualizar resultados</button>
+    <button onclick="procesarExperiencias()">Procesar lecciones (4/5)</button>
     <button class="warn" onclick="reiniciar()">Reiniciar experimento</button>
 </div>
 
@@ -488,14 +534,23 @@
 
 <div class="historial" id="historial-predicciones">
     <h3 onclick="togglePredicciones()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
-        <span>📋 Predicciones en papel (todos los juegos)</span>
-        <span id="predicciones-toggle" style="font-size:1.2rem;">▼</span>
+        <span>📋 Predicciones en papel (todos los juegos · pasado incluido)</span>
+        <span id="predicciones-toggle" style="font-size:1.2rem;">▲</span>
     </h3>
-    <div id="lista-predicciones" style="display:none;"><p style="color:var(--muted)">Sin predicciones registradas aún.</p></div>
+    <div id="lista-predicciones" style="display:block;"><p style="color:var(--muted)">Sin predicciones registradas aún.</p></div>
+</div>
+
+<div class="historial" id="historial-lecciones">
+    <h3 onclick="toggleLecciones()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
+        <span>🧠 Lecciones IA (fallos → veto futuro)</span>
+        <span id="lecciones-toggle" style="font-size:1.2rem;">▼</span>
+    </h3>
+    <div id="lista-lecciones" style="display:none;"><p style="color:var(--muted)">Sin lecciones aún. Aparecen al liquidar fallos.</p></div>
 </div>
 
 <div id="contenedor-juegos" class="grid-juegos">
-    <p style="color:var(--muted)">Conectando con el motor...</p>
+    <p style="color:var(--muted)">Cargando…</p>
+    <p style="margin:10px 0"><button type="button" onclick="reintentarAhora()">↻ Reintentar ahora</button></p>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -507,13 +562,256 @@ const API = (!window.location.origin || window.location.protocol === 'file:')
     : window.location.origin;
 const ES_NUBE = API.includes('onrender.com') || API.includes('render.com');
 const REFRESH_MS = ES_NUBE ? 45000 : 8000;
+const CACHE_KEY = 'qmlb_last_state_v2';
+const PANEL_VER = '2026-08-27-boot';
 let cargandoEstado = false;
+let wakeIntentos = 0;
+let wakeTimer = null;
+let lastWakeAt = 0;
+const WAKE_MAX = 12;
 
 function toast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg;
     t.style.display = 'block';
     setTimeout(() => t.style.display = 'none', 4000);
+}
+
+function cancelarReintento() {
+    if (wakeTimer) {
+        clearTimeout(wakeTimer);
+        wakeTimer = null;
+    }
+}
+
+/** Reintento fiable: NO espera al ping (Safari iOS congela timers/fetch largos). */
+function programarReintento(ms) {
+    cancelarReintento();
+    lastWakeAt = Date.now();
+    wakeTimer = setTimeout(() => {
+        wakeTimer = null;
+        cargandoEstado = false; // por si quedó trabado
+        cargarEstado();
+    }, ms);
+}
+
+function mostrarWakeUI(is502) {
+    const contenedor = document.getElementById('contenedor-juegos');
+    if (!contenedor) return;
+    contenedor.innerHTML =
+        '<p style="color:#ffaa00"><b>' +
+        (is502 ? 'Render reiniciando (502)…' : 'Cargando / despertando servidor…') +
+        '</b><br>Intento ' + wakeIntentos + '/' + WAKE_MAX +
+        ' · el historial no se borra.</p>' +
+        '<p style="margin:12px 0">' +
+        '<button type="button" onclick="reintentarAhora()" style="padding:12px 18px;font-size:1rem;font-weight:700">' +
+        '↻ Reintentar ahora</button></p>' +
+        '<p style="color:var(--muted);font-size:0.78rem">Si lleva más de 1 min: cierra la pestaña y ábrela de nuevo.</p>';
+}
+
+function reintentarAhora() {
+    cancelarReintento();
+    cargandoEstado = false;
+    despertarServidor(20000); // fire-and-forget corto
+    cargarEstado();
+}
+
+function guardarCacheEstado(state) {
+    try {
+        const slim = {
+            ts: Date.now(),
+            ver: PANEL_VER,
+            memoria: state.memoria,
+            pl_split: state.pl_split,
+            historial_sello: state.historial_sello,
+            banca: state.banca,
+            dia_hoy: state.dia_hoy,
+            lecciones: state.lecciones,
+            mente: state.mente,
+            games: state.games,
+            favorables_hoy: state.favorables_hoy,
+            oportunidades_valor_hoy: state.oportunidades_valor_hoy,
+            estrategia: state.estrategia,
+            config: state.config,
+            vigilancia: state.vigilancia,
+            mente_errores: state.mente_errores,
+            telegram: state.telegram,
+            alertas: state.alertas,
+            lineas: state.lineas,
+            fecha_hoy: state.fecha_hoy,
+        };
+        // localStorage: sobrevive cerrar la pestaña (sessionStorage no)
+        localStorage.setItem(CACHE_KEY, JSON.stringify(slim));
+    } catch (e) { /* quota */ }
+}
+
+function leerCacheEstado() {
+    try {
+        const raw = localStorage.getItem(CACHE_KEY) || sessionStorage.getItem('qmlb_last_state_v1');
+        if (!raw) return null;
+        const s = JSON.parse(raw);
+        if (!s || !s.memoria) return null;
+        // Cache válida 48 h (historial no debe “desaparecer” al despertar)
+        if (s.ts && Date.now() - s.ts > 48 * 3600 * 1000) return null;
+        return s;
+    } catch (e) {
+        return null;
+    }
+}
+
+function pintarDesdeCache(motivo) {
+    const cached = leerCacheEstado();
+    if (!cached) return false;
+    try {
+        pintarEstado(cached);
+        if (cached.games) {
+            pintarPicksHoy(cached.games, cached);
+            // No pisa contenedor-juegos si estamos mostrando error de wake
+        }
+        const hs = document.getElementById('historial-sello');
+        if (hs && cached.historial_sello && cached.historial_sello.mensaje) {
+            const seal = cached.historial_sello;
+            hs.style.color = seal.nivel === 'ok' ? '#00ff88' : '#ffbc00';
+            hs.textContent = (seal.nivel === 'ok' ? '✓ ' : '⚠ ') + seal.mensaje + (motivo ? ' · ' + motivo : '');
+        }
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+/** Ping ligero: despierta Render free (timeout corto — no bloquear UI). */
+async function despertarServidor(ms) {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), ms || 25000);
+    try {
+        const r = await fetch(API + '/api/health', { cache: 'no-store', signal: ctrl.signal });
+        return r.ok;
+    } catch (e) {
+        return false;
+    } finally {
+        clearTimeout(t);
+    }
+}
+
+/** Fallback: historial desde /api/predicciones si /api/state falla (502). */
+async function cargarHistorialFallback(signal) {
+    try {
+        const r = await fetch(API + '/api/predicciones', { cache: 'no-store', signal });
+        if (!r.ok) return false;
+        const d = await r.json();
+        const dias = (d.historial || []).map(h => ({
+            dia: h.dia,
+            fecha: h.fecha,
+            predicciones: h.predicciones || [],
+            apuestas: h.apuestas || [],
+        }));
+        if (!dias.length) return false;
+        const memoria = {
+            capital: d.capital,
+            capital_inicial: 100,
+            dia_actual: d.dia_actual,
+            dias_totales: 200,
+            stake_por_juego: 5,
+            experimento_activo: true,
+            dias,
+        };
+        pintarPredicciones(memoria, null);
+        const capEl = document.getElementById('capital-display');
+        if (capEl && d.capital != null) capEl.textContent = '$' + Number(d.capital).toFixed(2);
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+async function guardarTokenTelegram() {
+    const token = (document.getElementById('tg-token').value || '').trim();
+    const st = document.getElementById('tg-status');
+    st.dataset.busy = '1';
+    if (!token || token.indexOf(':') < 0) {
+        st.style.color = '#ff4466';
+        st.textContent = 'Token inválido. Debe verse como 123456:AA... (lo da @BotFather)';
+        delete st.dataset.busy;
+        return;
+    }
+    st.textContent = 'Guardando...';
+    try {
+        const r = await fetch(API + '/api/telegram-guardar-token', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ token }),
+        });
+        const d = await r.json();
+        if (!r.ok || !d.ok) {
+            st.style.color = '#ff4466';
+            st.textContent = d.motivo || d.detail || ('Error ' + r.status);
+            delete st.dataset.busy;
+            return;
+        }
+        st.style.color = 'var(--green)';
+        st.textContent = 'Token OK · bot ' + (d.bot || '') + ' · ahora escribe hola a ese bot y pulsa Vincular';
+        document.getElementById('tg-token').value = '';
+        toast('Token guardado');
+        delete st.dataset.busy;
+    } catch (e) {
+        st.style.color = '#ff4466';
+        st.textContent = String(e.message || e);
+        delete st.dataset.busy;
+    }
+}
+
+async function vincularTelegram() {
+    const st = document.getElementById('tg-status');
+    st.dataset.busy = '1';
+    st.textContent = 'Vinculando...';
+    try {
+        const r = await fetch(API + '/api/telegram-vincular', { cache: 'no-store' });
+        const d = await r.json();
+        if (!d.ok) {
+            st.style.color = '#ffaa00';
+            st.textContent = d.motivo || d.ayuda || 'No vinculado';
+            delete st.dataset.busy;
+            return;
+        }
+        st.style.color = 'var(--green)';
+        st.textContent = 'Vinculado · chat ' + d.chat_id + (d.confirmacion_enviada ? ' · mensaje enviado' : '');
+        toast('Telegram vinculado');
+        delete st.dataset.busy;
+        cargarEstado();
+    } catch (e) {
+        st.style.color = '#ff4466';
+        st.textContent = String(e.message || e);
+        delete st.dataset.busy;
+    }
+}
+
+async function probarTelegram() {
+    const st = document.getElementById('tg-status');
+    st.dataset.busy = '1';
+    st.textContent = 'Enviando prueba...';
+    try {
+        const r = await fetch(API + '/api/telegram-test', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: '{}',
+        });
+        const d = await r.json();
+        if (!d.ok && !d.enviado) {
+            st.style.color = '#ff4466';
+            st.textContent = d.motivo || d.detalle || 'No se envió';
+            delete st.dataset.busy;
+            return;
+        }
+        st.style.color = 'var(--green)';
+        st.textContent = 'Prueba enviada. Mira Telegram.';
+        toast('Mensaje de prueba enviado');
+        delete st.dataset.busy;
+    } catch (e) {
+        st.style.color = '#ff4466';
+        st.textContent = String(e.message || e);
+        delete st.dataset.busy;
+    }
 }
 
 function togglePredicciones() {
@@ -531,6 +829,18 @@ function togglePredicciones() {
 function toggleHistorialBanca() {
     const lista = document.getElementById('lista-historial');
     const toggle = document.getElementById('historial-toggle');
+    if (lista.style.display === 'none') {
+        lista.style.display = 'block';
+        toggle.textContent = '▲';
+    } else {
+        lista.style.display = 'none';
+        toggle.textContent = '▼';
+    }
+}
+
+function toggleLecciones() {
+    const lista = document.getElementById('lista-lecciones');
+    const toggle = document.getElementById('lecciones-toggle');
     if (lista.style.display === 'none') {
         lista.style.display = 'block';
         toggle.textContent = '▲';
@@ -593,37 +903,115 @@ function fmtAmer(a) {
 async function cargarEstado() {
     if (cargandoEstado) return;
     cargandoEstado = true;
+    cancelarReintento();
     const contenedor = document.getElementById('contenedor-juegos');
     const yaCargo = contenedor.dataset.loaded === '1';
+    const teniaCache = pintarDesdeCache('cache');
     if (!yaCargo) {
-        contenedor.innerHTML = ES_NUBE
-            ? '<p style="color:var(--muted)">Conectando con el motor... (la nube puede tardar ~1 min al despertar)</p>'
-            : '<p style="color:var(--muted)">Conectando con el motor...</p>';
+        if (teniaCache) {
+            contenedor.innerHTML =
+                '<p style="color:var(--muted)">Actualizando juegos… (historial en cache)</p>' +
+                '<p style="margin:10px 0"><button type="button" onclick="reintentarAhora()">↻ Reintentar ahora</button></p>';
+        } else if (ES_NUBE) {
+            wakeIntentos = Math.max(wakeIntentos, 1);
+            lastWakeAt = Date.now();
+            mostrarWakeUI(false);
+        } else {
+            contenedor.innerHTML = '<p style="color:var(--muted)">Conectando con el motor...</p>';
+        }
     }
     const ctrl = new AbortController();
-    const timeoutMs = ES_NUBE ? 180000 : 45000;
+    // Boot rápido 25s; state completo 55s. Si cuelga, reintentar (no 120s).
+    const timeoutMs = ES_NUBE ? 55000 : 45000;
     const timer = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
+        // 1) Boot liviano: pinta historial YA (sin esperar /api/state ~14s+)
+        let bootOk = false;
+        try {
+            const bootCtrl = new AbortController();
+            const bootTimer = setTimeout(() => bootCtrl.abort(), ES_NUBE ? 25000 : 15000);
+            const br = await fetch(API + '/api/panel-boot', { cache: 'no-store', signal: bootCtrl.signal });
+            clearTimeout(bootTimer);
+            if (br.ok) {
+                const boot = await br.json();
+                bootOk = true;
+                guardarCacheEstado(boot);
+                pintarEstado(boot);
+                if (!yaCargo) {
+                    contenedor.innerHTML =
+                        '<p style="color:var(--muted)">Historial OK · cargando juegos del día…</p>';
+                }
+            } else if (br.status === 502 || br.status === 503) {
+                throw new Error('Servidor respondió ' + br.status);
+            }
+        } catch (eBoot) {
+            const bm = String(eBoot.message || eBoot);
+            if (bm.includes('502') || bm.includes('503')) throw eBoot;
+            // Fallback health + cache
+            try {
+                const hr = await fetch(API + '/api/health', { cache: 'no-store', signal: ctrl.signal });
+                if (hr.ok) {
+                    const h = await hr.json();
+                    if (h.capital != null) {
+                        const capEl = document.getElementById('capital-display');
+                        if (capEl) capEl.textContent = '$' + Number(h.capital).toFixed(2);
+                    }
+                    if (h.dia_actual != null) {
+                        const dEl = document.getElementById('dia-actual');
+                        if (dEl) dEl.textContent = 'DÍA ' + h.dia_actual;
+                    }
+                    const hs = document.getElementById('historial-sello');
+                    const seal = h.historial || {};
+                    if (hs && seal.mensaje) {
+                        hs.style.color = seal.nivel === 'ok' ? '#00ff88' : (seal.nivel === 'aviso' ? '#ffbc00' : '#ff4466');
+                        hs.textContent = (seal.nivel === 'ok' ? '✓ ' : '⚠ ') + seal.mensaje;
+                    }
+                } else if (hr.status === 502 || hr.status === 503) {
+                    throw new Error('Servidor respondió ' + hr.status);
+                }
+            } catch (eHealth) {
+                if (String(eHealth.message || '').includes('502') || String(eHealth.message || '').includes('503')) {
+                    throw eHealth;
+                }
+            }
+            if (!bootOk && !teniaCache) {
+                try { await cargarHistorialFallback(ctrl.signal); } catch (_) {}
+            }
+        }
+
+        // 2) Estado completo (juegos / picks). Si falla pero ya hay boot, no vaciar historial.
         const stateRes = await fetch(API + '/api/state', { cache: 'no-store', signal: ctrl.signal });
         if (!stateRes.ok) throw new Error('Servidor respondió ' + stateRes.status);
         const state = await stateRes.json();
         contenedor.dataset.loaded = '1';
+        wakeIntentos = 0;
+        cancelarReintento();
+        guardarCacheEstado(state);
         pintarEstado(state);
         pintarPicksHoy(state.games || [], state);
         pintarJuegos(state.games || []);
     } catch (e) {
-        if (e.name === 'AbortError' && ES_NUBE) {
-            contenedor.innerHTML =
-                '<p style="color:#ffaa00"><b>El servidor está despertando...</b><br>Reintentando en unos segundos.</p>';
-            setTimeout(cargarEstado, 8000);
+        const msg = String(e.message || e);
+        const is502 = msg.includes('502') || msg.includes('503') || msg.includes('504');
+        const okCache = pintarDesdeCache(is502 ? '502 · reintento' : 'reintento');
+        if (!okCache) {
+            try { await cargarHistorialFallback(ctrl.signal); } catch (_) {}
+        }
+        if (ES_NUBE && wakeIntentos < WAKE_MAX) {
+            wakeIntentos += 1;
+            mostrarWakeUI(is502);
+            // Ping en segundo plano — NO esperar (bug iOS: fetch largo nunca vuelve)
+            despertarServidor(15000);
+            programarReintento(is502 ? 3500 : 2500);
             return;
         }
         contenedor.innerHTML =
-            '<p style="color:#ff4466"><b>Servidor apagado.</b><br>' +
+            '<p style="color:#ff4466"><b>No conecta con el servidor.</b><br>' +
             (ES_NUBE
-                ? 'Abre <b>https://mlb-1-en7i.onrender.com</b> y espera ~1 min.<br>'
+                ? 'Pulsa el botón o cierra/abre la pestaña. Historial intacto en disco.<br>'
                 : '1) Doble clic en <b>iniciar.bat</b><br>2) Abre <b>http://localhost:8000</b><br>') +
-            '<small>' + (e.message || e) + '</small></p>';
+            '<p style="margin:12px 0"><button type="button" onclick="reintentarAhora()">↻ Reintentar ahora</button></p>' +
+            '<small>' + msg + '</small></p>';
     } finally {
         clearTimeout(timer);
         cargandoEstado = false;
@@ -647,9 +1035,13 @@ function rendCard(titulo, w, l, wr, ganado, perdido, neto) {
 }
 
 function pintarEstado(data) {
-    const m = data.memoria;
+    const m = data && data.memoria;
+    if (!m) return;
     const dia = data.dia_hoy;
     const res = dia?.resumen || { profit_dia: 0, ganadas: 0, pendientes: 0, jugadas: 0, capital_arriesgado: 0 };
+    const estr = data.estrategia || {};
+    const cfg = data.config || {};
+    const soloModelo = !!cfg.modo_solo_modelo;
 
     const b = data.banca || {};
     document.getElementById('capital-display').textContent = '$' + m.capital.toFixed(2);
@@ -681,10 +1073,11 @@ function pintarEstado(data) {
     // Hoy = predicciones en papel (todas). Dinero va aparte en Rendimiento / banca.
     const predsHoy = Array.isArray(dia?.predicciones) ? dia.predicciones : [];
     const apuestasHoy = Array.isArray(dia?.apuestas) ? dia.apuestas : [];
-    const ganadas = predsHoy.filter(p => p.resultado === 'acierto').length;
-    const perdidas = predsHoy.filter(p => p.resultado === 'fallo').length;
+    const predsValidas = predsHoy.filter(p => p.valida_stats !== false && !p.invalida_tarde);
+    const ganadas = predsValidas.filter(p => p.resultado === 'acierto').length;
+    const perdidas = predsValidas.filter(p => p.resultado === 'fallo').length;
     const pendientes = predsHoy.filter(p => p.estado === 'pendiente').length;
-    const profitHoy = predsHoy.reduce((s, p) => {
+    const profitHoy = predsValidas.reduce((s, p) => {
         if (p.profit == null || p.estado === 'pendiente') return s;
         return s + Number(p.profit || 0);
     }, 0);
@@ -722,9 +1115,16 @@ function pintarEstado(data) {
     const cfg = data.config || {};
     const estr = data.estrategia || {};
     const soloModelo = cfg.modo_solo_modelo || estr.requiere_betmgm === false;
+    const mente = data.mente || cfg.mente || {};
     document.getElementById('modo-badge').textContent = soloModelo
         ? 'SIMULACIÓN · Solo stats+ML'
         : 'SIMULACIÓN · Líneas BetMGM';
+    if (cfg.usar_mente !== false) {
+        const modoM = (mente.modo || 'normal').toUpperCase();
+        const shadowOn = mente.shadow === true || modoM === 'SHADOW';
+        document.getElementById('modo-badge').textContent +=
+            shadowOn ? ' · MENTE SHADOW (sin dinero)' : ` · MENTE ${modoM}`;
+    }
 
     const mins = data.minutos_antes_juego || 60;
     document.getElementById('proximo-bloqueo').textContent = soloModelo
@@ -733,15 +1133,98 @@ function pintarEstado(data) {
 
     const ls = document.getElementById('lineas-status');
     const lin = data.lineas || {};
+    const redactar = (s) => String(s || '')
+        .replace(/api[_-]?key=[^&\s]+/gi, 'apiKey=***')
+        .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '***');
     if (soloModelo) {
         ls.style.color = '#00ff88';
         ls.textContent = '✓ Modo solo modelo (sin Odds API)';
     } else if (lin.ok) {
-        ls.style.color = '#00ff88';
-        ls.textContent = '✓ BetMGM · ' + (lin.mensaje || '');
+        ls.style.color = lin.circuito ? '#ffd166' : '#00ff88';
+        const src = lin.fallback_espn ? 'ESPN/DraftKings' : (lin.fuente || 'mercado');
+        const pausa = lin.circuito
+            ? (' · OddsPapi en pausa hasta ' + (lin.circuito_hasta_hora || 'luego'))
+            : '';
+        ls.textContent = '✓ Cuotas ' + src + pausa + ' · ' + redactar(lin.mensaje || '');
     } else {
         ls.style.color = '#ffbc00';
-        ls.textContent = '⚠ ' + (lin.mensaje || 'Sin líneas BetMGM');
+        ls.textContent = '⚠ ' + redactar(lin.mensaje || 'Sin cuotas de internet');
+    }
+
+    const vs = document.getElementById('vigilancia-status');
+    const vig = data.vigilancia || {};
+    if (vs) {
+        if (vig.nivel === 'alerta') {
+            vs.style.color = '#ffbc00';
+            const detalle = (vig.en_riesgo || []).slice(0, 2).map(g =>
+                (g.visitante || '?').split(' ').pop() + '@' + (g.home || '?').split(' ').pop()
+            ).join(' · ');
+            vs.textContent = (vig.mensaje || 'Juegos sin congelar') + (detalle ? ' · ' + detalle : '') +
+                ' · toca “Forzar bloqueos” o abre el panel cerca del T-60';
+        } else {
+            vs.style.color = '#00ff88';
+            vs.textContent = vig.mensaje ||
+                ('Vigilancia T-60 OK · cron cada ' + (vig.cron_cada_min || 5) + ' min');
+        }
+    }
+
+    const mes = document.getElementById('mente-errores-status');
+    const me = data.mente_errores || {};
+    if (mes) {
+        if (!me.activo) {
+            mes.style.color = '#8899aa';
+            mes.textContent = 'Mente errores off';
+        } else if (me.nivel === 'alerta') {
+            mes.style.color = '#ffbc00';
+            const ov = me.overrides || {};
+            const tip = ov['lineas.proveedor'] ? (' · override ' + ov['lineas.proveedor']) : '';
+            mes.textContent = (me.mensaje || 'Mente errores · remediando') + tip;
+        } else if (me.nivel === 'aviso') {
+            mes.style.color = '#ffd166';
+            mes.textContent = me.mensaje || 'Mente errores · aviso';
+        } else {
+            mes.style.color = '#00ff88';
+            mes.textContent = me.mensaje || 'Mente errores OK';
+        }
+    }
+
+    const hs = document.getElementById('historial-sello');
+    const seal = data.historial_sello || (data.historial) || {};
+    if (hs) {
+        const nivel = seal.nivel || (seal.ok ? 'ok' : 'aviso');
+        if (nivel === 'ok') {
+            hs.style.color = '#00ff88';
+            hs.textContent = '✓ ' + (seal.mensaje || 'Historial OK');
+        } else if (nivel === 'aviso') {
+            hs.style.color = '#ffbc00';
+            hs.textContent = '⚠ ' + (seal.mensaje || 'Historial corto');
+        } else {
+            hs.style.color = '#ff4466';
+            hs.textContent = '✗ ' + (seal.mensaje || 'Historial en peligro');
+        }
+    }
+
+    const tb = document.getElementById('telegram-banner');
+    const tg = data.telegram || (data.alertas && data.alertas.telegram) || {};
+    const stTg = document.getElementById('tg-status');
+    if (tb) {
+        if (tg.ok) {
+            tb.style.color = '#00ff88';
+            tb.textContent = '✓ Telegram listo · avisos T-60 activos'
+                + (tg.bot || tg.user ? (' · ' + (tg.bot || tg.user)) : '');
+        } else {
+            tb.style.color = '#ffbc00';
+            tb.textContent = '⚠ Telegram pendiente · ' + (tg.motivo || tg.setup || 'pega token de @BotFather arriba');
+        }
+    }
+    if (stTg && !stTg.dataset.busy) {
+        if (tg.ok) {
+            stTg.style.color = 'var(--green)';
+            stTg.textContent = 'Listo · ' + (tg.motivo || 'bot vinculado');
+        } else {
+            stTg.style.color = '#ffbc00';
+            stTg.textContent = (tg.motivo || 'Pendiente') + (tg.setup ? (' · ' + tg.setup) : '');
+        }
     }
 
     const avisoSum = document.querySelector('#aviso-real summary');
@@ -749,16 +1232,19 @@ function pintarEstado(data) {
     const minP = estr.min_prob_modelo || 58;
     if (avisoSum && avisoBody) {
         if (soloModelo) {
-            avisoSum.textContent = 'Modo solo modelo';
+            avisoSum.textContent = 'Cuotas de internet';
             avisoBody.innerHTML =
-                'El tag <strong>PICK</strong> es la predicción (fija al apostar). ' +
+                'El tag <strong>PICK</strong> es la predicción. ' +
                 '<strong>GANÓ</strong> solo al final oficial de MLB. ' +
-                `Verdes (≥${minP}%) son apostables. Bloqueo 1 h antes.`;
+                'Verde = valor vs cuota real (OddsPapi o ESPN/DraftKings). ' +
+                'Sin cuota de casa el % es estudio, no se apuesta.';
         } else {
-            avisoSum.textContent = 'Estrategia BetMGM';
+            avisoSum.textContent = 'Estrategia con cuota real';
             avisoBody.innerHTML =
-                '1 h antes se evalúa pitchers + stats + BetMGM. ' +
-                'Solo se apuesta con valor (borde verde). ' +
+                '1 h antes se evalúa pitchers + stats + cuota de internet. ' +
+                'Solo se apuesta con valor vs la casa (borde verde). ' +
+                'Cuotas por defecto: ESPN/DraftKings (sin API key). ' +
+                'OddsPapi solo si regeneras key y hay cupo. ' +
                 `Máximo ${estr.max_apuestas_dia || 5} apuestas/día.`;
         }
     }
@@ -766,9 +1252,15 @@ function pintarEstado(data) {
     // Nota corta de hoy
     const fav = data.favorables_hoy ?? data.oportunidades_valor_hoy ?? 0;
     const maxP = estr.max_apuestas_dia || 5;
+    const fechasHist = (m.dias || [])
+        .filter(d => (d.predicciones || []).length > 0 || (d.apuestas || []).length > 0)
+        .map(d => `${d.fecha} (${(d.predicciones || []).length})`);
+    const histTxt = fechasHist.length
+        ? ` · historial ${fechasHist.join(' · ')}`
+        : ' · historial vacío';
     document.getElementById('favorables-hoy').textContent =
         `Hoy: ${fav} listo(s) / máx ${maxP} · papel ${ganadas}✓ ${perdidas}✗ ${pendientes}⏳ ${fmtMoney(profitHoy)}` +
-        ` · dinero ${gDin}✓ ${pDin}✗ ${pendDin}⏳ ${fmtMoney(profitDin)}`;
+        ` · dinero ${gDin}✓ ${pDin}✗ ${pendDin}⏳ ${fmtMoney(profitDin)}` + histTxt;
 
     const lista = document.getElementById('lista-historial');
     const diasDinero = (m.dias || []).filter(d => (d.apuestas || []).length > 0);
@@ -807,10 +1299,75 @@ function pintarEstado(data) {
     }
 
     pintarPredicciones(m, data.pl_split);
+    pintarLecciones(data.lecciones || resumenLeccionesLocal(m), data.mente);
+}
+
+function resumenLeccionesLocal(memoria) {
+    const lec = Array.isArray(memoria?.lecciones) ? memoria.lecciones : [];
+    return { total: lec.length, por_patron: {}, recientes: [...lec].reverse().slice(0, 12) };
+}
+
+function pintarLecciones(meta, mente) {
+    const lista = document.getElementById('lista-lecciones');
+    if (!lista) return;
+    const recientes = Array.isArray(meta?.recientes) ? meta.recientes : [];
+    const total = meta?.total || recientes.length || 0;
+    const por = meta?.por_patron || {};
+    const topPatrones = Object.entries(por)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 4)
+        .map(([k, v]) => k + '×' + v)
+        .join(' · ');
+    const st = (mente && mente.stats) || {};
+    const dec = st.decisiones || {};
+    const ap = dec.APOSTAR || {};
+    const pa = dec.PASAR || {};
+    const pens = st.penalizacion || {};
+    const penTxt = Object.entries(pens)
+        .filter(([, v]) => Number(v) !== 0)
+        .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+        .slice(0, 4)
+        .map(([k, v]) => k + (v > 0 ? '+' : '') + v)
+        .join(' · ');
+    let html = '';
+    if ((ap.n || pa.n || Object.keys(pens).length)) {
+        html += '<p style="color:var(--muted);font-size:0.75rem;margin:0 0 8px">' +
+            '🧠 Aprendizaje · APOSTAR ' + (ap.aciertos || 0) + '✓/' + (ap.fallos || 0) + '✗ · ' +
+            'PASAR evitó ' + (pa.evito_fallo || 0) + ' / perdió ' + (pa.oportunidad_perdida || 0) +
+            (penTxt ? ' · pen ' + penTxt : '') +
+            '</p>';
+    }
+    if (!recientes.length) {
+        html += '<p style="color:var(--muted);font-size:0.82rem;margin:0">Sin lecciones aún. Se crean al liquidar fallos y alimentan el veto IA.</p>';
+        lista.innerHTML = html;
+        return;
+    }
+    html += '<p style="color:var(--muted);font-size:0.75rem;margin:0 0 8px">' +
+        total + ' lección(es)' + (topPatrones ? ' · ' + topPatrones : '') +
+        ' · se inyectan en el veto Groq</p>';
+    for (const item of recientes.slice(0, 10)) {
+        const patron = (item.patron || 'otro').replace(/</g, '');
+        const tipo = (item.tipo || '').replace(/</g, '');
+        const texto = (item.leccion || item.motivo || '').replace(/</g, '');
+        const pick = (item.pick || '?').replace(/</g, '');
+        const fecha = (item.fecha || '').replace(/</g, '');
+        html += '<div class="leccion-fila">';
+        html += '<span class="patron">' + patron + '</span>' + texto;
+        html += '<div class="meta">' + pick + (fecha ? ' · ' + fecha : '') +
+            (tipo ? ' · ' + tipo : '') +
+            (item.fuente ? ' · ' + item.fuente : '') + '</div>';
+        html += '</div>';
+    }
+    lista.innerHTML = html;
 }
 
 function nombrePick(pick) {
     return (pick || '').replace(/\s*ML\s*$/i, '').trim();
+}
+
+function sinCuotaMercado(j) {
+    const f = String((j && j.lineas_fuente) || 'modelo').toLowerCase();
+    return !f || f === 'modelo' || f === 'none' || f === 'null' || f === 'import';
 }
 
 function pintarPicksHoy(juegos, data) {
@@ -838,8 +1395,8 @@ function pintarPicksHoy(juegos, data) {
     const idsYa = new Set(yaApostados.map(j => j.id));
     const cupoRestante = Math.max(0, maxP - yaApostados.length);
     const apostablesNuevos = unicos
-        .filter(j => j.apostable && (j.probPick || 0) >= minProb && !idsYa.has(j.id))
-        .sort((a, b) => (b.probPick || 0) - (a.probPick || 0))
+        .filter(j => j.apostable && !sinCuotaMercado(j) && (j.probPick || 0) >= minProb && !idsYa.has(j.id))
+        .sort((a, b) => (b.edge || 0) - (a.edge || 0))
         .slice(0, cupoRestante);
 
     if (!unicos.length) {
@@ -848,7 +1405,7 @@ function pintarPicksHoy(juegos, data) {
         return;
     }
 
-    sub.textContent = `${unicos.length} juegos hoy · ${yaApostados.length} apostados · ${apostablesNuevos.length} listos (≥${minProb}%, máx. ${maxP}) · toca el título para abrir/cerrar.`;
+    sub.textContent = `${unicos.length} juegos hoy · ${yaApostados.length} apostados · ${apostablesNuevos.length} con valor vs cuota real (máx. ${maxP}) · toca el título para abrir/cerrar.`;
 
     let html = '';
     const conDinero = [...yaApostados, ...apostablesNuevos];
@@ -904,9 +1461,19 @@ function pintarPicksHoy(juegos, data) {
             </summary>
             <div class="picks-grupo-body">`;
         soloPred.forEach(j => {
+            let badge = '';
+            if (j.estado === 'FINALIZADO' && j.estado_apuesta === 'ganada') {
+                badge = '<span class="pick-badge bet">ACIERTO</span>';
+            } else if (j.estado === 'FINALIZADO' && j.estado_apuesta === 'perdida') {
+                badge = '<span class="pick-badge skip">FALLO</span>';
+            } else if (j.estado === 'FINALIZADO' && j.estado_apuesta === 'sin_bloquear') {
+                badge = '<span class="pick-badge wait">SIN CONGELAR</span>';
+            } else if (j.estado_apuesta === 'pendiente') {
+                badge = '<span class="pick-badge wait">PENDIENTE</span>';
+            }
             html += `<div class="pick-row no">
                 <div>
-                    <div class="pick-equipo" style="color:var(--muted)">${nombrePick(j.pick)}</div>
+                    <div class="pick-equipo" style="color:var(--muted)">${nombrePick(j.pick)} ${badge}</div>
                     <div class="pick-meta">${j.visitante} @ ${j.home} · ${j.hora_inicio_txt || ''} · ${(j.motivo_apuesta || '').slice(0, 50)}</div>
                 </div>
                 <div class="pick-prob" style="color:var(--muted)">${(j.probPick || 0).toFixed(0)}%</div>
@@ -949,14 +1516,25 @@ function pintarPredicciones(memoria, plSplit) {
         Ganado <span style="color:var(--green)">$${(din.ganado||0).toFixed(2)}</span> ·
         Perdido <span style="color:var(--red)">$${(din.perdido||0).toFixed(2)}</span> ·
         Neto <b>$${(din.neto||0).toFixed(2)}</b></div>
-        <div style="margin-top:6px;color:var(--muted);font-size:0.75rem">💰 = apuesta con dinero · sin badge = solo predicción</div>
+        <div style="margin-top:6px;color:var(--muted);font-size:0.75rem">💰 = apuesta con dinero · sin badge = solo predicción · días pasados abiertos</div>
+        <div style="margin-top:4px;color:var(--cyan);font-size:0.78rem">Días: ${diasOrden.map(d => `${d.fecha} (${(d.predicciones||[]).length})`).join(' · ') || 'ninguno'}</div>
     </div>`;
 
     let hayFilas = false;
     const diasOrden = [...memoria.dias].filter(d => (d.predicciones || []).length > 0).reverse();
+    // Abrir el bloque de historial si hay días pasados
+    const listaWrap = document.getElementById('lista-predicciones');
+    const listaToggle = document.getElementById('predicciones-toggle');
+    if (listaWrap && diasOrden.length) {
+        listaWrap.style.display = 'block';
+        if (listaToggle) listaToggle.textContent = '▲';
+    }
+    let diaIdx = 0;
     for (const d of diasOrden) {
         const porJuego = new Map();
         (d.predicciones || []).forEach(p => {
+            // Retroactivo / tardío: no cuenta como precisión (pick inventado post-partido)
+            const invalida = p.invalida_tarde || p.valida_stats === false || p.retroactivo;
             porJuego.set(p.game_id, {
                 game_id: p.game_id,
                 visitante: p.visitante,
@@ -966,11 +1544,12 @@ function pintarPredicciones(memoria, plSplit) {
                 probPick: p.probPick,
                 resultado: p.resultado,
                 estado: p.estado,
-                profit_papel: p.profit,
+                profit_papel: invalida ? null : p.profit,
                 marcador: p.marcador_final,
                 con_dinero: !!p.con_dinero,
                 stake_dinero: null,
                 profit_dinero: null,
+                invalida_tarde: !!invalida,
             });
         });
         (d.apuestas || []).forEach(a => {
@@ -1005,54 +1584,67 @@ function pintarPredicciones(memoria, plSplit) {
         if (!filas.length) continue;
         hayFilas = true;
 
-        const gPapel = filas.filter(f => f.resultado === 'acierto').length;
-        const pPapel = filas.filter(f => f.resultado === 'fallo').length;
-        const netoPapel = filas.reduce((s, f) => s + (Number(f.profit_papel) || 0), 0);
+        const filasValidas = filas.filter(f => !f.invalida_tarde);
+        const nTarde = filas.filter(f => f.invalida_tarde).length;
+        const gPapel = filasValidas.filter(f => f.resultado === 'acierto').length;
+        const pPapel = filasValidas.filter(f => f.resultado === 'fallo').length;
+        const netoPapel = filasValidas.reduce((s, f) => s + (Number(f.profit_papel) || 0), 0);
         const netoDin = filas.reduce((s, f) => s + (f.con_dinero ? (Number(f.profit_dinero) || 0) : 0), 0);
+        const resumenPapel = nTarde && !filasValidas.length
+            ? `papel n/a (${nTarde} retroactivos · no cuentan)`
+            : `pred ${gPapel}✓/${pPapel}✗ · papel ${fmtMoney(netoPapel)}` + (nTarde ? ` · ${nTarde} tardíos ignorados` : '');
+
+        // Siempre abiertos: en móvil el historial colapsado parecía “no hay juegos”
+        const abierto = true;
+        diaIdx += 1;
 
         html += `<div style="margin-bottom:14px;padding:12px;background:var(--panel);border-radius:8px;border:1px solid var(--border);">
             <div style="font-weight:bold;color:var(--cyan);margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;" onclick="togglePredDia('${d.dia}')">
-                <span>Día ${d.dia} (${d.fecha}) — ${filas.length} juegos · pred ${gPapel}✓/${pPapel}✗ · papel ${fmtMoney(netoPapel)} · dinero ${fmtMoney(netoDin)}</span>
-                <span id="pred-toggle-${d.dia}" style="font-size:1rem;">▼</span>
+                <span>Día ${d.dia} (${d.fecha}) — ${filas.length} juegos · ${resumenPapel} · dinero ${fmtMoney(netoDin)}</span>
+                <span id="pred-toggle-${d.dia}" style="font-size:1rem;">${abierto ? '▲' : '▼'}</span>
             </div>
-            <div id="pred-content-${d.dia}" style="display:none;overflow-x:auto;">
-            <table style="width:100%;border-collapse:collapse;font-size:0.78rem;min-width:640px">
+            <div id="pred-content-${d.dia}" style="display:${abierto ? 'block' : 'none'};overflow-x:auto;">
+            <table style="width:100%;border-collapse:collapse;font-size:0.78rem;min-width:0">
                 <thead>
                     <tr style="color:var(--muted);text-align:left;border-bottom:1px solid var(--border)">
                         <th style="padding:6px 4px">Partido</th>
                         <th style="padding:6px 4px">Pick</th>
+                        <th style="padding:6px 4px">Res</th>
                         <th style="padding:6px 4px">%</th>
-                        <th style="padding:6px 4px">Resultado</th>
-                        <th style="padding:6px 4px">P/L papel</th>
-                        <th style="padding:6px 4px">Dinero</th>
+                        <th style="padding:6px 4px">P/L</th>
+                        <th style="padding:6px 4px">$</th>
                     </tr>
                 </thead>
                 <tbody>`;
 
         filas.sort((a, b) => (b.probPick || 0) - (a.probPick || 0));
         filas.forEach(f => {
-            let resTxt = '⏳ pendiente';
+            let resTxt = '⏳';
             let resColor = 'var(--muted)';
-            if (f.resultado === 'acierto') { resTxt = '✓ ganó'; resColor = 'var(--green)'; }
-            else if (f.resultado === 'fallo') { resTxt = '✗ perdió'; resColor = 'var(--red)'; }
-            const plPapel = f.profit_papel != null ? fmtMoney(f.profit_papel) : '—';
+            if (f.invalida_tarde) {
+                resTxt = '⊘';
+                resColor = 'var(--muted)';
+            } else if (f.resultado === 'acierto') { resTxt = '✓'; resColor = 'var(--green)'; }
+            else if (f.resultado === 'fallo') { resTxt = '✗'; resColor = 'var(--red)'; }
+            const marc = f.marcador ? ` <span style="color:var(--muted);font-size:0.7rem">${f.marcador}</span>` : '';
+            const plPapel = f.invalida_tarde ? '—' : (f.profit_papel != null ? fmtMoney(f.profit_papel) : '—');
             const plColor = (f.profit_papel || 0) > 0 ? 'var(--green)' : ((f.profit_papel || 0) < 0 ? 'var(--red)' : 'var(--muted)');
             let dinTxt = '—';
             let dinColor = 'var(--muted)';
             if (f.con_dinero) {
                 if (f.profit_dinero != null) {
-                    dinTxt = `💰 ${fmtMoney(f.profit_dinero)}`;
+                    dinTxt = `💰${fmtMoney(f.profit_dinero)}`;
                     dinColor = f.profit_dinero >= 0 ? 'var(--green)' : 'var(--red)';
                 } else {
-                    dinTxt = `💰 $${(f.stake_dinero || 0).toFixed(2)} en juego`;
+                    dinTxt = '💰';
                     dinColor = 'var(--gold)';
                 }
             }
             html += `<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
                 <td style="padding:7px 4px">${f.visitante || '?'} @ ${f.home || '?'}</td>
-                <td style="padding:7px 4px;color:var(--cyan)">${nombrePick(f.pick) || '—'}</td>
+                <td style="padding:7px 4px;color:var(--cyan)">${nombrePick(f.pick) || '—'}${marc}</td>
+                <td style="padding:7px 4px;color:${resColor};font-weight:700">${resTxt}</td>
                 <td style="padding:7px 4px">${f.probPick != null ? Number(f.probPick).toFixed(0) + '%' : '—'}</td>
-                <td style="padding:7px 4px;color:${resColor}">${resTxt}</td>
                 <td style="padding:7px 4px;color:${plColor}">${plPapel}</td>
                 <td style="padding:7px 4px;color:${dinColor}">${dinTxt}</td>
             </tr>`;
@@ -1072,11 +1664,14 @@ function pintarJuegos(juegos) {
     }
     const orden = [...juegos].sort((a, b) => (b.apostable ? 1 : 0) - (a.apostable ? 1 : 0));
     c.innerHTML = orden.map(j => {
+        const estudio = sinCuotaMercado(j) && !j.apostable;
         let cls = j.estado_apuesta === 'ganada' ? 'ganada' : (j.estado_apuesta === 'perdida' ? 'perdida' : '');
-        cls += j.apostable ? ' apostable' : ' no-apostable';
+        cls += j.apostable ? ' apostable' : (estudio ? ' estudio' : ' no-apostable');
         const tag = j.apostable
             ? `<span class="tag-apostar">APOSTAR · ${(j.probPick||0).toFixed(0)}%</span>`
-            : `<span class="tag-skip">NO APOSTAR</span>`;
+            : (estudio
+                ? `<span class="tag-estudio">ESTUDIO · ${(j.probPick||0).toFixed(0)}% · sin cuota</span>`
+                : `<span class="tag-skip">NO APOSTAR</span>`);
         const eqPick = nombrePick(j.pick);
         const awayPick = j.pick && j.pick.indexOf(j.visitante) >= 0;
         const homePick = j.pick && j.pick.indexOf(j.home) >= 0;
@@ -1085,10 +1680,27 @@ function pintarJuegos(juegos) {
         const homeWon = j.estado === 'FINALIZADO' && j.ganador === j.home;
         let apuestaTxt = j.motivo_apuesta || 'Espera evaluación 1h antes';
         const papel = !!j.solo_papel;
+        let resultadoBanner = '';
+        if (j.estado === 'FINALIZADO' && j.ganador) {
+            const marcador = `${j.scoreAway ?? '—'}–${j.scoreHome ?? '—'}`;
+            if (j.estado_apuesta === 'ganada') {
+                resultadoBanner = `<div style="margin:8px 0;padding:8px 10px;border-radius:8px;background:rgba(0,255,136,0.12);border:1px solid rgba(0,255,136,0.4);color:var(--green);font-weight:700;font-size:0.9rem">✓ ${papel ? 'PAPEL ACIERTO' : 'GANASTE'} · ${j.ganador} (${marcador})${j.profit != null ? ' · ' + fmtMoney(j.profit) : ''}</div>`;
+            } else if (j.estado_apuesta === 'perdida') {
+                resultadoBanner = `<div style="margin:8px 0;padding:8px 10px;border-radius:8px;background:rgba(255,80,80,0.12);border:1px solid rgba(255,80,80,0.4);color:var(--red);font-weight:700;font-size:0.9rem">✗ ${papel ? 'PAPEL FALLO' : 'PERDISTE'} · ganó ${j.ganador} (${marcador})${j.profit != null ? ' · ' + fmtMoney(j.profit) : ''}</div>`;
+            } else if (j.estado_apuesta === 'sin_bloquear') {
+                resultadoBanner = `<div style="margin:8px 0;padding:8px 10px;border-radius:8px;background:rgba(255,188,0,0.1);border:1px solid rgba(255,188,0,0.35);color:var(--gold);font-size:0.82rem">Final MLB: <b>${j.ganador}</b> (${marcador}) · sin pick congelado a tiempo → no cuenta en el paper</div>`;
+            } else {
+                resultadoBanner = `<div style="margin:8px 0;padding:8px 10px;border-radius:8px;background:rgba(0,242,255,0.08);border:1px solid rgba(0,242,255,0.25);color:var(--cyan);font-size:0.82rem">Final MLB: <b>${j.ganador}</b> (${marcador})</div>`;
+            }
+        }
         if (j.estado === 'FINALIZADO' && j.estado_apuesta === 'sin_bloquear') {
             apuestaTxt = 'FINAL · sin pick congelado a tiempo (no cuenta en el paper de hoy)';
         } else if (j.estado_apuesta === 'sin_bloquear' && j.hora_bloqueo_txt) {
             apuestaTxt = `Auto-bloqueo ~${j.hora_bloqueo_txt} (juego ${j.hora_inicio_txt})`;
+        } else if (j.estado_apuesta === 'invalida_tarde') {
+            apuestaTxt = `NO CUENTA · pick congelado tarde (${j.resultado_papel || 'resultado'} real, pero sesgado)`;
+        } else if (j.estado === 'EN VIVO' && j.estado_apuesta === 'sin_bloquear') {
+            apuestaTxt = `EN JUEGO · pick orientativo (puede cambiar; no congelado)`;
         } else if (j.estado === 'EN VIVO' && j.estado_apuesta === 'pendiente') {
             apuestaTxt = papel
                 ? `PAPEL · EN JUEGO (${j.scoreAway ?? '—'}-${j.scoreHome ?? '—'}) · pick fijo`
@@ -1113,6 +1725,7 @@ function pintarJuegos(juegos) {
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
                 <span class="estado">● ${j.estado}</span>${tag}
             </div>
+            ${resultadoBanner}
             <div style="font-size:0.7rem;color:#8899aa;margin-bottom:6px">
                 P: ${j.pitcherAway||'?'} (${j.pitcherAwayEra??'?'}) · ${j.pitcherHome||'?'} (${j.pitcherHomeEra??'?'})
             </div>
@@ -1131,16 +1744,20 @@ function pintarJuegos(juegos) {
                 <b>${j.scoreHome ?? '—'}</b>
             </div>
             <div class="pick-box" style="font-size:0.85rem">
-                <div style="font-size:0.7rem;color:var(--muted);margin-bottom:6px">PICK DEL MODELO${j.pick_congelado ? ' (fijo)' : ''}</div>
+                <div style="font-size:0.7rem;color:var(--muted);margin-bottom:6px">PICK DEL MODELO${j.pick_congelado ? (j.invalida_tarde ? ' (tardío · no cuenta)' : ' (fijo)') : ' (en vivo · puede cambiar)'}</div>
                 <b style="font-size:1rem;color:var(--green)">→ ${eqPick || '—'}</b>
                 <div style="font-size:0.8rem;margin-top:6px">
                     Confianza: <b style="color:var(--cyan)">${j.probPick != null ? j.probPick.toFixed(1) + '%' : '—'}</b>
-                    · Cuota simulada: ${j.odds || '—'}
+                    · ${sinCuotaMercado(j)
+                        ? `Cuota justa (sin mercado): ${j.odds || '—'}`
+                        : `Cuota ${j.lineas_fuente || 'casa'}: ${j.odds || '—'}${j.edge ? ' · edge +' + Number(j.edge).toFixed(1) + '%' : ''}`}
                 </div>
                 <div style="font-size:0.75rem;color:#8899aa;margin-top:6px">
                     Modelo ${j.probAway||'?'}% / ${j.probHome||'?'}% (visitante / local)
                 </div>
                 <div style="font-size:0.7rem;color:#8899aa;margin-top:4px">${j.motivo_apuesta || ''}</div>
+                ${j.factores_humanos && j.factores_humanos.ok ? `<div style="font-size:0.68rem;color:#9ab;margin-top:4px">👤 ${(j.factores_humanos.resumen || '').slice(0, 110)}</div>` : ''}
+                ${j.ia_mente && j.ia_mente.decision ? `<div style="font-size:0.72rem;margin-top:6px;padding:6px 8px;border-radius:6px;border:1px solid ${j.ia_mente.autoriza_dinero ? 'rgba(0,255,136,0.35)' : 'rgba(255,188,0,0.35)'};color:${j.ia_mente.autoriza_dinero ? 'var(--green)' : 'var(--gold)'}">🧠 MENTE <b>${j.ia_mente.decision}</b>${j.ia_mente.autoriza_dinero ? ' · dinero OK' : (j.ia_mente.decision === 'APOSTAR' ? ' · sin dinero' : '')} · conf ${j.ia_mente.confianza || '?'} · ${(j.ia_mente.razones || []).slice(0,2).join('; ').slice(0,90)}</div>` : ''}
             </div>
             <div class="estado-apuesta ${j.estado_apuesta||''}">${apuestaTxt}</div>
         </div>`;
@@ -1169,15 +1786,66 @@ async function liquidar() {
     cargarEstado();
 }
 
+async function procesarExperiencias() {
+    try {
+        const r = await fetch(API + '/api/procesar-experiencias?forzar=1', { method: 'POST' });
+        const d = await r.json();
+        if (!d.ok) {
+            toast(d.motivo || 'No se pudieron procesar experiencias');
+            return;
+        }
+        const por = d.por_patron || {};
+        const bits = Object.keys(por).slice(0, 4).map(k => k + '×' + por[k]).join(' · ');
+        toast(`Lecciones +${d.nuevas || 0} · total ${d.lecciones?.total || 0}` + (bits ? ' · ' + bits : ''));
+        cargarEstado();
+    } catch (e) {
+        toast(e.message || 'Error procesando experiencias');
+    }
+}
+
 async function reiniciar() {
-    if (!confirm('¿Reiniciar el experimento a $100 y día 1?')) return;
-    await fetch(API + '/api/reiniciar', { method: 'POST' });
+    const ok1 = confirm(
+        'PELIGRO: esto borra el historial del experimento.\n\n' +
+        'Solo úsalo si quieres empezar de cero. ¿Continuar?'
+    );
+    if (!ok1) return;
+    const typed = prompt('Escribe BORRAR (en mayúsculas) para confirmar el wipe del historial:');
+    if ((typed || '').trim().toUpperCase() !== 'BORRAR') {
+        toast('Reinicio cancelado · historial intacto');
+        return;
+    }
+    const res = await fetch(API + '/api/reiniciar?confirm=BORRAR', { method: 'POST' });
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        toast(err.detail || 'Reinicio bloqueado');
+        return;
+    }
     toast('Experimento reiniciado');
     cargarEstado();
 }
 
 cargarEstado();
 setInterval(cargarEstado, REFRESH_MS);
+// Safari iOS congela timers en segundo plano: al volver, reintenta YA
+document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible' && ES_NUBE) {
+        cancelarReintento();
+        cargandoEstado = false;
+        despertarServidor(15000);
+        cargarEstado();
+    }
+});
+// Watchdog: si el mensaje de wake lleva >20s, fuerza otro intento
+setInterval(() => {
+    if (!ES_NUBE || wakeIntentos <= 0 || wakeIntentos > WAKE_MAX) return;
+    const c = document.getElementById('contenedor-juegos');
+    if (!c || c.dataset.loaded === '1') return;
+    if (!lastWakeAt || Date.now() - lastWakeAt < 20000) return;
+    if (cargandoEstado) {
+        cargandoEstado = false;
+    }
+    reintentarAhora();
+}, 10000);
 
 </script>
 </body>

@@ -1,6 +1,10 @@
 odds_api_key.txt
+oddspapi_api_key.txt
+oddspapi_circuit.json
+espn_lineas_cache.json
 openai_api_key.txt
 gcp_credentials.json
 __pycache__/
 *.pyc
 *.exe
+memoria_snapshots/

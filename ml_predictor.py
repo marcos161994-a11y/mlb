@@ -56,10 +56,16 @@ FEATURE_COLUMNS = [
     "xfip_pitcher",
     "k_pct_pitcher",
     "bb_pct_pitcher",
+    # Factores humanos (viaje / descanso / serie / umpire)
+    "fatiga_viaje",
+    "dias_descanso",
+    "cambio_zona",
+    "leverage_serie",
+    "umpire_runs",
 ]
 
 
-FEATURE_SCHEMA_VERSION = 3  # v3 = + FIP/xFIP/K%/BB%
+FEATURE_SCHEMA_VERSION = 4  # v4 = + factores humanos
 
 
 def _modelo_path() -> Path:
@@ -86,16 +92,25 @@ def normalizar_features(features: Dict[str, Any] | None) -> Dict[str, float]:
     return out
 
 
-def _features_vector(features: Dict[str, Any], n_features: int | None = None) -> np.ndarray:
-    cols = FEATURE_COLUMNS
+def _features_frame(features: Dict[str, Any], n_features: int | None = None) -> pd.DataFrame:
+    """DataFrame 1×N con nombres de columna (evita warning de StandardScaler)."""
+    cols = list(FEATURE_COLUMNS)
     if n_features is not None and n_features > 0:
         if n_features <= len(FEATURE_COLUMNS):
             cols = FEATURE_COLUMNS[:n_features]
         else:
-            vals = [features.get(col, 0) for col in FEATURE_COLUMNS]
-            vals.extend([0] * (n_features - len(FEATURE_COLUMNS)))
-            return np.array([vals])
-    return np.array([[features.get(col, 0) for col in cols]])
+            # Modelo antiguo con más columnas de las actuales: rellenar con 0
+            row = {col: float(features.get(col, 0) or 0) for col in FEATURE_COLUMNS}
+            for i in range(n_features - len(FEATURE_COLUMNS)):
+                row[f"_pad_{i}"] = 0.0
+            return pd.DataFrame([row])
+    row = {col: float(features.get(col, 0) or 0) for col in cols}
+    return pd.DataFrame([row], columns=cols)
+
+
+def _features_vector(features: Dict[str, Any], n_features: int | None = None) -> np.ndarray:
+    """Compat: vector numpy; preferir `_features_frame` al transformar con scaler."""
+    return _features_frame(features, n_features).to_numpy(dtype=float)
 
 
 def _features_sinteticas_desde_registro(reg: Dict[str, Any]) -> Dict[str, Any]:
@@ -129,6 +144,11 @@ def _features_sinteticas_desde_registro(reg: Dict[str, Any]) -> Dict[str, Any]:
         "xfip_pitcher": 4.5 - edge / 200.0,
         "k_pct_pitcher": 20.0 + edge / 10.0,
         "bb_pct_pitcher": 8.0 - edge / 40.0,
+        "fatiga_viaje": float((reg.get("factores_humanos") or {}).get("features_away", {}).get("fatiga_viaje") or 0.0),
+        "dias_descanso": 1.0,
+        "cambio_zona": 0.0,
+        "leverage_serie": float(((reg.get("factores_humanos") or {}).get("serie") or {}).get("leverage") or 0.0),
+        "umpire_runs": float((reg.get("factores_humanos") or {}).get("sesgo_umpire_runs") or 0.0),
     }
 
 
@@ -509,7 +529,12 @@ def predecir_rf(features: Dict[str, Any]) -> Optional[float]:
 
     try:
         n_exp = int(getattr(_scaler, "n_features_in_", len(FEATURE_COLUMNS)))
-        X_scaled = _scaler.transform(_features_vector(features, n_exp))
+        X = _features_frame(features, n_exp)
+        # Si el scaler se entrenó sin nombres, transformar por valores
+        try:
+            X_scaled = _scaler.transform(X)
+        except ValueError:
+            X_scaled = _scaler.transform(X.to_numpy(dtype=float))
         prob = _modelo_rf.predict_proba(X_scaled)[0, 1] * 100
         return round(prob, 1)
     except Exception as e:
@@ -528,7 +553,11 @@ def predecir_xgb(features: Dict[str, Any]) -> Optional[float]:
         return None
     try:
         n_exp = int(getattr(_scaler, "n_features_in_", len(FEATURE_COLUMNS)))
-        X_scaled = _scaler.transform(_features_vector(features, n_exp))
+        X = _features_frame(features, n_exp)
+        try:
+            X_scaled = _scaler.transform(X)
+        except ValueError:
+            X_scaled = _scaler.transform(X.to_numpy(dtype=float))
         prob = float(_modelo_xgb.predict_proba(X_scaled)[0, 1]) * 100.0
         return round(prob, 1)
     except Exception as e:
@@ -705,4 +734,9 @@ def extraer_features_ml(juego: Dict[str, Any], stats_pitcher: Dict[str, Any],
         'xfip_pitcher': stats_pitcher.get('xfip', stats_pitcher.get('fip', stats_pitcher.get('era', 4.5))),
         'k_pct_pitcher': stats_pitcher.get('k_pct', float(stats_pitcher.get('k9', 7.5)) * 2.4),
         'bb_pct_pitcher': stats_pitcher.get('bb_pct', float(stats_pitcher.get('bb9', 3.0)) * 2.5),
+        'fatiga_viaje': float(juego.get('fatiga_viaje', 0.0) or 0.0),
+        'dias_descanso': float(juego.get('dias_descanso', 1.0) or 1.0),
+        'cambio_zona': float(juego.get('cambio_zona', 0.0) or 0.0),
+        'leverage_serie': float(juego.get('leverage_serie', 0.0) or 0.0),
+        'umpire_runs': float(juego.get('umpire_runs', 0.0) or 0.0),
     }
