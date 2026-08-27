@@ -755,6 +755,9 @@ async function cargarHistorialFallback(signal) {
         pintarPredicciones(memoria, null);
         const capEl = document.getElementById('capital-display');
         if (capEl && d.capital != null) capEl.textContent = '$' + Number(d.capital).toFixed(2);
+        const dEl = document.getElementById('dia-actual');
+        if (dEl && d.dia_actual != null) dEl.textContent = 'DÍA ' + d.dia_actual;
+        historialPintado = true;
         return true;
     } catch (e) {
         return false;
