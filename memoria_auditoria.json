@@ -2,7 +2,7 @@
   "modo": "simulacion",
   "capital": 97.63,
   "capital_inicial": 100.0,
-  "dia_actual": 13,
+  "dia_actual": 14,
   "dias_totales": 200,
   "stake_por_juego": 5.0,
   "experimento_activo": true,
@@ -108533,9 +108533,9 @@
           "pitcher_away_id": 694819,
           "pitcher_home_id": 640455,
           "inicio_juego": "2026-08-27T19:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.17,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-27T18:10:28.939937-04:00",
@@ -109183,7 +109183,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-27T22:10:30.258898Z"
+          "whatsapp_enviado_en": "2026-08-27T22:10:30.258898Z",
+          "marcador_final": "Milwaukee Brewers 8 - New York Mets 2",
+          "liquidado_en": "2026-08-27T22:09:14.787741-04:00"
         },
         {
           "game_id": "824879",
@@ -109865,9 +109867,9 @@
           "pitcher_away_id": 703615,
           "pitcher_home_id": 694738,
           "inicio_juego": "2026-08-27T21:45:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 3.13,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-27T20:45:15.326814-04:00",
@@ -110526,9 +110528,27 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-28T00:45:16.555013Z"
+          "whatsapp_enviado_en": "2026-08-28T00:45:16.555013Z",
+          "marcador_final": "Arizona Diamondbacks 1 - San Francisco Giants 6",
+          "liquidado_en": "2026-08-28T00:30:08.288061-04:00"
         }
       ],
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
+    },
+    {
+      "dia": 14,
+      "fecha": "2026-08-28",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
       "resumen": {
         "jugadas": 0,
         "ganadas": 0,
@@ -116100,6 +116120,46 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-28T01:53:36.529381Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-823581-1787882954",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-27",
+      "game_id": "823581",
+      "visitante": "Milwaukee Brewers",
+      "home": "New York Mets",
+      "pick": "Milwaukee Brewers ML",
+      "probPick": 69.8,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Milwaukee Brewers 8 - New York Mets 2",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-28T02:09:14.791975Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-823179-1787891408",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-27",
+      "game_id": "823179",
+      "visitante": "Arizona Diamondbacks",
+      "home": "San Francisco Giants",
+      "pick": "San Francisco Giants ML",
+      "probPick": 61.5,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Arizona Diamondbacks 1 - San Francisco Giants 6",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-28T04:30:08.288459Z"
     }
   ],
   "mente_stats": {
@@ -116110,9 +116170,9 @@
         "fallos": 0
       },
       "PASAR": {
-        "n": 1,
+        "n": 3,
         "evito_fallo": 1,
-        "oportunidad_perdida": 0
+        "oportunidad_perdida": 2
       },
       "ESPERAR": {
         "n": 1,
@@ -116122,9 +116182,9 @@
     },
     "patrones": {
       "scratch": {
-        "n": 1,
+        "n": 3,
         "pasar_ok": 0,
-        "pasar_miss": 1,
+        "pasar_miss": 3,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -116136,30 +116196,30 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 2,
+        "n": 4,
         "pasar_ok": 1,
-        "pasar_miss": 1,
+        "pasar_miss": 3,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "sin_mercado": {
-        "n": 2,
+        "n": 4,
         "pasar_ok": 1,
-        "pasar_miss": 1,
+        "pasar_miss": 3,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 2,
+        "n": 4,
         "pasar_ok": 1,
-        "pasar_miss": 1,
+        "pasar_miss": 3,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "favorito_alto": {
-        "n": 2,
+        "n": 3,
         "pasar_ok": 1,
-        "pasar_miss": 1,
+        "pasar_miss": 2,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -116174,34 +116234,36 @@
     "penalizacion": {
       "scratch": 0,
       "starter_riesgo": 0,
-      "humanos": 0,
-      "sin_mercado": 0,
-      "edge_bajo": 0,
+      "humanos": -2,
+      "sin_mercado": -2,
+      "edge_bajo": -2,
       "favorito_alto": 0,
       "limpio": 0
     },
     "vistos": [
       "823503:fallo",
-      "822771:acierto"
+      "822771:acierto",
+      "823581:acierto",
+      "823179:acierto"
     ],
-    "actualizado_en": "2026-08-28T01:53:36.532598Z"
+    "actualizado_en": "2026-08-28T04:30:08.288553Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 159,
-    "muestras_reales": 159,
+    "muestras": 161,
+    "muestras_reales": 161,
     "schema": 4,
-    "mensaje": "Reentrenado con 159 muestras (159 reales, RF acc 99.4%, RF holdout 56.2%, XGB acc 100.0%, XGB holdout 65.6%)",
+    "mensaje": "Reentrenado con 161 muestras (161 reales, RF acc 99.4%, RF holdout 48.5%, XGB acc 100.0%, XGB holdout 69.7%)",
     "accuracy_train": 0.994,
-    "accuracy_holdout": 0.562,
+    "accuracy_holdout": 0.485,
     "accuracy_xgb_train": 1.0,
-    "accuracy_xgb_holdout": 0.656,
-    "ultimo_entreno": "2026-08-28T01:53:43.898608",
+    "accuracy_xgb_holdout": 0.697,
+    "ultimo_entreno": "2026-08-28T04:30:24.382997",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 159,
+    "muestras": 161,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
@@ -116216,7 +116278,7 @@
       },
       "scratch": {
         "ok": true,
-        "muestras": 44,
+        "muestras": 46,
         "metodo": "isotonic"
       },
       "limpio": {
@@ -116225,14 +116287,14 @@
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 159 muestras (ECE≈0.06) · 4 tipos",
-    "ece": 0.061
+    "mensaje": "Calibrado isotonic con 161 muestras (ECE≈0.06) · 4 tipos",
+    "ece": 0.059
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-28T01:53:07.292109Z"
+    "actualizado_en": "2026-08-28T02:08:36.892049Z"
   }
 }
