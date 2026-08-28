@@ -164,6 +164,7 @@ def test_fusionar_llena_dia_vacio_con_live():
 def test_recuperar_wipe_aunque_sea_dia_2(tmp_path, monkeypatch):
     monkeypatch.setattr(srv, "BASE_DIR", tmp_path)
     monkeypatch.setattr(srv, "MEMORIA_PATH", tmp_path / "disk.json")
+    monkeypatch.setattr(srv, "MEMORIA_BACKUP_PATH", tmp_path / "backup.json")
     bundled = {
         "capital_inicial": 100,
         "capital": 92,
@@ -198,3 +199,94 @@ def test_recuperar_wipe_aunque_sea_dia_2(tmp_path, monkeypatch):
     fechas = {d["fecha"] for d in out["dias"]}
     assert "2026-08-15" in fechas
     assert "2026-08-17" in fechas
+
+
+def test_guardar_memoria_escribe_backup(tmp_path, monkeypatch):
+    monkeypatch.setattr(srv, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(srv, "MEMORIA_PATH", tmp_path / "memoria_auditoria.json")
+    monkeypatch.setattr(srv, "MEMORIA_BACKUP_PATH", tmp_path / "memoria_auditoria_backup.json")
+
+    memoria = {
+        "capital_inicial": 100,
+        "capital": 95,
+        "dia_actual": 1,
+        "dias": [
+            {
+                "dia": 1,
+                "fecha": "2026-08-20",
+                "predicciones": [
+                    {"game_id": "g1", "pick": "NYY ML", "resultado": "acierto", "estado": "liquidado"}
+                ],
+                "apuestas": [],
+            }
+        ],
+    }
+    srv.guardar_memoria(memoria)
+    assert (tmp_path / "memoria_auditoria_backup.json").exists()
+    backup = json.loads((tmp_path / "memoria_auditoria_backup.json").read_text(encoding="utf-8"))
+    assert backup["capital"] == 95
+    assert "2026-08-20" in {d["fecha"] for d in backup["dias"]}
+
+
+def test_recuperar_wipe_desde_backup_local(tmp_path, monkeypatch):
+    monkeypatch.setattr(srv, "BASE_DIR", tmp_path)
+    monkeypatch.setattr(srv, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(srv, "MEMORIA_PATH", tmp_path / "disk.json")
+    monkeypatch.setattr(srv, "MEMORIA_BACKUP_PATH", tmp_path / "backup.json")
+
+    backup = {
+        "capital_inicial": 100,
+        "capital": 92,
+        "dias": [
+            {
+                "dia": 1,
+                "fecha": "2026-08-15",
+                "predicciones": [
+                    {"game_id": "yankees", "pick": "NYY ML", "resultado": "acierto", "estado": "liquidado"}
+                ],
+                "apuestas": [],
+            }
+        ],
+    }
+    disk = {
+        "capital_inicial": 100,
+        "capital": 100,
+        "dia_actual": 2,
+        "dias": [
+            {
+                "dia": 1,
+                "fecha": "2026-08-17",
+                "predicciones": [{"game_id": "hoy", "pick": "X ML", "estado": "pendiente"}],
+            }
+        ],
+    }
+    (tmp_path / "backup.json").write_text(json.dumps(backup), encoding="utf-8")
+    (tmp_path / "disk.json").write_text(json.dumps(disk), encoding="utf-8")
+    assert srv._intentar_recuperar_wipe() is True
+    out = json.loads((tmp_path / "disk.json").read_text(encoding="utf-8"))
+    fechas = {d["fecha"] for d in out["dias"]}
+    assert "2026-08-15" in fechas
+    assert "2026-08-17" in fechas
+
+
+def test_recuperar_wipe_main_corrupto_desde_backup(tmp_path, monkeypatch):
+    monkeypatch.setattr(srv, "BASE_DIR", tmp_path)
+    monkeypatch.setattr(srv, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(srv, "MEMORIA_PATH", tmp_path / "disk.json")
+    monkeypatch.setattr(srv, "MEMORIA_BACKUP_PATH", tmp_path / "backup.json")
+
+    backup = {
+        "capital_inicial": 100,
+        "capital": 88,
+        "dias": [
+            {
+                "fecha": "2026-08-14",
+                "predicciones": [{"game_id": "a", "resultado": "acierto", "estado": "liquidado"}],
+            }
+        ],
+    }
+    (tmp_path / "backup.json").write_text(json.dumps(backup), encoding="utf-8")
+    (tmp_path / "disk.json").write_text("{ corrupto", encoding="utf-8")
+    assert srv._intentar_recuperar_wipe() is True
+    out = json.loads((tmp_path / "disk.json").read_text(encoding="utf-8"))
+    assert "2026-08-14" in {d["fecha"] for d in out["dias"]}

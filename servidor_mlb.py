@@ -80,6 +80,7 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 _lineas_meta_cache: dict = {"ok": False, "mensaje": "Sin cargar"}
 CONFIG_PATH = BASE_DIR / "config_experimento.json"
 MEMORIA_PATH = DATA_DIR / "memoria_auditoria.json"
+MEMORIA_BACKUP_PATH = DATA_DIR / "memoria_auditoria_backup.json"
 _memoria_lock = threading.RLock()
 
 MLB_SCHEDULE = "https://statsapi.mlb.com/api/v1/schedule"
@@ -92,21 +93,65 @@ _JUEGOS_PANEL_CACHE_PATH = DATA_DIR / "juegos_panel_cache.json"
 _JUEGOS_PANEL_DISK_MAX_AGE_SEC = 20 * 60
 
 
+def _cargar_json_memoria(path: Path) -> dict | None:
+    if not path.exists():
+        return None
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return data if isinstance(data, dict) else None
+    except Exception:
+        return None
+
+
+def _escribir_memoria_backup(final: dict) -> None:
+    """Espejo en disco aparte; nunca pierde días respecto al backup previo."""
+    try:
+        prev = _cargar_json_memoria(MEMORIA_BACKUP_PATH)
+        to_write, _ = _proteger_escritura(prev, final, permitir_wipe=False)
+        MEMORIA_BACKUP_PATH.parent.mkdir(parents=True, exist_ok=True)
+        tmp = MEMORIA_BACKUP_PATH.with_suffix(".json.tmp")
+        with open(tmp, "w", encoding="utf-8") as f:
+            json.dump(to_write, f, indent=2, ensure_ascii=False)
+        tmp.replace(MEMORIA_BACKUP_PATH)
+    except Exception as e:
+        print(f"[GUARDAR] backup: {e}")
+
+
+def _info_memoria_backup() -> dict:
+    info: dict[str, Any] = {
+        "backup_exists": False,
+        "backup_mtime": None,
+        "backup_fechas": 0,
+    }
+    if not MEMORIA_BACKUP_PATH.exists():
+        return info
+    info["backup_exists"] = True
+    try:
+        info["backup_mtime"] = MEMORIA_BACKUP_PATH.stat().st_mtime
+        data = _cargar_json_memoria(MEMORIA_BACKUP_PATH)
+        if isinstance(data, dict):
+            info["backup_fechas"] = len(_fechas_con_historial(data))
+            b_ap, b_pr = _contar_historial(data)
+            info["backup_apuestas"] = b_ap
+            info["backup_preds"] = b_pr
+    except Exception:
+        pass
+    return info
+
+
 def _intentar_recuperar_wipe() -> bool:
     """
     Recupera historial del JSON del repo / snapshots locales si Render wipeó
     o arrancó un experimento nuevo sin los días anteriores.
     """
-    disk: dict | None = None
-    if MEMORIA_PATH.exists():
-        try:
-            disk = json.loads(MEMORIA_PATH.read_text(encoding="utf-8"))
-        except Exception:
-            disk = None
+    disk = _cargar_json_memoria(MEMORIA_PATH)
     if isinstance(disk, dict) and disk.get("reinicio_manual"):
         return False
 
     candidatos: list[dict] = []
+    backup = _cargar_json_memoria(MEMORIA_BACKUP_PATH)
+    if isinstance(backup, dict) and _fechas_con_historial(backup):
+        candidatos.append(backup)
     origen = BASE_DIR / "memoria_auditoria.json"
     if origen.exists():
         try:
@@ -136,7 +181,7 @@ def _intentar_recuperar_wipe() -> bool:
             return False
         if _fechas_con_historial(merged) <= _fechas_con_historial(disk) and not wipe_clasico:
             return False
-    elif not MEMORIA_PATH.exists():
+    elif not MEMORIA_PATH.exists() or disk is None:
         wipe_clasico = True
         dias_perdidos = True
     else:
@@ -146,6 +191,10 @@ def _intentar_recuperar_wipe() -> bool:
     MEMORIA_PATH.write_text(
         json.dumps(merged, indent=2, ensure_ascii=False), encoding="utf-8"
     )
+    try:
+        _escribir_memoria_backup(merged)
+    except Exception:
+        pass
     try:
         _escribir_snapshot(DATA_DIR, merged)
     except Exception:
@@ -444,6 +493,7 @@ def guardar_memoria(memoria: dict, *, permitir_wipe: bool = False) -> None:
                 f"fechas={sorted(_fechas_con_historial(final))}"
             )
             json.dump(final, f, indent=2, ensure_ascii=False)
+        _escribir_memoria_backup(final)
         try:
             _escribir_snapshot(DATA_DIR, final)
         except Exception as e:
@@ -2957,6 +3007,7 @@ def api_historial_status():
         "ok": True,
         **sello,
         "snapshots_locales": snaps,
+        **_info_memoria_backup(),
         "capital": mem.get("capital"),
         "dia_actual": mem.get("dia_actual"),
     }
