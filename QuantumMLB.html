@@ -563,7 +563,7 @@ const API = (!window.location.origin || window.location.protocol === 'file:')
 const ES_NUBE = API.includes('onrender.com') || API.includes('render.com');
 const REFRESH_MS = ES_NUBE ? 45000 : 8000;
 const CACHE_KEY = 'qmlb_last_state_v2';
-const PANEL_VER = '2026-08-27-juegos2';
+const PANEL_VER = '2026-08-28-jsfix';
 let cargandoEstado = false;
 let cargandoBoot = false;
 let cargandoJuegos = false;
@@ -1150,7 +1150,7 @@ function pintarEstado(data) {
     const res = dia?.resumen || { profit_dia: 0, ganadas: 0, pendientes: 0, jugadas: 0, capital_arriesgado: 0 };
     const estr = data.estrategia || {};
     const cfg = data.config || {};
-    const soloModelo = !!cfg.modo_solo_modelo;
+    const soloModelo = !!cfg.modo_solo_modelo || estr.requiere_betmgm === false;
 
     const b = data.banca || {};
     document.getElementById('capital-display').textContent = '$' + Number(m.capital || 0).toFixed(2);
@@ -1221,9 +1221,6 @@ function pintarEstado(data) {
     roiEl.textContent = (roi >= 0 ? '+' : '') + roi.toFixed(2) + '%';
     roiEl.className = 'val ' + (roi >= 0 ? 'pos' : 'neg');
 
-    const cfg = data.config || {};
-    const estr = data.estrategia || {};
-    const soloModelo = cfg.modo_solo_modelo || estr.requiere_betmgm === false;
     const mente = data.mente || cfg.mente || {};
     document.getElementById('modo-badge').textContent = soloModelo
         ? 'SIMULACIÓN · Solo stats+ML'
