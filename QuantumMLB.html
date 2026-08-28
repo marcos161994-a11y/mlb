@@ -563,7 +563,7 @@ const API = (!window.location.origin || window.location.protocol === 'file:')
 const ES_NUBE = API.includes('onrender.com') || API.includes('render.com');
 const REFRESH_MS = ES_NUBE ? 45000 : 8000;
 const CACHE_KEY = 'qmlb_last_state_v2';
-const PANEL_VER = '2026-08-27-boot2';
+const PANEL_VER = '2026-08-27-juegos2';
 let cargandoEstado = false;
 let cargandoBoot = false;
 let cargandoJuegos = false;
@@ -985,7 +985,10 @@ async function cargarEstado() {
             bootOk = true;
             guardarCacheEstado(bootRes.boot);
             pintarEstadoSeguro(bootRes.boot, 'boot');
-            if (!yaCargo) {
+            if (bootRes.boot.games && bootRes.boot.games.length) {
+                try { pintarPicksHoy(bootRes.boot.games, bootRes.boot); } catch (_) {}
+                try { pintarJuegos(bootRes.boot.games); } catch (_) {}
+            } else if (!yaCargo) {
                 contenedor.innerHTML =
                     '<p style="color:#00ff88">✓ Historial cargado · trayendo juegos…</p>' +
                     '<p style="margin:10px 0"><button type="button" onclick="reintentarAhora()">↻ Reintentar ahora</button></p>';
@@ -1014,40 +1017,87 @@ async function cargarEstado() {
     // Liberar candado de boot YA: el state no debe bloquear reintentos iOS
     cargandoEstado = false;
 
-    // 2) State (juegos). Si falla, el historial YA pintado se conserva.
+    // 2) Juegos + state EN PARALELO (AbortControllers separados — bug iOS/timeout compartido)
     if (cargandoJuegos) return;
     cargandoJuegos = true;
-    const ctrl = new AbortController();
-    const timeoutMs = ES_NUBE ? 35000 : 45000;
-    const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+    let juegosOk = contenedor.dataset.loaded === '1';
+
+    const fetchJuegos = async () => {
+        const c = new AbortController();
+        const t = setTimeout(() => c.abort(), ES_NUBE ? 18000 : 30000);
+        try {
+            const jr = await fetch(API + '/api/juegos-hoy', { cache: 'no-store', signal: c.signal });
+            if (!jr.ok) {
+                if (jr.status === 502 || jr.status === 503) throw new Error('Servidor respondió ' + jr.status);
+                return null;
+            }
+            return await jr.json();
+        } finally {
+            clearTimeout(t);
+        }
+    };
+    const fetchState = async () => {
+        const c = new AbortController();
+        const t = setTimeout(() => c.abort(), ES_NUBE ? 35000 : 45000);
+        try {
+            const sr = await fetch(API + '/api/state', { cache: 'no-store', signal: c.signal });
+            if (!sr.ok) throw new Error('Servidor respondió ' + sr.status);
+            return await sr.json();
+        } finally {
+            clearTimeout(t);
+        }
+    };
+
+    let lastErr = '';
     try {
-        const stateRes = await fetch(API + '/api/state', { cache: 'no-store', signal: ctrl.signal });
-        if (!stateRes.ok) throw new Error('Servidor respondió ' + stateRes.status);
-        const state = await stateRes.json();
-        contenedor.dataset.loaded = '1';
-        wakeIntentos = 0;
-        cancelarReintento();
-        guardarCacheEstado(state);
-        pintarEstadoSeguro(state, 'state');
-        try { pintarPicksHoy(state.games || [], state); } catch (_) {}
-        try { pintarJuegos(state.games || []); } catch (_) {}
-    } catch (e) {
-        const msg = String(e.message || e);
-        const is502 = msg.includes('502') || msg.includes('503') || msg.includes('504') || msg.includes('abort');
-        if (!historialPintado) {
-            const okCache = pintarDesdeCache(is502 ? '502 · reintento' : 'reintento');
-            if (okCache) historialPintado = true;
-            if (!okCache) {
-                try { await cargarHistorialFallback(ctrl.signal); } catch (_) {}
+        const settled = await Promise.allSettled([fetchJuegos(), fetchState()]);
+        const jRes = settled[0];
+        const sRes = settled[1];
+
+        if (jRes.status === 'fulfilled' && jRes.value && (jRes.value.games || []).length) {
+            const games = jRes.value.games;
+            try { pintarPicksHoy(games, { games, estrategia: (sRes.status === 'fulfilled' && sRes.value && sRes.value.estrategia) || {} }); } catch (_) {}
+            try { pintarJuegos(games); } catch (_) {}
+            juegosOk = true;
+            wakeIntentos = 0;
+        } else if (jRes.status === 'rejected') {
+            lastErr = String(jRes.reason && (jRes.reason.message || jRes.reason));
+        }
+
+        if (sRes.status === 'fulfilled' && sRes.value) {
+            const state = sRes.value;
+            wakeIntentos = 0;
+            cancelarReintento();
+            guardarCacheEstado(state);
+            pintarEstadoSeguro(state, 'state');
+            try { pintarPicksHoy(state.games || [], state); } catch (_) {}
+            if ((state.games || []).length) {
+                try { pintarJuegos(state.games || []); } catch (_) {}
+                juegosOk = true;
+            }
+        } else if (sRes.status === 'rejected') {
+            lastErr = String(sRes.reason && (sRes.reason.message || sRes.reason)) || lastErr;
+            if (!historialPintado) {
+                const is502 = /502|503|504|abort/i.test(lastErr);
+                const okCache = pintarDesdeCache(is502 ? '502 · reintento' : 'reintento');
+                if (okCache) historialPintado = true;
+                if (!okCache) {
+                    try { await cargarHistorialFallback(undefined); } catch (_) {}
+                }
             }
         }
+
+        if (juegosOk) {
+            return;
+        }
+
+        const is502 = /502|503|504|abort/i.test(lastErr);
         if (historialPintado) {
-            // Historial visible: solo avisar juegos y reintentar suave
-            if (!yaCargo && contenedor.dataset.loaded !== '1') {
+            if (contenedor.dataset.loaded !== '1') {
                 contenedor.innerHTML =
                     '<p style="color:#ffaa00"><b>Historial OK · juegos tardando (Render).</b></p>' +
                     '<p style="margin:12px 0"><button type="button" onclick="reintentarAhora()" style="padding:12px 18px;font-weight:700">↻ Reintentar juegos</button></p>' +
-                    '<small style="color:var(--muted)">' + msg + '</small>';
+                    '<small style="color:var(--muted)">' + (lastErr || 'sin juegos') + '</small>';
             }
             if (ES_NUBE && wakeIntentos < WAKE_MAX) {
                 wakeIntentos += 1;
@@ -1070,9 +1120,8 @@ async function cargarEstado() {
                 ? 'Pulsa el botón o cierra/abre la pestaña. Historial intacto en disco.<br>'
                 : '1) Doble clic en <b>iniciar.bat</b><br>2) Abre <b>http://localhost:8000</b><br>') +
             '<p style="margin:12px 0"><button type="button" onclick="reintentarAhora()">↻ Reintentar ahora</button></p>' +
-            '<small>' + msg + '</small></p>';
+            '<small>' + (lastErr || '') + '</small></p>';
     } finally {
-        clearTimeout(timer);
         cargandoJuegos = false;
         cargandoEstado = false;
     }
@@ -1718,10 +1767,12 @@ function pintarPredicciones(memoria, plSplit) {
 
 function pintarJuegos(juegos) {
     const c = document.getElementById('contenedor-juegos');
-    if (!juegos.length) {
+    if (!c) return;
+    if (!juegos || !juegos.length) {
         c.innerHTML = '<p style="color:var(--muted)">No hay juegos MLB hoy.</p>';
         return;
     }
+    c.dataset.loaded = '1';
     const orden = [...juegos].sort((a, b) => (b.apostable ? 1 : 0) - (a.apostable ? 1 : 0));
     c.innerHTML = orden.map(j => {
         const estudio = sinCuotaMercado(j) && !j.apostable;
