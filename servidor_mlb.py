@@ -2591,22 +2591,21 @@ def programar_tareas_background() -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    import threading
+    """Arranque rápido: Render exige puerto abierto; motor en background."""
 
-    programar_tareas_background()
-    scheduler.start()
-    _inicializar_datos_persistencia()
-
-    def en_fondo():
-        print("[MOTOR] Iniciando motor autónomo de sincronización en segundo plano...")
+    def _boot_completo() -> None:
         try:
-            # Catch-up de días si el servidor estuvo apagado o se pasó la medianoche
+            programar_tareas_background()
+            scheduler.start()
+            _inicializar_datos_persistencia()
+        except Exception as e:
+            print(f"[MOTOR] Error arranque scheduler/persistencia: {e}")
+        try:
+            print("[MOTOR] Iniciando motor autónomo de sincronización en segundo plano...")
             avanzar_dia_automatico()
             reparar_odds_papel(cargar_memoria())
             rellenar_predicciones_recientes(cargar_memoria(), dias_atras=7)
-            # Al arrancar, procesamos inmediatamente los juegos que ya deberían estar bloqueados
             bloquear_apuestas_del_dia(forzar=False)
-            # Luego programamos los del resto del día
             programar_bloqueos_por_juego()
         except Exception as e:
             print(f"[MOTOR] Error programando bloqueos: {e}")
@@ -2615,9 +2614,13 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             print(f"[MOTOR] Error en liquidación inicial: {e}")
 
-    threading.Thread(target=en_fondo, daemon=True).start()
+    threading.Thread(target=_boot_completo, daemon=True, name="motor-boot").start()
+    print("[BOOT] Puerto listo · motor en background")
     yield
-    scheduler.shutdown(wait=False)
+    try:
+        scheduler.shutdown(wait=False)
+    except Exception:
+        pass
 
 
 app = FastAPI(title="Quantum MLB", lifespan=lifespan)
