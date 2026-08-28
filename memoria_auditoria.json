@@ -107292,9 +107292,9 @@
           "pitcher_away_id": 669713,
           "pitcher_home_id": 543037,
           "inicio_juego": "2026-08-27T19:05:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-27T18:05:17.926595-04:00",
@@ -107874,7 +107874,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-27T22:05:19.061795Z"
+          "whatsapp_enviado_en": "2026-08-27T22:05:19.061795Z",
+          "marcador_final": "Houston Astros 5 - New York Yankees 1",
+          "liquidado_en": "2026-08-27T21:53:36.391823-04:00"
         },
         {
           "game_id": "822771",
@@ -107893,9 +107895,9 @@
           "pitcher_away_id": 702070,
           "pitcher_home_id": 681293,
           "inicio_juego": "2026-08-27T19:07:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.36,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-27T18:07:06.332351-04:00",
@@ -108510,7 +108512,9 @@
           },
           "preferir_f5": true,
           "total_linea": null,
-          "lineas_total": null
+          "lineas_total": null,
+          "marcador_final": "Kansas City Royals 13 - Toronto Blue Jays 2",
+          "liquidado_en": "2026-08-27T21:53:36.532395-04:00"
         },
         {
           "game_id": "823581",
@@ -116036,6 +116040,66 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-28T01:40:17.427874Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-823503-1787882016",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-08-27",
+      "game_id": "823503",
+      "visitante": "Houston Astros",
+      "home": "New York Yankees",
+      "pick": "New York Yankees ML",
+      "probPick": 70.1,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Houston Astros 5 - New York Yankees 1",
+      "patron": "sin_cuota_real",
+      "leccion": "No apostar con dinero si no hay cuota de mercado (Pinnacle/DK).",
+      "motivo": "Heurística post-fallo (sin_cuota_real)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-28T01:53:36.529194Z"
+    },
+    {
+      "id": "lec-veto_acertado-823503-1787882016",
+      "tipo": "veto_acertado",
+      "fecha": "2026-08-27",
+      "game_id": "823503",
+      "visitante": "Houston Astros",
+      "home": "New York Yankees",
+      "pick": "New York Yankees ML",
+      "probPick": 70.1,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Houston Astros 5 - New York Yankees 1",
+      "patron": "veto_acertado",
+      "leccion": "Bloqueo de dinero acertó: el pick falló; mantener señales parecidas.",
+      "motivo": "mente bloqueó dinero + fallo",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-28T01:53:36.529359Z"
+    },
+    {
+      "id": "lec-sin_cuota_real-823503-1787882016",
+      "tipo": "sin_cuota_real",
+      "fecha": "2026-08-27",
+      "game_id": "823503",
+      "visitante": "Houston Astros",
+      "home": "New York Yankees",
+      "pick": "New York Yankees ML",
+      "probPick": 70.1,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Houston Astros 5 - New York Yankees 1",
+      "patron": "mala_practica_sin_mercado",
+      "leccion": "No apostar dinero sin cuota real (Pinnacle/DK); paper sin mercado no es edge.",
+      "motivo": "sin cuota de mercado",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-28T01:53:36.529381Z"
     }
   ],
   "mente_stats": {
@@ -116046,21 +116110,21 @@
         "fallos": 0
       },
       "PASAR": {
-        "n": 0,
-        "evito_fallo": 0,
+        "n": 1,
+        "evito_fallo": 1,
         "oportunidad_perdida": 0
       },
       "ESPERAR": {
-        "n": 0,
-        "aciertos": 0,
+        "n": 1,
+        "aciertos": 1,
         "fallos": 0
       }
     },
     "patrones": {
       "scratch": {
-        "n": 0,
+        "n": 1,
         "pasar_ok": 0,
-        "pasar_miss": 0,
+        "pasar_miss": 1,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -116072,30 +116136,30 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 0,
-        "pasar_ok": 0,
-        "pasar_miss": 0,
+        "n": 2,
+        "pasar_ok": 1,
+        "pasar_miss": 1,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "sin_mercado": {
-        "n": 0,
-        "pasar_ok": 0,
-        "pasar_miss": 0,
+        "n": 2,
+        "pasar_ok": 1,
+        "pasar_miss": 1,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 0,
-        "pasar_ok": 0,
-        "pasar_miss": 0,
+        "n": 2,
+        "pasar_ok": 1,
+        "pasar_miss": 1,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "favorito_alto": {
-        "n": 0,
-        "pasar_ok": 0,
-        "pasar_miss": 0,
+        "n": 2,
+        "pasar_ok": 1,
+        "pasar_miss": 1,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -116107,29 +116171,42 @@
         "apostar_fail": 0
       }
     },
-    "penalizacion": {}
+    "penalizacion": {
+      "scratch": 0,
+      "starter_riesgo": 0,
+      "humanos": 0,
+      "sin_mercado": 0,
+      "edge_bajo": 0,
+      "favorito_alto": 0,
+      "limpio": 0
+    },
+    "vistos": [
+      "823503:fallo",
+      "822771:acierto"
+    ],
+    "actualizado_en": "2026-08-28T01:53:36.532598Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 157,
-    "muestras_reales": 157,
+    "muestras": 159,
+    "muestras_reales": 159,
     "schema": 4,
-    "mensaje": "Reentrenado con 157 muestras (157 reales, RF acc 100.0%, RF holdout 53.1%, XGB acc 100.0%, XGB holdout 65.6%)",
-    "accuracy_train": 1.0,
-    "accuracy_holdout": 0.531,
+    "mensaje": "Reentrenado con 159 muestras (159 reales, RF acc 99.4%, RF holdout 56.2%, XGB acc 100.0%, XGB holdout 65.6%)",
+    "accuracy_train": 0.994,
+    "accuracy_holdout": 0.562,
     "accuracy_xgb_train": 1.0,
     "accuracy_xgb_holdout": 0.656,
-    "ultimo_entreno": "2026-08-28T01:40:29.138907",
+    "ultimo_entreno": "2026-08-28T01:53:43.898608",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 157,
+    "muestras": 159,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
         "ok": true,
-        "muestras": 30,
+        "muestras": 31,
         "metodo": "isotonic"
       },
       "underdog": {
@@ -116139,7 +116216,7 @@
       },
       "scratch": {
         "ok": true,
-        "muestras": 43,
+        "muestras": 44,
         "metodo": "isotonic"
       },
       "limpio": {
@@ -116148,14 +116225,14 @@
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 157 muestras (ECE≈0.06) · 4 tipos",
-    "ece": 0.064
+    "mensaje": "Calibrado isotonic con 159 muestras (ECE≈0.06) · 4 tipos",
+    "ece": 0.061
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-27T19:09:03.039429Z"
+    "actualizado_en": "2026-08-28T01:53:07.292109Z"
   }
 }
