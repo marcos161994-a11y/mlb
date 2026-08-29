@@ -117699,9 +117699,9 @@
           "pitcher_away_id": 691725,
           "pitcher_home_id": 672282,
           "inicio_juego": "2026-08-28T21:38:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.96,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-28T20:38:07.330475-04:00",
@@ -118273,7 +118273,9 @@
           },
           "preferir_f5": false,
           "total_linea": null,
-          "lineas_total": null
+          "lineas_total": null,
+          "marcador_final": "Philadelphia Phillies 5 - Los Angeles Angels 3",
+          "liquidado_en": "2026-08-29T00:42:13.617335-04:00"
         },
         {
           "game_id": "824960",
@@ -118292,9 +118294,9 @@
           "pitcher_away_id": 687064,
           "pitcher_home_id": 682052,
           "inicio_juego": "2026-08-28T21:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-28T20:40:37.525438-04:00",
@@ -118932,7 +118934,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-29T00:40:38.848817Z"
+          "whatsapp_enviado_en": "2026-08-29T00:40:38.848817Z",
+          "marcador_final": "Baltimore Orioles 4 - Athletics 3",
+          "liquidado_en": "2026-08-29T00:42:13.710527-04:00"
         },
         {
           "game_id": "823178",
@@ -118951,9 +118955,9 @@
           "pitcher_away_id": 684442,
           "pitcher_home_id": 694918,
           "inicio_juego": "2026-08-28T22:15:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-28T21:15:23.730980-04:00",
@@ -119562,7 +119566,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-29T01:15:25.050391Z"
+          "whatsapp_enviado_en": "2026-08-29T01:15:25.050391Z",
+          "marcador_final": "Arizona Diamondbacks 10 - San Francisco Giants 6",
+          "liquidado_en": "2026-08-29T01:30:06.520438-04:00"
         }
       ],
       "resumen": {
@@ -125532,6 +125538,126 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-29T03:32:53.542146Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-824960-1787978533",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-08-28",
+      "game_id": "824960",
+      "visitante": "Baltimore Orioles",
+      "home": "Athletics",
+      "pick": "Athletics ML",
+      "probPick": 50.1,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Baltimore Orioles 4 - Athletics 3",
+      "patron": "sin_cuota_real",
+      "leccion": "No apostar con dinero si no hay cuota de mercado (Pinnacle/DK).",
+      "motivo": "Heurística post-fallo (sin_cuota_real)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-29T04:42:13.764764Z"
+    },
+    {
+      "id": "lec-veto_acertado-824960-1787978533",
+      "tipo": "veto_acertado",
+      "fecha": "2026-08-28",
+      "game_id": "824960",
+      "visitante": "Baltimore Orioles",
+      "home": "Athletics",
+      "pick": "Athletics ML",
+      "probPick": 50.1,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Baltimore Orioles 4 - Athletics 3",
+      "patron": "veto_acertado",
+      "leccion": "Bloqueo de dinero acertó: el pick falló; mantener señales parecidas.",
+      "motivo": "mente bloqueó dinero + fallo",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-29T04:42:13.764927Z"
+    },
+    {
+      "id": "lec-sin_cuota_real-824960-1787978533",
+      "tipo": "sin_cuota_real",
+      "fecha": "2026-08-28",
+      "game_id": "824960",
+      "visitante": "Baltimore Orioles",
+      "home": "Athletics",
+      "pick": "Athletics ML",
+      "probPick": 50.1,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Baltimore Orioles 4 - Athletics 3",
+      "patron": "mala_practica_sin_mercado",
+      "leccion": "No apostar dinero sin cuota real (Pinnacle/DK); paper sin mercado no es edge.",
+      "motivo": "sin cuota de mercado",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-29T04:42:13.764949Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-823178-1787981406",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-08-28",
+      "game_id": "823178",
+      "visitante": "Arizona Diamondbacks",
+      "home": "San Francisco Giants",
+      "pick": "San Francisco Giants ML",
+      "probPick": 57.0,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Arizona Diamondbacks 10 - San Francisco Giants 6",
+      "patron": "sin_cuota_real",
+      "leccion": "No apostar con dinero si no hay cuota de mercado (Pinnacle/DK).",
+      "motivo": "Heurística post-fallo (sin_cuota_real)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-29T05:30:06.709903Z"
+    },
+    {
+      "id": "lec-veto_acertado-823178-1787981406",
+      "tipo": "veto_acertado",
+      "fecha": "2026-08-28",
+      "game_id": "823178",
+      "visitante": "Arizona Diamondbacks",
+      "home": "San Francisco Giants",
+      "pick": "San Francisco Giants ML",
+      "probPick": 57.0,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Arizona Diamondbacks 10 - San Francisco Giants 6",
+      "patron": "veto_acertado",
+      "leccion": "Bloqueo de dinero acertó: el pick falló; mantener señales parecidas.",
+      "motivo": "mente bloqueó dinero + fallo",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-29T05:30:06.709980Z"
+    },
+    {
+      "id": "lec-sin_cuota_real-823178-1787981406",
+      "tipo": "sin_cuota_real",
+      "fecha": "2026-08-28",
+      "game_id": "823178",
+      "visitante": "Arizona Diamondbacks",
+      "home": "San Francisco Giants",
+      "pick": "San Francisco Giants ML",
+      "probPick": 57.0,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Arizona Diamondbacks 10 - San Francisco Giants 6",
+      "patron": "mala_practica_sin_mercado",
+      "leccion": "No apostar dinero sin cuota real (Pinnacle/DK); paper sin mercado no es edge.",
+      "motivo": "sin cuota de mercado",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-29T05:30:06.710018Z"
     }
   ],
   "mente_stats": {
@@ -125542,20 +125668,20 @@
         "fallos": 0
       },
       "PASAR": {
-        "n": 8,
-        "evito_fallo": 1,
+        "n": 10,
+        "evito_fallo": 3,
         "oportunidad_perdida": 7
       },
       "ESPERAR": {
-        "n": 0,
-        "aciertos": 0,
+        "n": 1,
+        "aciertos": 1,
         "fallos": 0
       }
     },
     "patrones": {
       "scratch": {
-        "n": 1,
-        "pasar_ok": 0,
+        "n": 2,
+        "pasar_ok": 1,
         "pasar_miss": 1,
         "apostar_ok": 0,
         "apostar_fail": 0
@@ -125568,23 +125694,23 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 7,
-        "pasar_ok": 1,
+        "n": 8,
+        "pasar_ok": 2,
         "pasar_miss": 6,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "sin_mercado": {
-        "n": 8,
-        "pasar_ok": 1,
-        "pasar_miss": 7,
+        "n": 11,
+        "pasar_ok": 3,
+        "pasar_miss": 8,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 8,
-        "pasar_ok": 1,
-        "pasar_miss": 7,
+        "n": 11,
+        "pasar_ok": 3,
+        "pasar_miss": 8,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -125620,26 +125746,29 @@
       "823504:acierto",
       "823744:acierto",
       "823666:acierto",
-      "823013:acierto"
+      "823013:acierto",
+      "823985:acierto",
+      "824960:fallo",
+      "823178:fallo"
     ],
-    "actualizado_en": "2026-08-29T03:32:53.542180Z"
+    "actualizado_en": "2026-08-29T05:30:06.710104Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 172,
-    "muestras_reales": 172,
+    "muestras": 175,
+    "muestras_reales": 175,
     "schema": 4,
-    "mensaje": "Reentrenado con 172 muestras (172 reales, RF acc 100.0%, RF holdout 51.4%, XGB acc 100.0%, XGB holdout 57.1%)",
+    "mensaje": "Reentrenado con 175 muestras (175 reales, RF acc 100.0%, RF holdout 60.0%, XGB acc 100.0%, XGB holdout 65.7%)",
     "accuracy_train": 1.0,
-    "accuracy_holdout": 0.514,
+    "accuracy_holdout": 0.6,
     "accuracy_xgb_train": 1.0,
-    "accuracy_xgb_holdout": 0.571,
-    "ultimo_entreno": "2026-08-29T03:33:03.599736",
+    "accuracy_xgb_holdout": 0.657,
+    "ultimo_entreno": "2026-08-29T05:30:27.818745",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 172,
+    "muestras": 175,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
@@ -125649,21 +125778,21 @@
       },
       "underdog": {
         "ok": true,
-        "muestras": 47,
+        "muestras": 48,
         "metodo": "isotonic"
       },
       "scratch": {
         "ok": true,
-        "muestras": 50,
+        "muestras": 51,
         "metodo": "isotonic"
       },
       "limpio": {
         "ok": true,
-        "muestras": 41,
+        "muestras": 42,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 172 muestras (ECE≈0.06) · 4 tipos",
+    "mensaje": "Calibrado isotonic con 175 muestras (ECE≈0.06) · 4 tipos",
     "ece": 0.058
   },
   "experiencias_negativas_backfill_hecho": true,
@@ -125671,6 +125800,6 @@
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-29T03:32:08.698746Z"
+    "actualizado_en": "2026-08-29T04:41:37.909864Z"
   }
 }
