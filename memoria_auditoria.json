@@ -2,7 +2,7 @@
   "modo": "simulacion",
   "capital": 97.63,
   "capital_inicial": 100.0,
-  "dia_actual": 14,
+  "dia_actual": 15,
   "dias_totales": 200,
   "stake_por_juego": 5.0,
   "experimento_activo": true,
@@ -112553,9 +112553,9 @@
           "pitcher_away_id": 686613,
           "pitcher_home_id": 681035,
           "inicio_juego": "2026-08-28T19:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-28T18:17:36.128964-04:00",
@@ -113140,7 +113140,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-28T22:17:37.751053Z"
+          "whatsapp_enviado_en": "2026-08-28T22:17:37.751053Z",
+          "marcador_final": "Houston Astros 3 - New York Mets 1",
+          "liquidado_en": "2026-08-28T23:32:53.407375-04:00"
         },
         {
           "game_id": "822935",
@@ -113159,9 +113161,9 @@
           "pitcher_away_id": 663554,
           "pitcher_home_id": 663556,
           "inicio_juego": "2026-08-28T19:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 3.61,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-28T18:17:37.752365-04:00",
@@ -113795,7 +113797,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-28T22:17:38.808583Z"
+          "whatsapp_enviado_en": "2026-08-28T22:17:38.808583Z",
+          "marcador_final": "San Diego Padres 4 - Tampa Bay Rays 9",
+          "liquidado_en": "2026-08-28T23:32:53.539731-04:00"
         },
         {
           "game_id": "822769",
@@ -113814,9 +113818,9 @@
           "pitcher_away_id": 676106,
           "pitcher_home_id": 656302,
           "inicio_juego": "2026-08-28T19:15:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 3.45,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-28T18:17:38.809898-04:00",
@@ -114454,7 +114458,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-28T22:17:39.905335Z"
+          "whatsapp_enviado_en": "2026-08-28T22:17:39.905335Z",
+          "marcador_final": "Seattle Mariners 1 - Toronto Blue Jays 8",
+          "liquidado_en": "2026-08-28T23:32:53.540118-04:00"
         },
         {
           "game_id": "824877",
@@ -114473,9 +114479,9 @@
           "pitcher_away_id": 608372,
           "pitcher_home_id": 656550,
           "inicio_juego": "2026-08-28T19:15:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.61,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-28T18:17:39.906780-04:00",
@@ -115100,7 +115106,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-28T22:17:41.013612Z"
+          "whatsapp_enviado_en": "2026-08-28T22:17:41.013612Z",
+          "marcador_final": "Colorado Rockies 4 - Atlanta Braves 6",
+          "liquidado_en": "2026-08-28T23:32:53.540462-04:00"
         },
         {
           "game_id": "823504",
@@ -115119,9 +115127,9 @@
           "pitcher_away_id": 663776,
           "pitcher_home_id": 693645,
           "inicio_juego": "2026-08-28T19:15:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 3.02,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-28T18:17:41.014975-04:00",
@@ -115744,7 +115752,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-28T22:17:42.216105Z"
+          "whatsapp_enviado_en": "2026-08-28T22:17:42.216105Z",
+          "marcador_final": "Boston Red Sox 0 - New York Yankees 1",
+          "liquidado_en": "2026-08-28T23:32:53.540938-04:00"
         },
         {
           "game_id": "823744",
@@ -115763,9 +115773,9 @@
           "pitcher_away_id": 674003,
           "pitcher_home_id": 701656,
           "inicio_juego": "2026-08-28T19:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 3.01,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-28T18:40:40.393565-04:00",
@@ -116391,7 +116401,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-28T22:40:41.713317Z"
+          "whatsapp_enviado_en": "2026-08-28T22:40:41.713317Z",
+          "marcador_final": "Texas Rangers 1 - Milwaukee Brewers 6",
+          "liquidado_en": "2026-08-28T23:32:53.541249-04:00"
         },
         {
           "game_id": "823666",
@@ -116410,9 +116422,9 @@
           "pitcher_away_id": 622491,
           "pitcher_home_id": 665152,
           "inicio_juego": "2026-08-28T20:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.17,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-28T19:10:37.587734-04:00",
@@ -117060,7 +117072,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-28T23:10:38.841134Z"
+          "whatsapp_enviado_en": "2026-08-28T23:10:38.841134Z",
+          "marcador_final": "Chicago White Sox 7 - Minnesota Twins 4",
+          "liquidado_en": "2026-08-28T23:32:53.541560-04:00"
         },
         {
           "game_id": "823013",
@@ -117079,9 +117093,9 @@
           "pitcher_away_id": 683003,
           "pitcher_home_id": 687273,
           "inicio_juego": "2026-08-28T20:15:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.62,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-28T19:15:27.294769-04:00",
@@ -117664,7 +117678,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-28T23:15:29.308220Z"
+          "whatsapp_enviado_en": "2026-08-28T23:15:29.308220Z",
+          "marcador_final": "Pittsburgh Pirates 1 - St. Louis Cardinals 4",
+          "liquidado_en": "2026-08-28T23:32:53.541975-04:00"
         },
         {
           "game_id": "823985",
@@ -119549,6 +119565,22 @@
           "whatsapp_enviado_en": "2026-08-29T01:15:25.050391Z"
         }
       ],
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
+    },
+    {
+      "dia": 15,
+      "fecha": "2026-08-29",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
       "resumen": {
         "jugadas": 0,
         "ganadas": 0,
@@ -125300,6 +125332,206 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-29T01:40:16.150601Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-823583-1787974373",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-08-28",
+      "game_id": "823583",
+      "visitante": "Houston Astros",
+      "home": "New York Mets",
+      "pick": "New York Mets ML",
+      "probPick": 54.1,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Houston Astros 3 - New York Mets 1",
+      "patron": "sin_cuota_real",
+      "leccion": "No apostar con dinero si no hay cuota de mercado (Pinnacle/DK).",
+      "motivo": "Heurística post-fallo (sin_cuota_real)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-29T03:32:53.535996Z"
+    },
+    {
+      "id": "lec-veto_acertado-823583-1787974373",
+      "tipo": "veto_acertado",
+      "fecha": "2026-08-28",
+      "game_id": "823583",
+      "visitante": "Houston Astros",
+      "home": "New York Mets",
+      "pick": "New York Mets ML",
+      "probPick": 54.1,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Houston Astros 3 - New York Mets 1",
+      "patron": "veto_acertado",
+      "leccion": "Bloqueo de dinero acertó: el pick falló; mantener señales parecidas.",
+      "motivo": "mente bloqueó dinero + fallo",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-29T03:32:53.536164Z"
+    },
+    {
+      "id": "lec-sin_cuota_real-823583-1787974373",
+      "tipo": "sin_cuota_real",
+      "fecha": "2026-08-28",
+      "game_id": "823583",
+      "visitante": "Houston Astros",
+      "home": "New York Mets",
+      "pick": "New York Mets ML",
+      "probPick": 54.1,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Houston Astros 3 - New York Mets 1",
+      "patron": "mala_practica_sin_mercado",
+      "leccion": "No apostar dinero sin cuota real (Pinnacle/DK); paper sin mercado no es edge.",
+      "motivo": "sin cuota de mercado",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-29T03:32:53.536186Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-822935-1787974373",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-28",
+      "game_id": "822935",
+      "visitante": "San Diego Padres",
+      "home": "Tampa Bay Rays",
+      "pick": "Tampa Bay Rays ML",
+      "probPick": 58.1,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "San Diego Padres 4 - Tampa Bay Rays 9",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-29T03:32:53.539923Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-822769-1787974373",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-28",
+      "game_id": "822769",
+      "visitante": "Seattle Mariners",
+      "home": "Toronto Blue Jays",
+      "pick": "Toronto Blue Jays ML",
+      "probPick": 59.2,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Seattle Mariners 1 - Toronto Blue Jays 8",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-29T03:32:53.540254Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-824877-1787974373",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-28",
+      "game_id": "824877",
+      "visitante": "Colorado Rockies",
+      "home": "Atlanta Braves",
+      "pick": "Atlanta Braves ML",
+      "probPick": 65.7,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Colorado Rockies 4 - Atlanta Braves 6",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-29T03:32:53.540689Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-823504-1787974373",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-28",
+      "game_id": "823504",
+      "visitante": "Boston Red Sox",
+      "home": "New York Yankees",
+      "pick": "New York Yankees ML",
+      "probPick": 62.3,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Boston Red Sox 0 - New York Yankees 1",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-29T03:32:53.541088Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-823744-1787974373",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-28",
+      "game_id": "823744",
+      "visitante": "Texas Rangers",
+      "home": "Milwaukee Brewers",
+      "pick": "Milwaukee Brewers ML",
+      "probPick": 62.4,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Texas Rangers 1 - Milwaukee Brewers 6",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-29T03:32:53.541379Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-823666-1787974373",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-28",
+      "game_id": "823666",
+      "visitante": "Chicago White Sox",
+      "home": "Minnesota Twins",
+      "pick": "Chicago White Sox ML",
+      "probPick": 54.5,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Chicago White Sox 7 - Minnesota Twins 4",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-29T03:32:53.541781Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-823013-1787974373",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-08-28",
+      "game_id": "823013",
+      "visitante": "Pittsburgh Pirates",
+      "home": "St. Louis Cardinals",
+      "pick": "St. Louis Cardinals ML",
+      "probPick": 52.0,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Pittsburgh Pirates 1 - St. Louis Cardinals 4",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-29T03:32:53.542146Z"
     }
   ],
   "mente_stats": {
@@ -125310,9 +125542,9 @@
         "fallos": 0
       },
       "PASAR": {
-        "n": 0,
-        "evito_fallo": 0,
-        "oportunidad_perdida": 0
+        "n": 8,
+        "evito_fallo": 1,
+        "oportunidad_perdida": 7
       },
       "ESPERAR": {
         "n": 0,
@@ -125322,9 +125554,9 @@
     },
     "patrones": {
       "scratch": {
-        "n": 0,
+        "n": 1,
         "pasar_ok": 0,
-        "pasar_miss": 0,
+        "pasar_miss": 1,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -125336,30 +125568,30 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 0,
-        "pasar_ok": 0,
-        "pasar_miss": 0,
+        "n": 7,
+        "pasar_ok": 1,
+        "pasar_miss": 6,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "sin_mercado": {
-        "n": 0,
-        "pasar_ok": 0,
-        "pasar_miss": 0,
+        "n": 8,
+        "pasar_ok": 1,
+        "pasar_miss": 7,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 0,
-        "pasar_ok": 0,
-        "pasar_miss": 0,
+        "n": 8,
+        "pasar_ok": 1,
+        "pasar_miss": 7,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "favorito_alto": {
-        "n": 0,
+        "n": 3,
         "pasar_ok": 0,
-        "pasar_miss": 0,
+        "pasar_miss": 3,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -125371,55 +125603,74 @@
         "apostar_fail": 0
       }
     },
-    "penalizacion": {}
+    "penalizacion": {
+      "scratch": 0,
+      "starter_riesgo": 0,
+      "humanos": -2,
+      "sin_mercado": -2,
+      "edge_bajo": -2,
+      "favorito_alto": 0,
+      "limpio": 0
+    },
+    "vistos": [
+      "823583:fallo",
+      "822935:acierto",
+      "822769:acierto",
+      "824877:acierto",
+      "823504:acierto",
+      "823744:acierto",
+      "823666:acierto",
+      "823013:acierto"
+    ],
+    "actualizado_en": "2026-08-29T03:32:53.542180Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 164,
-    "muestras_reales": 164,
+    "muestras": 172,
+    "muestras_reales": 172,
     "schema": 4,
-    "mensaje": "Reentrenado con 164 muestras (164 reales, RF acc 100.0%, RF holdout 51.5%, XGB acc 99.4%, XGB holdout 63.6%)",
+    "mensaje": "Reentrenado con 172 muestras (172 reales, RF acc 100.0%, RF holdout 51.4%, XGB acc 100.0%, XGB holdout 57.1%)",
     "accuracy_train": 1.0,
-    "accuracy_holdout": 0.515,
-    "accuracy_xgb_train": 0.994,
-    "accuracy_xgb_holdout": 0.636,
-    "ultimo_entreno": "2026-08-29T01:40:28.429176",
+    "accuracy_holdout": 0.514,
+    "accuracy_xgb_train": 1.0,
+    "accuracy_xgb_holdout": 0.571,
+    "ultimo_entreno": "2026-08-29T03:33:03.599736",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 164,
+    "muestras": 172,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
         "ok": true,
-        "muestras": 31,
+        "muestras": 34,
         "metodo": "isotonic"
       },
       "underdog": {
         "ok": true,
-        "muestras": 44,
+        "muestras": 47,
         "metodo": "isotonic"
       },
       "scratch": {
         "ok": true,
-        "muestras": 49,
+        "muestras": 50,
         "metodo": "isotonic"
       },
       "limpio": {
         "ok": true,
-        "muestras": 40,
+        "muestras": 41,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 164 muestras (ECE≈0.06) · 4 tipos",
-    "ece": 0.063
+    "mensaje": "Calibrado isotonic con 172 muestras (ECE≈0.06) · 4 tipos",
+    "ece": 0.058
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-28T23:17:00.025318Z"
+    "actualizado_en": "2026-08-29T03:32:08.698746Z"
   }
 }
