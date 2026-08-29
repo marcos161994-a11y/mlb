@@ -119604,9 +119604,9 @@
           "pitcher_away_id": 607200,
           "pitcher_home_id": 641927,
           "inicio_juego": "2026-08-29T14:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.5,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-29T14:27:31.183597-04:00",
@@ -120268,7 +120268,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-29T18:27:32.607318Z"
+          "whatsapp_enviado_en": "2026-08-29T18:27:32.607318Z",
+          "marcador_final": "Chicago White Sox 3 - Minnesota Twins 2",
+          "liquidado_en": "2026-08-29T16:50:06.710830-04:00"
         },
         {
           "game_id": "823011",
@@ -128410,6 +128412,6 @@
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-29T18:26:44.984745Z"
+    "actualizado_en": "2026-08-29T20:39:29.805115Z"
   }
 }
