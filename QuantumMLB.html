@@ -791,16 +791,14 @@ async function cargarHistorialFallback(signal) {
             experimento_activo: true,
             dias,
         };
-        try {
-            pintarPredicciones(memoria, null);
-        } catch (e) {
-            console.warn('pintarPredicciones fallback', e);
-            reportarErrorPanel('pintar_predicciones_fallback', e && (e.message || e));
-        }
-        const capEl = document.getElementById('capital-display');
-        if (capEl && d.capital != null) capEl.textContent = '$' + Number(d.capital).toFixed(2);
-        const dEl = document.getElementById('dia-actual');
-        if (dEl && d.dia_actual != null) dEl.textContent = 'DÍA ' + d.dia_actual;
+        pintarEstadoSeguro({
+            memoria,
+            pl_split: null,
+            dia_hoy: null,
+            banca: { disponible: d.capital, en_juego_hoy: 0 },
+            config: {},
+            estrategia: {},
+        }, 'fallback');
         historialPintado = true;
         return true;
     } catch (e) {
@@ -1207,14 +1205,16 @@ function pintarEstado(data) {
     const pred = split.predicciones || {};
     const din = split.dinero || {};
     const statsContent = document.getElementById('stats-modelo-content');
-    if ((pred.total || 0) > 0 || (din.total || 0) > 0) {
-        statsContent.innerHTML =
-            `<div class="rend-grid">` +
-            rendCard('📋 Papel', pred.aciertos, pred.fallos, pred.win_rate, pred.ganado, pred.perdido, pred.neto) +
-            rendCard('💰 Dinero', din.ganadas, din.perdidas, din.win_rate, din.ganado, din.perdido, din.neto) +
-            `</div>`;
-    } else {
-        statsContent.innerHTML = '<p class="meta-line">Sin datos suficientes todavía.</p>';
+    if (statsContent) {
+        if ((pred.total || 0) > 0 || (din.total || 0) > 0) {
+            statsContent.innerHTML =
+                `<div class="rend-grid">` +
+                rendCard('📋 Papel', pred.aciertos, pred.fallos, pred.win_rate, pred.ganado, pred.perdido, pred.neto) +
+                rendCard('💰 Dinero', din.ganadas, din.perdidas, din.win_rate, din.ganado, din.perdido, din.neto) +
+                `</div>`;
+        } else {
+            statsContent.innerHTML = '<p class="meta-line">Sin datos suficientes todavía.</p>';
+        }
     }
 
     document.getElementById('dia-actual').textContent =
@@ -1245,8 +1245,10 @@ function pintarEstado(data) {
         return s + Number(a.profit || 0);
     }, 0);
 
-    plEl.textContent = fmtMoney(profitHoy);
-    plEl.className = 'val ' + (profitHoy >= 0 ? 'pos' : 'neg');
+    if (plEl) {
+        plEl.textContent = fmtMoney(profitHoy);
+        plEl.className = 'val ' + (profitHoy >= 0 ? 'pos' : 'neg');
+    }
 
     document.getElementById('ganadas-hoy').textContent = ganadas;
     const perdEl = document.getElementById('perdidas-hoy');
@@ -1262,8 +1264,10 @@ function pintarEstado(data) {
     const capitalNow = Number(m.capital || capitalIni);
     const roi = capitalIni ? ((capitalNow - capitalIni) / capitalIni * 100) : 0;
     const roiEl = document.getElementById('roi-total');
-    roiEl.textContent = (roi >= 0 ? '+' : '') + roi.toFixed(2) + '%';
-    roiEl.className = 'val ' + (roi >= 0 ? 'pos' : 'neg');
+    if (roiEl) {
+        roiEl.textContent = (roi >= 0 ? '+' : '') + roi.toFixed(2) + '%';
+        roiEl.className = 'val ' + (roi >= 0 ? 'pos' : 'neg');
+    }
 
     const mente = data.mente || cfg.mente || {};
     document.getElementById('modo-badge').textContent = soloModelo
@@ -1286,19 +1290,21 @@ function pintarEstado(data) {
     const redactar = (s) => String(s || '')
         .replace(/api[_-]?key=[^&\s]+/gi, 'apiKey=***')
         .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '***');
-    if (soloModelo) {
-        ls.style.color = '#00ff88';
-        ls.textContent = '✓ Modo solo modelo (sin Odds API)';
-    } else if (lin.ok) {
-        ls.style.color = lin.circuito ? '#ffd166' : '#00ff88';
-        const src = lin.fallback_espn ? 'ESPN/DraftKings' : (lin.fuente || 'mercado');
-        const pausa = lin.circuito
-            ? (' · OddsPapi en pausa hasta ' + (lin.circuito_hasta_hora || 'luego'))
-            : '';
-        ls.textContent = '✓ Cuotas ' + src + pausa + ' · ' + redactar(lin.mensaje || '');
-    } else {
-        ls.style.color = '#ffbc00';
-        ls.textContent = '⚠ ' + redactar(lin.mensaje || 'Sin cuotas de internet');
+    if (ls) {
+        if (soloModelo) {
+            ls.style.color = '#00ff88';
+            ls.textContent = '✓ Modo solo modelo (sin Odds API)';
+        } else if (lin.ok) {
+            ls.style.color = lin.circuito ? '#ffd166' : '#00ff88';
+            const src = lin.fallback_espn ? 'ESPN/DraftKings' : (lin.fuente || 'mercado');
+            const pausa = lin.circuito
+                ? (' · OddsPapi en pausa hasta ' + (lin.circuito_hasta_hora || 'luego'))
+                : '';
+            ls.textContent = '✓ Cuotas ' + src + pausa + ' · ' + redactar(lin.mensaje || '');
+        } else {
+            ls.style.color = '#ffbc00';
+            ls.textContent = '⚠ ' + redactar(lin.mensaje || 'Sin cuotas de internet');
+        }
     }
 
     const vs = document.getElementById('vigilancia-status');
@@ -1408,11 +1414,17 @@ function pintarEstado(data) {
     const histTxt = fechasHist.length
         ? ` · historial ${fechasHist.join(' · ')}`
         : ' · historial vacío';
-    document.getElementById('favorables-hoy').textContent =
-        `Hoy: ${fav} listo(s) / máx ${maxP} · papel ${ganadas}✓ ${perdidas}✗ ${pendientes}⏳ ${fmtMoney(profitHoy)}` +
-        ` · dinero ${gDin}✓ ${pDin}✗ ${pendDin}⏳ ${fmtMoney(profitDin)}` + histTxt;
+    const favEl = document.getElementById('favorables-hoy');
+    if (favEl) {
+        favEl.textContent =
+            `Hoy: ${fav} listo(s) / máx ${maxP} · papel ${ganadas}✓ ${perdidas}✗ ${pendientes}⏳ ${fmtMoney(profitHoy)}` +
+            ` · dinero ${gDin}✓ ${pDin}✗ ${pendDin}⏳ ${fmtMoney(profitDin)}` + histTxt;
+    }
 
     const lista = document.getElementById('lista-historial');
+    if (!lista) {
+        return;
+    }
     const diasDinero = (m.dias || []).filter(d => (d.apuestas || []).length > 0);
     if (!diasDinero.length) {
         lista.innerHTML = '<p style="color:var(--muted);font-size:0.82rem;margin:0">Sin apuestas con dinero. Las predicciones en papel estan abajo.</p>';
@@ -1648,6 +1660,7 @@ function pintarPicksHoy(juegos, data) {
 
 function pintarPredicciones(memoria, plSplit) {
     const lista = document.getElementById('lista-predicciones');
+    if (!lista) return;
     if (!memoria.dias || memoria.dias.length === 0) {
         lista.innerHTML = '<p style="color:var(--muted)">Sin predicciones registradas aún.</p>';
         return;
@@ -1683,10 +1696,12 @@ function pintarPredicciones(memoria, plSplit) {
     for (const d of diasOrden) {
         const porJuego = new Map();
         (d.predicciones || []).forEach(p => {
+            const gid = String(p.game_id ?? '');
+            if (!gid) return;
             // Retroactivo / tardío: no cuenta como precisión (pick inventado post-partido)
             const invalida = p.invalida_tarde || p.valida_stats === false || p.retroactivo;
-            porJuego.set(p.game_id, {
-                game_id: p.game_id,
+            porJuego.set(gid, {
+                game_id: gid,
                 visitante: p.visitante,
                 home: p.home,
                 pick: p.pick,
@@ -1703,8 +1718,10 @@ function pintarPredicciones(memoria, plSplit) {
             });
         });
         (d.apuestas || []).forEach(a => {
-            const row = porJuego.get(a.game_id) || {
-                game_id: a.game_id,
+            const gid = String(a.game_id ?? '');
+            if (!gid) return;
+            const row = porJuego.get(gid) || {
+                game_id: gid,
                 visitante: a.visitante,
                 home: a.home,
                 pick: a.pick,
@@ -1727,7 +1744,7 @@ function pintarPredicciones(memoria, plSplit) {
                 row.resultado = a.estado === 'ganada' ? 'acierto' : 'fallo';
             }
             if (!row.marcador) row.marcador = a.marcador_final;
-            porJuego.set(a.game_id, row);
+            porJuego.set(gid, row);
         });
 
         const filas = [...porJuego.values()];
@@ -1932,10 +1949,18 @@ async function bloquearHoy() {
 }
 
 async function liquidar() {
-    const r = await fetch(API + '/api/liquidar', { method: 'POST' });
-    const d = await r.json();
-    toast(`${d.liquidaciones} juegos liquidados · Banca $${d.capital.toFixed(2)}`);
-    cargarEstado();
+    try {
+        const r = await fetch(API + '/api/liquidar', { method: 'POST' });
+        const d = await r.json();
+        if (!r.ok) {
+            throw new Error(d.detail || d.motivo || ('Error ' + r.status));
+        }
+        toast(`${d.liquidaciones || 0} juegos liquidados · Banca $${Number(d.capital ?? 0).toFixed(2)}`);
+        cargarEstado();
+    } catch (e) {
+        toast(e.message || 'No se pudo liquidar');
+        reportarErrorPanel('liquidar', e && (e.message || e));
+    }
 }
 
 async function procesarExperiencias() {

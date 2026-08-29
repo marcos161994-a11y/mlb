@@ -261,6 +261,8 @@ def hallazgos_errores_cliente(recientes: list[dict[str, Any]], minutos: int = 12
     for err in reversed(recientes):
         if not isinstance(err, dict):
             continue
+        if str(err.get("codigo") or "").startswith("test_"):
+            continue
         cod = str(err.get("codigo") or "panel_js")
         if cod in vistos:
             continue

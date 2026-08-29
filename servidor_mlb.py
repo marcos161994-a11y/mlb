@@ -1483,7 +1483,7 @@ def guardar_prediccion(
 
     dia["predicciones"].append(
         {
-            "game_id": juego["id"],
+            "game_id": str(juego["id"]),
             "visitante": juego["visitante"],
             "home": juego["home"],
             "pick": juego["pick"],
@@ -1588,7 +1588,13 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
             permitir_gracia=permitir_gracia,
         ):
             # Marca validez: solo PROGRAMADO pre-inicio
-            pred = next(p for p in dia["predicciones"] if str(p.get("game_id")) == gid)
+            pred = next(
+                (p for p in dia["predicciones"] if str(p.get("game_id")) == gid),
+                None,
+            )
+            if pred is None:
+                print(f"[REGISTRO] Predicción no encontrada tras guardar game_id={gid}")
+                continue
             if permitir_gracia:
                 pred["valida_stats"] = prediccion_valida_para_stats(pred)
                 pred["invalida_tarde"] = not pred["valida_stats"]
@@ -2274,7 +2280,7 @@ def _bloquear_juego_locked(
         ).strip(" ·")
     dia["apuestas"].append(
         {
-            "game_id": juego["id"],
+            "game_id": str(juego["id"]),
             "visitante": juego["visitante"],
             "home": juego["home"],
             "pick": juego["pick"],
@@ -2334,7 +2340,7 @@ def _bloquear_juego_locked(
         "juego": juego["visitante"] + " vs " + juego["home"],
         "odds": juego.get("odds"),
         "edge": juego.get("edge"),
-        "game_id": game_id,
+        "game_id": str(game_id),
     }
 
 
@@ -2837,10 +2843,24 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
             pass
 
     # Resumen del día también con predicciones en papel (para el panel)
-    resumen_hoy = dict(dia["resumen"]) if dia else {
-        "jugadas": 0, "ganadas": 0, "perdidas": 0, "pendientes": 0,
-        "profit_dia": 0.0, "capital_arriesgado": 0.0, "total_apostado": 0.0,
-    }
+    if dia:
+        if not dia.get("resumen"):
+            try:
+                dia["resumen"] = resumen_dia(dia)
+            except Exception:
+                pass
+        try:
+            resumen_hoy = dict(dia.get("resumen") or resumen_dia(dia))
+        except Exception:
+            resumen_hoy = {
+                "jugadas": 0, "ganadas": 0, "perdidas": 0, "pendientes": 0,
+                "profit_dia": 0.0, "capital_arriesgado": 0.0, "total_apostado": 0.0,
+            }
+    else:
+        resumen_hoy = {
+            "jugadas": 0, "ganadas": 0, "perdidas": 0, "pendientes": 0,
+            "profit_dia": 0.0, "capital_arriesgado": 0.0, "total_apostado": 0.0,
+        }
     preds_hoy = (dia or {}).get("predicciones") or []
     pred_aciertos = sum(
         1
@@ -3211,9 +3231,10 @@ def api_picks_hoy():
     vistos: set[str] = set()
     juegos = []
     for g in estado.get("games", []):
-        if g.get("id") in vistos:
+        gid = str(g.get("id") or "")
+        if not gid or gid in vistos:
             continue
-        vistos.add(g["id"])
+        vistos.add(gid)
         juegos.append(g)
     apostables = sorted(
         [g for g in juegos if apostable_con_mercado(g) and (g.get("probPick") or 0) >= min_prob],
