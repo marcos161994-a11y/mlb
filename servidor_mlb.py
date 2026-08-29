@@ -3430,17 +3430,10 @@ def api_predicciones():
 def api_health():
     """Ping para Render + cron externo (mantiene el servicio despierto en plan free).
 
-    Ligero a propósito: Render usa este path como healthCheck. Si aquí corre ML
-    o T-60, el check timeout mata el servicio y parece que siempre hay un error.
-    El trabajo pesado va en /api/auto-bloqueo-externo (cron cada 5 min).
+    Ligero a propósito: Render usa este path como healthCheck. Sin wipe recovery
+    ni ML — eso va en boot, /api/historial-status y /api/auto-bloqueo-externo.
     """
-    wake: dict[str, Any] = {"restore": False}
-    try:
-        wake["restore"] = bool(_intentar_recuperar_wipe())
-    except Exception as e:
-        wake["error"] = str(e)[:120]
-
-    cfg = _cfg_con_telegram_memoria()
+    cfg = cargar_config()
     circ: dict = {"abierto": False}
     try:
         from lineas_oddspapi import estado_circuito
@@ -3451,10 +3444,21 @@ def api_health():
     mem_h = cargar_memoria()
     hist_fechas = sorted(_fechas_con_historial(mem_h))
     hist_ap, hist_pr = _contar_historial(mem_h)
+    cfg_ops = dict(cfg)
+    tg = mem_h.get("telegram") if isinstance(mem_h.get("telegram"), dict) else {}
+    if tg:
+        cfg_ops["_memoria_telegram"] = tg
+    rss_mb: float | None = None
+    try:
+        import resource
+
+        rss_mb = round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 1)
+    except Exception:
+        pass
     return {
         "ok": True,
         "servicio": "quantum-mlb",
-        "wake": wake,
+        "rss_mb": rss_mb,
         "capital": mem_h.get("capital"),
         "dia_actual": mem_h.get("dia_actual"),
         "historial": {
@@ -3552,11 +3556,11 @@ def api_health():
             "min_confianza": int((cfg.get("mente") or {}).get("min_confianza") or 3),
             "shadow": bool((cfg.get("mente") or {}).get("shadow", False)),
         },
-        "mente_errores": _resumen_mente_errores(cfg),
+        "mente_errores": _resumen_mente_errores(cfg_ops),
         "vigilancia_cron_min": 5,
-        "whatsapp": whatsapp_disponible(cfg),
-        "telegram": telegram_disponible(cfg),
-        "alertas": alerta_disponible(cfg),
+        "whatsapp": whatsapp_disponible(cfg_ops),
+        "telegram": telegram_disponible(cfg_ops),
+        "alertas": alerta_disponible(cfg_ops),
         "xgboost": {
             "activo": bool(cfg.get("usar_xgboost", True)),
         },
