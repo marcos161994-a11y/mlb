@@ -563,7 +563,7 @@ const API = (!window.location.origin || window.location.protocol === 'file:')
 const ES_NUBE = API.includes('onrender.com') || API.includes('render.com');
 const REFRESH_MS = ES_NUBE ? 45000 : 8000;
 const CACHE_KEY = 'qmlb_last_state_v2';
-const PANEL_VER = '2026-08-28-jsfix';
+const PANEL_VER = '2026-08-29-preds';
 let cargandoEstado = false;
 let cargandoBoot = false;
 let cargandoJuegos = false;
@@ -642,14 +642,36 @@ function aplicarHealthRapido(h) {
 }
 
 function pintarEstadoSeguro(data, motivo) {
+    let estadoOk = false;
     try {
         pintarEstado(data);
-        historialPintado = true;
-        return true;
+        estadoOk = true;
     } catch (e) {
         console.warn('pintarEstado', motivo || '', e);
-        return false;
     }
+    try {
+        if (data && data.memoria) {
+            pintarPredicciones(data.memoria, data.pl_split);
+        }
+    } catch (e) {
+        console.warn('pintarPredicciones', motivo || '', e);
+        const lp = document.getElementById('lista-predicciones');
+        if (lp) {
+            lp.innerHTML = '<p style="color:var(--red)">Error mostrando predicciones. Pulsa ↻ Reintentar.</p>';
+        }
+    }
+    try {
+        if (data && data.memoria) {
+            pintarLecciones(data.lecciones || resumenLeccionesLocal(data.memoria), data.mente);
+        }
+    } catch (e) {
+        console.warn('pintarLecciones', motivo || '', e);
+    }
+    const tienePreds = !!(data && data.memoria && (data.memoria.dias || []).some(
+        d => (d.predicciones || []).length > 0
+    ));
+    if (estadoOk || tienePreds) historialPintado = true;
+    return estadoOk || tienePreds;
 }
 
 function guardarCacheEstado(state) {
@@ -699,10 +721,9 @@ function pintarDesdeCache(motivo) {
     const cached = leerCacheEstado();
     if (!cached) return false;
     try {
-        pintarEstado(cached);
+        pintarEstadoSeguro(cached, motivo || 'cache');
         if (cached.games) {
-            pintarPicksHoy(cached.games, cached);
-            // No pisa contenedor-juegos si estamos mostrando error de wake
+            try { pintarPicksHoy(cached.games, cached); } catch (_) {}
         }
         const hs = document.getElementById('historial-sello');
         if (hs && cached.historial_sello && cached.historial_sello.mensaje) {
@@ -1404,8 +1425,7 @@ function pintarEstado(data) {
         lista.innerHTML = html;
     }
 
-    pintarPredicciones(m, data.pl_split);
-    pintarLecciones(data.lecciones || resumenLeccionesLocal(m), data.mente);
+    // predicciones y lecciones: pintarEstadoSeguro (aislado del resto del panel)
 }
 
 function resumenLeccionesLocal(memoria) {
@@ -1613,6 +1633,8 @@ function pintarPredicciones(memoria, plSplit) {
     const pred = (plSplit && plSplit.predicciones) || {};
     const din = (plSplit && plSplit.dinero) || {};
 
+    const diasOrden = [...memoria.dias].filter(d => (d.predicciones || []).length > 0).reverse();
+
     let html = `<div style="margin-bottom:12px;padding:10px;background:rgba(0,242,255,0.08);border-radius:8px;border:1px solid rgba(0,242,255,0.25);font-size:0.85rem;line-height:1.55">
         <div><b>Todas las predicciones (papel):</b> ${pred.aciertos||0} ganadas · ${pred.fallos||0} perdidas ·
         Ganado <span style="color:var(--green)">$${(pred.ganado||0).toFixed(2)}</span> ·
@@ -1627,7 +1649,6 @@ function pintarPredicciones(memoria, plSplit) {
     </div>`;
 
     let hayFilas = false;
-    const diasOrden = [...memoria.dias].filter(d => (d.predicciones || []).length > 0).reverse();
     // Abrir el bloque de historial si hay días pasados
     const listaWrap = document.getElementById('lista-predicciones');
     const listaToggle = document.getElementById('predicciones-toggle');
