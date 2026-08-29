@@ -88,6 +88,61 @@ def test_desactivada_no_remedia(tmp_path, monkeypatch):
     assert out["hallazgos"] == []
 
 
+def test_no_repite_mensaje_ni_incidente_segundo_ciclo(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(me, "DATA_DIR", Path(tmp_path))
+    cfg = _cfg_base()
+    meta = {"ok": False, "mensaje": "Sin cuotas de mercado"}
+    out1 = me.ejecutar_ciclo(cfg, lineas_meta=meta)
+    out2 = me.ejecutar_ciclo(cfg, lineas_meta=meta)
+    assert out1.get("hallazgos_nuevos") or out1.get("hallazgos")
+    assert "sin novedad" in (out2.get("mensaje") or "").lower()
+    assert out2.get("hallazgos_nuevos") == []
+    assert len(out2.get("hallazgos_repetidos") or []) >= 1
+    estado = me._leer_estado()
+    cuotas = [i for i in estado["incidentes"] if i.get("codigo") == "cuotas_fallo"]
+    assert len(cuotas) == 1
+
+
+def test_runtime_no_duplica_mismo_origen(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(me, "DATA_DIR", Path(tmp_path))
+    me.registrar_error_runtime("cron", "timeout state", codigo="runtime")
+    me.registrar_error_runtime("cron", "timeout state otra vez", codigo="runtime")
+    estado = me._leer_estado()
+    runtimes = [i for i in estado["incidentes"] if i.get("codigo") == "runtime"]
+    assert len(runtimes) == 1
+
+
+def test_incidentes_recientes_uno_por_codigo(tmp_path, monkeypatch):
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(me, "DATA_DIR", Path(tmp_path))
+    estado = me._leer_estado()
+    for i in range(3):
+        me._push_incidente(
+            estado,
+            {
+                "hora": me._iso(),
+                "codigo": "cuotas_fallo",
+                "mensaje": f"intento {i}",
+                "severidad": "alta",
+            },
+        )
+    me._push_incidente(
+        estado,
+        {
+            "hora": me._iso(),
+            "codigo": "vigilancia_t60",
+            "mensaje": "sin pick",
+            "severidad": "alta",
+        },
+    )
+    dedup = me._incidentes_recientes_dedup(estado, limite=5)
+    codigos = [d.get("codigo") for d in dedup]
+    assert codigos.count("cuotas_fallo") == 1
+    assert "vigilancia_t60" in codigos
+
+
 def test_no_duplica_incidentes_en_cooldown(tmp_path, monkeypatch):
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
     monkeypatch.setattr(me, "DATA_DIR", Path(tmp_path))

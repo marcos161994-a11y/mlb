@@ -157,6 +157,97 @@ def _push_incidente(estado: dict, incidente: dict[str, Any]) -> None:
         estado["incidentes"] = lista[-MAX_INCIDENTES:]
 
 
+def _clave_hallazgo(h: dict[str, Any]) -> str:
+    return str(h.get("codigo") or "")
+
+
+def _filtrar_hallazgos_remediados(
+    hallazgos: list[dict[str, Any]], estado: dict[str, Any]
+) -> list[dict[str, Any]]:
+    """Oculta hallazgos cuya remediación ya quedó aplicada (evita alerta eterna)."""
+    ov = estado.get("overrides") if isinstance(estado.get("overrides"), dict) else {}
+    out: list[dict[str, Any]] = []
+    for h in hallazgos:
+        cod = _clave_hallazgo(h)
+        if cod == "fallback_internet_off" and ov.get("lineas.fallback_internet") is True:
+            continue
+        if cod == "proveedor_oddspapi_activo_con_circuito" and ov.get("lineas.proveedor") == "espn":
+            continue
+        if cod == "mente_shadow" and ov.get("mente.shadow") is False:
+            continue
+        if cod == "oddspapi_circuito" and ov.get("lineas.proveedor") == "espn":
+            copia = dict(h)
+            copia["severidad"] = "aviso"
+            copia["mensaje"] = (
+                "OddsPapi en pausa · remediado con ESPN/fallback"
+            )[:160]
+            out.append(copia)
+            continue
+        out.append(h)
+    return out
+
+
+def _clasificar_hallazgos(
+    estado: dict[str, Any], hallazgos: list[dict[str, Any]]
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Separa hallazgos nuevos vs repetidos (mismo código ya activo)."""
+    activos = estado.setdefault("activos", {})
+    if not isinstance(activos, dict):
+        activos = {}
+        estado["activos"] = activos
+
+    codigos_actuales: set[str] = set()
+    nuevos: list[dict[str, Any]] = []
+    repetidos: list[dict[str, Any]] = []
+
+    for h in hallazgos:
+        cod = _clave_hallazgo(h)
+        if not cod:
+            nuevos.append(h)
+            continue
+        codigos_actuales.add(cod)
+        prev = activos.get(cod)
+        if isinstance(prev, dict):
+            prev = dict(prev)
+            prev["last_seen"] = _iso()
+            prev["mensaje"] = (h.get("mensaje") or "")[:160]
+            prev["veces"] = int(prev.get("veces") or 1) + 1
+            activos[cod] = prev
+            repetidos.append(h)
+        else:
+            activos[cod] = {
+                "first_seen": _iso(),
+                "last_seen": _iso(),
+                "mensaje": (h.get("mensaje") or "")[:160],
+                "severidad": h.get("severidad"),
+                "veces": 1,
+            }
+            nuevos.append(h)
+
+    for cod in list(activos.keys()):
+        if cod not in codigos_actuales:
+            del activos[cod]
+
+    return nuevos, repetidos
+
+
+def _incidentes_recientes_dedup(estado: dict[str, Any], limite: int = 5) -> list[dict[str, Any]]:
+    """Un incidente por código (el más reciente) para no repetir en panel."""
+    vistos: set[str] = set()
+    out: list[dict[str, Any]] = []
+    for inc in reversed(estado.get("incidentes") or []):
+        if not isinstance(inc, dict):
+            continue
+        cod = str(inc.get("codigo") or "")
+        if cod in vistos:
+            continue
+        vistos.add(cod)
+        out.append(inc)
+        if len(out) >= limite:
+            break
+    return out
+
+
 def _cooldown_ok(estado: dict, clave: str, minutos: int) -> bool:
     cds = estado.get("cooldowns") if isinstance(estado.get("cooldowns"), dict) else {}
     raw = cds.get(clave)
@@ -180,6 +271,16 @@ def _marcar_cooldown(estado: dict, clave: str) -> None:
 def registrar_error_runtime(origen: str, mensaje: str, codigo: str = "runtime") -> dict:
     """Registra un error capturado en cron/servidor (sin remediación completa)."""
     estado = _leer_estado()
+    clave = f"{codigo}:{(origen or 'app')[:24]}"
+    if _hallazgo_recien_registrado(estado, clave, minutos=90):
+        return {
+            "hora": _iso(),
+            "codigo": codigo,
+            "origen": (origen or "app")[:40],
+            "mensaje": (mensaje or "")[:220],
+            "acciones": [ACCION_REGISTRAR],
+            "repetido": True,
+        }
     inc = {
         "hora": _iso(),
         "codigo": codigo,
@@ -187,6 +288,7 @@ def registrar_error_runtime(origen: str, mensaje: str, codigo: str = "runtime") 
         "origen": (origen or "app")[:40],
         "mensaje": (mensaje or "")[:220],
         "acciones": [ACCION_REGISTRAR],
+        "clave_dedup": clave,
     }
     _push_incidente(estado, inc)
     _guardar_estado(estado)
@@ -410,7 +512,8 @@ def _hallazgo_recien_registrado(estado: dict, codigo: str, minutos: int = 30) ->
     for inc in reversed(estado.get("incidentes") or []):
         if not isinstance(inc, dict):
             continue
-        if str(inc.get("codigo") or "") != codigo:
+        inc_cod = str(inc.get("clave_dedup") or inc.get("codigo") or "")
+        if inc_cod != codigo:
             continue
         raw = inc.get("hora")
         if not raw:
@@ -420,6 +523,11 @@ def _hallazgo_recien_registrado(estado: dict, codigo: str, minutos: int = 30) ->
         except ValueError:
             return False
         return _ahora() < prev + timedelta(minutes=max(1, minutos))
+    # También cuenta como reciente si el código sigue activo en seguimiento
+    activos = estado.get("activos") if isinstance(estado.get("activos"), dict) else {}
+    act = activos.get(codigo)
+    if isinstance(act, dict) and int(act.get("veces") or 0) > 1:
+        return True
     return False
 
 
@@ -428,12 +536,16 @@ def _aplicar_acciones(
     hallazgos: list[dict[str, Any]],
     cfg: dict,
     opts: dict[str, Any],
+    *,
+    solo_registrar_nuevos: set[str] | None = None,
 ) -> list[dict[str, Any]]:
     aplicadas: list[dict[str, Any]] = []
     if not opts.get("auto_remediar", True):
         for h in hallazgos:
             codigo = str(h.get("codigo") or "")
             if _hallazgo_recien_registrado(estado, codigo):
+                continue
+            if solo_registrar_nuevos is not None and codigo not in solo_registrar_nuevos:
                 continue
             _push_incidente(
                 estado,
@@ -536,17 +648,18 @@ def _aplicar_acciones(
                 if opts.get("notificar"):
                     hechas.append(acc)
         if not _hallazgo_recien_registrado(estado, codigo):
-            _push_incidente(
-                estado,
-                {
-                    "hora": _iso(),
-                    "codigo": h.get("codigo"),
-                    "severidad": h.get("severidad"),
-                    "mensaje": h.get("mensaje"),
-                    "acciones": hechas or [ACCION_REGISTRAR],
-                    "meta": h.get("meta"),
-                },
-            )
+            if solo_registrar_nuevos is None or codigo in solo_registrar_nuevos:
+                _push_incidente(
+                    estado,
+                    {
+                        "hora": _iso(),
+                        "codigo": h.get("codigo"),
+                        "severidad": h.get("severidad"),
+                        "mensaje": h.get("mensaje"),
+                        "acciones": hechas or [ACCION_REGISTRAR],
+                        "meta": h.get("meta"),
+                    },
+                )
         aplicadas.append(
             {
                 "codigo": h.get("codigo"),
@@ -563,13 +676,17 @@ def _notificar_si_cabe(
     aplicadas: list[dict[str, Any]],
     cfg: dict,
     opts: dict[str, Any],
+    *,
+    solo_codigos: set[str] | None = None,
 ) -> dict[str, Any] | None:
     if not opts.get("notificar"):
         return None
     criticos = [
         a
         for a in aplicadas
-        if a.get("severidad") == "alta" and ACCION_NOTIFICAR in (a.get("acciones") or [])
+        if a.get("severidad") == "alta"
+        and ACCION_NOTIFICAR in (a.get("acciones") or [])
+        and (solo_codigos is None or str(a.get("codigo") or "") in solo_codigos)
     ]
     if not criticos:
         return None
@@ -665,7 +782,20 @@ def ejecutar_ciclo(
 
     hallazgos = diagnosticar(cfg_eff, vigilancia=vigilancia, lineas_meta=lineas_meta)
     estado = _leer_estado()
-    aplicadas = _aplicar_acciones(estado, hallazgos, cfg_eff, opts) if hallazgos else []
+    hallazgos = _filtrar_hallazgos_remediados(hallazgos, estado)
+    nuevos, repetidos = _clasificar_hallazgos(estado, hallazgos)
+    codigos_nuevos = {_clave_hallazgo(h) for h in nuevos if _clave_hallazgo(h)}
+    aplicadas = (
+        _aplicar_acciones(
+            estado,
+            hallazgos,
+            cfg_eff,
+            opts,
+            solo_registrar_nuevos=codigos_nuevos,
+        )
+        if hallazgos
+        else []
+    )
 
     # Si se restauró Telegram en acciones, re-evaluar y bajar el hallazgo
     if any(
@@ -712,21 +842,27 @@ def ejecutar_ciclo(
         except Exception:
             pass
 
-    aviso = _notificar_si_cabe(estado, aplicadas, cfg_eff, opts) if aplicadas else None
+    aviso = (
+        _notificar_si_cabe(estado, aplicadas, cfg_eff, opts, solo_codigos=codigos_nuevos)
+        if aplicadas and codigos_nuevos
+        else None
+    )
 
     if telegram_ok_tras and not hallazgos:
         msg_final = "Mente errores OK · Telegram restaurado"
     else:
-        msg_final = _mensaje_resumen(hallazgos, aplicadas)
+        msg_final = _mensaje_resumen(hallazgos, aplicadas, nuevos=nuevos, repetidos=repetidos)
 
     resumen = {
         "ok": True,
         "activo": True,
         "hora": _iso(),
         "hallazgos": hallazgos,
+        "hallazgos_nuevos": nuevos,
+        "hallazgos_repetidos": repetidos,
         "acciones": aplicadas,
         "overrides": dict(estado.get("overrides") or {}),
-        "nivel": _nivel_desde(hallazgos),
+        "nivel": _nivel_desde(hallazgos, nuevos),
         "mensaje": msg_final,
         "notificacion": aviso,
         "telegram_restaurado": telegram_ok_tras,
@@ -737,6 +873,7 @@ def ejecutar_ciclo(
         "nivel": resumen["nivel"],
         "mensaje": resumen["mensaje"],
         "n_hallazgos": len(hallazgos),
+        "n_hallazgos_nuevos": len(nuevos),
         "n_acciones": len(aplicadas),
         "telegram_restaurado": telegram_ok_tras,
     }
@@ -745,19 +882,34 @@ def ejecutar_ciclo(
     return resumen
 
 
-def _nivel_desde(hallazgos: list[dict[str, Any]]) -> str:
-    if any(h.get("severidad") == "alta" for h in hallazgos):
+def _nivel_desde(
+    hallazgos: list[dict[str, Any]], nuevos: list[dict[str, Any]] | None = None
+) -> str:
+    fuente = nuevos if nuevos is not None else hallazgos
+    if any(h.get("severidad") == "alta" for h in fuente):
         return "alerta"
+    if any(h.get("severidad") == "alta" for h in hallazgos):
+        return "aviso"
     if hallazgos:
         return "aviso"
     return "ok"
 
 
 def _mensaje_resumen(
-    hallazgos: list[dict[str, Any]], aplicadas: list[dict[str, Any]]
+    hallazgos: list[dict[str, Any]],
+    aplicadas: list[dict[str, Any]],
+    *,
+    nuevos: list[dict[str, Any]] | None = None,
+    repetidos: list[dict[str, Any]] | None = None,
 ) -> str:
     if not hallazgos:
         return "Mente errores OK · sin fallos operativos"
+    if nuevos is not None and repetidos is not None and not nuevos and repetidos:
+        codigos = ", ".join(str(h.get("codigo")) for h in repetidos[:3])
+        return f"Mente errores · en seguimiento (sin novedad): {codigos}"
+    if nuevos is not None and nuevos and repetidos:
+        cod_n = ", ".join(str(h.get("codigo")) for h in nuevos[:2])
+        return f"Mente errores · {len(nuevos)} nuevo(s): {cod_n} · {len(repetidos)} en seguimiento"
     codigos = ", ".join(str(h.get("codigo")) for h in hallazgos[:3])
     n_acc = sum(len(a.get("acciones") or []) for a in aplicadas)
     return f"Mente errores · {len(hallazgos)} hallazgo(s): {codigos} · {n_acc} acción(es)"
@@ -771,8 +923,15 @@ def resumen_para_panel(cfg: dict | None = None) -> dict[str, Any]:
     incidentes = [
         x for x in (estado.get("incidentes") or []) if isinstance(x, dict)
     ]
-    recientes = list(reversed(incidentes[-5:]))
+    recientes_raw = _incidentes_recientes_dedup(estado, limite=5)
     nivel = ultimo.get("nivel") or "ok"
+    # Si solo hay repetidos en seguimiento, bajar ruido visual del panel
+    if (
+        nivel == "alerta"
+        and int(ultimo.get("n_hallazgos_nuevos") or 0) == 0
+        and int(ultimo.get("n_hallazgos") or 0) > 0
+    ):
+        nivel = "aviso"
     return {
         "activo": bool(opts.get("activo")),
         "auto_remediar": bool(opts.get("auto_remediar")),
@@ -789,9 +948,10 @@ def resumen_para_panel(cfg: dict | None = None) -> dict[str, Any]:
                 "mensaje": (r.get("mensaje") or "")[:120],
                 "acciones": r.get("acciones") or [],
             }
-            for r in recientes
+            for r in recientes_raw
         ],
         "total_incidentes": len(incidentes),
+        "activos": dict(estado.get("activos") or {}),
     }
 
 
