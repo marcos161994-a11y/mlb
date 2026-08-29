@@ -59,7 +59,9 @@ from mente_errores import (
     resumen_para_panel as resumen_mente_errores_panel,
     ejecutar_ciclo as ejecutar_ciclo_mente_errores,
     registrar_error_runtime,
+    registrar_error_cliente,
 )
+from mente_integridad import verificar_panel_html
 from whatsapp_alerta import (
     notificar_pick_t60,
     whatsapp_disponible,
@@ -759,7 +761,7 @@ def calcular_estadisticas_modelo(memoria: dict) -> dict:
     
     for dia in memoria.get("dias", []):
         apostados = {
-            a.get("game_id")
+            str(a.get("game_id"))
             for a in dia.get("apuestas", [])
             if a.get("estado") in ("ganada", "perdida", "pendiente")
         }
@@ -770,9 +772,9 @@ def calcular_estadisticas_modelo(memoria: dict) -> dict:
                     aciertos += 1
                 else:
                     fallos += 1
-        
+
         for prediccion in dia.get("predicciones", []):
-            if prediccion.get("game_id") in apostados:
+            if str(prediccion.get("game_id") or "") in apostados:
                 continue
             if prediccion.get("estado") != "liquidado":
                 continue
@@ -1201,7 +1203,7 @@ def _liquidar_dia_con_juegos(memoria: dict, dia: dict, juegos: list) -> int:
             prediccion["profit"] = profit_v
             prediccion["liquidado_en"] = datetime.now(tz_experimento()).isoformat()
             # Marcar si ese juego también tuvo apuesta con dinero
-            if any(a.get("game_id") == prediccion.get("game_id") for a in apuestas):
+            if any(str(a.get("game_id")) == str(prediccion.get("game_id")) for a in apuestas):
                 prediccion["con_dinero"] = True
             cambios += 1
             print(
@@ -1386,7 +1388,10 @@ def guardar_prediccion(
     stake_v = float(stake_virtual if stake_virtual is not None else stake_virtual_prediccion())
     ahora_dt = datetime.now(tz_experimento())
     ahora = ahora_dt.isoformat()
-    existente = next((p for p in dia["predicciones"] if p.get("game_id") == juego["id"]), None)
+    existente = next(
+        (p for p in dia["predicciones"] if str(p.get("game_id")) == str(juego["id"])),
+        None,
+    )
     if existente:
         # No cambiar pick ya congelado; solo marcar si hubo dinero
         if con_dinero:
@@ -2913,6 +2918,10 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
                 guardar_memoria(memoria)
         except Exception as e:
             print(f"[MENTE-ERRORES] aviso estado: {e}")
+            try:
+                registrar_error_runtime("api_state", str(e), codigo="mente_ciclo")
+            except Exception:
+                pass
 
     memoria_panel = _memoria_para_panel(memoria)
     dia_panel = None
@@ -3474,11 +3483,38 @@ def api_health():
 def api_mente_errores_status():
     """Estado de la mente operativa (errores de la app, no picks)."""
     cfg = cargar_config()
+    panel = verificar_panel_html(BASE_DIR / "QuantumMLB.html")
     return {
         "ok": True,
         "disponible": mente_errores_disponible(cfg),
+        "panel_health": panel,
         **_resumen_mente_errores(cfg),
     }
+
+
+@app.post("/api/mente-errores/cliente")
+async def api_mente_errores_cliente(request: Request):
+    """Errores JS del panel (Safari iOS) → mente de errores."""
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    if not isinstance(body, dict):
+        body = {}
+    return registrar_error_cliente(
+        str(body.get("mensaje") or ""),
+        codigo=str(body.get("codigo") or "panel_js"),
+        origen=str(body.get("origen") or "panel"),
+        panel_ver=str(body.get("panel_ver") or "") or None,
+        url=str(body.get("url") or "") or None,
+    )
+
+
+@app.get("/api/panel-health")
+def api_panel_health():
+    """Comprueba QuantumMLB.html (bugs JS que tumban predicciones)."""
+    out = verificar_panel_html(BASE_DIR / "QuantumMLB.html")
+    return {"ok": bool(out.get("ok")), **out}
 
 
 @app.post("/api/mente-errores/ciclo")

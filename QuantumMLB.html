@@ -563,7 +563,7 @@ const API = (!window.location.origin || window.location.protocol === 'file:')
 const ES_NUBE = API.includes('onrender.com') || API.includes('render.com');
 const REFRESH_MS = ES_NUBE ? 45000 : 8000;
 const CACHE_KEY = 'qmlb_last_state_v2';
-const PANEL_VER = '2026-08-29-preds';
+const PANEL_VER = '2026-08-29-mente';
 let cargandoEstado = false;
 let cargandoBoot = false;
 let cargandoJuegos = false;
@@ -572,6 +572,22 @@ let wakeTimer = null;
 let lastWakeAt = 0;
 let historialPintado = false;
 const WAKE_MAX = 12;
+
+function reportarErrorPanel(codigo, mensaje) {
+    try {
+        fetch(API + '/api/mente-errores/cliente', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                codigo: codigo || 'panel_js',
+                mensaje: String(mensaje || '').slice(0, 500),
+                panel_ver: PANEL_VER,
+                url: String(location.href || '').slice(0, 200),
+                origen: 'panel',
+            }),
+        }).catch(function () {});
+    } catch (_) { /* no tumbar UI */ }
+}
 
 function toast(msg) {
     const t = document.getElementById('toast');
@@ -648,6 +664,7 @@ function pintarEstadoSeguro(data, motivo) {
         estadoOk = true;
     } catch (e) {
         console.warn('pintarEstado', motivo || '', e);
+        reportarErrorPanel('pintar_estado', e && (e.message || e));
     }
     try {
         if (data && data.memoria) {
@@ -655,6 +672,7 @@ function pintarEstadoSeguro(data, motivo) {
         }
     } catch (e) {
         console.warn('pintarPredicciones', motivo || '', e);
+        reportarErrorPanel('pintar_predicciones', e && (e.message || e));
         const lp = document.getElementById('lista-predicciones');
         if (lp) {
             lp.innerHTML = '<p style="color:var(--red)">Error mostrando predicciones. Pulsa ↻ Reintentar.</p>';
@@ -773,7 +791,12 @@ async function cargarHistorialFallback(signal) {
             experimento_activo: true,
             dias,
         };
-        pintarPredicciones(memoria, null);
+        try {
+            pintarPredicciones(memoria, null);
+        } catch (e) {
+            console.warn('pintarPredicciones fallback', e);
+            reportarErrorPanel('pintar_predicciones_fallback', e && (e.message || e));
+        }
         const capEl = document.getElementById('capital-display');
         if (capEl && d.capital != null) capEl.textContent = '$' + Number(d.capital).toFixed(2);
         const dEl = document.getElementById('dia-actual');
