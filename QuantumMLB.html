@@ -535,9 +535,9 @@
 <div class="historial" id="historial-predicciones">
     <h3 onclick="togglePredicciones()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
         <span>📋 Predicciones en papel (todos los juegos · pasado incluido)</span>
-        <span id="predicciones-toggle" style="font-size:1.2rem;">▲</span>
+        <span id="predicciones-toggle" style="font-size:1.2rem;">▼</span>
     </h3>
-    <div id="lista-predicciones" style="display:block;"><p style="color:var(--muted)">Sin predicciones registradas aún.</p></div>
+    <div id="lista-predicciones" style="display:none;"><p style="color:var(--muted)">Sin predicciones registradas aún.</p></div>
 </div>
 
 <div class="historial" id="historial-lecciones">
@@ -563,7 +563,7 @@ const API = (!window.location.origin || window.location.protocol === 'file:')
 const ES_NUBE = API.includes('onrender.com') || API.includes('render.com');
 const REFRESH_MS = ES_NUBE ? 45000 : 8000;
 const CACHE_KEY = 'qmlb_last_state_v2';
-const PANEL_VER = '2026-08-29-mente';
+const PANEL_VER = '2026-08-29-preds-ui';
 let cargandoEstado = false;
 let cargandoBoot = false;
 let cargandoJuegos = false;
@@ -898,12 +898,15 @@ async function probarTelegram() {
 function togglePredicciones() {
     const lista = document.getElementById('lista-predicciones');
     const toggle = document.getElementById('predicciones-toggle');
+    if (!lista || !toggle) return;
     if (lista.style.display === 'none') {
         lista.style.display = 'block';
         toggle.textContent = '▲';
+        picksUi.predHistorial = true;
     } else {
         lista.style.display = 'none';
         toggle.textContent = '▼';
+        picksUi.predHistorial = false;
     }
 }
 
@@ -935,8 +938,9 @@ function toggleLecciones() {
 const picksUi = {
     abierto: true,
     dinero: true,
-    // Papel abierto por defecto para que en móvil se vea el menú al entrar
     papel: true,
+    predHistorial: false,
+    predDias: {},
 };
 
 function wirePicksDesplegables() {
@@ -962,12 +966,15 @@ function toggleDia(diaId) {
 function togglePredDia(diaNum) {
     const contenido = document.getElementById(`pred-content-${diaNum}`);
     const toggle = document.getElementById(`pred-toggle-${diaNum}`);
+    if (!contenido || !toggle) return;
     if (contenido.style.display === 'none') {
         contenido.style.display = 'block';
         toggle.textContent = '▲';
+        picksUi.predDias[diaNum] = true;
     } else {
         contenido.style.display = 'none';
         toggle.textContent = '▼';
+        picksUi.predDias[diaNum] = false;
     }
 }
 
@@ -1680,18 +1687,11 @@ function pintarPredicciones(memoria, plSplit) {
         Ganado <span style="color:var(--green)">$${(din.ganado||0).toFixed(2)}</span> ·
         Perdido <span style="color:var(--red)">$${(din.perdido||0).toFixed(2)}</span> ·
         Neto <b>$${(din.neto||0).toFixed(2)}</b></div>
-        <div style="margin-top:6px;color:var(--muted);font-size:0.75rem">💰 = apuesta con dinero · sin badge = solo predicción · días pasados abiertos</div>
+        <div style="margin-top:6px;color:var(--muted);font-size:0.75rem">💰 = apuesta con dinero · sin badge = solo predicción · toca ▼ para desplegar cada día</div>
         <div style="margin-top:4px;color:var(--cyan);font-size:0.78rem">Días: ${diasOrden.map(d => `${d.fecha} (${(d.predicciones||[]).length})`).join(' · ') || 'ninguno'}</div>
     </div>`;
 
     let hayFilas = false;
-    // Abrir el bloque de historial si hay días pasados
-    const listaWrap = document.getElementById('lista-predicciones');
-    const listaToggle = document.getElementById('predicciones-toggle');
-    if (listaWrap && diasOrden.length) {
-        listaWrap.style.display = 'block';
-        if (listaToggle) listaToggle.textContent = '▲';
-    }
     let diaIdx = 0;
     for (const d of diasOrden) {
         const porJuego = new Map();
@@ -1761,8 +1761,7 @@ function pintarPredicciones(memoria, plSplit) {
             ? `papel n/a (${nTarde} retroactivos · no cuentan)`
             : `pred ${gPapel}✓/${pPapel}✗ · papel ${fmtMoney(netoPapel)}` + (nTarde ? ` · ${nTarde} tardíos ignorados` : '');
 
-        // Siempre abiertos: en móvil el historial colapsado parecía “no hay juegos”
-        const abierto = true;
+        const abierto = !!picksUi.predDias[d.dia];
         diaIdx += 1;
 
         html += `<div style="margin-bottom:14px;padding:12px;background:var(--panel);border-radius:8px;border:1px solid var(--border);">
@@ -1821,6 +1820,18 @@ function pintarPredicciones(memoria, plSplit) {
     }
 
     lista.innerHTML = hayFilas ? html : '<p style="color:var(--muted)">Sin predicciones registradas aún.</p>';
+
+    const listaWrap = document.getElementById('lista-predicciones');
+    const listaToggle = document.getElementById('predicciones-toggle');
+    if (listaWrap && listaToggle) {
+        if (picksUi.predHistorial && hayFilas) {
+            listaWrap.style.display = 'block';
+            listaToggle.textContent = '▲';
+        } else {
+            listaWrap.style.display = 'none';
+            listaToggle.textContent = '▼';
+        }
+    }
 }
 
 function pintarJuegos(juegos) {
