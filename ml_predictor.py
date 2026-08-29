@@ -28,6 +28,16 @@ except ImportError:
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
+
+
+def _ml_n_jobs() -> int:
+    """Render free tier: 1 hilo evita picos de RAM en entrenamiento."""
+    v = os.environ.get("ML_N_JOBS")
+    if v is not None and v.strip() != "":
+        return int(v)
+    if os.environ.get("RENDER"):
+        return 1
+    return -1
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 FEATURE_COLUMNS = [
@@ -236,7 +246,7 @@ def entrenar_modelo_rf(datos_historicos: List[Dict[str, Any]]) -> RandomForestCl
             max_depth=10,
             min_samples_split=5,
             random_state=42,
-            n_jobs=-1,
+            n_jobs=_ml_n_jobs(),
         )
         rf_tmp.fit(X_tr_s, y_tr)
         acc_holdout = float(rf_tmp.score(X_te_s, y_te))
@@ -250,7 +260,7 @@ def entrenar_modelo_rf(datos_historicos: List[Dict[str, Any]]) -> RandomForestCl
         max_depth=10,
         min_samples_split=5,
         random_state=42,
-        n_jobs=-1,
+        n_jobs=_ml_n_jobs(),
     )
     _modelo_rf.fit(X_scaled, y)
 
@@ -304,7 +314,7 @@ def entrenar_modelo_xgb(datos_historicos: List[Dict[str, Any]]) -> Any:
         objective="binary:logistic",
         eval_metric="logloss",
         random_state=42,
-        n_jobs=-1,
+        n_jobs=_ml_n_jobs(),
     )
     _modelo_xgb.fit(X_scaled, y)
 
@@ -326,7 +336,7 @@ def entrenar_modelo_xgb(datos_historicos: List[Dict[str, Any]]) -> Any:
             objective="binary:logistic",
             eval_metric="logloss",
             random_state=42,
-            n_jobs=-1,
+            n_jobs=_ml_n_jobs(),
         )
         xgb_tmp.fit(_scaler.transform(X_tr), y_tr)
         acc_h = float(xgb_tmp.score(_scaler.transform(X_te), y_te))
