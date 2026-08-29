@@ -8,6 +8,7 @@ Cada juego se evalúa y bloquea el stake configurado automáticamente 1 hora ANT
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 import os
 import threading
@@ -84,6 +85,12 @@ CONFIG_PATH = BASE_DIR / "config_experimento.json"
 MEMORIA_PATH = DATA_DIR / "memoria_auditoria.json"
 MEMORIA_BACKUP_PATH = DATA_DIR / "memoria_auditoria_backup.json"
 _memoria_lock = threading.RLock()
+_memoria_cache: dict | None = None
+_memoria_cache_digest: str | None = None
+_wipe_check_ts: float = 0.0
+_WIPE_CHECK_INTERVAL_SEC = 300.0
+_ultimo_ml_train_ts: float = 0.0
+_ML_TRAIN_MIN_INTERVAL_SEC = 3600.0
 
 MLB_SCHEDULE = "https://statsapi.mlb.com/api/v1/schedule"
 scheduler = BackgroundScheduler()
@@ -93,6 +100,26 @@ _juegos_ui_cache: dict = {"fecha": "", "ts": 0.0, "juegos": []}
 _JUEGOS_UI_TTL_SEC = 90
 _JUEGOS_PANEL_CACHE_PATH = DATA_DIR / "juegos_panel_cache.json"
 _JUEGOS_PANEL_DISK_MAX_AGE_SEC = 20 * 60
+
+
+def _invalidar_cache_memoria() -> None:
+    global _memoria_cache, _memoria_cache_digest
+    _memoria_cache = None
+    _memoria_cache_digest = None
+
+
+def _digest_memoria_archivo(path: Path) -> str | None:
+    if not path.exists():
+        return None
+    try:
+        return hashlib.md5(path.read_bytes()).hexdigest()
+    except OSError:
+        return None
+
+
+def _cron_externo_habilitado() -> bool:
+    """GitHub cron ya pega /api/auto-bloqueo-externo; evitar duplicar en APScheduler."""
+    return bool(os.environ.get("CRON_SECRET", "").strip())
 
 
 def _cargar_json_memoria(path: Path) -> dict | None:
@@ -141,11 +168,18 @@ def _info_memoria_backup() -> dict:
     return info
 
 
-def _intentar_recuperar_wipe() -> bool:
+def _intentar_recuperar_wipe(*, force: bool = False) -> bool:
     """
     Recupera historial del JSON del repo / snapshots locales si Render wipeó
     o arrancó un experimento nuevo sin los días anteriores.
     """
+    global _wipe_check_ts
+    if not force and os.environ.get("RENDER"):
+        ahora = time.monotonic()
+        if ahora - _wipe_check_ts < _WIPE_CHECK_INTERVAL_SEC:
+            return False
+        _wipe_check_ts = ahora
+
     disk = _cargar_json_memoria(MEMORIA_PATH)
     if isinstance(disk, dict) and disk.get("reinicio_manual"):
         return False
@@ -208,6 +242,7 @@ def _intentar_recuperar_wipe() -> bool:
         f"wipe={wipe_clasico} dias_perdidos={dias_perdidos} "
         f"fuentes={len(candidatos)})"
     )
+    _invalidar_cache_memoria()
     return True
 
 
@@ -225,7 +260,7 @@ def _inicializar_datos_persistencia() -> None:
             except Exception as e:
                 print(f"[CLOUD] No se pudo copiar memoria: {e}")
         else:
-            _intentar_recuperar_wipe()
+            _intentar_recuperar_wipe(force=True)
         for nombre in ("modelo_rf_mlb.pkl", "scaler_rf_mlb.pkl"):
             src = BASE_DIR / nombre
             dst = DATA_DIR / nombre
@@ -289,18 +324,26 @@ def cargar_config() -> dict:
     return cfg
 
 
-def cargar_memoria() -> dict:
+def cargar_memoria(*, force: bool = False) -> dict:
+    """Carga memoria con cache en RAM (invalidada por hash del archivo en disco)."""
+    global _memoria_cache, _memoria_cache_digest
     if MEMORIA_PATH.exists():
         try:
-            with open(MEMORIA_PATH, encoding="utf-8") as f:
-                return json.load(f)
+            raw = MEMORIA_PATH.read_bytes()
+            digest = hashlib.md5(raw).hexdigest()
+            if not force and _memoria_cache is not None and digest == _memoria_cache_digest:
+                return _memoria_cache
+            data = json.loads(raw)
+            _memoria_cache = data
+            _memoria_cache_digest = digest
+            return data
         except json.JSONDecodeError:
             print(f"[ERROR] {MEMORIA_PATH.name} está corrupto. Se iniciará una nueva memoria.")
         except Exception as e:
             print(f"[ERROR] Error inesperado cargando memoria: {e}")
-            
+
     cfg = cargar_config()
-    return {
+    nueva = {
         "modo": "simulacion",
         "capital": cfg["capital_inicial"],
         "capital_inicial": cfg["capital_inicial"],
@@ -311,11 +354,14 @@ def cargar_memoria() -> dict:
         "ultimo_bloqueo": None,
         "dias": [],
     }
+    _memoria_cache = nueva
+    _memoria_cache_digest = None
+    return nueva
 
 
 def _memoria_sin_secretos(memoria: dict) -> dict:
-    """Copia de memoria segura para panel/API (sin token de Telegram)."""
-    out = copy.deepcopy(memoria)
+    """Copia superficial segura para panel/API (sin token de Telegram)."""
+    out = dict(memoria)
     tg = out.get("telegram")
     if isinstance(tg, dict) and tg.get("bot_token"):
         tok = str(tg["bot_token"])
@@ -476,7 +522,7 @@ def guardar_memoria(memoria: dict, *, permitir_wipe: bool = False) -> None:
         actual: dict | None = None
         if MEMORIA_PATH.exists():
             try:
-                actual = json.loads(MEMORIA_PATH.read_text(encoding="utf-8"))
+                actual = cargar_memoria()
             except Exception:
                 actual = None
         final, meta = _proteger_escritura(
@@ -502,9 +548,12 @@ def guardar_memoria(memoria: dict, *, permitir_wipe: bool = False) -> None:
             print(f"[GUARDAR] snapshot: {e}")
         js_path = DATA_DIR / "memoria_dashboard.js"
         js_path.write_text(
-            f"const datosMemoria = {json.dumps(_memoria_sin_secretos(final), ensure_ascii=False)};",
+            f"const datosMemoria = {json.dumps(_memoria_para_panel(final), ensure_ascii=False)};",
             encoding="utf-8",
         )
+        global _memoria_cache, _memoria_cache_digest
+        _memoria_cache = final
+        _memoria_cache_digest = _digest_memoria_archivo(MEMORIA_PATH)
         if final is not memoria:
             memoria.clear()
             memoria.update(final)
@@ -1227,13 +1276,19 @@ def _liquidar_dia_con_juegos(memoria: dict, dia: dict, juegos: list) -> int:
         print(f"[DEBUG LIQ DIA] Se realizaron {cambios} cambios para el día {dia['fecha']}. Recalculando y guardando.")
         recalcular_capital(memoria)
         actualizar_resumen(memoria)
-        auto_entrenar_ml(memoria)
-        try:
-            from calibracion import entrenar_calibrador
+        global _ultimo_ml_train_ts
+        ahora_ml = time.monotonic()
+        if ahora_ml - _ultimo_ml_train_ts >= _ML_TRAIN_MIN_INTERVAL_SEC:
+            auto_entrenar_ml(memoria)
+            try:
+                from calibracion import entrenar_calibrador
 
-            memoria["calib_meta"] = entrenar_calibrador(memoria, min_muestras=30)
-        except Exception as e:
-            print(f"[CALIB] auto: {e}")
+                memoria["calib_meta"] = entrenar_calibrador(memoria, min_muestras=30)
+            except Exception as e:
+                print(f"[CALIB] auto: {e}")
+            _ultimo_ml_train_ts = ahora_ml
+        else:
+            print("[ML] Entrenamiento omitido (debounce 1h entre liquidaciones)")
         guardar_memoria(memoria)
     return cambios
 
@@ -2636,18 +2691,24 @@ def programar_tareas_background() -> None:
         id="refresh_calendario_mediodia",
         replace_existing=True,
     )
-    scheduler.add_job(
-        lambda: liquidar_todo(cargar_memoria()),
-        CronTrigger(minute="*/10", timezone=tz),
-        id="liquidacion_periodica",
-        replace_existing=True,
-    )
-    scheduler.add_job(
-        lambda: bloquear_apuestas_del_dia(forzar=False),
-        CronTrigger(minute="*/5", timezone=tz),
-        id="bloqueo_periodico",
-        replace_existing=True,
-    )
+    if _cron_externo_habilitado():
+        print(
+            "[MOTOR] CRON_SECRET activo: liquidación/bloqueo in-process omitidos "
+            "(usa /api/auto-bloqueo-externo)"
+        )
+    else:
+        scheduler.add_job(
+            lambda: liquidar_todo(cargar_memoria()),
+            CronTrigger(minute="2,12,22,32,42,52", timezone=tz),
+            id="liquidacion_periodica",
+            replace_existing=True,
+        )
+        scheduler.add_job(
+            lambda: bloquear_apuestas_del_dia(forzar=False),
+            CronTrigger(minute="7,17,27,37,47,57", timezone=tz),
+            id="bloqueo_periodico",
+            replace_existing=True,
+        )
 
 
 @asynccontextmanager
@@ -2664,8 +2725,9 @@ async def lifespan(app: FastAPI):
         try:
             print("[MOTOR] Iniciando motor autónomo de sincronización en segundo plano...")
             avanzar_dia_automatico()
-            reparar_odds_papel(cargar_memoria())
-            rellenar_predicciones_recientes(cargar_memoria(), dias_atras=7)
+            mem_boot = cargar_memoria()
+            reparar_odds_papel(mem_boot)
+            rellenar_predicciones_recientes(mem_boot, dias_atras=7)
             bloquear_apuestas_del_dia(forzar=False)
             programar_bloqueos_por_juego()
         except Exception as e:
@@ -2718,7 +2780,9 @@ def obtener_juegos_para_panel(fecha: str, ligero: bool = False) -> list[dict]:
         return _juegos_ui_cache["juegos"]
     juegos = obtener_juegos_fecha(fecha)
     if ligero:
-        _juegos_ui_cache.update({"fecha": fecha, "ts": ahora, "juegos": juegos})
+        recortados = _juegos_para_panel(juegos)
+        _juegos_ui_cache.update({"fecha": fecha, "ts": ahora, "juegos": recortados})
+        return recortados
     return juegos
 
 
@@ -2777,16 +2841,15 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
         # Rellenar dias que se quedaron sin predicciones (servidor apagado)
         try:
             rellenar_predicciones_recientes(memoria, dias_atras=7)
-            memoria = cargar_memoria()
         except Exception as e:
             print(f"Aviso relleno predicciones: {e}")
 
         # Registrar picks en papel de todos los juegos listos (sin mover banca)
         try:
             registrar_predicciones_del_dia(forzar=False)
-            memoria = cargar_memoria()
         except Exception as e:
             print(f"Aviso predicciones: {e}")
+        memoria = cargar_memoria()
     else:
         # Panel ligero: NO registrar aquí (MLB+ML ~10–15s → 502 en Render free / iPhone).
         # El cron /api/auto-bloqueo-externo hace el catch-up de predicciones.
