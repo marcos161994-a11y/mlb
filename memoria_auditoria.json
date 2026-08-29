@@ -120289,9 +120289,9 @@
           "pitcher_away_id": 669199,
           "pitcher_home_id": 681517,
           "inicio_juego": "2026-08-29T14:15:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-29T14:27:32.608903-04:00",
@@ -120891,7 +120891,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-29T18:27:33.907479Z"
+          "whatsapp_enviado_en": "2026-08-29T18:27:33.907479Z",
+          "marcador_final": "Pittsburgh Pirates 6 - St. Louis Cardinals 2",
+          "liquidado_en": "2026-08-29T17:34:17.937189-04:00"
         },
         {
           "game_id": "824637",
@@ -120910,9 +120912,9 @@
           "pitcher_away_id": 671096,
           "pitcher_home_id": 592332,
           "inicio_juego": "2026-08-29T14:20:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.96,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-29T14:27:33.909240-04:00",
@@ -121544,7 +121546,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-08-29T18:27:35.596755Z"
+          "whatsapp_enviado_en": "2026-08-29T18:27:35.596755Z",
+          "marcador_final": "Cincinnati Reds 5 - Chicago Cubs 17",
+          "liquidado_en": "2026-08-29T17:34:18.031116-04:00"
         },
         {
           "game_id": "822770",
@@ -128367,25 +128371,25 @@
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 175,
-    "muestras_reales": 175,
+    "muestras": 178,
+    "muestras_reales": 178,
     "schema": 4,
-    "mensaje": "Reentrenado con 175 muestras (175 reales, RF acc 100.0%, RF holdout 60.0%, XGB acc 100.0%, XGB holdout 65.7%)",
+    "mensaje": "Reentrenado con 178 muestras (178 reales, RF acc 100.0%, RF holdout 61.1%, XGB acc 100.0%, XGB holdout 63.9%)",
     "accuracy_train": 1.0,
-    "accuracy_holdout": 0.6,
+    "accuracy_holdout": 0.611,
     "accuracy_xgb_train": 1.0,
-    "accuracy_xgb_holdout": 0.657,
-    "ultimo_entreno": "2026-08-29T05:30:27.818745",
+    "accuracy_xgb_holdout": 0.639,
+    "ultimo_entreno": "2026-08-29T21:34:26.329179",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 175,
+    "muestras": 178,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
         "ok": true,
-        "muestras": 34,
+        "muestras": 35,
         "metodo": "isotonic"
       },
       "underdog": {
@@ -128395,23 +128399,23 @@
       },
       "scratch": {
         "ok": true,
-        "muestras": 51,
+        "muestras": 52,
         "metodo": "isotonic"
       },
       "limpio": {
         "ok": true,
-        "muestras": 42,
+        "muestras": 43,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 175 muestras (ECE≈0.06) · 4 tipos",
-    "ece": 0.058
+    "mensaje": "Calibrado isotonic con 178 muestras (ECE≈0.06) · 4 tipos",
+    "ece": 0.061
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-29T20:39:29.805115Z"
+    "actualizado_en": "2026-08-29T21:33:25.955749Z"
   }
 }
