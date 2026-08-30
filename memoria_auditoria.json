@@ -125952,9 +125952,9 @@
           "pitcher_away_id": 624133,
           "pitcher_home_id": 701542,
           "inicio_juego": "2026-08-30T13:35:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.77,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-30T12:35:14.767451-04:00",
@@ -126560,7 +126560,9 @@
           },
           "preferir_f5": true,
           "total_linea": null,
-          "lineas_total": null
+          "lineas_total": null,
+          "marcador_final": "Boston Red Sox 1 - New York Yankees 16",
+          "liquidado_en": "2026-08-30T16:57:21.680435-04:00"
         },
         {
           "game_id": "824876",
@@ -126579,9 +126581,9 @@
           "pitcher_away_id": 690279,
           "pitcher_home_id": 641816,
           "inicio_juego": "2026-08-30T13:35:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 1.54,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-30T12:35:20.674839-04:00",
@@ -127173,7 +127175,9 @@
           },
           "preferir_f5": true,
           "total_linea": null,
-          "lineas_total": null
+          "lineas_total": null,
+          "marcador_final": "Colorado Rockies 2 - Atlanta Braves 3",
+          "liquidado_en": "2026-08-30T16:57:21.686719-04:00"
         },
         {
           "game_id": "822766",
@@ -127192,9 +127196,9 @@
           "pitcher_away_id": 669302,
           "pitcher_home_id": 453286,
           "inicio_juego": "2026-08-30T13:37:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-30T12:37:08.773529-04:00",
@@ -127785,7 +127789,9 @@
           },
           "preferir_f5": true,
           "total_linea": null,
-          "lineas_total": null
+          "lineas_total": null,
+          "marcador_final": "Seattle Mariners 0 - Toronto Blue Jays 7",
+          "liquidado_en": "2026-08-30T16:57:21.687039-04:00"
         },
         {
           "game_id": "824232",
@@ -128419,9 +128425,9 @@
           "pitcher_away_id": 607625,
           "pitcher_home_id": 800048,
           "inicio_juego": "2026-08-30T13:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 3.56,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-30T12:40:24.868503-04:00",
@@ -128970,7 +128976,9 @@
           },
           "preferir_f5": true,
           "total_linea": null,
-          "lineas_total": null
+          "lineas_total": null,
+          "marcador_final": "Kansas City Royals 1 - Cleveland Guardians 11",
+          "liquidado_en": "2026-08-30T16:57:21.820579-04:00"
         },
         {
           "game_id": "822933",
@@ -129618,9 +129626,9 @@
           "pitcher_away_id": 663855,
           "pitcher_home_id": 805673,
           "inicio_juego": "2026-08-30T14:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-30T13:10:15.572023-04:00",
@@ -130215,7 +130223,9 @@
           },
           "preferir_f5": true,
           "total_linea": null,
-          "lineas_total": null
+          "lineas_total": null,
+          "marcador_final": "Chicago White Sox 1 - Minnesota Twins 5",
+          "liquidado_en": "2026-08-30T16:57:21.820944-04:00"
         },
         {
           "game_id": "823740",
@@ -139434,6 +139444,86 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-30T19:59:11.764080Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-822766-1788123441",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-08-30",
+      "game_id": "822766",
+      "visitante": "Seattle Mariners",
+      "home": "Toronto Blue Jays",
+      "pick": "Seattle Mariners ML",
+      "probPick": 52.3,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Seattle Mariners 0 - Toronto Blue Jays 7",
+      "patron": "sin_cuota_real",
+      "leccion": "No apostar con dinero si no hay cuota de mercado (Pinnacle/DK).",
+      "motivo": "Heurística post-fallo (sin_cuota_real)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-30T20:57:21.819933Z"
+    },
+    {
+      "id": "lec-sin_cuota_real-822766-1788123441",
+      "tipo": "sin_cuota_real",
+      "fecha": "2026-08-30",
+      "game_id": "822766",
+      "visitante": "Seattle Mariners",
+      "home": "Toronto Blue Jays",
+      "pick": "Seattle Mariners ML",
+      "probPick": 52.3,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Seattle Mariners 0 - Toronto Blue Jays 7",
+      "patron": "mala_practica_sin_mercado",
+      "leccion": "No apostar dinero sin cuota real (Pinnacle/DK); paper sin mercado no es edge.",
+      "motivo": "sin cuota de mercado",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-30T20:57:21.820205Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-823662-1788123441",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-08-30",
+      "game_id": "823662",
+      "visitante": "Chicago White Sox",
+      "home": "Minnesota Twins",
+      "pick": "Chicago White Sox ML",
+      "probPick": 61.6,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Chicago White Sox 1 - Minnesota Twins 5",
+      "patron": "sin_cuota_real",
+      "leccion": "No apostar con dinero si no hay cuota de mercado (Pinnacle/DK).",
+      "motivo": "Heurística post-fallo (sin_cuota_real)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-30T20:57:21.971533Z"
+    },
+    {
+      "id": "lec-sin_cuota_real-823662-1788123441",
+      "tipo": "sin_cuota_real",
+      "fecha": "2026-08-30",
+      "game_id": "823662",
+      "visitante": "Chicago White Sox",
+      "home": "Minnesota Twins",
+      "pick": "Chicago White Sox ML",
+      "probPick": 61.6,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Chicago White Sox 1 - Minnesota Twins 5",
+      "patron": "mala_practica_sin_mercado",
+      "leccion": "No apostar dinero sin cuota real (Pinnacle/DK); paper sin mercado no es edge.",
+      "motivo": "sin cuota de mercado",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-30T20:57:21.971598Z"
     }
   ],
   "mente_stats": {
@@ -139449,16 +139539,16 @@
         "oportunidad_perdida": 8
       },
       "ESPERAR": {
-        "n": 7,
-        "aciertos": 4,
-        "fallos": 3
+        "n": 12,
+        "aciertos": 7,
+        "fallos": 5
       }
     },
     "patrones": {
       "scratch": {
-        "n": 5,
+        "n": 6,
         "pasar_ok": 4,
-        "pasar_miss": 1,
+        "pasar_miss": 2,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -139470,30 +139560,30 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 14,
-        "pasar_ok": 5,
-        "pasar_miss": 9,
+        "n": 19,
+        "pasar_ok": 7,
+        "pasar_miss": 12,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "sin_mercado": {
-        "n": 18,
-        "pasar_ok": 6,
-        "pasar_miss": 12,
+        "n": 23,
+        "pasar_ok": 8,
+        "pasar_miss": 15,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 18,
-        "pasar_ok": 6,
-        "pasar_miss": 12,
+        "n": 23,
+        "pasar_ok": 8,
+        "pasar_miss": 15,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "favorito_alto": {
-        "n": 7,
+        "n": 8,
         "pasar_ok": 0,
-        "pasar_miss": 7,
+        "pasar_miss": 8,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
@@ -139532,57 +139622,62 @@
       "824961:acierto",
       "823176:fallo",
       "823986:acierto",
-      "822688:fallo"
+      "822688:fallo",
+      "823502:acierto",
+      "824876:acierto",
+      "822766:fallo",
+      "824393:acierto",
+      "823662:fallo"
     ],
-    "actualizado_en": "2026-08-30T19:59:11.767852Z"
+    "actualizado_en": "2026-08-30T20:57:21.971662Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 185,
-    "muestras_reales": 185,
+    "muestras": 190,
+    "muestras_reales": 190,
     "schema": 4,
-    "mensaje": "Reentrenado con 185 muestras (185 reales, RF acc 100.0%, RF holdout 48.6%, XGB acc 100.0%, XGB holdout 54.1%)",
+    "mensaje": "Reentrenado con 190 muestras (190 reales, RF acc 100.0%, RF holdout 50.0%, XGB acc 100.0%, XGB holdout 57.9%)",
     "accuracy_train": 1.0,
-    "accuracy_holdout": 0.486,
+    "accuracy_holdout": 0.5,
     "accuracy_xgb_train": 1.0,
-    "accuracy_xgb_holdout": 0.541,
-    "ultimo_entreno": "2026-08-30T19:59:20.015016",
+    "accuracy_xgb_holdout": 0.579,
+    "ultimo_entreno": "2026-08-30T20:57:30.176947",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 185,
+    "muestras": 190,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
         "ok": true,
-        "muestras": 39,
+        "muestras": 40,
         "metodo": "isotonic"
       },
       "underdog": {
         "ok": true,
-        "muestras": 48,
+        "muestras": 49,
         "metodo": "isotonic"
       },
       "scratch": {
         "ok": true,
-        "muestras": 55,
+        "muestras": 56,
         "metodo": "isotonic"
       },
       "limpio": {
         "ok": true,
-        "muestras": 43,
+        "muestras": 45,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 185 muestras (ECE≈0.06) · 4 tipos",
-    "ece": 0.063
+    "mensaje": "Calibrado isotonic con 190 muestras (ECE≈0.06) · 4 tipos",
+    "ece": 0.064
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-30T19:59:31.712366Z"
+    "actualizado_en": "2026-08-30T20:56:21.176926Z"
   }
 }
