@@ -1068,6 +1068,14 @@ def precalentar_cuotas_mercado(cfg: dict | None = None) -> dict:
     cfg = cfg or cargar_config()
     if not _mercado_requiere_cuotas(cfg):
         return {"ok": True, "omitido": True, "motivo": "modo_papel"}
+    try:
+        from lineas_oddspapi import intentar_reabrir_oddspapi_si_expirado
+
+        probe = intentar_reabrir_oddspapi_si_expirado(cfg)
+        if probe.get("ok"):
+            print(f"[CUOTAS] OddsPapi probe OK · {probe.get('mensaje', '')[:60]}")
+    except Exception as e:
+        print(f"[CUOTAS] probe OddsPapi: {e}")
     hoy = fecha_str()
     juegos = obtener_juegos_fecha(hoy, solo_resultados=True)
     if not juegos:
@@ -2805,6 +2813,63 @@ def programar_bloqueos_por_juego() -> None:
         )
 
 
+def refrescar_cuotas_pendientes_hoy(cfg: dict | None = None) -> dict:
+    """
+    Upgrade masivo: predicciones con cuota estimada → cuota de casa cuando ESPN/OddsPapi responde.
+    Evita que el papel quede congelado en 📐 mientras el mercado ya está disponible.
+    """
+    cfg = cfg or cargar_config()
+    if not _mercado_requiere_cuotas(cfg):
+        return {"ok": True, "omitido": True, "motivo": "modo_papel"}
+
+    hoy = fecha_str()
+    juegos = obtener_juegos_fecha(hoy)
+    por_id = {str(j["id"]): j for j in juegos}
+    upgraded = 0
+    apostables = 0
+    bloqueos: list[str] = []
+
+    with _memoria_lock:
+        memoria = cargar_memoria()
+        dia = asegurar_dia_operativo(memoria, hoy)
+        for pred in dia.get("predicciones", []):
+            gid = str(pred.get("game_id") or "")
+            if not gid:
+                continue
+            if any(str(a.get("game_id")) == gid for a in dia.get("apuestas", [])):
+                continue
+            if tiene_cuota_mercado(pred):
+                continue
+            juego = por_id.get(gid)
+            if not juego or not tiene_cuota_mercado(juego):
+                continue
+            if not actualizar_mercado_en_prediccion(pred, juego, cfg):
+                continue
+            upgraded += 1
+            if pred.get("apostable"):
+                apostables += 1
+                bloqueos.append(gid)
+        if upgraded:
+            guardar_memoria(memoria)
+            print(
+                f"[CUOTAS] Upgrade papel→mercado: {upgraded} pred(s), "
+                f"{apostables} apostable(s)"
+            )
+
+    for gid in bloqueos:
+        try:
+            bloquear_juego(gid)
+        except Exception as e:
+            print(f"[CUOTAS] bloqueo post-upgrade {gid}: {e}")
+
+    return {
+        "ok": True,
+        "actualizados": upgraded,
+        "apostables": apostables,
+        "bloqueos_intentados": len(bloqueos),
+    }
+
+
 def refrescar_cuotas_juego(game_id: str) -> dict:
     """Reintento T-45/T-30: refresca cuotas y apuesta si aparece valor vs mercado."""
     cfg = cargar_config()
@@ -2825,12 +2890,21 @@ def refrescar_cuotas_juego(game_id: str) -> dict:
         pass
 
     hoy = fecha_str()
-    juegos = obtener_juegos_fecha(hoy)
+    juegos = obtener_juegos_fecha(hoy, solo_resultados=True)
     juego = next((j for j in juegos if str(j["id"]) == str(game_id)), None)
     if not juego:
         return {"ok": False, "motivo": "juego_no_encontrado"}
     if juego.get("estado") == "FINALIZADO":
         return {"ok": True, "omitido": True, "motivo": "finalizado"}
+
+    try:
+        from mente_errores import aplicar_overrides_config
+
+        cfg_eff = aplicar_overrides_config(cfg)
+    except Exception:
+        cfg_eff = cfg
+    juegos, _ = aplicar_lineas_a_juegos([juego], cfg_eff)
+    juego = juegos[0]
 
     upgraded = False
     apostable_ahora = False
@@ -4716,6 +4790,11 @@ def ejecutar_trabajo_cron_externo() -> dict:
             precalentar_cuotas_mercado(cfg_cron)
         except Exception as e:
             print(f"[CRON] remediar cuotas: {e}")
+    if _mercado_requiere_cuotas(cfg_cron):
+        try:
+            refrescar_cuotas_pendientes_hoy(cfg_cron)
+        except Exception as e:
+            print(f"[CRON] upgrade cuotas papel: {e}")
     programar_bloqueos_por_juego()
     registrar_predicciones_del_dia(forzar=False)
     resultado = bloquear_apuestas_del_dia(forzar=False)

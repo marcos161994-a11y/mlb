@@ -1,5 +1,7 @@
 """Tests OddsPapi moneyline parsing (sin red)."""
 
+import json
+
 from lineas_oddspapi import (
     _limpiar_key,
     _mejor_ml_fixture,
@@ -293,3 +295,73 @@ def test_aplicar_con_circuito_usa_espn_sin_oddspapi(monkeypatch, tmp_path):
     assert meta.get("ok") is True
     assert out[0]["odds_home_decimal"] == 1.8
     assert "pausa" in (meta.get("mensaje") or "").lower()
+
+
+def test_probe_oddspapi_ok_cierra_circuito(monkeypatch, tmp_path):
+    path = tmp_path / "c.json"
+    monkeypatch.setattr("lineas_oddspapi._circuit_path", lambda: path)
+    monkeypatch.setattr("lineas_oddspapi.KEY_FILE_DATA", tmp_path / "k.txt")
+    monkeypatch.setattr("lineas_oddspapi.DATA_DIR", tmp_path)
+    from datetime import datetime, timedelta
+    from lineas_oddspapi import circuito_abierto, guardar_api_key, probar_conexion_oddspapi
+
+    guardar_api_key("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+    hasta = datetime.now() - timedelta(minutes=1)
+    path.write_text(
+        json.dumps(
+            {
+                "abierto": True,
+                "hasta": hasta.isoformat(timespec="minutes"),
+                "motivo": "401",
+                "http_status": 401,
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    class Resp:
+        status_code = 200
+
+        @staticmethod
+        def json():
+            return [{"tournamentId": 109}]
+
+    monkeypatch.setattr("lineas_oddspapi.requests.get", lambda *a, **k: Resp())
+    meta = probar_conexion_oddspapi({})
+    assert meta.get("ok") is True
+    assert not circuito_abierto()
+
+
+def test_reabrir_solo_tras_expiracion(monkeypatch, tmp_path):
+    path = tmp_path / "c.json"
+    monkeypatch.setattr("lineas_oddspapi._circuit_path", lambda: path)
+    from datetime import datetime, timedelta
+    from lineas_oddspapi import intentar_reabrir_oddspapi_si_expirado
+
+    hasta = datetime.now() - timedelta(minutes=1)
+    path.write_text(
+        json.dumps(
+            {
+                "abierto": True,
+                "hasta": hasta.isoformat(timespec="minutes"),
+                "motivo": "401",
+                "http_status": 401,
+            }
+        ),
+        encoding="utf-8",
+    )
+    called = {"n": 0}
+
+    def fake_probe(cfg):
+        called["n"] += 1
+        return {"ok": True}
+
+    monkeypatch.setattr("lineas_oddspapi.probar_conexion_oddspapi", fake_probe)
+    out = intentar_reabrir_oddspapi_si_expirado({})
+    assert called["n"] == 1
+    assert out.get("ok") is True
+
+    called["n"] = 0
+    out2 = intentar_reabrir_oddspapi_si_expirado({})
+    assert called["n"] == 0
+    assert out2.get("omitido") is True
