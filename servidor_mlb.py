@@ -4888,33 +4888,53 @@ async def api_configurar_oddspapi(request: Request, secret: str | None = None, k
     if not raw:
         raise HTTPException(status_code=400, detail="Falta key (body JSON o ?key=)")
     try:
-        from lineas_oddspapi import guardar_api_key, obtener_lineas_oddspapi
+        from lineas_oddspapi import guardar_api_key, invalidar_cache_oddspapi, probar_conexion_oddspapi
 
         info = guardar_api_key(str(raw))
+        invalidar_cache_oddspapi()
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e)[:160]) from e
 
     cfg = cargar_config()
-    _, meta = obtener_lineas_oddspapi(cfg)
+    probe = probar_conexion_oddspapi(cfg, registrar_circuito=False)
+    oddspapi_ok = bool(probe.get("ok"))
+    guardado_ok = bool(info.get("ok"))
     return {
-        "ok": bool(meta.get("ok")),
+        "ok": guardado_ok,
+        "guardado_ok": guardado_ok,
+        "oddspapi_ok": oddspapi_ok,
         "guardado": info,
-        "partidos": meta.get("partidos"),
-        "api_version": meta.get("api_version"),
-        "mensaje": meta.get("mensaje"),
-        "key_fingerprint": meta.get("key_fingerprint") or info.get("key_fingerprint"),
-        "key_source": meta.get("key_source"),
-        "circuito": bool(meta.get("circuito")),
+        "probe": probe,
+        "partidos": probe.get("partidos"),
+        "api_version": "v5",
+        "http_status": probe.get("http_status"),
+        "error_api": probe.get("error_api"),
+        "mensaje": (
+            probe.get("mensaje")
+            if oddspapi_ok
+            else (
+                f"Key guardada en disco · OddsPapi rechazó la key"
+                f" (HTTP {probe.get('http_status') or '?'})"
+                f": {probe.get('mensaje') or probe.get('error_api') or '401'}"
+            )
+        ),
+        "key_fingerprint": probe.get("key_fingerprint") or info.get("key_fingerprint"),
+        "key_source": "oddspapi_api_key.txt (DATA_DIR)",
+        "circuito": bool(probe.get("circuito")),
         "aviso_env": info.get("aviso_env"),
+        "espn_fallback": (
+            "Las cuotas siguen por ESPN/DraftKings (12/12). "
+            "OddsPapi/Pinnacle es opcional hasta que la key sea válida."
+        ),
         "ayuda": (
             None
-            if meta.get("ok")
+            if oddspapi_ok
             else (
-                "Si sigue en 401: crea key nueva en https://oddspapi.io, "
-                "revoca la vieja, y borra ODDSPAPI_API_KEY en Render Environment "
-                "(la del disco ya tiene prioridad)."
+                "401 = key inválida, revocada o plan sin acceso REST v5. "
+                "Crea key nueva en https://oddspapi.io, revoca las viejas, "
+                "borra ODDSPAPI_API_KEY en Render Environment (la del disco manda)."
             )
         ),
     }
