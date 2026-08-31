@@ -2900,6 +2900,8 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
             copia["profit"] = ap.get("profit")
             copia["edge"] = ap.get("edge", copia.get("edge"))
             copia["motivo_apuesta"] = ap.get("motivo_apuesta", copia.get("motivo_apuesta", ""))
+            if ap.get("clv_pct") is not None:
+                copia["clv_pct"] = ap.get("clv_pct")
             copia["pick_congelado"] = True
             # Ya hay dinero: no dejar que el modelo en vivo diga "NO APOSTAR"
             copia["apostable"] = True
@@ -2914,6 +2916,8 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
             copia["motivo_apuesta"] = pred.get("motivo_apuesta", copia.get("motivo_apuesta", ""))
             if pred.get("lineas_fuente"):
                 copia["lineas_fuente"] = pred.get("lineas_fuente")
+            if pred.get("clv_pct") is not None:
+                copia["clv_pct"] = pred.get("clv_pct")
             copia["pick_congelado"] = True
             if not tiene_cuota_mercado(copia) and not tiene_cuota_mercado(pred):
                 copia["apostable"] = False
