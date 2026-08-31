@@ -6,7 +6,7 @@
 
   "unidades_kelly": 0.25,
 
-  "stake_por_juego": 5.0,
+  "stake_por_juego": 3.0,
 
   "minutos_antes_juego": 60,
 
@@ -22,7 +22,7 @@
 
     "bookmakers": "draftkings",
 
-    "proveedor": "espn",
+    "proveedor": "oddspapi",
 
     "api_version": "v5",
 
@@ -44,11 +44,11 @@
 
     "min_edge_pct": 6.0,
 
-    "max_apuestas_dia": 8,
+    "max_apuestas_dia": 4,
 
     "min_prob_modelo": 58.0,
 
-    "requiere_betmgm": false,
+    "requiere_betmgm": true,
 
     "fallback_solo_modelo": true,
 
@@ -56,7 +56,7 @@
 
     "min_stake_pct": 2.0,
 
-    "max_stake_pct": 5.0,
+    "max_stake_pct": 3.0,
 
     "preferir_underdogs": true,
 
@@ -139,7 +139,7 @@
     "proveedor": "callmebot",
     "phone": "",
     "apikey": "",
-    "solo_apostables": false,
+    "solo_apostables": true,
     "incluir_mente": true
   },
 
@@ -148,7 +148,7 @@
     "bot_token": "",
     "chat_id": "",
     "user": "",
-    "solo_apostables": false,
+    "solo_apostables": true,
     "incluir_mente": true
   },
 
@@ -162,7 +162,7 @@
     "api_key": ""
   },
 
-  "modo_solo_modelo": true,
+  "modo_solo_modelo": false,
 
   "usar_ml": true,
 

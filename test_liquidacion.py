@@ -162,7 +162,7 @@ def test_reparar_odds_papel_default_roto():
     pred = memoria["dias"][0]["predicciones"][0]
     assert abs(pred["odds"] - (100.0 / 54.0)) < 0.05
     assert abs(pred["profit"] - round(5.0 * (pred["odds"] - 1), 2)) < 0.01
-    assert abs(float(memoria["stake_por_juego"]) - 5.0) < 0.01
+    assert abs(float(memoria["stake_por_juego"]) - 3.0) < 0.01
 
 
 def test_top_n_solo_programados():
