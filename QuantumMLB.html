@@ -237,6 +237,9 @@
         .tag-apostar { background: rgba(0,255,136,0.2); color: var(--green); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
         .tag-skip { background: rgba(136,153,170,0.2); color: #8899aa; padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; }
         .tag-estudio { background: rgba(255,188,0,0.18); color: var(--gold); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+        .tag-solo-papel { background: rgba(255,188,0,0.14); color: var(--gold); padding: 2px 8px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; }
+        .cuota-casa { color: var(--green); }
+        .cuota-estimada { color: var(--gold); }
         .estado { color: var(--gold); font-size: 0.75rem; font-weight: bold; }
         .estado-apuesta { font-size: 0.7rem; margin-top: 4px; }
         .estado-apuesta.ganada { color: var(--green); }
@@ -489,7 +492,7 @@
         <div class="aviso-body" id="aviso-body">
             El tag <strong>PICK</strong> es la predicción (fija al apostar).
             <strong>GANÓ</strong> solo aparece cuando MLB confirma el final.
-            Verdes = valor vs cuota real. Sin cuota = estudio, no apostar. Bloqueo 1 h antes.
+            Verdes = valor vs cuota de casa (🏦). Amarillo = solo papel con cuota estimada (📐). Bloqueo T-60 + retry T-45/T-30.
         </div>
     </details>
 </div>
@@ -563,7 +566,7 @@ const API = (!window.location.origin || window.location.protocol === 'file:')
 const ES_NUBE = API.includes('onrender.com') || API.includes('render.com');
 const REFRESH_MS = ES_NUBE ? 45000 : 8000;
 const CACHE_KEY = 'qmlb_last_state_v2';
-const PANEL_VER = '2026-08-31-mercado';
+const PANEL_VER = '2026-08-31-cuotas';
 let cargandoEstado = false;
 let cargandoBoot = false;
 let cargandoJuegos = false;
@@ -1290,9 +1293,11 @@ function pintarEstado(data) {
     }
 
     const mins = data.minutos_antes_juego || 60;
+    const retries = (data.lineas && data.lineas.minutos_retry_cuotas) || [45, 30];
+    const retryTxt = Array.isArray(retries) ? retries.map(m => 'T-' + m).join('/') : 'T-45/T-30';
     document.getElementById('proximo-bloqueo').textContent = soloModelo
         ? `Bloqueo automático: ${mins} min antes de cada juego (solo papel)`
-        : `Bloqueo T-${mins} min · pick + cuota real · $ solo si hay valor`;
+        : `Bloqueo T-${mins} · retry cuotas ${retryTxt} · $ solo con 🏦 cuota casa + edge`;
 
     const ls = document.getElementById('lineas-status');
     const lin = data.lineas || {};
@@ -1401,14 +1406,14 @@ function pintarEstado(data) {
             avisoBody.innerHTML =
                 'El tag <strong>PICK</strong> es la predicción del modelo. ' +
                 '<strong>GANÓ</strong> solo al final oficial de MLB. ' +
-                'Sin cuota de casa el % es <strong>estudio</strong>: no hay edge ni apuestas con dinero.';
+                '📐 <strong>Cuota estimada</strong> = justa según el % del modelo · <strong>solo papel</strong>, sin edge ni dinero.';
         } else {
-            avisoSum.textContent = 'Dinero real con cuota de mercado';
+            avisoSum.textContent = 'Dinero real con cuota de casa';
             avisoBody.innerHTML =
-                `1 h antes: pitchers + stats + cuota (OddsPapi o ESPN/DraftKings). ` +
-                `Solo se mueve la banca con <strong>valor vs la casa</strong> (borde verde, edge≥${minP}%). ` +
-                `Stake ~${stakeTxt} · máx ${estr.max_apuestas_dia || 4} apuestas/día. ` +
-                'Telegram avisa solo picks apostables.';
+                `T-60: pick congelado. Retry T-45/T-30 si faltaba cuota. ` +
+                `🏦 <strong>Cuota casa</strong> (OddsPapi multi-book o ESPN) vs 📐 <strong>estimada</strong> (solo papel). ` +
+                `Dinero solo con borde verde (edge≥${minEdge}%, prob≥${minP}%). ` +
+                `Stake ~${stakeTxt} · máx ${estr.max_apuestas_dia || 4}/día.`;
         }
     }
 
@@ -1536,6 +1541,15 @@ function nombrePick(pick) {
 function sinCuotaMercado(j) {
     const f = String((j && j.lineas_fuente) || 'modelo').toLowerCase();
     return !f || f === 'modelo' || f === 'none' || f === 'null' || f === 'import';
+}
+
+function textoCuota(j) {
+    if (sinCuotaMercado(j)) {
+        return `<span class="cuota-estimada">📐 Cuota estimada (solo papel): ${j.odds || '—'}</span>`;
+    }
+    const src = (j.lineas_fuente || 'casa').toUpperCase();
+    const edgeTxt = j.edge ? ` · edge +${Number(j.edge).toFixed(1)}%` : '';
+    return `<span class="cuota-casa">🏦 Cuota ${src}: ${j.odds || '—'}${edgeTxt}</span>`;
 }
 
 function pintarPicksHoy(juegos, data) {
@@ -1850,7 +1864,7 @@ function pintarJuegos(juegos) {
         const tag = j.apostable
             ? `<span class="tag-apostar">APOSTAR · ${(j.probPick||0).toFixed(0)}%</span>`
             : (estudio
-                ? `<span class="tag-estudio">ESTUDIO · ${(j.probPick||0).toFixed(0)}% · sin cuota</span>`
+                ? `<span class="tag-solo-papel">SOLO PAPEL · ${(j.probPick||0).toFixed(0)}% · 📐 estimada</span>`
                 : `<span class="tag-skip">NO APOSTAR</span>`);
         const eqPick = nombrePick(j.pick);
         const awayPick = j.pick && j.pick.indexOf(j.visitante) >= 0;
@@ -1928,9 +1942,7 @@ function pintarJuegos(juegos) {
                 <b style="font-size:1rem;color:var(--green)">→ ${eqPick || '—'}</b>
                 <div style="font-size:0.8rem;margin-top:6px">
                     Confianza: <b style="color:var(--cyan)">${j.probPick != null ? j.probPick.toFixed(1) + '%' : '—'}</b>
-                    · ${sinCuotaMercado(j)
-                        ? `Cuota justa (sin mercado): ${j.odds || '—'}`
-                        : `Cuota ${j.lineas_fuente || 'casa'}: ${j.odds || '—'}${j.edge ? ' · edge +' + Number(j.edge).toFixed(1) + '%' : ''}`}
+                    · ${textoCuota(j)}
                 </div>
                 <div style="font-size:0.75rem;color:#8899aa;margin-top:6px">
                     Modelo ${j.probAway||'?'}% / ${j.probHome||'?'}% (visitante / local)

@@ -15,6 +15,11 @@ def test_config_mercado_activo():
     assert int(estr.get("max_apuestas_dia") or 99) <= 4
     assert lineas.get("proveedor") == "oddspapi"
     assert lineas.get("fallback_internet") is True
+    books = lineas.get("bookmakers") or ""
+    assert "draftkings" in books
+    assert "pinnacle" in books or "fanduel" in books
+    retries = lineas.get("minutos_retry_cuotas") or []
+    assert 45 in retries and 30 in retries
     assert (cfg.get("telegram") or {}).get("solo_apostables") is True
 
 

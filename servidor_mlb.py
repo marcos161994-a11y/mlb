@@ -44,6 +44,8 @@ from modelo_mlb import (
     evaluar_juegos,
     calcular_stake_dinamico,
     cuota_desde_prob,
+    edge_pct,
+    fuente_es_mercado,
     tiene_cuota_mercado,
     apostable_con_mercado,
 )
@@ -675,6 +677,95 @@ def hora_bloqueo_para_inicio(inicio: datetime) -> datetime:
     return inicio - timedelta(minutes=mins)
 
 
+def _minutos_retry_cuotas(cfg: dict | None = None) -> list[int]:
+    """Minutos antes del inicio para reintentar cuotas (ej. T-45, T-30)."""
+    cfg = cfg or cargar_config()
+    raw = (cfg.get("lineas") or {}).get("minutos_retry_cuotas")
+    if raw is None:
+        raw = cfg.get("minutos_retry_cuotas")
+    if raw is None:
+        raw = [45, 30]
+    if isinstance(raw, str):
+        raw = [int(x.strip()) for x in raw.split(",") if x.strip().isdigit()]
+    if not isinstance(raw, list):
+        return [45, 30]
+    limite = int(cfg.get("minutos_antes_juego", 60))
+    out = sorted(
+        {int(x) for x in raw if 0 < int(x) < limite},
+        reverse=True,
+    )
+    return out or [45, 30]
+
+
+def actualizar_mercado_en_prediccion(
+    existente: dict,
+    juego: dict,
+    cfg: dict | None = None,
+) -> bool:
+    """Si el pick congelado era solo papel y ahora hay cuota real, actualiza odds/edge."""
+    if not isinstance(existente, dict) or not isinstance(juego, dict):
+        return False
+    if fuente_es_mercado(existente.get("lineas_fuente")) and tiene_cuota_mercado(existente):
+        return False
+    if not tiene_cuota_mercado(juego):
+        return False
+
+    pick = (existente.get("pick") or "").strip()
+    if not pick:
+        return False
+
+    cfg = cfg or cargar_config()
+    estr = cfg.get("estrategia") or {}
+    min_edge = float(estr.get("min_edge_pct", 6.0))
+    min_prob = float(estr.get("min_prob_modelo", 58.0))
+    prob = float(existente.get("probPick") or 0)
+    visitante = juego.get("visitante") or existente.get("visitante") or ""
+    home = juego.get("home") or existente.get("home") or ""
+
+    if visitante and visitante in pick:
+        dec = juego.get("odds_away_decimal")
+        amer = juego.get("odds_away_american")
+    elif home and home in pick:
+        dec = juego.get("odds_home_decimal")
+        amer = juego.get("odds_home_american")
+    else:
+        dec = juego.get("odds")
+        amer = juego.get("odds_american")
+
+    try:
+        dec_f = float(dec or 0)
+    except (TypeError, ValueError):
+        return False
+    if dec_f <= 1.0:
+        return False
+
+    edge = edge_pct(prob, dec_f)
+    fuente = juego.get("lineas_fuente") or "mercado"
+    apostable = prob >= min_prob and edge >= min_edge
+
+    existente["lineas_fuente"] = fuente
+    existente["odds"] = dec_f
+    if amer is not None:
+        existente["odds_american"] = amer
+    existente["edge"] = edge if edge > -900 else 0
+    existente["apostable"] = apostable
+    if apostable:
+        existente["motivo_apuesta"] = f"Valor +{edge:.1f}% vs {fuente} (cuota actualizada)"
+    elif "sin cuota real" in (existente.get("motivo_apuesta") or "").lower():
+        existente["motivo_apuesta"] = (
+            f"Modelo {prob:.0f}% · cuota {fuente} sin valor (+{max(edge, 0):.1f}% edge)"
+        )
+
+    juego["lineas_fuente"] = fuente
+    juego["odds"] = dec_f
+    juego["odds_american"] = amer
+    juego["edge"] = existente["edge"]
+    juego["apostable"] = apostable
+    juego["pick"] = pick
+    juego["probPick"] = prob
+    return True
+
+
 def contar_apuestas_hoy(memoria: dict, fecha: str | None = None) -> int:
     fecha = fecha or fecha_str()
     dia = dia_operativo(memoria)
@@ -860,6 +951,16 @@ def _score_equipo(linescore_side: dict, team_side: dict) -> int:
     if score is not None:
         return int(score)
     return 0
+
+
+def _lineas_para_panel(cfg: dict | None = None) -> dict:
+    """Meta de cuotas + config visible en el panel (bookmakers, retries)."""
+    cfg = cfg or cargar_config()
+    lineas_cfg = cfg.get("lineas") or {}
+    out = dict(_lineas_meta_cache if isinstance(_lineas_meta_cache, dict) else {})
+    out["bookmakers"] = lineas_cfg.get("bookmakers") or "draftkings"
+    out["minutos_retry_cuotas"] = _minutos_retry_cuotas(cfg)
+    return out
 
 
 def _mercado_requiere_cuotas(cfg: dict | None = None) -> bool:
@@ -1476,6 +1577,7 @@ def guardar_prediccion(
     permitir_gracia: bool = False,
 ) -> bool:
     """Guarda/actualiza predicción de un juego. No mueve capital."""
+    cfg = cargar_config()
     pick = (juego.get("pick") or "").strip()
     if not pick:
         return False
@@ -1490,6 +1592,7 @@ def guardar_prediccion(
         None,
     )
     if existente:
+        actualizar_mercado_en_prediccion(existente, juego, cfg)
         # No cambiar pick ya congelado; solo marcar si hubo dinero
         if con_dinero:
             existente["con_dinero"] = True
@@ -1520,7 +1623,6 @@ def guardar_prediccion(
         )
         return False
 
-    cfg = cargar_config()
     gracia_min = float(cfg.get("minutos_gracia_bloqueo", 30))
     inicio = _parse_iso_dt(juego.get("inicio_juego"))
     mins_despues = (
@@ -2131,6 +2233,7 @@ def _bloquear_juego_locked(
         None,
     )
     if pred_existente and (pred_existente.get("pick") or "").strip():
+        actualizar_mercado_en_prediccion(pred_existente, juego, cfg)
         juego["pick"] = pred_existente["pick"]
         if pred_existente.get("odds"):
             juego["odds"] = pred_existente["odds"]
@@ -2496,33 +2599,115 @@ def bloquear_apuestas_del_dia(forzar: bool = False) -> dict:
 
 
 def programar_bloqueos_por_juego() -> None:
-    """Programa un job por juego: inicio del partido menos 60 min (hora PR)."""
+    """Programa bloqueo T-60 y reintentos de cuotas T-45/T-30 por juego."""
     cfg = cargar_config()
     tz = cfg["timezone"]
     ahora = ahora_simulado()
+    retries = _minutos_retry_cuotas(cfg)
 
     for job in scheduler.get_jobs():
-        if job.id and job.id.startswith("bloqueo_juego_"):
+        jid = job.id or ""
+        if jid.startswith("bloqueo_juego_") or jid.startswith("cuotas_retry_"):
             scheduler.remove_job(job.id)
 
     juegos = obtener_juegos_fecha(fecha_str())
     for juego in juegos:
         if juego["estado"] == "FINALIZADO":
             continue
+        inicio = datetime.fromisoformat(juego["inicio_juego"])
         hb = datetime.fromisoformat(juego["hora_bloqueo"])
-        if hb <= ahora:
+        if hb <= ahora and juego["estado"] != "PROGRAMADO":
             continue
         gid = juego["id"]
-        scheduler.add_job(
-            lambda g=gid: bloquear_juego(g),
-            DateTrigger(run_date=hb, timezone=tz),
-            id=f"bloqueo_juego_{gid}",
-            replace_existing=True,
-        )
+        if hb > ahora:
+            scheduler.add_job(
+                lambda g=gid: bloquear_juego(g),
+                DateTrigger(run_date=hb, timezone=tz),
+                id=f"bloqueo_juego_{gid}",
+                replace_existing=True,
+            )
+        for mins in retries:
+            run_at = inicio - timedelta(minutes=mins)
+            if run_at <= ahora or run_at >= inicio:
+                continue
+            scheduler.add_job(
+                lambda g=gid: refrescar_cuotas_juego(g),
+                DateTrigger(run_date=run_at, timezone=tz),
+                id=f"cuotas_retry_{gid}_{mins}",
+                replace_existing=True,
+            )
+        retry_txt = ", ".join(f"T-{m}" for m in retries) if retries else "—"
         print(
             f"[PROGRAMADO] {juego['visitante']} vs {juego['home']} → "
-            f"bloqueo {juego['hora_bloqueo_txt']} (juego {juego['hora_inicio_txt']})"
+            f"bloqueo {juego['hora_bloqueo_txt']} · retry cuotas {retry_txt} "
+            f"(juego {juego['hora_inicio_txt']})"
         )
+
+
+def refrescar_cuotas_juego(game_id: str) -> dict:
+    """Reintento T-45/T-30: refresca cuotas y apuesta si aparece valor vs mercado."""
+    cfg = cargar_config()
+    if not _mercado_requiere_cuotas(cfg):
+        return {"ok": True, "omitido": True, "motivo": "modo_papel"}
+
+    try:
+        from lineas_oddspapi import invalidar_cache_oddspapi
+
+        invalidar_cache_oddspapi()
+    except Exception:
+        pass
+    try:
+        from lineas_espn import invalidar_cache_espn
+
+        invalidar_cache_espn()
+    except Exception:
+        pass
+
+    hoy = fecha_str()
+    juegos = obtener_juegos_fecha(hoy)
+    juego = next((j for j in juegos if str(j["id"]) == str(game_id)), None)
+    if not juego:
+        return {"ok": False, "motivo": "juego_no_encontrado"}
+    if juego.get("estado") == "FINALIZADO":
+        return {"ok": True, "omitido": True, "motivo": "finalizado"}
+
+    upgraded = False
+    apostable_ahora = False
+    with _memoria_lock:
+        memoria = cargar_memoria()
+        dia = asegurar_dia_operativo(memoria, hoy)
+        pred = next(
+            (p for p in dia.get("predicciones", []) if str(p.get("game_id")) == str(game_id)),
+            None,
+        )
+        if not pred:
+            return {"ok": True, "omitido": True, "motivo": "sin_prediccion_t60"}
+        if any(str(a.get("game_id")) == str(game_id) for a in dia.get("apuestas", [])):
+            return {"ok": True, "omitido": True, "motivo": "ya_apostado"}
+
+        upgraded = actualizar_mercado_en_prediccion(pred, juego, cfg)
+        apostable_ahora = bool(pred.get("apostable"))
+        if upgraded:
+            guardar_memoria(memoria)
+            print(
+                f"[CUOTAS] Retry {game_id} · {juego.get('visitante')}@{juego.get('home')} → "
+                f"{pred.get('lineas_fuente')} edge={pred.get('edge')}% apostable={apostable_ahora}"
+            )
+
+    if upgraded and apostable_ahora:
+        res = bloquear_juego(str(game_id))
+        return {
+            "ok": True,
+            "actualizado": True,
+            "apostable": apostable_ahora,
+            "bloqueo": res,
+        }
+    return {
+        "ok": True,
+        "actualizado": upgraded,
+        "apostable": apostable_ahora,
+        "motivo": "sin_valor" if upgraded else "sin_cuota_nueva",
+    }
 
 
 def exportar_reporte(memoria: dict, dia: dict) -> None:
@@ -3098,7 +3283,7 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
             )
             if k in cfg
         },
-        "lineas": _lineas_meta_cache,
+        "lineas": _lineas_para_panel(cfg),
         "estrategia": cfg.get("estrategia", {}),
         "total_juegos_bloqueados": len(dia["apuestas"]) if dia else 0,
         "oportunidades_valor_hoy": sum(1 for j in juegos if j.get("apostable")),
