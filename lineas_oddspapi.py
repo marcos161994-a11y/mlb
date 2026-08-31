@@ -298,6 +298,8 @@ def guardar_api_key(key: str) -> dict[str, Any]:
         pass
     invalidar_cache_oddspapi()
     cerrar_circuito()
+    # Efecto inmediato en este proceso (no esperar redeploy).
+    os.environ["ODDSPAPI_API_KEY"] = limpia
 
     # Aviso: si Render tiene ODDSPAPI_API_KEY distinta, antes tapaba la rotación.
     # Ahora el archivo DATA_DIR gana; igual conviene borrar la env vieja.
@@ -829,7 +831,7 @@ def _obtener_v4(cfg: dict, api_key: str, meta: dict) -> tuple[dict[tuple[str, st
 
 
 def probar_conexion_oddspapi(cfg: dict, *, registrar_circuito: bool = True) -> dict[str, Any]:
-    """Llamada ligera (tournaments v5) para validar la key sin traer todas las cuotas."""
+    """Llamada ligera (tournaments v5, fallback v4 /sports) para validar la key."""
     meta: dict[str, Any] = {"ok": False, "fuente": "oddspapi", "probe": True}
     if circuito_abierto():
         st = estado_circuito()
@@ -850,19 +852,50 @@ def probar_conexion_oddspapi(cfg: dict, *, registrar_circuito: bool = True) -> d
         return meta
 
     meta["key_fingerprint"] = fingerprint_key(api_key)
-    try:
-        r = requests.get(
-            f"{BASE_URL_V5}/tournaments",
-            params={"apiKey": api_key, "sportIds": str(SPORT_ID_BASEBALL)},
-            timeout=15,
-        )
-    except requests.RequestException as e:
-        meta["mensaje"] = _http_error_corto(e)
-        return meta
+    meta["key_source"] = getattr(cargar_api_key, "last_source", None)
 
+    def _probe_v5() -> requests.Response | None:
+        try:
+            return requests.get(
+                f"{BASE_URL_V5}/tournaments",
+                params={"apiKey": api_key, "sportIds": str(SPORT_ID_BASEBALL)},
+                timeout=15,
+            )
+        except requests.RequestException as e:
+            meta["mensaje"] = _http_error_corto(e)
+            return None
+
+    def _probe_v4() -> requests.Response | None:
+        try:
+            return requests.get(
+                f"{BASE_URL_V4}/sports",
+                params={"apiKey": api_key},
+                timeout=15,
+            )
+        except requests.RequestException as e:
+            meta["mensaje"] = _http_error_corto(e)
+            return None
+
+    r = _probe_v5()
+    if r is None:
+        return meta
+    meta["api_version"] = "v5"
     if r.status_code >= 400:
         err = _parse_api_error(r)
         meta.update({"http_status": r.status_code, "mensaje": err, "error_api": err})
+        # Algunos planes solo tienen v4; probar antes de abrir circuito por 403.
+        if r.status_code in (403, 404):
+            r4 = _probe_v4()
+            if r4 is not None and r4.status_code < 400:
+                cerrar_circuito()
+                invalidar_cache_oddspapi()
+                meta["ok"] = True
+                meta["api_version"] = "v4"
+                meta["http_status"] = r4.status_code
+                meta["mensaje"] = "OddsPapi key OK (probe v4)"
+                meta["circuito_cerrado"] = True
+                meta.pop("error_api", None)
+                return meta
         if registrar_circuito:
             extra = registrar_fallo_circuito(meta)
             if extra and extra.get("abierto"):
@@ -873,9 +906,60 @@ def probar_conexion_oddspapi(cfg: dict, *, registrar_circuito: bool = True) -> d
     cerrar_circuito()
     invalidar_cache_oddspapi()
     meta["ok"] = True
-    meta["mensaje"] = "OddsPapi key OK (probe)"
+    meta["mensaje"] = "OddsPapi key OK (probe v5)"
     meta["circuito_cerrado"] = True
     return meta
+
+
+def estado_setup_oddspapi(cfg: dict | None = None) -> dict[str, Any]:
+    """Diagnóstico seguro (sin secretos) para montar OddsPapi en producción."""
+    cfg = cfg or {}
+    key = cargar_api_key(cfg)
+    circ = estado_circuito()
+    fp = fingerprint_key(key) if key else None
+    source = getattr(cargar_api_key, "last_source", None)
+    env_fp = None
+    env_raw = os.environ.get("ODDSPAPI_API_KEY") or os.environ.get("ODDS_PAPI_KEY")
+    if env_raw:
+        env_fp = fingerprint_key(_limpiar_key(str(env_raw)))
+    disk_exists = KEY_FILE_DATA.exists()
+    listo = bool(key) and not circ.get("abierto")
+    return {
+        "ok": listo,
+        "key_presente": bool(key),
+        "key_fingerprint": fp,
+        "key_source": source,
+        "key_length": len(key) if key else 0,
+        "env_fingerprint": env_fp,
+        "env_distinta": bool(
+            key and env_fp and fp and env_fp != fp
+        ),
+        "disco_key_path": str(KEY_FILE_DATA),
+        "disco_key_existe": disk_exists,
+        "circuito": bool(circ.get("abierto")),
+        "circuito_hasta_hora": circ.get("hasta_hora"),
+        "http_status": circ.get("http_status"),
+        "mensaje_circuito": circ.get("mensaje"),
+        "workflow_url": "https://github.com/marcos161994-a11y/mlb/actions/workflows/configurar-oddspapi.yml",
+        "dashboard_url": "https://oddspapi.io",
+        "pasos": [
+            "1) oddspapi.io → API Keys → copia la key Active (UUID ~36 chars)",
+            "2) GitHub → Actions → Configurar OddsPapi → Run workflow → pega la key",
+            "3) En el log busca oddspapi_ok=true (no solo el checkmark verde)",
+            "4) Render → Environment → ODDSPAPI_API_KEY = misma key (sobrevive redeploys)",
+            "5) Verifica /api/oddspapi-setup → listo=true y circuito=false",
+        ],
+        "ayuda": (
+            None
+            if listo
+            else (
+                "401 = key inválida/revocada. "
+                "Si creaste key nueva en oddspapi.io debes pegarla en GitHub Action "
+                "(el servidor no la recibe sola). "
+                "Tras redeploy en Render Free, pon la misma key en Environment."
+            )
+        ),
+    }
 
 
 def intentar_reabrir_oddspapi_si_expirado(cfg: dict) -> dict[str, Any]:

@@ -1,11 +1,12 @@
-# Guarda la API key de OddsPapi en el disco persistente de Render.
-# Más fácil desde el móvil que editar Environment (que a menudo queda truncada).
+# Guarda la API key de OddsPapi en Render (disco + proceso en caliente).
+# También pon la MISMA key en Render → ODDSPAPI_API_KEY (sobrevive redeploys en plan free).
 #
 # Pasos:
-# 1) En https://oddspapi.io revoca la key vieja y crea una NUEVA (UUID ~36).
+# 1) En https://oddspapi.io copia la key Active (UUID ~36). Revoca keys viejas.
 # 2) GitHub → Actions → Configurar OddsPapi → Run workflow → pega la key → Run.
-# 3) (Recomendado) En Render → Environment borra ODDSPAPI_API_KEY vieja.
-#    La key del disco ya tiene prioridad; borrar la env evita confusiones.
+# 3) Log debe mostrar oddspapi_ok= true (401 = key inválida — crea otra en oddspapi.io).
+# 4) Render → Environment → ODDSPAPI_API_KEY = misma key → Save.
+# 5) Verifica https://mlb-1-en7i.onrender.com/api/oddspapi-setup → listo sin circuito.
 name: Configurar OddsPapi
 
 on:
@@ -65,6 +66,8 @@ jobs:
           if not d.get("oddspapi_ok"):
               print("::warning::Key guardada pero OddsPapi rechazó la key (401/plan). ESPN sigue activo.")
               print("ayuda:", d.get("ayuda"))
+              print("SIGUIENTE: Render → Environment → ODDSPAPI_API_KEY = misma key (sobrevive redeploy)")
           else:
               print("OK key guardada y OddsPapi aceptó la key.")
+              print("RECOMENDADO: Render → Environment → ODDSPAPI_API_KEY = misma key (anti-wipe redeploy)")
           '
