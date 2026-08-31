@@ -348,7 +348,12 @@ def _lado_del_pick(juego: dict) -> str | None:
     return None
 
 
-def _reglas_duras(juego: dict, briefing: dict, modo: dict) -> dict[str, Any] | None:
+def _reglas_duras(
+    juego: dict,
+    briefing: dict,
+    modo: dict,
+    cfg: dict | None = None,
+) -> dict[str, Any] | None:
     """
     Si dispara, devuelve conclusión inmediata (sin Groq).
     """
@@ -489,6 +494,24 @@ def _reglas_duras(juego: dict, briefing: dict, modo: dict) -> dict[str, Any] | N
             fuente="regla-local",
             briefing=briefing,
         )
+
+    try:
+        from modelo_mlb import bloqueado_favorito_inflado
+
+        bloqueado, motivo_fi = bloqueado_favorito_inflado(juego, cfg or {})
+        if bloqueado:
+            return _pack(
+                "PASAR",
+                0,
+                [motivo_fi[:80]],
+                5,
+                ["favorito_inflado"],
+                fuente="regla-local",
+                briefing=briefing,
+            )
+    except Exception:
+        pass
+
     return None
 
 
@@ -822,7 +845,7 @@ def mente_conclusion(
     except Exception:
         pass
 
-    dura = _reglas_duras(juego, briefing, modo)
+    dura = _reglas_duras(juego, briefing, modo, cfg)
     if dura:
         out = dura
     else:

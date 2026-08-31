@@ -46,6 +46,7 @@ from modelo_mlb import (
     cuota_desde_prob,
     edge_pct,
     fuente_es_mercado,
+    bloqueado_favorito_inflado,
     tiene_cuota_mercado,
     apostable_con_mercado,
 )
@@ -742,6 +743,12 @@ def actualizar_mercado_en_prediccion(
     edge = edge_pct(prob, dec_f)
     fuente = juego.get("lineas_fuente") or "mercado"
     apostable = prob >= min_prob and edge >= min_edge
+    bloqueado, motivo_fi = bloqueado_favorito_inflado(
+        {**juego, "probPick": prob, "edge": edge if edge > -900 else 0},
+        cfg,
+    )
+    if bloqueado:
+        apostable = False
 
     existente["lineas_fuente"] = fuente
     existente["odds"] = dec_f
@@ -751,6 +758,8 @@ def actualizar_mercado_en_prediccion(
     existente["apostable"] = apostable
     if apostable:
         existente["motivo_apuesta"] = f"Valor +{edge:.1f}% vs {fuente} (cuota actualizada)"
+    elif bloqueado:
+        existente["motivo_apuesta"] = motivo_fi
     elif "sin cuota real" in (existente.get("motivo_apuesta") or "").lower():
         existente["motivo_apuesta"] = (
             f"Modelo {prob:.0f}% · cuota {fuente} sin valor (+{max(edge, 0):.1f}% edge)"

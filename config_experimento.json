@@ -72,7 +72,13 @@
 
     "preferir_f5_bullpen_debil": true,
 
-    "min_estrellas_fuera_lineup": 2
+    "min_estrellas_fuera_lineup": 2,
+
+    "favorito_inflado": {
+      "activo": true,
+      "umbral_prob": 62.0,
+      "min_edge_pct": 15.0
+    }
 
   },
 

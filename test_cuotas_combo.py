@@ -38,7 +38,7 @@ def test_minutos_retry_cuotas_respeta_t60():
 def test_actualizar_mercado_en_prediccion():
     existente = {
         "pick": "Yankees ML",
-        "probPick": 65.0,
+        "probPick": 58.0,
         "lineas_fuente": "modelo",
         "odds": 1.61,
         "edge": 0,
@@ -51,9 +51,9 @@ def test_actualizar_mercado_en_prediccion():
         "home": "New York Yankees",
         "lineas_fuente": "draftkings",
         "odds_away_decimal": 2.10,
-        "odds_home_decimal": 1.72,
-        "odds_home_american": -139,
-        "odds": 1.72,
+        "odds_home_decimal": 2.05,
+        "odds_home_american": 105,
+        "odds": 2.05,
     }
     cfg = {
         "estrategia": {"min_edge_pct": 6.0, "min_prob_modelo": 58.0},
@@ -62,7 +62,7 @@ def test_actualizar_mercado_en_prediccion():
     ok = srv.actualizar_mercado_en_prediccion(existente, juego, cfg)
     assert ok is True
     assert existente["lineas_fuente"] == "draftkings"
-    assert existente["odds"] == 1.72
+    assert existente["odds"] == 2.05
     assert existente["edge"] > 0
     assert existente["apostable"] is True
 
