@@ -140,3 +140,70 @@ def test_programar_bloqueos_crea_retry_jobs(monkeypatch):
     assert "bloqueo_juego_777001" in added
     assert "cuotas_retry_777001_45" in added
     assert "cuotas_retry_777001_30" in added
+
+
+def test_refrescar_cuotas_pendientes_upgrade_modelo(tmp_path, monkeypatch):
+    gid = "888001"
+    fecha = srv.fecha_str()
+    memoria = {
+        "capital": 100.0,
+        "capital_inicial": 100.0,
+        "stake_por_juego": 3.0,
+        "dia_actual": 1,
+        "dias_totales": 200,
+        "dias": [
+            {
+                "dia": 1,
+                "fecha": fecha,
+                "predicciones": [
+                    {
+                        "game_id": gid,
+                        "pick": "Team A ML",
+                        "probPick": 60.0,
+                        "odds": 1.67,
+                        "lineas_fuente": "modelo",
+                        "edge": 0,
+                        "apostable": False,
+                        "motivo_apuesta": "Modelo 60% sin cuota real",
+                        "visitante": "Team A",
+                        "home": "Team B",
+                    }
+                ],
+                "apuestas": [],
+            }
+        ],
+    }
+    monkeypatch.setattr(srv, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(srv, "MEMORIA_PATH", tmp_path / "memoria_auditoria.json")
+    srv._invalidar_cache_memoria()
+    srv.guardar_memoria(memoria)
+
+    juego = {
+        "id": gid,
+        "estado": "PROGRAMADO",
+        "visitante": "Team A",
+        "home": "Team B",
+        "lineas_fuente": "draftkings",
+        "odds_away_decimal": 2.10,
+        "odds_away_american": 110,
+        "odds_home_decimal": 1.75,
+        "odds_home_american": -133,
+    }
+
+    cfg = {
+        "timezone": "America/Puerto_Rico",
+        "temporada_mlb": 2026,
+        "estrategia": {"min_edge_pct": 6, "min_prob_modelo": 58},
+    }
+    monkeypatch.setattr(srv, "cargar_config", lambda: cfg)
+    monkeypatch.setattr(srv, "_mercado_requiere_cuotas", lambda _cfg: True)
+    monkeypatch.setattr(srv, "obtener_juegos_fecha", lambda *_a, **_k: [juego])
+    monkeypatch.setattr(srv, "bloquear_juego", lambda *_a, **_k: {"ok": False})
+
+    out = srv.refrescar_cuotas_pendientes_hoy()
+    assert out["actualizados"] == 1
+
+    pred = srv.cargar_memoria()["dias"][0]["predicciones"][0]
+    assert pred["lineas_fuente"] == "draftkings"
+    assert pred.get("cuota_retry") is True
+    assert float(pred["edge"]) > 0
