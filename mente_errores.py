@@ -176,6 +176,7 @@ def _clave_hallazgo(h: dict[str, Any]) -> str:
 def _filtrar_hallazgos_remediados(
     hallazgos: list[dict[str, Any]], estado: dict[str, Any]
 ) -> list[dict[str, Any]]:
+    """Oculta hallazgos cuya remediación ya quedó aplicada (evita alerta eterna)."""
     ov = estado.get("overrides") if isinstance(estado.get("overrides"), dict) else {}
     out: list[dict[str, Any]] = []
     for h in hallazgos:
@@ -199,6 +200,7 @@ def _filtrar_hallazgos_remediados(
 def _clasificar_hallazgos(
     estado: dict[str, Any], hallazgos: list[dict[str, Any]]
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Separa hallazgos nuevos vs repetidos (mismo código ya activo)."""
     activos = estado.setdefault("activos", {})
     if not isinstance(activos, dict):
         activos = {}
@@ -236,6 +238,7 @@ def _clasificar_hallazgos(
 
 
 def _incidentes_recientes_dedup(estado: dict[str, Any], limite: int = 5) -> list[dict[str, Any]]:
+    """Un incidente por código (el más reciente) para no repetir en panel."""
     vistos: set[str] = set()
     out: list[dict[str, Any]] = []
     for inc in reversed(estado.get("incidentes") or []):
@@ -627,6 +630,7 @@ def _hallazgo_recien_registrado(estado: dict, codigo: str, minutos: int = 30) ->
         except ValueError:
             return False
         return _ahora() < prev + timedelta(minutes=max(1, minutos))
+    # También cuenta como reciente si el código sigue activo en seguimiento
     activos = estado.get("activos") if isinstance(estado.get("activos"), dict) else {}
     act = activos.get(codigo)
     if isinstance(act, dict) and int(act.get("veces") or 0) > 1:
@@ -1034,6 +1038,7 @@ def resumen_para_panel(cfg: dict | None = None) -> dict[str, Any]:
     ]
     recientes_raw = _incidentes_recientes_dedup(estado, limite=5)
     nivel = ultimo.get("nivel") or "ok"
+    # Si solo hay repetidos en seguimiento, bajar ruido visual del panel
     if (
         nivel == "alerta"
         and int(ultimo.get("n_hallazgos_nuevos") or 0) == 0
