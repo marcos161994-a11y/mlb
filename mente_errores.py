@@ -362,6 +362,9 @@ def diagnosticar(
     mente = cfg.get("mente") if isinstance(cfg.get("mente"), dict) else {}
     proveedor = str(lineas.get("proveedor") or "oddspapi").lower()
     fallback = bool(lineas.get("fallback_internet", True))
+    mercado_activo = not bool(cfg.get("modo_solo_modelo")) and bool(
+        (cfg.get("estrategia") or {}).get("requiere_betmgm", True)
+    )
 
     circ: dict[str, Any] = {"abierto": False}
     try:
@@ -377,6 +380,27 @@ def diagnosticar(
                 "acciones": [ACCION_REGISTRAR],
             }
         )
+
+    if mercado_activo and proveedor in ("oddspapi", "odds-papi", "odds_papi"):
+        key_ok = False
+        try:
+            from lineas_oddspapi import cargar_api_key
+
+            key_ok = bool(cargar_api_key(cfg))
+        except Exception:
+            key_ok = False
+        if not key_ok and not circ.get("abierto"):
+            hallazgos.append(
+                {
+                    "codigo": "oddspapi_key_ausente",
+                    "severidad": "media",
+                    "mensaje": (
+                        "Mercado activo sin key OddsPapi · se usará ESPN/DraftKings "
+                        "(pega key en /api/configurar-oddspapi)"
+                    )[:180],
+                    "acciones": [ACCION_FORZAR_ESPN, ACCION_ACTIVAR_FALLBACK, ACCION_REGISTRAR],
+                }
+            )
 
     if circ.get("abierto"):
         hallazgos.append(
