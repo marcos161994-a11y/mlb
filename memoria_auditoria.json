@@ -2,7 +2,7 @@
   "modo": "simulacion",
   "capital": 97.63,
   "capital_inicial": 100.0,
-  "dia_actual": 16,
+  "dia_actual": 17,
   "dias_totales": 200,
   "stake_por_juego": 5.0,
   "experimento_activo": true,
@@ -133263,9 +133263,9 @@
           "pitcher_away_id": 695505,
           "pitcher_home_id": 684007,
           "inicio_juego": "2026-08-30T19:20:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -5.0,
           "stake_virtual": 5.0,
           "con_dinero": false,
           "predicho_en": "2026-08-30T18:20:09.969948-04:00",
@@ -133849,7 +133849,9 @@
           },
           "preferir_f5": true,
           "total_linea": null,
-          "lineas_total": null
+          "lineas_total": null,
+          "marcador_final": "Cincinnati Reds 7 - Chicago Cubs 5",
+          "liquidado_en": "2026-08-31T03:27:49.450892-04:00"
         }
       ],
       "resumen": {
@@ -133860,6 +133862,28 @@
         "profit_dia": 0,
         "capital_arriesgado": 0,
         "total_apostado": 0
+      }
+    },
+    {
+      "dia": 17,
+      "fecha": "2026-08-31",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0,
+        "pred_aciertos": 0,
+        "pred_fallos": 0,
+        "pred_pendientes": 0,
+        "pred_excluidas_tarde": 0,
+        "pred_neto": 0,
+        "pred_total": 0
       }
     }
   ],
@@ -140223,6 +140247,59 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-08-30T22:14:39.110176Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-824636-1788161269",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-08-30",
+      "game_id": "824636",
+      "visitante": "Cincinnati Reds",
+      "home": "Chicago Cubs",
+      "pick": "Chicago Cubs ML",
+      "probPick": 63.7,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Cincinnati Reds 7 - Chicago Cubs 5",
+      "patron": "sin_cuota_real",
+      "leccion": "No apostar con dinero si no hay cuota de mercado (Pinnacle/DK). · Capas: bullpen,park_umpire,monte_carlo,mc_totales",
+      "motivo": "Heurística post-fallo (sin_cuota_real)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-31T07:27:49.587051Z",
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales"
+        ],
+        "mc_senal": "over",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1474/1520 pitch +30/-12 → 46/54% · fusión 46/54%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales] → 46/54% · MC totales μ=9.9 (F5 5.5) vs 8.5 (def) ",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-sin_cuota_real-824636-1788161269",
+      "tipo": "sin_cuota_real",
+      "fecha": "2026-08-30",
+      "game_id": "824636",
+      "visitante": "Cincinnati Reds",
+      "home": "Chicago Cubs",
+      "pick": "Chicago Cubs ML",
+      "probPick": 63.7,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "Cincinnati Reds 7 - Chicago Cubs 5",
+      "patron": "mala_practica_sin_mercado",
+      "leccion": "No apostar dinero sin cuota real (Pinnacle/DK); paper sin mercado no es edge.",
+      "motivo": "sin cuota de mercado",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-08-31T07:27:49.587258Z"
     }
   ],
   "mente_stats": {
@@ -140238,9 +140315,9 @@
         "oportunidad_perdida": 8
       },
       "ESPERAR": {
-        "n": 19,
+        "n": 20,
         "aciertos": 12,
-        "fallos": 7
+        "fallos": 8
       }
     },
     "patrones": {
@@ -140259,29 +140336,29 @@
         "apostar_fail": 0
       },
       "humanos": {
-        "n": 26,
-        "pasar_ok": 9,
+        "n": 26.5,
+        "pasar_ok": 9.5,
         "pasar_miss": 17,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "sin_mercado": {
-        "n": 30,
-        "pasar_ok": 10,
+        "n": 30.5,
+        "pasar_ok": 10.5,
         "pasar_miss": 20,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "edge_bajo": {
-        "n": 30,
-        "pasar_ok": 10,
+        "n": 30.5,
+        "pasar_ok": 10.5,
         "pasar_miss": 20,
         "apostar_ok": 0,
         "apostar_fail": 0
       },
       "favorito_alto": {
-        "n": 12,
-        "pasar_ok": 2,
+        "n": 12.5,
+        "pasar_ok": 2.5,
         "pasar_miss": 10,
         "apostar_ok": 0,
         "apostar_fail": 0
@@ -140292,6 +140369,69 @@
         "pasar_miss": 0,
         "apostar_ok": 0,
         "apostar_fail": 0
+      },
+      "favorito_inflado": {
+        "n": 0.0,
+        "pasar_ok": 0.0,
+        "pasar_miss": 0.0,
+        "apostar_ok": 0.0,
+        "apostar_fail": 0.0
+      },
+      "mc_over": {
+        "n": 0.5,
+        "pasar_ok": 0.5,
+        "pasar_miss": 0.0,
+        "apostar_ok": 0.0,
+        "apostar_fail": 0.0
+      },
+      "mc_under": {
+        "n": 0.0,
+        "pasar_ok": 0.0,
+        "pasar_miss": 0.0,
+        "apostar_ok": 0.0,
+        "apostar_fail": 0.0
+      },
+      "preferir_f5": {
+        "n": 0.5,
+        "pasar_ok": 0.5,
+        "pasar_miss": 0.0,
+        "apostar_ok": 0.0,
+        "apostar_fail": 0.0
+      },
+      "forma_fria": {
+        "n": 0.0,
+        "pasar_ok": 0.0,
+        "pasar_miss": 0.0,
+        "apostar_ok": 0.0,
+        "apostar_fail": 0.0
+      },
+      "pitcher_vs_rival_malo": {
+        "n": 0.0,
+        "pasar_ok": 0.0,
+        "pasar_miss": 0.0,
+        "apostar_ok": 0.0,
+        "apostar_fail": 0.0
+      },
+      "linea_en_contra": {
+        "n": 0.0,
+        "pasar_ok": 0.0,
+        "pasar_miss": 0.0,
+        "apostar_ok": 0.0,
+        "apostar_fail": 0.0
+      },
+      "linea_tarde": {
+        "n": 0.0,
+        "pasar_ok": 0.0,
+        "pasar_miss": 0.0,
+        "apostar_ok": 0.0,
+        "apostar_fail": 0.0
+      },
+      "underdog_valor": {
+        "n": 0.0,
+        "pasar_ok": 0.0,
+        "pasar_miss": 0.0,
+        "apostar_ok": 0.0,
+        "apostar_fail": 0.0
       }
     },
     "penalizacion": {
@@ -140301,7 +140441,16 @@
       "sin_mercado": -1,
       "edge_bajo": -1,
       "favorito_alto": -2,
-      "limpio": 0
+      "limpio": 0,
+      "favorito_inflado": 0,
+      "mc_over": 0,
+      "mc_under": 0,
+      "preferir_f5": 0,
+      "forma_fria": 0,
+      "pitcher_vs_rival_malo": 0,
+      "linea_en_contra": 0,
+      "linea_tarde": 0,
+      "underdog_valor": 0
     },
     "vistos": [
       "823583:fallo",
@@ -140333,26 +140482,27 @@
       "823010:acierto",
       "823580:fallo",
       "824959:acierto",
-      "823987:acierto"
+      "823987:acierto",
+      "824636:fallo"
     ],
-    "actualizado_en": "2026-08-31T00:54:03.274058Z"
+    "actualizado_en": "2026-08-31T07:27:49.590415Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 197,
-    "muestras_reales": 197,
+    "muestras": 189,
+    "muestras_reales": 189,
     "schema": 4,
-    "mensaje": "Reentrenado con 197 muestras (197 reales, RF acc 99.5%, RF holdout 55.0%, XGB acc 99.5%, XGB holdout 62.5%)",
-    "accuracy_train": 0.995,
-    "accuracy_holdout": 0.55,
-    "accuracy_xgb_train": 0.995,
-    "accuracy_xgb_holdout": 0.625,
-    "ultimo_entreno": "2026-08-31T00:54:12.965946",
+    "mensaje": "Reentrenado con 189 muestras (189 reales, RF acc 96.8%, RF holdout 71.1%, XGB acc 96.8%, XGB holdout 60.5%)",
+    "accuracy_train": 0.968,
+    "accuracy_holdout": 0.711,
+    "accuracy_xgb_train": 0.968,
+    "accuracy_xgb_holdout": 0.605,
+    "ultimo_entreno": "2026-08-31T07:27:57.959408",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 197,
+    "muestras": 189,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
@@ -140362,28 +140512,54 @@
       },
       "underdog": {
         "ok": true,
-        "muestras": 51,
+        "muestras": 49,
         "metodo": "isotonic"
       },
       "scratch": {
         "ok": true,
-        "muestras": 58,
+        "muestras": 56,
         "metodo": "isotonic"
       },
       "limpio": {
         "ok": true,
-        "muestras": 46,
+        "muestras": 42,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 197 muestras (ECE≈0.06) · 4 tipos",
-    "ece": 0.056
+    "mensaje": "Calibrado isotonic con 189 muestras (ECE≈0.05) · 4 tipos",
+    "por_segmento": {
+      "prob_alta": {
+        "ok": true,
+        "muestras": 60,
+        "metodo": "isotonic"
+      },
+      "underdog_cuota": {
+        "ok": true,
+        "muestras": 20,
+        "metodo": "isotonic"
+      },
+      "mc_over": {
+        "ok": true,
+        "muestras": 82,
+        "metodo": "isotonic"
+      },
+      "entorno_f5": {
+        "ok": true,
+        "muestras": 22,
+        "metodo": "isotonic"
+      },
+      "general": {
+        "ok": false,
+        "muestras": 5
+      }
+    },
+    "ece": 0.051
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-08-31T00:54:23.375929Z"
+    "actualizado_en": "2026-08-31T09:58:30.339723Z"
   }
 }

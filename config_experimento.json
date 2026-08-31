@@ -89,7 +89,10 @@
     "senales_activas": true,
     "lecciones_positivas": true,
     "ml_pesos_inteligentes": true,
-    "calibracion_segmentada": true
+    "calibracion_segmentada": true,
+    "ml_min_muestras_reales": 10,
+    "ml_min_ratio_features_reales": 0.5,
+    "ml_peso_features_sinteticas": 0.05
   },
 
   "usar_ia": false,
