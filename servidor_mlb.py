@@ -3744,6 +3744,8 @@ def api_health():
         "rss_mb": rss_mb,
         "capital": mem_h.get("capital"),
         "dia_actual": mem_h.get("dia_actual"),
+        "dias_totales": mem_h.get("dias_totales"),
+        "experimento_activo": mem_h.get("experimento_activo", True),
         "historial": {
             "fechas": hist_fechas,
             "n_dias": len(hist_fechas),

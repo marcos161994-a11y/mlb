@@ -35,6 +35,16 @@ def test_verificar_panel_ok():
     assert out["checks"].get("reporte_cliente") is True
 
 
+def test_panel_sin_copy_experimento_5_dias():
+    """Punto 10: título estático no debe decir '5 Días'; usa dias_totales del API."""
+    html = Path(__file__).resolve().parent.joinpath("QuantumMLB.html").read_text(encoding="utf-8")
+    assert "5 Días" not in html
+    assert "Experimento 5" not in html
+    assert "<title>Quantum MLB</title>" in html
+    assert "function actualizarTituloExperimento" in html
+    assert "`DÍA ${m.dia_actual} DE ${m.dias_totales}`" in html
+
+
 def test_verificar_panel_dias_orden_roto(tmp_path):
     bad = tmp_path / "bad.html"
     bad.write_text(
