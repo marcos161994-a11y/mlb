@@ -828,7 +828,7 @@ def _obtener_v4(cfg: dict, api_key: str, meta: dict) -> tuple[dict[tuple[str, st
     return mapa, meta
 
 
-def probar_conexion_oddspapi(cfg: dict) -> dict[str, Any]:
+def probar_conexion_oddspapi(cfg: dict, *, registrar_circuito: bool = True) -> dict[str, Any]:
     """Llamada ligera (tournaments v5) para validar la key sin traer todas las cuotas."""
     meta: dict[str, Any] = {"ok": False, "fuente": "oddspapi", "probe": True}
     if circuito_abierto():
@@ -863,10 +863,11 @@ def probar_conexion_oddspapi(cfg: dict) -> dict[str, Any]:
     if r.status_code >= 400:
         err = _parse_api_error(r)
         meta.update({"http_status": r.status_code, "mensaje": err, "error_api": err})
-        extra = registrar_fallo_circuito(meta)
-        if extra and extra.get("abierto"):
-            meta["circuito"] = True
-            meta["circuito_hasta_hora"] = extra.get("hasta_hora")
+        if registrar_circuito:
+            extra = registrar_fallo_circuito(meta)
+            if extra and extra.get("abierto"):
+                meta["circuito"] = True
+                meta["circuito_hasta_hora"] = extra.get("hasta_hora")
         return meta
 
     cerrar_circuito()
