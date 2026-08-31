@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Quantum MLB — Experimento 5 Días</title>
+    <title>Quantum MLB</title>
     <style>
         :root {
             --bg: #050a0f;
@@ -566,7 +566,7 @@ const API = (!window.location.origin || window.location.protocol === 'file:')
 const ES_NUBE = API.includes('onrender.com') || API.includes('render.com');
 const REFRESH_MS = ES_NUBE ? 45000 : 8000;
 const CACHE_KEY = 'qmlb_last_state_v2';
-const PANEL_VER = '2026-08-31-cuotas';
+const PANEL_VER = '2026-08-31-ml-panel';
 let cargandoEstado = false;
 let cargandoBoot = false;
 let cargandoJuegos = false;
@@ -640,6 +640,23 @@ function reintentarAhora() {
     cargarEstado();
 }
 
+function actualizarTituloExperimento(m) {
+    if (!m || typeof m !== 'object') return;
+    const total = Number(m.dias_totales || 0);
+    const dia = Number(m.dia_actual || 0);
+    if (m.experimento_activo === false) {
+        document.title = 'Quantum MLB — Experimento finalizado';
+        return;
+    }
+    if (total > 0 && dia > 0) {
+        document.title = `Quantum MLB — Día ${dia} de ${total}`;
+    } else if (total > 0) {
+        document.title = `Quantum MLB — Experimento ${total} días`;
+    } else {
+        document.title = 'Quantum MLB';
+    }
+}
+
 function aplicarHealthRapido(h) {
     if (!h || typeof h !== 'object') return;
     try {
@@ -649,7 +666,17 @@ function aplicarHealthRapido(h) {
         }
         if (h.dia_actual != null) {
             const dEl = document.getElementById('dia-actual');
-            if (dEl) dEl.textContent = 'DÍA ' + h.dia_actual;
+            if (dEl) {
+                const total = h.dias_totales || null;
+                dEl.textContent = total
+                    ? `DÍA ${h.dia_actual} DE ${total}`
+                    : `DÍA ${h.dia_actual}`;
+            }
+            actualizarTituloExperimento({
+                dia_actual: h.dia_actual,
+                dias_totales: h.dias_totales,
+                experimento_activo: h.experimento_activo !== false,
+            });
         }
         const hs = document.getElementById('historial-sello');
         const seal = h.historial || h.historial_sello || {};
@@ -1215,13 +1242,26 @@ function pintarEstado(data) {
     const pred = split.predicciones || {};
     const din = split.dinero || {};
     const statsContent = document.getElementById('stats-modelo-content');
+    const ml = data.ml_meta || {};
     if (statsContent) {
         if ((pred.total || 0) > 0 || (din.total || 0) > 0) {
+            let mlLine = '';
+            if (ml.muestras != null) {
+                const ratioPct = ml.ratio_features_reales != null
+                    ? Math.round(Number(ml.ratio_features_reales) * 100) + '%'
+                    : '—';
+                const bloq = ml.entreno_bloqueado ? ' · entreno pausado' : '';
+                mlLine =
+                    `<p class="meta-line" style="margin-top:8px;color:var(--muted);font-size:0.78rem">` +
+                    `🤖 ML: ${ml.muestras_reales ?? 0}/${ml.muestras} features reales (${ratioPct})${bloq}` +
+                    (ml.mensaje ? ' · ' + ml.mensaje : '') +
+                    `</p>`;
+            }
             statsContent.innerHTML =
                 `<div class="rend-grid">` +
                 rendCard('📋 Papel', pred.aciertos, pred.fallos, pred.win_rate, pred.ganado, pred.perdido, pred.neto) +
                 rendCard('💰 Dinero', din.ganadas, din.perdidas, din.win_rate, din.ganado, din.perdido, din.neto) +
-                `</div>`;
+                `</div>` + mlLine;
         } else {
             statsContent.innerHTML = '<p class="meta-line">Sin datos suficientes todavía.</p>';
         }
@@ -1231,6 +1271,7 @@ function pintarEstado(data) {
         m.experimento_activo
             ? `DÍA ${m.dia_actual} DE ${m.dias_totales}`
             : 'EXPERIMENTO FINALIZADO';
+    actualizarTituloExperimento(m);
 
     const plEl = document.getElementById('pl-hoy');
     // Hoy = predicciones en papel (todas). Dinero va aparte en Rendimiento / banca.
