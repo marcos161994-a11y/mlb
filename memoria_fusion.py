@@ -251,7 +251,7 @@ def snapshots_dir(data_dir: Path) -> Path:
     return d
 
 
-def escribir_snapshot(data_dir: Path, memoria: dict, *, keep: int = 48) -> Path | None:
+def escribir_snapshot(data_dir: Path, memoria: dict, *, keep: int = 12) -> Path | None:
     """Guarda copia rotativa. keep=últimos N archivos."""
     if not isinstance(memoria, dict) or not fechas_con_historial(memoria):
         return None

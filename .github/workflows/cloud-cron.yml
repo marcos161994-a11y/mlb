@@ -15,6 +15,22 @@ jobs:
       - name: Health (despierta Render)
         run: curl -fsS --retry 3 --retry-delay 15 --max-time 120 "https://mlb-1-en7i.onrender.com/api/health"
 
+      - name: Verificar cuotas de mercado
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::warning::Falta CRON_SECRET — no se verifica odds-status."
+            exit 0
+          fi
+          body=$(curl -fsS --max-time 90 \
+            "https://mlb-1-en7i.onrender.com/api/odds-status" || echo '{"ok":false}')
+          echo "$body"
+          ok=$(echo "$body" | python3 -c "import json,sys; d=json.load(sys.stdin); print('1' if d.get('ok') else '0')" 2>/dev/null || echo 0)
+          if [ "$ok" != "1" ]; then
+            echo "::warning::Cuotas de mercado no OK — revisa OddsPapi key o ESPN fallback."
+          fi
+
       - name: Iniciar cron en segundo plano (respuesta rapida)
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}

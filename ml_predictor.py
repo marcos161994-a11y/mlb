@@ -28,6 +28,45 @@ except ImportError:
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
+
+# Defaults ML / aprendizaje (sobreescritos por config_experimento.json → aprendizaje.*)
+ML_MIN_MUESTRAS_REALES = 10
+ML_MIN_RATIO_FEATURES_REALES = 0.5
+ML_PESO_FEATURES_SINTETICAS = 0.05
+
+
+def _cfg_ml_aprendizaje() -> Dict[str, Any]:
+    """Lee tuning ML desde config sin importar servidor_mlb (evita ciclo)."""
+    try:
+        import json
+
+        path = BASE_DIR / "config_experimento.json"
+        if path.exists():
+            cfg = json.loads(path.read_text(encoding="utf-8"))
+            ap = cfg.get("aprendizaje")
+            if isinstance(ap, dict):
+                return ap
+    except Exception:
+        pass
+    return {}
+
+
+def _param_ml_aprendizaje() -> tuple[int, float, float]:
+    ap = _cfg_ml_aprendizaje()
+    min_reales = int(ap.get("ml_min_muestras_reales", ML_MIN_MUESTRAS_REALES))
+    min_ratio = float(ap.get("ml_min_ratio_features_reales", ML_MIN_RATIO_FEATURES_REALES))
+    peso_sint = float(ap.get("ml_peso_features_sinteticas", ML_PESO_FEATURES_SINTETICAS))
+    return min_reales, min_ratio, peso_sint
+
+
+def _ml_n_jobs() -> int:
+    """Render free tier: 1 hilo evita picos de RAM en entrenamiento."""
+    v = os.environ.get("ML_N_JOBS")
+    if v is not None and v.strip() != "":
+        return int(v)
+    if os.environ.get("RENDER"):
+        return 1
+    return -1
 DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 FEATURE_COLUMNS = [
@@ -172,12 +211,10 @@ def _features_desde_registro(reg: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def cargar_datos_entrenamiento_desde_memoria(memoria: dict) -> List[Dict[str, Any]]:
-    """Apuestas y predicciones liquidadas → dataset para Random Forest.
+    """Apuestas y predicciones liquidadas → dataset para ML (con pesos de muestra)."""
+    from aprendizaje_mlb import peso_muestra_aprendizaje
 
-    Si un juego tiene apuesta liquidada, no se añade también su predicción
-    (evita doble muestra casi idéntica).
-    Prefiere features reales; marca fuente en cada fila.
-    """
+    _, _, peso_sintetica = _param_ml_aprendizaje()
     datos: List[Dict[str, Any]] = []
     for dia in memoria.get("dias", []):
         game_ids_apostados: set = set()
@@ -190,7 +227,13 @@ def cargar_datos_entrenamiento_desde_memoria(memoria: dict) -> List[Dict[str, An
             fila, fuente = features_desde_registro(apuesta)
             fila["resultado"] = 1 if apuesta["estado"] == "ganada" else 0
             fila["_fuente_features"] = fuente
-            datos.append(fila)
+            fila["_peso"] = peso_muestra_aprendizaje(apuesta)
+            if fuente == "sintetica" and peso_sintetica <= 0:
+                continue
+            if fuente == "sintetica":
+                fila["_peso"] = float(fila["_peso"]) * peso_sintetica
+            if fila["_peso"] > 0:
+                datos.append(fila)
         for pred in dia.get("predicciones", []):
             if pred.get("estado") != "liquidado" or pred.get("resultado") not in (
                 "acierto",
@@ -202,7 +245,13 @@ def cargar_datos_entrenamiento_desde_memoria(memoria: dict) -> List[Dict[str, An
             fila, fuente = features_desde_registro(pred)
             fila["resultado"] = 1 if pred["resultado"] == "acierto" else 0
             fila["_fuente_features"] = fuente
-            datos.append(fila)
+            fila["_peso"] = peso_muestra_aprendizaje(pred)
+            if fuente == "sintetica" and peso_sintetica <= 0:
+                continue
+            if fuente == "sintetica":
+                fila["_peso"] = float(fila["_peso"]) * peso_sintetica
+            if fila["_peso"] > 0:
+                datos.append(fila)
     return datos
 
 
@@ -219,15 +268,23 @@ def entrenar_modelo_rf(datos_historicos: List[Dict[str, Any]]) -> RandomForestCl
     df = pd.DataFrame(datos_historicos)
     X = df[FEATURE_COLUMNS].fillna(0)
     y = df["resultado"]
+    sample_weight = df["_peso"].fillna(1.0).astype(float) if "_peso" in df.columns else None
 
     n = len(df)
     acc_holdout = None
     if n >= 20:
         from sklearn.model_selection import train_test_split
 
-        X_tr, X_te, y_tr, y_te = train_test_split(
-            X, y, test_size=0.2, random_state=42, stratify=y if y.nunique() > 1 else None
-        )
+        sw = sample_weight
+        if sw is not None:
+            X_tr, X_te, y_tr, y_te, sw_tr, _sw_te = train_test_split(
+                X, y, sw, test_size=0.2, random_state=42, stratify=y if y.nunique() > 1 else None
+            )
+        else:
+            X_tr, X_te, y_tr, y_te = train_test_split(
+                X, y, test_size=0.2, random_state=42, stratify=y if y.nunique() > 1 else None
+            )
+            sw_tr = None
         scaler_tmp = StandardScaler()
         X_tr_s = scaler_tmp.fit_transform(X_tr)
         X_te_s = scaler_tmp.transform(X_te)
@@ -236,9 +293,9 @@ def entrenar_modelo_rf(datos_historicos: List[Dict[str, Any]]) -> RandomForestCl
             max_depth=10,
             min_samples_split=5,
             random_state=42,
-            n_jobs=-1,
+            n_jobs=_ml_n_jobs(),
         )
-        rf_tmp.fit(X_tr_s, y_tr)
+        rf_tmp.fit(X_tr_s, y_tr, sample_weight=sw_tr.to_numpy() if sw_tr is not None else None)
         acc_holdout = float(rf_tmp.score(X_te_s, y_te))
         print(f"[ML] Accuracy holdout (20%): {acc_holdout:.3f}")
 
@@ -250,9 +307,9 @@ def entrenar_modelo_rf(datos_historicos: List[Dict[str, Any]]) -> RandomForestCl
         max_depth=10,
         min_samples_split=5,
         random_state=42,
-        n_jobs=-1,
+        n_jobs=_ml_n_jobs(),
     )
-    _modelo_rf.fit(X_scaled, y)
+    _modelo_rf.fit(X_scaled, y, sample_weight=sample_weight.to_numpy() if sample_weight is not None else None)
 
     with open(_modelo_path(), "wb") as f:
         pickle.dump(_modelo_rf, f)
@@ -291,6 +348,7 @@ def entrenar_modelo_xgb(datos_historicos: List[Dict[str, Any]]) -> Any:
     df = pd.DataFrame(datos_historicos)
     X = df[FEATURE_COLUMNS].fillna(0)
     y = df["resultado"]
+    sample_weight = df["_peso"].fillna(1.0).astype(float) if "_peso" in df.columns else None
     X_scaled = _scaler.transform(X)
 
     _modelo_xgb = XGBClassifier(
@@ -304,9 +362,9 @@ def entrenar_modelo_xgb(datos_historicos: List[Dict[str, Any]]) -> Any:
         objective="binary:logistic",
         eval_metric="logloss",
         random_state=42,
-        n_jobs=-1,
+        n_jobs=_ml_n_jobs(),
     )
-    _modelo_xgb.fit(X_scaled, y)
+    _modelo_xgb.fit(X_scaled, y, sample_weight=sample_weight.to_numpy() if sample_weight is not None else None)
 
     acc_h = None
     if len(df) >= 20 and y.nunique() > 1:
@@ -326,7 +384,7 @@ def entrenar_modelo_xgb(datos_historicos: List[Dict[str, Any]]) -> Any:
             objective="binary:logistic",
             eval_metric="logloss",
             random_state=42,
-            n_jobs=-1,
+            n_jobs=_ml_n_jobs(),
         )
         xgb_tmp.fit(_scaler.transform(X_tr), y_tr)
         acc_h = float(xgb_tmp.score(_scaler.transform(X_te), y_te))
@@ -352,10 +410,16 @@ def auto_entrenar_ml(memoria: dict, min_muestras: int = 5) -> dict:
     meta_prev = memoria.get("ml_meta") or {}
     datos = cargar_datos_entrenamiento_desde_memoria(memoria)
     n_real = sum(1 for d in datos if d.get("_fuente_features") == "real")
+    n_sint = len(datos) - n_real
+    ratio_real = round(n_real / len(datos), 3) if datos else 0.0
+    min_reales, min_ratio, _peso_sint = _param_ml_aprendizaje()
     meta: Dict[str, Any] = {
         "ok": False,
         "muestras": len(datos),
         "muestras_reales": n_real,
+        "muestras_sinteticas": n_sint,
+        "ratio_features_reales": ratio_real,
+        "entreno_bloqueado": False,
         "schema": FEATURE_SCHEMA_VERSION,
         "mensaje": "",
         "accuracy_train": meta_prev.get("accuracy_train"),
@@ -369,11 +433,25 @@ def auto_entrenar_ml(memoria: dict, min_muestras: int = 5) -> dict:
         meta["mensaje"] = f"Esperando más datos ({len(datos)}/{min_muestras} muestras)"
         return meta
 
+    ratio_ok = len(datos) == 0 or (n_real / len(datos)) >= min_ratio
+    if n_real < min_reales or not ratio_ok:
+        modelo_existe = _modelo_path().exists()
+        meta["entreno_bloqueado"] = True
+        meta["ok"] = bool(meta_prev.get("ok")) and modelo_existe
+        meta["mensaje"] = (
+            f"Entreno pausado: {n_real}/{len(datos)} features reales "
+            f"(mín {min_reales}, ratio {min_ratio:.0%}) — se mantiene modelo anterior"
+        )
+        memoria["ml_meta"] = meta
+        print(f"[ML] {meta['mensaje']}")
+        return meta
+
     xgb_listo = (not HAS_XGB) or _modelo_xgb_path().exists()
     mismo_historial = (
         meta_prev.get("muestras") == len(datos)
         and meta_prev.get("schema") == FEATURE_SCHEMA_VERSION
         and meta_prev.get("muestras_reales") == n_real
+        and meta_prev.get("muestras_sinteticas") == n_sint
         and meta_prev.get("xgb") == HAS_XGB
         and _modelo_path().exists()
         and xgb_listo
@@ -416,6 +494,9 @@ def auto_entrenar_ml(memoria: dict, min_muestras: int = 5) -> dict:
             "ok": True,
             "muestras": len(datos),
             "muestras_reales": n_real,
+            "muestras_sinteticas": n_sint,
+            "ratio_features_reales": ratio_real,
+            "entreno_bloqueado": False,
             "schema": FEATURE_SCHEMA_VERSION,
             "accuracy_train": round(acc, 3),
             "accuracy_holdout": round(acc_h, 3) if acc_h is not None else None,

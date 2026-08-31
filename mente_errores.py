@@ -10,6 +10,8 @@ y aplica remediaciones seguras:
   - forzar registro T-60 al despertar
   - registrar incidentes en DATA_DIR
   - avisar por Telegram con cooldown (opcional)
+  - integridad memoria / backup local / panel HTML
+  - errores reportados desde el navegador (Safari iOS)
 
 No inventa picks ni mueve dinero.
 """
@@ -22,10 +24,18 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from mente_integridad import (
+    auditar_backup_local,
+    auditar_integridad_memoria,
+    hallazgos_errores_cliente,
+    verificar_panel_html,
+)
+
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
 STATE_FILE = "mente_errores.json"
 MAX_INCIDENTES = 40
+MAX_ERRORES_CLIENTE = 20
 DEFAULT_COOLDOWN_ALERTA_MIN = 360
 
 # Acciones permitidas (solo ops)
@@ -82,6 +92,8 @@ def _leer_estado() -> dict[str, Any]:
     data.setdefault("incidentes", [])
     data.setdefault("overrides", {})
     data.setdefault("cooldowns", {})
+    data.setdefault("activos", {})
+    data.setdefault("errores_cliente", [])
     return data
 
 
@@ -178,9 +190,7 @@ def _filtrar_hallazgos_remediados(
         if cod == "oddspapi_circuito" and ov.get("lineas.proveedor") == "espn":
             copia = dict(h)
             copia["severidad"] = "aviso"
-            copia["mensaje"] = (
-                "OddsPapi en pausa · remediado con ESPN/fallback"
-            )[:160]
+            copia["mensaje"] = "OddsPapi en pausa · remediado con ESPN/fallback"
             out.append(copia)
             continue
         out.append(h)
@@ -195,11 +205,9 @@ def _clasificar_hallazgos(
     if not isinstance(activos, dict):
         activos = {}
         estado["activos"] = activos
-
     codigos_actuales: set[str] = set()
     nuevos: list[dict[str, Any]] = []
     repetidos: list[dict[str, Any]] = []
-
     for h in hallazgos:
         cod = _clave_hallazgo(h)
         if not cod:
@@ -223,11 +231,9 @@ def _clasificar_hallazgos(
                 "veces": 1,
             }
             nuevos.append(h)
-
     for cod in list(activos.keys()):
         if cod not in codigos_actuales:
             del activos[cod]
-
     return nuevos, repetidos
 
 
@@ -238,7 +244,7 @@ def _incidentes_recientes_dedup(estado: dict[str, Any], limite: int = 5) -> list
     for inc in reversed(estado.get("incidentes") or []):
         if not isinstance(inc, dict):
             continue
-        cod = str(inc.get("codigo") or "")
+        cod = str(inc.get("clave_dedup") or inc.get("codigo") or "")
         if cod in vistos:
             continue
         vistos.add(cod)
@@ -295,19 +301,73 @@ def registrar_error_runtime(origen: str, mensaje: str, codigo: str = "runtime") 
     return inc
 
 
+def registrar_error_cliente(
+    mensaje: str,
+    *,
+    codigo: str = "panel_js",
+    origen: str = "panel",
+    panel_ver: str | None = None,
+    url: str | None = None,
+) -> dict[str, Any]:
+    """Errores JS del panel (Safari iOS) → mente de errores."""
+    estado = _leer_estado()
+    clave = f"cliente:{codigo}:{(mensaje or '')[:48]}"
+    if _hallazgo_recien_registrado(estado, clave, minutos=45):
+        return {"ok": True, "registrado": False, "motivo": "cooldown", "codigo": codigo}
+    err = {
+        "hora": _iso(),
+        "codigo": codigo,
+        "origen": (origen or "panel")[:40],
+        "mensaje": (mensaje or "")[:500],
+        "panel_ver": (panel_ver or "")[:40],
+        "url": (url or "")[:200],
+        "clave_dedup": clave,
+    }
+    lista = estado.setdefault("errores_cliente", [])
+    if not isinstance(lista, list):
+        lista = []
+        estado["errores_cliente"] = lista
+    lista.append(err)
+    if len(lista) > MAX_ERRORES_CLIENTE:
+        estado["errores_cliente"] = lista[-MAX_ERRORES_CLIENTE:]
+    _push_incidente(
+        estado,
+        {
+            "hora": err["hora"],
+            "codigo": f"cliente_{codigo}",
+            "severidad": "alta",
+            "origen": err["origen"],
+            "mensaje": err["mensaje"][:220],
+            "acciones": [ACCION_REGISTRAR],
+            "clave_dedup": clave,
+            "meta": {"panel_ver": panel_ver, "url": (url or "")[:80]},
+        },
+    )
+    _guardar_estado(estado)
+    print(f"[MENTE-ERRORES] Cliente · {codigo}: {(mensaje or '')[:100]}")
+    return {"ok": True, "registrado": True, "codigo": codigo}
+
+
 def diagnosticar(
     cfg: dict | None = None,
     *,
     vigilancia: dict | None = None,
     lineas_meta: dict | None = None,
+    memoria: dict | None = None,
+    panel_html_path: Path | None = None,
+    estado: dict | None = None,
 ) -> list[dict[str, Any]]:
     """Devuelve hallazgos (sin aplicar aún)."""
     cfg = cfg or {}
     hallazgos: list[dict[str, Any]] = []
+    est = estado if isinstance(estado, dict) else _leer_estado()
     lineas = cfg.get("lineas") if isinstance(cfg.get("lineas"), dict) else {}
     mente = cfg.get("mente") if isinstance(cfg.get("mente"), dict) else {}
     proveedor = str(lineas.get("proveedor") or "oddspapi").lower()
     fallback = bool(lineas.get("fallback_internet", True))
+    mercado_activo = not bool(cfg.get("modo_solo_modelo")) and bool(
+        (cfg.get("estrategia") or {}).get("requiere_betmgm", True)
+    )
 
     circ: dict[str, Any] = {"abierto": False}
     try:
@@ -323,6 +383,27 @@ def diagnosticar(
                 "acciones": [ACCION_REGISTRAR],
             }
         )
+
+    if mercado_activo and proveedor in ("oddspapi", "odds-papi", "odds_papi"):
+        key_ok = False
+        try:
+            from lineas_oddspapi import cargar_api_key
+
+            key_ok = bool(cargar_api_key(cfg))
+        except Exception:
+            key_ok = False
+        if not key_ok and not circ.get("abierto"):
+            hallazgos.append(
+                {
+                    "codigo": "oddspapi_key_ausente",
+                    "severidad": "media",
+                    "mensaje": (
+                        "Mercado activo sin key OddsPapi · se usará ESPN/DraftKings "
+                        "(pega key en /api/configurar-oddspapi)"
+                    )[:180],
+                    "acciones": [ACCION_FORZAR_ESPN, ACCION_ACTIVAR_FALLBACK, ACCION_REGISTRAR],
+                }
+            )
 
     if circ.get("abierto"):
         hallazgos.append(
@@ -495,6 +576,32 @@ def diagnosticar(
                 "acciones": [ACCION_FORZAR_ESPN, ACCION_ACTIVAR_FALLBACK, ACCION_REGISTRAR],
             }
         )
+
+    # --- Integridad memoria / backup / panel / cliente ---
+    if isinstance(memoria, dict):
+        hallazgos.extend(auditar_integridad_memoria(memoria))
+
+    try:
+        from servidor_mlb import BASE_DIR, DATA_DIR, MEMORIA_BACKUP_PATH, MEMORIA_PATH
+
+        hallazgos.extend(auditar_backup_local(MEMORIA_PATH, MEMORIA_BACKUP_PATH))
+        panel_path = panel_html_path or (BASE_DIR / "QuantumMLB.html")
+        panel_audit = verificar_panel_html(panel_path)
+        for h in panel_audit.get("hallazgos") or []:
+            if isinstance(h, dict):
+                hallazgos.append(h)
+    except Exception as e:
+        hallazgos.append(
+            {
+                "codigo": "integridad_lectura",
+                "severidad": "baja",
+                "mensaje": f"Auditoría integridad: {e}"[:160],
+                "acciones": [ACCION_REGISTRAR],
+            }
+        )
+
+    clientes = est.get("errores_cliente") if isinstance(est.get("errores_cliente"), list) else []
+    hallazgos.extend(hallazgos_errores_cliente(clientes))
 
     # Dedup por codigo (mantener el de mayor severidad / primero)
     vistos: set[str] = set()
@@ -780,8 +887,14 @@ def ejecutar_ciclo(
     except Exception:
         pass
 
-    hallazgos = diagnosticar(cfg_eff, vigilancia=vigilancia, lineas_meta=lineas_meta)
     estado = _leer_estado()
+    hallazgos = diagnosticar(
+        cfg_eff,
+        vigilancia=vigilancia,
+        lineas_meta=lineas_meta,
+        memoria=memoria,
+        estado=estado,
+    )
     hallazgos = _filtrar_hallazgos_remediados(hallazgos, estado)
     nuevos, repetidos = _clasificar_hallazgos(estado, hallazgos)
     codigos_nuevos = {_clave_hallazgo(h) for h in nuevos if _clave_hallazgo(h)}
@@ -932,6 +1045,9 @@ def resumen_para_panel(cfg: dict | None = None) -> dict[str, Any]:
         and int(ultimo.get("n_hallazgos") or 0) > 0
     ):
         nivel = "aviso"
+    errores_cli = [
+        x for x in (estado.get("errores_cliente") or []) if isinstance(x, dict)
+    ][-3:]
     return {
         "activo": bool(opts.get("activo")),
         "auto_remediar": bool(opts.get("auto_remediar")),
@@ -952,6 +1068,15 @@ def resumen_para_panel(cfg: dict | None = None) -> dict[str, Any]:
         ],
         "total_incidentes": len(incidentes),
         "activos": dict(estado.get("activos") or {}),
+        "errores_cliente_recientes": [
+            {
+                "hora": e.get("hora"),
+                "codigo": e.get("codigo"),
+                "mensaje": (e.get("mensaje") or "")[:100],
+                "panel_ver": e.get("panel_ver"),
+            }
+            for e in reversed(errores_cli)
+        ],
     }
 
 

@@ -828,6 +828,66 @@ def _obtener_v4(cfg: dict, api_key: str, meta: dict) -> tuple[dict[tuple[str, st
     return mapa, meta
 
 
+def probar_conexion_oddspapi(cfg: dict, *, registrar_circuito: bool = True) -> dict[str, Any]:
+    """Llamada ligera (tournaments v5) para validar la key sin traer todas las cuotas."""
+    meta: dict[str, Any] = {"ok": False, "fuente": "oddspapi", "probe": True}
+    if circuito_abierto():
+        st = estado_circuito()
+        meta.update(
+            {
+                "circuito": True,
+                "motivo": "circuito_abierto",
+                "hasta_hora": st.get("hasta_hora"),
+                "http_status": st.get("http_status"),
+                "mensaje": st.get("mensaje"),
+            }
+        )
+        return meta
+
+    api_key = cargar_api_key(cfg)
+    if not api_key:
+        meta["mensaje"] = "sin key OddsPapi"
+        return meta
+
+    meta["key_fingerprint"] = fingerprint_key(api_key)
+    try:
+        r = requests.get(
+            f"{BASE_URL_V5}/tournaments",
+            params={"apiKey": api_key, "sportIds": str(SPORT_ID_BASEBALL)},
+            timeout=15,
+        )
+    except requests.RequestException as e:
+        meta["mensaje"] = _http_error_corto(e)
+        return meta
+
+    if r.status_code >= 400:
+        err = _parse_api_error(r)
+        meta.update({"http_status": r.status_code, "mensaje": err, "error_api": err})
+        if registrar_circuito:
+            extra = registrar_fallo_circuito(meta)
+            if extra and extra.get("abierto"):
+                meta["circuito"] = True
+                meta["circuito_hasta_hora"] = extra.get("hasta_hora")
+        return meta
+
+    cerrar_circuito()
+    invalidar_cache_oddspapi()
+    meta["ok"] = True
+    meta["mensaje"] = "OddsPapi key OK (probe)"
+    meta["circuito_cerrado"] = True
+    return meta
+
+
+def intentar_reabrir_oddspapi_si_expirado(cfg: dict) -> dict[str, Any]:
+    """Tras vencer la pausa del circuito, prueba una vez si la key volvió a funcionar."""
+    st = estado_circuito()
+    if st.get("abierto"):
+        return {"ok": False, "omitido": True, "motivo": "circuito_abierto", **st}
+    if not st.get("expiro"):
+        return {"ok": True, "omitido": True, "motivo": "sin_expiracion_reciente"}
+    return probar_conexion_oddspapi(cfg)
+
+
 def obtener_lineas_oddspapi(cfg: dict) -> tuple[dict[tuple[str, str], dict], dict]:
     """
     mapa: (away_norm, home_norm) -> {away: {...}, home: {...}}
