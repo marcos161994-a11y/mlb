@@ -512,6 +512,23 @@ def _reglas_duras(
     except Exception:
         pass
 
+    try:
+        from aprendizaje_mlb import bloqueado_linea_en_contra
+
+        bloqueado_le, motivo_le = bloqueado_linea_en_contra(juego, cfg or {})
+        if bloqueado_le:
+            return _pack(
+                "PASAR",
+                0,
+                [motivo_le[:80]],
+                5,
+                ["linea_en_contra"],
+                fuente="regla-local",
+                briefing=briefing,
+            )
+    except Exception:
+        pass
+
     return None
 
 

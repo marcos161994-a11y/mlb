@@ -78,6 +78,12 @@
       "activo": true,
       "umbral_prob": 62.0,
       "min_edge_pct": 15.0
+    },
+
+    "linea_en_contra": {
+      "activo": true,
+      "umbral_pct": 5.0,
+      "min_edge_excepcion_pct": 18.0
     }
 
   },
