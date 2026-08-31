@@ -1,6 +1,7 @@
 """Tests OddsPapi moneyline parsing (sin red)."""
 
 import json
+import os
 
 from lineas_oddspapi import (
     _limpiar_key,
@@ -254,11 +255,25 @@ def test_data_dir_gana_sobre_env_al_rotar(monkeypatch, tmp_path):
 
     nueva = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
     info = guardar_api_key(nueva)
-    assert info.get("aviso_env")
+    assert info.get("env_fingerprint")
     key = cargar_api_key({})
     assert key == nueva
     assert fingerprint_key(key) == fingerprint_key(nueva)
     assert getattr(cargar_api_key, "last_source", "").startswith("oddspapi_api_key.txt")
+    assert os.environ.get("ODDSPAPI_API_KEY") == nueva
+
+
+def test_estado_setup_oddspapi_sin_key(monkeypatch, tmp_path):
+    monkeypatch.delenv("ODDSPAPI_API_KEY", raising=False)
+    monkeypatch.setattr("lineas_oddspapi.DATA_DIR", tmp_path)
+    monkeypatch.setattr("lineas_oddspapi.KEY_FILE_DATA", tmp_path / "k.txt")
+    monkeypatch.setattr("lineas_oddspapi.KEY_FILE", tmp_path / "k2.txt")
+    from lineas_oddspapi import estado_setup_oddspapi
+
+    st = estado_setup_oddspapi({})
+    assert st["key_presente"] is False
+    assert st["ok"] is False
+    assert len(st["pasos"]) >= 4
 
 
 def test_aplicar_con_circuito_usa_espn_sin_oddspapi(monkeypatch, tmp_path):

@@ -458,12 +458,31 @@
     </details>
 
     <p class="meta-line" id="lineas-status" style="color:#ffbc00;"></p>
+    <p class="meta-line" id="oddspapi-setup-status" style="color:#ffd166;"></p>
     <p class="meta-line" id="vigilancia-status" style="color:#8899aa;"></p>
     <p class="meta-line" id="mente-errores-status" style="color:#8899aa;"></p>
     <p class="meta-line" id="historial-sello" style="color:#8899aa;font-weight:700;"></p>
     <p class="meta-line" id="telegram-banner" style="color:#ffbc00;"></p>
     <p class="meta-line" id="proximo-bloqueo"></p>
 </div>
+
+<details class="rendimiento" id="oddspapi-setup">
+    <summary>🏦 OddsPapi — Pinnacle + multi-book (cuotas pro)</summary>
+    <div class="rendimiento-body" style="display:flex;flex-direction:column;gap:8px;">
+        <p style="color:var(--muted);font-size:0.85rem;margin:0;" id="oddspapi-setup-help">
+            Cargando estado OddsPapi…
+        </p>
+        <p style="color:var(--gold);font-size:0.8rem;margin:0;">
+            <b>1.</b> <a href="https://oddspapi.io" target="_blank" rel="noopener" style="color:var(--cyan);">oddspapi.io</a>
+            → API Keys → copia la key <b>Active</b> (UUID ~36)<br/>
+            <b>2.</b> <a href="https://github.com/marcos161994-a11y/mlb/actions/workflows/configurar-oddspapi.yml" target="_blank" rel="noopener" style="color:var(--cyan);">GitHub Action</a>
+            → Run workflow → pega la key<br/>
+            <b>3.</b> Log debe decir <code>oddspapi_ok= true</code> (no solo verde)<br/>
+            <b>4.</b> Render → Environment → <code>ODDSPAPI_API_KEY</code> = misma key (sobrevive redeploy)
+        </p>
+        <button type="button" onclick="refrescarOddspapiSetup()">Verificar OddsPapi</button>
+    </div>
+</details>
 
 <details class="rendimiento" id="telegram-setup" open>
     <summary>📱 Telegram — avisos T-60 (obligatorio para alertas)</summary>
@@ -566,7 +585,7 @@ const API = (!window.location.origin || window.location.protocol === 'file:')
 const ES_NUBE = API.includes('onrender.com') || API.includes('render.com');
 const REFRESH_MS = ES_NUBE ? 45000 : 8000;
 const CACHE_KEY = 'qmlb_last_state_v2';
-const PANEL_VER = '2026-08-31-merged';
+const PANEL_VER = '2026-08-31-oddspapi-setup';
 let cargandoEstado = false;
 let cargandoBoot = false;
 let cargandoJuegos = false;
@@ -922,6 +941,45 @@ async function probarTelegram() {
         st.style.color = '#ff4466';
         st.textContent = String(e.message || e);
         delete st.dataset.busy;
+    }
+}
+
+async function refrescarOddspapiSetup() {
+    const banner = document.getElementById('oddspapi-setup-status');
+    const help = document.getElementById('oddspapi-setup-help');
+    try {
+        const r = await fetch(API + '/api/oddspapi-setup');
+        const d = await r.json();
+        const fp = d.key_fingerprint || 'sin key';
+        const src = d.key_source || '?';
+        if (d.ok && !d.circuito) {
+            if (banner) {
+                banner.style.color = '#00ff88';
+                banner.textContent = '✓ OddsPapi listo · ' + fp + ' · ' + src;
+            }
+            if (help) {
+                help.style.color = '#00ff88';
+                help.textContent = 'OddsPapi activo. Pinnacle y multi-book disponibles.';
+            }
+            return;
+        }
+        let txt = 'OddsPapi pendiente · key ' + fp + ' (' + src + ')';
+        if (d.circuito) txt += ' · pausa hasta ' + (d.circuito_hasta_hora || '?');
+        if (d.env_distinta) txt += ' · env distinta (actualiza Render Environment)';
+        if (d.ayuda) txt += ' · ' + d.ayuda;
+        if (banner) {
+            banner.style.color = '#ffd166';
+            banner.textContent = '⚠ ' + txt.slice(0, 220);
+        }
+        if (help) {
+            help.style.color = '#ffd166';
+            help.textContent = txt.slice(0, 320);
+        }
+    } catch (e) {
+        if (banner) {
+            banner.style.color = '#ffbc00';
+            banner.textContent = 'OddsPapi: no se pudo verificar (' + String(e.message || e) + ')';
+        }
     }
 }
 
@@ -1375,6 +1433,9 @@ function pintarEstado(data) {
             ls.style.color = '#ffbc00';
             ls.textContent = '⚠ ' + redactar(lin.mensaje || 'Sin cuotas de internet');
         }
+    }
+    if (!soloModelo && (lin.circuito || lin.fallback_espn)) {
+        refrescarOddspapiSetup();
     }
 
     const vs = document.getElementById('vigilancia-status');

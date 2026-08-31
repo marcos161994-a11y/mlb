@@ -4239,6 +4239,7 @@ def api_odds_status():
                     "ok": False,
                     "key_presente": bool(key),
                     "key_fingerprint": fingerprint_key(key) if key else None,
+                    "key_source": getattr(cargar_api_key, "last_source", None),
                     "circuito": True,
                     "circuito_hasta": st.get("hasta"),
                     "circuito_hasta_hora": st.get("hasta_hora"),
@@ -4265,7 +4266,7 @@ def api_odds_status():
                 "ok": bool(meta.get("ok")),
                 "key_presente": True,
                 "key_fingerprint": meta.get("key_fingerprint") or fingerprint_key(key),
-                "key_source": meta.get("key_source"),
+                "key_source": meta.get("key_source") or getattr(cargar_api_key, "last_source", None),
                 "key_length": meta.get("key_length") or len(key),
                 "key_score": meta.get("key_score"),
                 "api_version": meta.get("api_version"),
@@ -4869,6 +4870,30 @@ def _cron_externo_en_fondo() -> None:
         _cron_externo_activo = False
 
 
+@app.get("/api/oddspapi-setup")
+def api_oddspapi_setup(probe: bool = False, secret: str | None = None):
+    """
+    Guía y diagnóstico para montar OddsPapi (sin exponer la key).
+    ?probe=1&secret=CRON_SECRET fuerza un probe (cierra circuito si la key es válida).
+    """
+    from lineas_oddspapi import estado_setup_oddspapi, probar_conexion_oddspapi
+
+    cfg = cargar_config()
+    out = estado_setup_oddspapi(cfg)
+    if probe:
+        _verificar_cron_secreto(secret)
+        probe_res = probar_conexion_oddspapi(cfg, registrar_circuito=False)
+        out["probe"] = {
+            "ok": bool(probe_res.get("ok")),
+            "http_status": probe_res.get("http_status"),
+            "mensaje": probe_res.get("mensaje"),
+            "error_api": probe_res.get("error_api"),
+            "api_version": probe_res.get("api_version"),
+        }
+        out.update(estado_setup_oddspapi(cfg))
+    return out
+
+
 @app.post("/api/configurar-oddspapi")
 @app.get("/api/configurar-oddspapi")
 async def api_configurar_oddspapi(request: Request, secret: str | None = None, key: str | None = None):
@@ -4908,7 +4933,6 @@ async def api_configurar_oddspapi(request: Request, secret: str | None = None, k
         "guardado": info,
         "probe": probe,
         "partidos": probe.get("partidos"),
-        "api_version": "v5",
         "http_status": probe.get("http_status"),
         "error_api": probe.get("error_api"),
         "mensaje": (
@@ -4921,8 +4945,9 @@ async def api_configurar_oddspapi(request: Request, secret: str | None = None, k
             )
         ),
         "key_fingerprint": probe.get("key_fingerprint") or info.get("key_fingerprint"),
-        "key_source": "oddspapi_api_key.txt (DATA_DIR)",
+        "key_source": probe.get("key_source") or info.get("prioridad"),
         "circuito": bool(probe.get("circuito")),
+        "api_version": probe.get("api_version") or "v5",
         "aviso_env": info.get("aviso_env"),
         "espn_fallback": (
             "Las cuotas siguen por ESPN/DraftKings (12/12). "
