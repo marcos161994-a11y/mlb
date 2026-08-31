@@ -51,6 +51,7 @@ from modelo_mlb import (
     apostable_con_mercado,
 )
 from aprendizaje_mlb import calcular_movimiento_linea, peso_muestra_aprendizaje
+from clv_mlb import actualizar_clv_registro, resumen_clv_memoria
 from ml_predictor import auto_entrenar_ml
 from ia_groq import ia_veto_disponible, probar_conexion_groq, veto_apuesta
 from mente_mlb import (
@@ -395,6 +396,9 @@ _PRED_PANEL_KEYS = (
     "stake_virtual",
     "predicho_en",
     "liquidado_en",
+    "clv_pct",
+    "clv_entrada_pct",
+    "lineas_fuente",
 )
 _APUESTA_PANEL_KEYS = (
     "game_id",
@@ -409,6 +413,8 @@ _APUESTA_PANEL_KEYS = (
     "stake",
     "marcador_final",
     "liquidado_en",
+    "clv_pct",
+    "clv_entrada_pct",
 )
 _JUEGO_PANEL_KEYS = (
     "id",
@@ -440,6 +446,8 @@ _JUEGO_PANEL_KEYS = (
     "pitcherHome",
     "lineas_fuente",
     "pick_congelado",
+    "bullpen_dia",
+    "clv_pct",
 )
 
 
@@ -796,6 +804,12 @@ def actualizar_mercado_en_prediccion(
     juego["apostable"] = apostable
     juego["pick"] = pick
     juego["probPick"] = prob
+    try:
+        actualizar_clv_registro(existente, juego, fase="cierre")
+        if not existente.get("clv_odds_entrada"):
+            actualizar_clv_registro(existente, juego, fase="entrada")
+    except Exception as e:
+        print(f"[CLV] aviso actualizar mercado: {e}")
     return True
 
 
@@ -840,38 +854,29 @@ def asegurar_dia_operativo(memoria: dict, fecha: str | None = None) -> dict:
 
 def calcular_bias_aprendizaje(memoria: dict) -> float:
     """
-    Auto-aprendizaje: WR ponderado (papel + dinero×3).
-    Retorna ajuste de fuerza del modelo.
+    Auto-aprendizaje: WR solo con apuestas de DINERO REAL.
+    El papel (cuotas estimadas) no mueve el bias — evita sobreconfianza.
     """
+    from aprendizaje_mlb import PESO_DINERO
+
     muestras: list[tuple[bool, float]] = []
     for d in memoria.get("dias", []):
-        for pred in d.get("predicciones", []):
-            if pred.get("estado") != "liquidado" or pred.get("resultado") not in ("acierto", "fallo"):
-                continue
-            w = peso_muestra_aprendizaje(pred)
-            if w <= 0:
-                continue
-            if not prediccion_valida_para_stats(pred) and not pred.get("aprendizaje_solo"):
-                continue
-            muestras.append((pred["resultado"] == "acierto", w))
         for ap in d.get("apuestas", []):
             if ap.get("estado") not in ("ganada", "perdida"):
                 continue
-            w = peso_muestra_aprendizaje(ap)
-            if w <= 0:
-                continue
-            muestras.append((ap["estado"] == "ganada", w))
+            muestras.append((ap["estado"] == "ganada", float(PESO_DINERO)))
 
     peso_total = sum(w for _, w in muestras)
-    if peso_total < 15:
+    min_muestras = 5.0
+    if peso_total < min_muestras:
         return 0.0
 
     win_rate = sum(w for ok, w in muestras if ok) / peso_total
     if win_rate < 0.45:
-        print(f"[APRENDIZAJE] WR ponderado bajo ({win_rate:.1%}, n≈{peso_total:.0f}). Bias cauteloso.")
+        print(f"[APRENDIZAJE] WR dinero bajo ({win_rate:.1%}, n≈{peso_total:.0f}). Bias cauteloso.")
         return -1.2
     if win_rate > 0.60:
-        print(f"[APRENDIZAJE] WR ponderado alto ({win_rate:.1%}). Modelo con confianza.")
+        print(f"[APRENDIZAJE] WR dinero alto ({win_rate:.1%}). Modelo con confianza.")
         return 0.5
     return 0.0
 
@@ -1778,6 +1783,11 @@ def guardar_prediccion(
             "lineas_fuente_inicial": juego.get("lineas_fuente") or "modelo",
         }
     )
+    try:
+        pred_n = dia["predicciones"][-1]
+        actualizar_clv_registro(pred_n, juego, fase="entrada")
+    except Exception as e:
+        print(f"[CLV] aviso guardar predicción: {e}")
     return True
 
 
@@ -2080,25 +2090,32 @@ def rellenar_predicciones_recientes(memoria: dict, dias_atras: int = 7) -> int:
 
 
 def resumen_predicciones_y_dinero(memoria: dict) -> dict:
-    """Totales separados: predicciones (papel) vs apuestas con dinero.
-
-    Devuelve también `_mutado` (interno) si rellenó profit faltante.
-    """
+    """Totales separados: predicciones SOLO PAPEL vs apuestas con dinero + divergencia."""
     pred_aciertos = pred_fallos = 0
     pred_ganado = pred_perdido = 0.0
     pred_excluidas = 0
+    pred_stake_total = 0.0
     din_ganadas = din_perdidas = 0
     din_ganado = din_perdido = 0.0
+    din_stake_total = 0.0
     mutado = False
+    stake_v_default = float(stake_virtual_prediccion(memoria))
 
     for dia in memoria.get("dias", []):
+        apostados = {
+            str(a.get("game_id"))
+            for a in dia.get("apuestas", [])
+            if a.get("estado") in ("ganada", "perdida", "pendiente")
+        }
         for p in dia.get("predicciones", []):
             if p.get("estado") != "liquidado":
+                continue
+            if str(p.get("game_id") or "") in apostados or p.get("con_dinero"):
                 continue
             profit = p.get("profit")
             if profit is None and p.get("resultado") in ("acierto", "fallo"):
                 stake_v = float(
-                    p.get("stake_virtual") or stake_virtual_prediccion(memoria)
+                    p.get("stake_virtual") or stake_v_default
                 )
                 odds = float(p.get("odds") or 0)
                 if odds <= 1.0:
@@ -2114,9 +2131,11 @@ def resumen_predicciones_y_dinero(memoria: dict) -> dict:
                 p["stake_virtual"] = stake_v
                 mutado = True
             profit = float(profit or 0)
+            stake_v = float(p.get("stake_virtual") or stake_v_default)
             if not prediccion_valida_para_stats(p):
                 pred_excluidas += 1
                 continue
+            pred_stake_total += stake_v
             if p.get("resultado") == "acierto":
                 pred_aciertos += 1
                 if profit > 0:
@@ -2130,6 +2149,7 @@ def resumen_predicciones_y_dinero(memoria: dict) -> dict:
             if a.get("estado") not in ("ganada", "perdida"):
                 continue
             profit = float(a.get("profit") or 0)
+            din_stake_total += float(a.get("stake") or 0)
             if a["estado"] == "ganada":
                 din_ganadas += 1
                 din_ganado += max(profit, 0)
@@ -2139,26 +2159,48 @@ def resumen_predicciones_y_dinero(memoria: dict) -> dict:
 
     pred_total = pred_aciertos + pred_fallos
     din_total = din_ganadas + din_perdidas
+    pred_wr = round(100 * pred_aciertos / pred_total, 1) if pred_total else 0
+    din_wr = round(100 * din_ganadas / din_total, 1) if din_total else 0
+    pred_neto = round(pred_ganado - pred_perdido, 2)
+    din_neto = round(din_ganado - din_perdido, 2)
+    pred_roi = round(100 * pred_neto / pred_stake_total, 1) if pred_stake_total else 0
+    din_roi = round(100 * din_neto / din_stake_total, 1) if din_stake_total else 0
+    wr_diff = round(pred_wr - din_wr, 1) if pred_total and din_total else None
+
+    divergencia = {"wr_diff": wr_diff, "alerta": False, "mensaje": ""}
+    if wr_diff is not None and wr_diff >= 10:
+        divergencia["alerta"] = True
+        divergencia["mensaje"] = (
+            f"Papel {pred_wr}% vs dinero {din_wr}% — el bias usa solo dinero real"
+        )
+    elif wr_diff is not None and pred_total >= 20 and din_total >= 3:
+        divergencia["mensaje"] = f"Papel {pred_wr}% · Dinero {din_wr}%"
+
     return {
         "predicciones": {
             "total": pred_total,
             "aciertos": pred_aciertos,
             "fallos": pred_fallos,
-            "win_rate": round(100 * pred_aciertos / pred_total, 1) if pred_total else 0,
+            "win_rate": pred_wr,
             "ganado": round(pred_ganado, 2),
             "perdido": round(pred_perdido, 2),
-            "neto": round(pred_ganado - pred_perdido, 2),
+            "neto": pred_neto,
+            "roi_pct": pred_roi,
+            "invertido": round(pred_stake_total, 2),
             "excluidas_tarde": pred_excluidas,
         },
         "dinero": {
             "total": din_total,
             "ganadas": din_ganadas,
             "perdidas": din_perdidas,
-            "win_rate": round(100 * din_ganadas / din_total, 1) if din_total else 0,
+            "win_rate": din_wr,
             "ganado": round(din_ganado, 2),
             "perdido": round(din_perdido, 2),
-            "neto": round(din_ganado - din_perdido, 2),
+            "neto": din_neto,
+            "roi_pct": din_roi,
+            "invertido": round(din_stake_total, 2),
         },
+        "divergencia": divergencia,
         "_mutado": mutado,
     }
 
@@ -2564,6 +2606,24 @@ def _bloquear_juego_locked(
             "bloqueado_en": ahora.isoformat(),
         }
     )
+    apuesta_n = dia["apuestas"][-1]
+    if pred_existente:
+        for clv_k in (
+            "clv_pct",
+            "clv_entrada_pct",
+            "clv_odds_entrada",
+            "clv_pin_cierre_away",
+            "clv_pin_cierre_home",
+            "clv_cierre_en",
+        ):
+            if pred_existente.get(clv_k) is not None:
+                apuesta_n[clv_k] = pred_existente[clv_k]
+    try:
+        actualizar_clv_registro(apuesta_n, juego, fase="cierre")
+        if pred_existente is not None:
+            actualizar_clv_registro(pred_existente, juego, fase="cierre")
+    except Exception as e:
+        print(f"[CLV] aviso bloqueo dinero: {e}")
     guardar_prediccion(dia, juego, con_dinero=True, stake_virtual=stake_v)
     if not dia.get("bloqueado_en"):
         dia["bloqueado_en"] = ahora.isoformat()
@@ -2732,6 +2792,10 @@ def refrescar_cuotas_juego(game_id: str) -> dict:
         upgraded = actualizar_mercado_en_prediccion(pred, juego, cfg)
         apostable_ahora = bool(pred.get("apostable"))
         if upgraded:
+            try:
+                actualizar_clv_registro(pred, juego, fase="cierre")
+            except Exception as e:
+                print(f"[CLV] aviso retry cuotas: {e}")
             guardar_memoria(memoria)
             print(
                 f"[CUOTAS] Retry {game_id} · {juego.get('visitante')}@{juego.get('home')} → "
@@ -3337,6 +3401,7 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
         "games": _juegos_para_panel(juegos),
         "stats_modelo": stats_modelo,
         "pl_split": pl_split,
+        "clv_meta": resumen_clv_memoria(memoria),
         "ml_meta": memoria.get("ml_meta"),
         "calib_meta": memoria.get("calib_meta"),
         "lecciones": lecciones_meta,
