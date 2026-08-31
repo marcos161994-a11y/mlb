@@ -2738,6 +2738,18 @@ async def lifespan(app: FastAPI):
             print(f"[MOTOR] Error en liquidación inicial: {e}")
 
     threading.Thread(target=_boot_completo, daemon=True, name="motor-boot").start()
+    cfg_boot = cargar_config()
+    if not cfg_boot.get("modo_solo_modelo") and (cfg_boot.get("estrategia") or {}).get(
+        "requiere_betmgm", True
+    ):
+        stake = cfg_boot.get("stake_por_juego", 3)
+        max_d = (cfg_boot.get("estrategia") or {}).get("max_apuestas_dia", 4)
+        print(
+            f"[BOOT] Mercado ACTIVO · stake=${stake} · max {max_d} apuestas/día · "
+            f"proveedor={(cfg_boot.get('lineas') or {}).get('proveedor', 'oddspapi')}"
+        )
+    else:
+        print("[BOOT] Modo papel (sin mercado para dinero)")
     print("[BOOT] Puerto listo · motor en background")
     yield
     try:

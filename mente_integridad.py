@@ -10,7 +10,7 @@ ACCION_REGISTRAR = "registrar"
 ACCION_NOTIFICAR = "notificar"
 ACCION_RESTAURAR_HISTORIAL = "restaurar_historial"
 
-PANEL_VER_MIN = "2026-08-29-mente"
+PANEL_VER_MIN = "2026-08-31-mercado"
 
 
 def _fechas_con_preds(memoria: dict) -> set[str]:

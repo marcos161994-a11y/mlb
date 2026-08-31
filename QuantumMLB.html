@@ -563,7 +563,7 @@ const API = (!window.location.origin || window.location.protocol === 'file:')
 const ES_NUBE = API.includes('onrender.com') || API.includes('render.com');
 const REFRESH_MS = ES_NUBE ? 45000 : 8000;
 const CACHE_KEY = 'qmlb_last_state_v2';
-const PANEL_VER = '2026-08-29-preds-ui';
+const PANEL_VER = '2026-08-31-mercado';
 let cargandoEstado = false;
 let cargandoBoot = false;
 let cargandoJuegos = false;
@@ -1277,9 +1277,11 @@ function pintarEstado(data) {
     }
 
     const mente = data.mente || cfg.mente || {};
+    const stakeTxt = '$' + Number(m.stake_por_juego || cfg.stake_por_juego || 3).toFixed(0);
+    const minEdge = estr.min_edge_pct || 6;
     document.getElementById('modo-badge').textContent = soloModelo
-        ? 'SIMULACIÓN · Solo stats+ML'
-        : 'SIMULACIÓN · Líneas BetMGM';
+        ? 'PAPEL · Solo stats+ML (sin mercado)'
+        : `MERCADO · ${stakeTxt}/pick · edge≥${minEdge}%`;
     if (cfg.usar_mente !== false) {
         const modoM = (mente.modo || 'normal').toUpperCase();
         const shadowOn = mente.shadow === true || modoM === 'SHADOW';
@@ -1289,8 +1291,8 @@ function pintarEstado(data) {
 
     const mins = data.minutos_antes_juego || 60;
     document.getElementById('proximo-bloqueo').textContent = soloModelo
-        ? `Bloqueo automático: ${mins} min antes de cada juego`
-        : `Bloqueo: ${mins} min antes · evalúa pick + BetMGM`;
+        ? `Bloqueo automático: ${mins} min antes de cada juego (solo papel)`
+        : `Bloqueo T-${mins} min · pick + cuota real · $ solo si hay valor`;
 
     const ls = document.getElementById('lineas-status');
     const lin = data.lineas || {};
@@ -1299,8 +1301,8 @@ function pintarEstado(data) {
         .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '***');
     if (ls) {
         if (soloModelo) {
-            ls.style.color = '#00ff88';
-            ls.textContent = '✓ Modo solo modelo (sin Odds API)';
+            ls.style.color = '#ffbc00';
+            ls.textContent = '⚠ Modo papel (sin cuotas de mercado)';
         } else if (lin.ok) {
             ls.style.color = lin.circuito ? '#ffd166' : '#00ff88';
             const src = lin.fallback_espn ? 'ESPN/DraftKings' : (lin.fuente || 'mercado');
@@ -1395,20 +1397,18 @@ function pintarEstado(data) {
     const minP = estr.min_prob_modelo || 58;
     if (avisoSum && avisoBody) {
         if (soloModelo) {
-            avisoSum.textContent = 'Cuotas de internet';
+            avisoSum.textContent = 'Modo papel (sin mercado)';
             avisoBody.innerHTML =
-                'El tag <strong>PICK</strong> es la predicción. ' +
+                'El tag <strong>PICK</strong> es la predicción del modelo. ' +
                 '<strong>GANÓ</strong> solo al final oficial de MLB. ' +
-                'Verde = valor vs cuota real (OddsPapi o ESPN/DraftKings). ' +
-                'Sin cuota de casa el % es estudio, no se apuesta.';
+                'Sin cuota de casa el % es <strong>estudio</strong>: no hay edge ni apuestas con dinero.';
         } else {
-            avisoSum.textContent = 'Estrategia con cuota real';
+            avisoSum.textContent = 'Dinero real con cuota de mercado';
             avisoBody.innerHTML =
-                '1 h antes se evalúa pitchers + stats + cuota de internet. ' +
-                'Solo se apuesta con valor vs la casa (borde verde). ' +
-                'Cuotas por defecto: ESPN/DraftKings (sin API key). ' +
-                'OddsPapi solo si regeneras key y hay cupo. ' +
-                `Máximo ${estr.max_apuestas_dia || 5} apuestas/día.`;
+                `1 h antes: pitchers + stats + cuota (OddsPapi o ESPN/DraftKings). ` +
+                `Solo se mueve la banca con <strong>valor vs la casa</strong> (borde verde, edge≥${minP}%). ` +
+                `Stake ~${stakeTxt} · máx ${estr.max_apuestas_dia || 4} apuestas/día. ` +
+                'Telegram avisa solo picks apostables.';
         }
     }
 
