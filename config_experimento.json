@@ -20,7 +20,9 @@
 
     "casa": "draftkings",
 
-    "bookmakers": "draftkings",
+    "bookmakers": "pinnacle,draftkings,fanduel,betmgm",
+
+    "minutos_retry_cuotas": [45, 30],
 
     "proveedor": "oddspapi",
 
