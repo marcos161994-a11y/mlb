@@ -18,6 +18,21 @@ def test_config_mercado_activo():
     assert (cfg.get("telegram") or {}).get("solo_apostables") is True
 
 
+def test_mercado_requiere_cuotas():
+    from servidor_mlb import _mercado_requiere_cuotas
+
+    assert _mercado_requiere_cuotas({"modo_solo_modelo": False, "estrategia": {"requiere_betmgm": True}})
+    assert not _mercado_requiere_cuotas({"modo_solo_modelo": True, "estrategia": {"requiere_betmgm": True}})
+    assert not _mercado_requiere_cuotas({"modo_solo_modelo": False, "estrategia": {"requiere_betmgm": False}})
+
+
+def test_precalentar_omite_modo_papel():
+    from servidor_mlb import precalentar_cuotas_mercado
+
+    out = precalentar_cuotas_mercado({"modo_solo_modelo": True, "estrategia": {"requiere_betmgm": True}})
+    assert out.get("omitido") is True
+
+
 def test_modelo_no_solo_con_mercado():
     from modelo_mlb import _modo_solo_modelo
     import servidor_mlb as srv

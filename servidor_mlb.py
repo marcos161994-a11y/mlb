@@ -862,6 +862,48 @@ def _score_equipo(linescore_side: dict, team_side: dict) -> int:
     return 0
 
 
+def _mercado_requiere_cuotas(cfg: dict | None = None) -> bool:
+    cfg = cfg or cargar_config()
+    if cfg.get("modo_solo_modelo"):
+        return False
+    return bool((cfg.get("estrategia") or {}).get("requiere_betmgm", True))
+
+
+def precalentar_cuotas_mercado(cfg: dict | None = None) -> dict:
+    """Refresca cuotas ANTES del cron T-60 (OddsPapi → ESPN si falla)."""
+    global _lineas_meta_cache
+    cfg = cfg or cargar_config()
+    if not _mercado_requiere_cuotas(cfg):
+        return {"ok": True, "omitido": True, "motivo": "modo_papel"}
+    hoy = fecha_str()
+    juegos = obtener_juegos_fecha(hoy, solo_resultados=True)
+    if not juegos:
+        return {"ok": False, "motivo": "sin_juegos_hoy"}
+    _, meta = aplicar_lineas_a_juegos(juegos, cfg)
+    meta = meta if isinstance(meta, dict) else {}
+    _lineas_meta_cache = meta
+    if meta.get("ok"):
+        print(
+            f"[CUOTAS] Precalentado OK · {meta.get('partidos', '?')} partidos · "
+            f"{meta.get('fuente', meta.get('mensaje', ''))[:60]}"
+        )
+        return {"ok": True, **meta}
+    try:
+        from mente_errores import aplicar_overrides_config
+
+        cfg2 = aplicar_overrides_config(cfg)
+        _, meta2 = aplicar_lineas_a_juegos(juegos, cfg2)
+        meta2 = meta2 if isinstance(meta2, dict) else {}
+        if meta2.get("ok"):
+            _lineas_meta_cache = meta2
+            print(f"[CUOTAS] Precalentado ESPN (override) · {meta2.get('mensaje', '')[:80]}")
+            return {"ok": True, "forzado_espn": True, **meta2}
+    except Exception as e:
+        print(f"[CUOTAS] override ESPN: {e}")
+    print(f"[CUOTAS] Precalentado falló: {meta.get('mensaje', '?')[:100]}")
+    return {"ok": False, **meta}
+
+
 def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False) -> list[dict]:
     memoria = cargar_memoria()
     params = {"sportId": 1, "hydrate": "probablePitcher,lineups,linescore,team,officials"}
@@ -4298,6 +4340,18 @@ def ejecutar_trabajo_cron_externo() -> dict:
     sincronizar_experimento_a_hoy()
     reparar_odds_papel(cargar_memoria())
     rellenar_predicciones_recientes(cargar_memoria(), dias_atras=7)
+    cfg_cron = _cfg_con_telegram_memoria()
+    cuotas_pre = precalentar_cuotas_mercado(cfg_cron)
+    if _mercado_requiere_cuotas(cfg_cron) and not cuotas_pre.get("ok"):
+        try:
+            ejecutar_ciclo_mente_errores(
+                cfg_cron,
+                lineas_meta=_lineas_meta_cache if isinstance(_lineas_meta_cache, dict) else None,
+                memoria=cargar_memoria(),
+            )
+            precalentar_cuotas_mercado(cfg_cron)
+        except Exception as e:
+            print(f"[CRON] remediar cuotas: {e}")
     programar_bloqueos_por_juego()
     registrar_predicciones_del_dia(forzar=False)
     resultado = bloquear_apuestas_del_dia(forzar=False)
