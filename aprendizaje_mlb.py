@@ -224,6 +224,42 @@ def calcular_movimiento_linea(reg: dict[str, Any], odds_nueva: float) -> float |
     return round((nueva - base) / base * 100.0, 2)
 
 
+def cfg_linea_en_contra(cfg: dict | None) -> dict[str, Any]:
+    estr = (cfg or {}).get("estrategia") or {}
+    le = estr.get("linea_en_contra") if isinstance(estr.get("linea_en_contra"), dict) else {}
+    return {
+        "activo": bool(le.get("activo", True)),
+        "umbral_pct": float(le.get("umbral_pct", UMBRAL_LINEA_EN_CONTRA_PCT)),
+        "min_edge_excepcion_pct": float(le.get("min_edge_excepcion_pct", 18.0)),
+    }
+
+
+def bloqueado_linea_en_contra(reg: dict[str, Any], cfg: dict | None = None) -> tuple[bool, str]:
+    """
+    Cuota se movió en contra del pick (≥ umbral %) → solo papel salvo edge excepcional.
+    mov negativo = cuota bajó (mercado en contra del lado apostado).
+    """
+    c = cfg_linea_en_contra(cfg)
+    if not c["activo"]:
+        return False, ""
+    mov = reg.get("linea_movimiento_pct")
+    if mov is None:
+        return False, ""
+    try:
+        mov_f = float(mov)
+        edge = float(reg.get("edge") or 0)
+    except (TypeError, ValueError):
+        return False, ""
+    if mov_f > -c["umbral_pct"]:
+        return False, ""
+    if edge >= c["min_edge_excepcion_pct"]:
+        return False, ""
+    return True, (
+        f"Línea en contra ({mov_f:.1f}% vs cuota congelada) — "
+        f"exige edge ≥{c['min_edge_excepcion_pct']:.0f}% para dinero"
+    )
+
+
 def lecciones_seleccionadas_para_prompt(
     lecciones: list[dict[str, Any]],
     max_n: int = 8,

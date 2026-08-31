@@ -2005,6 +2005,18 @@ function pintarJuegos(juegos) {
                 </div>
                 <div style="font-size:0.7rem;color:#8899aa;margin-top:4px">${j.motivo_apuesta || ''}</div>
                 ${(() => {
+                    const mov = j.linea_movimiento_pct;
+                    if (mov != null && mov !== '') {
+                        const n = Number(mov);
+                        if (!isNaN(n)) {
+                            const col = n <= -5 ? 'var(--red)' : (n >= 5 ? 'var(--green)' : '#8899aa');
+                            const tag = n <= -5 ? ' · línea en contra' : '';
+                            return `<div style="font-size:0.68rem;color:${col};margin-top:4px">📉 Cuota ${n >= 0 ? '+' : ''}${n.toFixed(1)}% vs congelada${tag}</div>`;
+                        }
+                    }
+                    return '';
+                })()}
+                ${(() => {
                     const bp = j.bullpen_dia;
                     if (!bp || typeof bp !== 'object') return '';
                     const side = (j.pick || '').includes(j.home) ? (bp.home || {}) : (bp.away || {});

@@ -50,7 +50,7 @@ from modelo_mlb import (
     tiene_cuota_mercado,
     apostable_con_mercado,
 )
-from aprendizaje_mlb import calcular_movimiento_linea, peso_muestra_aprendizaje
+from aprendizaje_mlb import calcular_movimiento_linea, peso_muestra_aprendizaje, bloqueado_linea_en_contra
 from clv_mlb import actualizar_clv_registro, resumen_clv_memoria
 from ml_predictor import auto_entrenar_ml
 from ia_groq import ia_veto_disponible, probar_conexion_groq, veto_apuesta
@@ -396,9 +396,11 @@ _PRED_PANEL_KEYS = (
     "stake_virtual",
     "predicho_en",
     "liquidado_en",
+    "lineas_fuente",
+    "linea_movimiento_pct",
+    "cuota_retry",
     "clv_pct",
     "clv_entrada_pct",
-    "lineas_fuente",
 )
 _APUESTA_PANEL_KEYS = (
     "game_id",
@@ -446,6 +448,7 @@ _JUEGO_PANEL_KEYS = (
     "pitcherHome",
     "lineas_fuente",
     "pick_congelado",
+    "linea_movimiento_pct",
     "bullpen_dia",
     "clv_pct",
 )
@@ -751,8 +754,37 @@ def actualizar_mercado_en_prediccion(
         if amer is not None:
             existente["odds_american"] = amer
         existente["cuota_retry"] = True
+        prob = float(existente.get("probPick") or 0)
+        edge = edge_pct(prob, dec_f)
+        estr = cfg.get("estrategia") or {}
+        min_edge = float(estr.get("min_edge_pct", 6.0))
+        min_prob = float(estr.get("min_prob_modelo", 58.0))
+        apostable = prob >= min_prob and edge >= min_edge
+        bloqueado_fi, motivo_fi = bloqueado_favorito_inflado(
+            {**juego, "probPick": prob, "edge": edge if edge > -900 else 0},
+            cfg,
+        )
+        if bloqueado_fi:
+            apostable = False
+        bloqueado_le, motivo_le = bloqueado_linea_en_contra(
+            {**existente, "edge": edge, "linea_movimiento_pct": mov},
+            cfg,
+        )
+        if bloqueado_le:
+            apostable = False
+        existente["edge"] = edge if edge > -900 else 0
+        existente["apostable"] = apostable
+        if bloqueado_le:
+            existente["motivo_apuesta"] = motivo_le
+        elif bloqueado_fi:
+            existente["motivo_apuesta"] = motivo_fi
         juego["linea_movimiento_pct"] = mov
         juego["odds"] = dec_f
+        juego["edge"] = existente["edge"]
+        juego["apostable"] = apostable
+        juego["probPick"] = prob
+        if motivo_le and bloqueado_le:
+            juego["motivo_apuesta"] = motivo_le
         return True
 
     if not tiene_cuota_mercado(juego):
@@ -782,6 +814,13 @@ def actualizar_mercado_en_prediccion(
     if mov is not None:
         existente["linea_movimiento_pct"] = mov
 
+    bloqueado_le, motivo_le = bloqueado_linea_en_contra(
+        {**existente, "edge": edge if edge > -900 else 0, "linea_movimiento_pct": mov},
+        cfg,
+    )
+    if bloqueado_le:
+        apostable = False
+
     existente["lineas_fuente"] = fuente
     existente["odds"] = dec_f
     if amer is not None:
@@ -790,6 +829,8 @@ def actualizar_mercado_en_prediccion(
     existente["apostable"] = apostable
     if apostable:
         existente["motivo_apuesta"] = f"Valor +{edge:.1f}% vs {fuente} (cuota actualizada)"
+    elif bloqueado_le:
+        existente["motivo_apuesta"] = motivo_le
     elif bloqueado:
         existente["motivo_apuesta"] = motivo_fi
     elif "sin cuota real" in (existente.get("motivo_apuesta") or "").lower():
@@ -804,6 +845,10 @@ def actualizar_mercado_en_prediccion(
     juego["apostable"] = apostable
     juego["pick"] = pick
     juego["probPick"] = prob
+    if mov is not None:
+        juego["linea_movimiento_pct"] = mov
+    if bloqueado_le:
+        juego["motivo_apuesta"] = motivo_le
     try:
         actualizar_clv_registro(existente, juego, fase="cierre")
         if not existente.get("clv_odds_entrada"):
@@ -2346,6 +2391,18 @@ def _bloquear_juego_locked(
             if pred_existente.get("apostable"):
                 pred_existente["apostable"] = False
 
+        if pred_existente.get("linea_movimiento_pct") is not None:
+            juego["linea_movimiento_pct"] = pred_existente["linea_movimiento_pct"]
+        bloqueado_le, motivo_le = bloqueado_linea_en_contra(
+            {**juego, **pred_existente},
+            cfg,
+        )
+        if bloqueado_le:
+            juego["apostable"] = False
+            pred_existente["apostable"] = False
+            pred_existente["motivo_apuesta"] = motivo_le
+            juego["motivo_apuesta"] = motivo_le
+
     if not juego.get("apostable"):
         print(f"[DEBUG BLOQUEO] Juego {game_id} no apostable. Motivo: {juego.get('motivo_apuesta', 'Desconocido')}")
         guardar_memoria(memoria)
@@ -2876,6 +2933,10 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
         por_id = {str(a["game_id"]): a for a in dia.get("apuestas", [])}
         preds_por_id = {str(p["game_id"]): p for p in dia.get("predicciones", [])}
 
+    def _sync_linea_pred(copia: dict, pred: dict | None) -> None:
+        if pred and pred.get("linea_movimiento_pct") is not None:
+            copia["linea_movimiento_pct"] = pred.get("linea_movimiento_pct")
+
     cfg = {}
     try:
         cfg = cargar_config()
@@ -2903,6 +2964,8 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
             if ap.get("clv_pct") is not None:
                 copia["clv_pct"] = ap.get("clv_pct")
             copia["pick_congelado"] = True
+            if pred:
+                _sync_linea_pred(copia, pred)
             # Ya hay dinero: no dejar que el modelo en vivo diga "NO APOSTAR"
             copia["apostable"] = True
         elif pred:
@@ -2919,6 +2982,7 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
             if pred.get("clv_pct") is not None:
                 copia["clv_pct"] = pred.get("clv_pct")
             copia["pick_congelado"] = True
+            _sync_linea_pred(copia, pred)
             if not tiene_cuota_mercado(copia) and not tiene_cuota_mercado(pred):
                 copia["apostable"] = False
                 copia["edge"] = 0
