@@ -104,29 +104,18 @@ def test_segmento_calibracion_prob_alta():
     assert segmento_calibracion({"probPick": 55, "odds": 2.2}) == "underdog_cuota"
 
 
-def test_calcular_bias_desde_papel():
+def test_calcular_bias_desde_dinero():
     from servidor_mlb import calcular_bias_aprendizaje
 
     mem = {
         "dias": [
             {
-                "predicciones": [
-                    {"estado": "liquidado", "resultado": "acierto", "valida_stats": True, "lineas_fuente": "dk"},
-                    {"estado": "liquidado", "resultado": "acierto", "valida_stats": True, "lineas_fuente": "dk"},
-                    {"estado": "liquidado", "resultado": "acierto", "valida_stats": True, "lineas_fuente": "dk"},
-                    {"estado": "liquidado", "resultado": "acierto", "valida_stats": True, "lineas_fuente": "dk"},
-                    {"estado": "liquidado", "resultado": "acierto", "valida_stats": True, "lineas_fuente": "dk"},
-                    {"estado": "liquidado", "resultado": "acierto", "valida_stats": True, "lineas_fuente": "dk"},
-                    {"estado": "liquidado", "resultado": "acierto", "valida_stats": True, "lineas_fuente": "dk"},
-                    {"estado": "liquidado", "resultado": "acierto", "valida_stats": True, "lineas_fuente": "dk"},
-                    {"estado": "liquidado", "resultado": "acierto", "valida_stats": True, "lineas_fuente": "dk"},
-                    {"estado": "liquidado", "resultado": "acierto", "valida_stats": True, "lineas_fuente": "dk"},
-                    {"estado": "liquidado", "resultado": "acierto", "valida_stats": True, "lineas_fuente": "dk"},
-                    {"estado": "liquidado", "resultado": "acierto", "valida_stats": True, "lineas_fuente": "dk"},
-                    {"estado": "liquidado", "resultado": "acierto", "valida_stats": True, "lineas_fuente": "dk"},
-                    {"estado": "liquidado", "resultado": "acierto", "valida_stats": True, "lineas_fuente": "dk"},
-                    {"estado": "liquidado", "resultado": "acierto", "valida_stats": True, "lineas_fuente": "dk"},
+                "predicciones": [],
+                "apuestas": [
+                    {"estado": "ganada"},
                 ]
+                * 12
+                + [{"estado": "perdida"}] * 3,
             }
         ]
     }
