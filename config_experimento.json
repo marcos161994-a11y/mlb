@@ -82,6 +82,16 @@
 
   },
 
+  "aprendizaje": {
+    "peso_dinero": 3.0,
+    "peso_papel": 1.0,
+    "min_muestras_bias": 15,
+    "senales_activas": true,
+    "lecciones_positivas": true,
+    "ml_pesos_inteligentes": true,
+    "calibracion_segmentada": true
+  },
+
   "usar_ia": false,
 
   "usar_clima": true,
