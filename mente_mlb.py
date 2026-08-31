@@ -348,7 +348,12 @@ def _lado_del_pick(juego: dict) -> str | None:
     return None
 
 
-def _reglas_duras(juego: dict, briefing: dict, modo: dict) -> dict[str, Any] | None:
+def _reglas_duras(
+    juego: dict,
+    briefing: dict,
+    modo: dict,
+    cfg: dict | None = None,
+) -> dict[str, Any] | None:
     """
     Si dispara, devuelve conclusión inmediata (sin Groq).
     """
@@ -489,6 +494,41 @@ def _reglas_duras(juego: dict, briefing: dict, modo: dict) -> dict[str, Any] | N
             fuente="regla-local",
             briefing=briefing,
         )
+
+    try:
+        from modelo_mlb import bloqueado_favorito_inflado
+
+        bloqueado, motivo_fi = bloqueado_favorito_inflado(juego, cfg or {})
+        if bloqueado:
+            return _pack(
+                "PASAR",
+                0,
+                [motivo_fi[:80]],
+                5,
+                ["favorito_inflado"],
+                fuente="regla-local",
+                briefing=briefing,
+            )
+    except Exception:
+        pass
+
+    try:
+        from aprendizaje_mlb import bloqueado_linea_en_contra
+
+        bloqueado_le, motivo_le = bloqueado_linea_en_contra(juego, cfg or {})
+        if bloqueado_le:
+            return _pack(
+                "PASAR",
+                0,
+                [motivo_le[:80]],
+                5,
+                ["linea_en_contra"],
+                fuente="regla-local",
+                briefing=briefing,
+            )
+    except Exception:
+        pass
+
     return None
 
 
@@ -797,21 +837,24 @@ def mente_conclusion(
 
     modo = _modo_cfg(cfg)
     briefing = _briefing_para_decision(juego, memoria)
-    # Señales activas del briefing (+ extras)
-    senales = list(briefing.get("alertas") or [])
     try:
-        edge = float(juego.get("edge") or 0)
-        prob = float(juego.get("probPick") or 0)
-    except (TypeError, ValueError):
-        edge, prob = 0.0, 0.0
-    if edge < 5 and "edge_bajo" not in senales:
-        senales.append("edge_bajo")
-    if prob >= 62 and "favorito_alto" not in senales:
-        senales.append("favorito_alto")
-    if not senales:
-        senales.append("limpio")
+        from mente_aprendizaje import senales_de_juego
 
-    # Inyectar texto de aprendizaje en briefing para Groq
+        senales = senales_de_juego(juego, cfg)
+    except Exception:
+        senales = list(briefing.get("alertas") or [])
+        try:
+            edge = float(juego.get("edge") or 0)
+            prob = float(juego.get("probPick") or 0)
+        except (TypeError, ValueError):
+            edge, prob = 0.0, 0.0
+        if edge < 5 and "edge_bajo" not in senales:
+            senales.append("edge_bajo")
+        if prob >= 62 and "favorito_alto" not in senales:
+            senales.append("favorito_alto")
+        if not senales:
+            senales.append("limpio")
+
     try:
         from mente_aprendizaje import texto_aprendizaje_para_prompt
 
@@ -822,7 +865,7 @@ def mente_conclusion(
     except Exception:
         pass
 
-    dura = _reglas_duras(juego, briefing, modo)
+    dura = _reglas_duras(juego, briefing, modo, cfg)
     if dura:
         out = dura
     else:

@@ -23,10 +23,13 @@ DATA_DIR.mkdir(parents=True, exist_ok=True)
 
 _calibrador = None
 _calibradores_tipo: dict[str, tuple[str, Any]] = {}
+_calibradores_segmento: dict[str, tuple[str, Any]] = {}
 _meta: dict[str, Any] = {}
 
 TIPOS_PICK = ("favorito_alto", "underdog", "scratch", "limpio")
+SEGMENTOS_EXTRA = ("prob_alta", "underdog_cuota", "mc_over", "entorno_f5", "general")
 MIN_MUESTRAS_TIPO = 12
+MIN_MUESTRAS_SEGMENTO = 10
 
 
 def _path() -> Path:
@@ -54,20 +57,33 @@ def _inferir_tipo(row: dict) -> str:
 
 def _cargar_pares_desde_memoria(
     memoria: dict,
-) -> tuple[np.ndarray, np.ndarray, list[str]]:
+) -> tuple[np.ndarray, np.ndarray, list[str], list[str], np.ndarray]:
+    from aprendizaje_mlb import peso_muestra_aprendizaje, segmento_calibracion
+
     xs: list[float] = []
     ys: list[int] = []
     tipos: list[str] = []
+    segmentos: list[str] = []
+    pesos: list[float] = []
+
+    def _add_row(row: dict, y_val: int) -> None:
+        p = float(row.get("probPick") or 0)
+        if p < 45 or p > 90:
+            return
+        w = peso_muestra_aprendizaje(row)
+        if w <= 0:
+            return
+        xs.append(p / 100.0)
+        ys.append(y_val)
+        tipos.append(_inferir_tipo(row))
+        segmentos.append(segmento_calibracion(row))
+        pesos.append(w)
+
     for dia in memoria.get("dias", []):
         for apuesta in dia.get("apuestas", []):
             if apuesta.get("estado") not in ("ganada", "perdida"):
                 continue
-            p = float(apuesta.get("probPick") or 0)
-            if p < 45 or p > 90:
-                continue
-            xs.append(p / 100.0)
-            ys.append(1 if apuesta["estado"] == "ganada" else 0)
-            tipos.append(_inferir_tipo(apuesta))
+            _add_row(apuesta, 1 if apuesta["estado"] == "ganada" else 0)
         vistos = {a.get("game_id") for a in dia.get("apuestas", []) if a.get("estado") in ("ganada", "perdida")}
         for pred in dia.get("predicciones", []):
             if pred.get("estado") != "liquidado":
@@ -76,18 +92,19 @@ def _cargar_pares_desde_memoria(
                 continue
             if pred.get("game_id") in vistos:
                 continue
-            p = float(pred.get("probPick") or 0)
-            if p < 45 or p > 90:
-                continue
-            xs.append(p / 100.0)
-            ys.append(1 if pred["resultado"] == "acierto" else 0)
-            tipos.append(_inferir_tipo(pred))
+            _add_row(pred, 1 if pred["resultado"] == "acierto" else 0)
     if not xs:
-        return np.array([]), np.array([]), []
-    return np.array(xs, dtype=float), np.array(ys, dtype=int), tipos
+        return np.array([]), np.array([]), [], [], np.array([])
+    return (
+        np.array(xs, dtype=float),
+        np.array(ys, dtype=int),
+        tipos,
+        segmentos,
+        np.array(pesos, dtype=float),
+    )
 
 
-def _fit_uno(x: np.ndarray, y: np.ndarray) -> tuple[str, Any] | None:
+def _fit_uno(x: np.ndarray, y: np.ndarray, sample_weight: np.ndarray | None = None) -> tuple[str, Any] | None:
     from sklearn.isotonic import IsotonicRegression
     from sklearn.linear_model import LogisticRegression
 
@@ -95,12 +112,18 @@ def _fit_uno(x: np.ndarray, y: np.ndarray) -> tuple[str, Any] | None:
         return None
     try:
         iso = IsotonicRegression(y_min=0.05, y_max=0.95, out_of_bounds="clip")
-        iso.fit(x, y)
+        if sample_weight is not None and len(sample_weight) == len(x):
+            iso.fit(x, y, sample_weight=sample_weight)
+        else:
+            iso.fit(x, y)
         return ("isotonic", iso)
     except Exception:
         try:
             lr = LogisticRegression(C=1.0, solver="lbfgs", max_iter=500)
-            lr.fit(x.reshape(-1, 1), y)
+            if sample_weight is not None and len(sample_weight) == len(x):
+                lr.fit(x.reshape(-1, 1), y, sample_weight=sample_weight)
+            else:
+                lr.fit(x.reshape(-1, 1), y)
             return ("platt", lr)
         except Exception:
             return None
@@ -108,8 +131,8 @@ def _fit_uno(x: np.ndarray, y: np.ndarray) -> tuple[str, Any] | None:
 
 def entrenar_calibrador(memoria: dict, min_muestras: int = 30) -> dict[str, Any]:
     """Ajusta isotonic (o Platt). Global + por tipo_pick si hay datos."""
-    global _calibrador, _calibradores_tipo, _meta
-    x, y, tipos = _cargar_pares_desde_memoria(memoria)
+    global _calibrador, _calibradores_tipo, _calibradores_segmento, _meta
+    x, y, tipos, segmentos, pesos = _cargar_pares_desde_memoria(memoria)
     meta: dict[str, Any] = {
         "ok": False,
         "muestras": int(len(x)),
@@ -126,7 +149,7 @@ def entrenar_calibrador(memoria: dict, min_muestras: int = 30) -> dict[str, Any]
         _meta = meta
         return meta
 
-    fit = _fit_uno(x, y)
+    fit = _fit_uno(x, y, pesos if len(pesos) == len(x) else None)
     if not fit:
         meta["mensaje"] = "No se pudo ajustar calibrador"
         _meta = meta
@@ -142,7 +165,7 @@ def entrenar_calibrador(memoria: dict, min_muestras: int = 30) -> dict[str, Any]
             por_tipo[tipo] = {"ok": False, "muestras": len(idx)}
             continue
         xt, yt = x[idx], y[idx]
-        ft = _fit_uno(xt, yt)
+        ft = _fit_uno(xt, yt, pesos[idx] if len(pesos) == len(x) else None)
         if not ft:
             por_tipo[tipo] = {"ok": False, "muestras": len(idx)}
             continue
@@ -154,6 +177,23 @@ def entrenar_calibrador(memoria: dict, min_muestras: int = 30) -> dict[str, Any]
         }
     _calibradores_tipo = nuevos_tipo
 
+    _calibradores_segmento = {}
+    por_seg: dict[str, dict[str, Any]] = {}
+    for seg in SEGMENTOS_EXTRA:
+        idx = [i for i, s in enumerate(segmentos) if s == seg]
+        if len(idx) < MIN_MUESTRAS_SEGMENTO:
+            por_seg[seg] = {"ok": False, "muestras": len(idx)}
+            continue
+        xt, yt = x[idx], y[idx]
+        wt = pesos[idx] if len(pesos) == len(x) else None
+        fs = _fit_uno(xt, yt, wt)
+        if not fs:
+            por_seg[seg] = {"ok": False, "muestras": len(idx)}
+            continue
+        _calibradores_segmento[seg] = fs
+        por_seg[seg] = {"ok": True, "muestras": len(idx), "metodo": fs[0]}
+    meta["por_segmento"] = por_seg
+
     payload = {
         "tipo": _calibrador[0],
         "modelo": _calibrador[1],
@@ -161,6 +201,10 @@ def entrenar_calibrador(memoria: dict, min_muestras: int = 30) -> dict[str, Any]
         "por_tipo": {
             k: {"tipo": v[0], "modelo": v[1], "muestras": por_tipo.get(k, {}).get("muestras")}
             for k, v in nuevos_tipo.items()
+        },
+        "por_segmento": {
+            k: {"tipo": v[0], "modelo": v[1], "muestras": por_seg.get(k, {}).get("muestras")}
+            for k, v in _calibradores_segmento.items()
         },
     }
     try:
@@ -212,7 +256,7 @@ def _ece(x: np.ndarray, y: np.ndarray, n_bins: int = 5) -> float:
 
 
 def cargar_calibrador() -> bool:
-    global _calibrador, _calibradores_tipo, _meta
+    global _calibrador, _calibradores_tipo, _calibradores_segmento, _meta
     if _calibrador is not None:
         return True
     path = _path()
@@ -233,11 +277,16 @@ def cargar_calibrador() -> bool:
         for k, v in (payload.get("por_tipo") or {}).items():
             if isinstance(v, dict) and v.get("modelo") is not None:
                 _calibradores_tipo[str(k)] = (v.get("tipo") or "isotonic", v["modelo"])
+        _calibradores_segmento = {}
+        for k, v in (payload.get("por_segmento") or {}).items():
+            if isinstance(v, dict) and v.get("modelo") is not None:
+                _calibradores_segmento[str(k)] = (v.get("tipo") or "isotonic", v["modelo"])
         _meta = {
             "ok": True,
             "muestras": payload.get("muestras"),
             "metodo": payload.get("tipo"),
             "tipos_activos": list(_calibradores_tipo.keys()),
+            "segmentos_activos": list(_calibradores_segmento.keys()),
             "mensaje": "Calibrador cargado",
         }
         return _calibrador[1] is not None
@@ -276,6 +325,12 @@ def calibrar_probabilidad(
     t = str(tipo_pick or "").strip().lower()
     if t and t in _calibradores_tipo:
         pair = _calibradores_tipo[t]
+    elif t:
+        from aprendizaje_mlb import segmento_calibracion
+
+        seg = segmento_calibracion({"tipo_pick": t, "probPick": prob_pct})
+        if seg in _calibradores_segmento:
+            pair = _calibradores_segmento[seg]
     try:
         p2 = _aplicar(pair, p)
         p2 = max(0.22, min(0.78, p2))

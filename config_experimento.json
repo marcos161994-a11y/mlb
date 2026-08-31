@@ -6,7 +6,7 @@
 
   "unidades_kelly": 0.25,
 
-  "stake_por_juego": 5.0,
+  "stake_por_juego": 3.0,
 
   "minutos_antes_juego": 60,
 
@@ -20,9 +20,11 @@
 
     "casa": "draftkings",
 
-    "bookmakers": "draftkings",
+    "bookmakers": "pinnacle,draftkings,fanduel,betmgm",
 
-    "proveedor": "espn",
+    "minutos_retry_cuotas": [45, 30],
+
+    "proveedor": "oddspapi",
 
     "api_version": "v5",
 
@@ -44,11 +46,11 @@
 
     "min_edge_pct": 6.0,
 
-    "max_apuestas_dia": 8,
+    "max_apuestas_dia": 4,
 
     "min_prob_modelo": 58.0,
 
-    "requiere_betmgm": false,
+    "requiere_betmgm": true,
 
     "fallback_solo_modelo": true,
 
@@ -56,7 +58,7 @@
 
     "min_stake_pct": 2.0,
 
-    "max_stake_pct": 5.0,
+    "max_stake_pct": 3.0,
 
     "preferir_underdogs": true,
 
@@ -70,8 +72,33 @@
 
     "preferir_f5_bullpen_debil": true,
 
-    "min_estrellas_fuera_lineup": 2
+    "min_estrellas_fuera_lineup": 2,
 
+    "favorito_inflado": {
+      "activo": true,
+      "umbral_prob": 62.0,
+      "min_edge_pct": 15.0
+    },
+
+    "linea_en_contra": {
+      "activo": true,
+      "umbral_pct": 5.0,
+      "min_edge_excepcion_pct": 18.0
+    }
+
+  },
+
+  "aprendizaje": {
+    "peso_dinero": 3.0,
+    "peso_papel": 1.0,
+    "min_muestras_bias": 15,
+    "senales_activas": true,
+    "lecciones_positivas": true,
+    "ml_pesos_inteligentes": true,
+    "calibracion_segmentada": true,
+    "ml_min_muestras_reales": 10,
+    "ml_min_ratio_features_reales": 0.5,
+    "ml_peso_features_sinteticas": 0.05
   },
 
   "usar_ia": false,
@@ -139,7 +166,7 @@
     "proveedor": "callmebot",
     "phone": "",
     "apikey": "",
-    "solo_apostables": false,
+    "solo_apostables": true,
     "incluir_mente": true
   },
 
@@ -148,7 +175,7 @@
     "bot_token": "",
     "chat_id": "",
     "user": "",
-    "solo_apostables": false,
+    "solo_apostables": true,
     "incluir_mente": true
   },
 
@@ -162,7 +189,7 @@
     "api_key": ""
   },
 
-  "modo_solo_modelo": true,
+  "modo_solo_modelo": false,
 
   "usar_ml": true,
 

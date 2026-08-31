@@ -50,13 +50,21 @@ jobs:
           import sys, json
           d = json.load(sys.stdin)
           g = d.get("guardado") or {}
+          p = d.get("probe") or {}
+          print("guardado_ok=", d.get("guardado_ok", g.get("ok")))
+          print("oddspapi_ok=", d.get("oddspapi_ok"))
+          print("http_status=", d.get("http_status") or p.get("http_status"))
           print("fingerprint=", d.get("key_fingerprint") or g.get("key_fingerprint"))
-          print("source=", d.get("key_source"))
-          print("partidos=", d.get("partidos"))
-          print("ok=", d.get("ok"))
+          print("error_api=", d.get("error_api") or p.get("error_api"))
           if g.get("aviso_env"):
               print("AVISO:", g.get("aviso_env"))
-          if not d.get("ok"):
-              raise SystemExit("OddsPapi no aceptó la key (¿401?). Revisa oddspapi.io / plan.")
-          print("OK key rotada y circuito cerrado.")
+          if d.get("espn_fallback"):
+              print("INFO:", d.get("espn_fallback"))
+          if not g.get("ok"):
+              raise SystemExit("No se pudo guardar la key en Render (revisa CRON_SECRET / servidor).")
+          if not d.get("oddspapi_ok"):
+              print("::warning::Key guardada pero OddsPapi rechazó la key (401/plan). ESPN sigue activo.")
+              print("ayuda:", d.get("ayuda"))
+          else:
+              print("OK key guardada y OddsPapi aceptó la key.")
           '

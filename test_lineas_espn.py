@@ -50,6 +50,50 @@ FIXTURE = {
 }
 
 
+def test_parsear_scoreboard_espn_moneyline_close():
+    from lineas_espn import parsear_scoreboard_espn
+
+    payload = {
+        "events": [
+            {
+                "id": "401878657",
+                "competitions": [
+                    {
+                        "competitors": [
+                            {
+                                "homeAway": "away",
+                                "team": {"displayName": "San Francisco Giants"},
+                            },
+                            {
+                                "homeAway": "home",
+                                "team": {"displayName": "Atlanta Braves"},
+                            },
+                        ],
+                        "odds": [
+                            {
+                                "provider": {"name": "DraftKings"},
+                                "moneyline": {
+                                    "away": {"close": {"odds": "+174"}},
+                                    "home": {"close": {"odds": "-187"}},
+                                },
+                                "overUnder": 9.0,
+                                "overOdds": -108,
+                                "underOdds": -111,
+                            }
+                        ],
+                    }
+                ],
+            }
+        ]
+    }
+    mapa = parsear_scoreboard_espn(payload)
+    fila = buscar_lineas_partido(mapa, "San Francisco Giants", "Atlanta Braves")
+    assert fila is not None
+    assert fila["away"]["american"] == 174
+    assert fila["home"]["american"] == -187
+    assert fila["total"]["linea"] == 9.0
+
+
 def test_parsear_moneyline_espn():
     mapa = parsear_eventos_espn(FIXTURE)
     assert len(mapa) == 1
@@ -159,6 +203,7 @@ def test_espn_usa_cache_disco_si_red_falla(monkeypatch, tmp_path):
     def boom(*_a, **_k):
         raise RuntimeError("red caída")
 
+    monkeypatch.setattr("lineas_espn.requests.get", boom)
     monkeypatch.setattr("lineas_espn._session.get", boom)
     m2, meta = obtener_lineas_espn()
     assert meta.get("ok") is True

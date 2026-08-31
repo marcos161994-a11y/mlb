@@ -116,7 +116,7 @@ def test_shadow_no_autoriza_aunque_aposte():
         "visitante": "A",
         "home": "B",
         "pick": "B ML",
-        "probPick": 70,
+        "probPick": 58,
         "edge": 12.0,
         "odds": 1.8,
         "lineas_fuente": "draftkings",

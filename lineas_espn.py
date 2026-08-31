@@ -1,8 +1,9 @@
 """
 Cuotas MLB públicas (sin API key) vía ESPN.
 
-Fuente: scoreboard header de ESPN, moneyline de DraftKings.
-Se usa como respaldo cuando OddsPapi / The Odds API no traen línea.
+Fuente principal: scoreboard por fecha (partidos correctos del día).
+Respaldo: header ESPN (puede mezclar slate distinto — solo si scoreboard falla).
+Se usa cuando OddsPapi / The Odds API no traen línea.
 """
 
 from __future__ import annotations
@@ -22,6 +23,7 @@ from lineas_betmgm import (
 )
 
 ESPN_HEADER = "https://site.web.api.espn.com/apis/v2/scoreboard/header"
+ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard"
 _HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -48,7 +50,7 @@ def invalidar_cache_espn() -> None:
 def _espn_disk_path() -> Path:
     d = Path(os.environ.get("DATA_DIR") or str(Path(__file__).resolve().parent))
     d.mkdir(parents=True, exist_ok=True)
-    return d / "espn_lineas_cache.json"
+    return d / "espn_scoreboard_cache.json"
 
 
 def _serializar_mapa(mapa: dict[tuple[str, str], dict[str, Any]]) -> list[dict[str, Any]]:
@@ -186,6 +188,26 @@ def _ml_int(raw: Any) -> int | None:
     return n
 
 
+def _parse_american_str(raw: Any) -> int | None:
+    s = str(raw or "").strip()
+    if not s:
+        return None
+    try:
+        return int(s.replace("+", ""))
+    except ValueError:
+        return None
+
+
+def _ml_from_scoreboard_odds(odds: dict[str, Any]) -> tuple[int | None, int | None]:
+    """Extrae moneyline away/home del bloque odds[] del scoreboard ESPN."""
+    ml = odds.get("moneyline") if isinstance(odds.get("moneyline"), dict) else {}
+    away_raw = ((ml.get("away") or {}).get("close") or {}).get("odds")
+    home_raw = ((ml.get("home") or {}).get("close") or {}).get("odds")
+    away = _parse_american_str(away_raw) or _ml_int((odds.get("awayTeamOdds") or {}).get("moneyLine"))
+    home = _parse_american_str(home_raw) or _ml_int((odds.get("homeTeamOdds") or {}).get("moneyLine"))
+    return away, home
+
+
 def _ml_lado(odds: dict[str, Any], lado: str) -> int | None:
     bloque = odds.get(lado) if isinstance(odds.get(lado), dict) else {}
     ml = _ml_int((bloque or {}).get("moneyLine"))
@@ -194,6 +216,61 @@ def _ml_lado(odds: dict[str, Any], lado: str) -> int | None:
     key = "homeTeamOdds" if lado == "home" else "awayTeamOdds"
     team = odds.get(key) if isinstance(odds.get(key), dict) else {}
     return _ml_int((team or {}).get("moneyLine"))
+
+
+def parsear_scoreboard_espn(payload: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any]]:
+    """Scoreboard por fecha: partidos alineados con el schedule oficial de MLB."""
+    mapa: dict[tuple[str, str], dict[str, Any]] = {}
+    for ev in payload.get("events") or []:
+        if not isinstance(ev, dict):
+            continue
+        comps = ev.get("competitions") or []
+        if not comps or not isinstance(comps[0], dict):
+            continue
+        comp = comps[0]
+        away_name = home_name = ""
+        for t in comp.get("competitors") or []:
+            if not isinstance(t, dict):
+                continue
+            team = t.get("team") if isinstance(t.get("team"), dict) else {}
+            nombre = str(team.get("displayName") or "").strip()
+            if t.get("homeAway") == "away":
+                away_name = nombre
+            elif t.get("homeAway") == "home":
+                home_name = nombre
+        if not away_name or not home_name:
+            continue
+        odds_list = comp.get("odds") or []
+        if not odds_list or not isinstance(odds_list[0], dict):
+            continue
+        odds = odds_list[0]
+        ml_away, ml_home = _ml_from_scoreboard_odds(odds)
+        if ml_away is None or ml_home is None:
+            continue
+        provider = ((odds.get("provider") or {}).get("name") or "DraftKings").strip()
+        casa = provider.lower().replace(" ", "") or "draftkings"
+        ka, kh = normalizar_nombre_equipo(away_name), normalizar_nombre_equipo(home_name)
+        fila: dict[str, Any] = {
+            "away": {
+                "american": ml_away,
+                "decimal": american_a_decimal(ml_away),
+                "casa": casa,
+                "lado": "away",
+            },
+            "home": {
+                "american": ml_home,
+                "decimal": american_a_decimal(ml_home),
+                "casa": casa,
+                "lado": "home",
+            },
+            "provider": provider,
+            "espn_id": ev.get("id"),
+        }
+        tot = _parse_total_espn(odds, casa)
+        if tot:
+            fila["total"] = tot
+        mapa[(ka, kh)] = fila
+    return mapa
 
 
 def parsear_eventos_espn(payload: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any]]:
@@ -272,6 +349,47 @@ def _aplicar_total_a_juego(juego: dict[str, Any], lineas: dict[str, Any]) -> boo
     return True
 
 
+def _fechas_scoreboard_espn() -> list[str]:
+    """Hoy y mañana (YYYYMMDD) para no perder juegos en borde de medianoche."""
+    hoy = datetime.now().date()
+    return [hoy.strftime("%Y%m%d"), (hoy + timedelta(days=1)).strftime("%Y%m%d")]
+
+
+def _fetch_mapa_espn(timeout: float) -> tuple[dict[tuple[str, str], dict[str, Any]], str, str | None]:
+    """Scoreboard por fecha primero; header solo si no hay líneas."""
+    mapa: dict[tuple[str, str], dict[str, Any]] = {}
+    errores: list[str] = []
+    for fecha in _fechas_scoreboard_espn():
+        try:
+            # Scoreboard rechaza nuestro User-Agent custom (403); sin headers funciona.
+            r = requests.get(
+                ESPN_SCOREBOARD,
+                params={"dates": fecha},
+                timeout=timeout,
+            )
+            r.raise_for_status()
+            parcial = parsear_scoreboard_espn(r.json())
+            mapa.update(parcial)
+        except Exception as e:
+            errores.append(f"scoreboard {fecha}: {e}"[:80])
+    if mapa:
+        return mapa, "scoreboard", None
+    try:
+        r = _session.get(
+            ESPN_HEADER,
+            params={"sport": "baseball", "league": "mlb"},
+            headers=_HEADERS,
+            timeout=timeout,
+        )
+        r.raise_for_status()
+        header = parsear_eventos_espn(r.json())
+        if header:
+            return header, "header", None
+    except Exception as e:
+        errores.append(f"header: {e}"[:80])
+    return {}, "none", " · ".join(errores)[:160] or "ESPN sin cuotas"
+
+
 def obtener_lineas_espn(timeout: float = 12.0) -> tuple[dict[tuple[str, str], dict[str, Any]], dict[str, Any]]:
     meta: dict[str, Any] = {
         "ok": False,
@@ -291,14 +409,9 @@ def obtener_lineas_espn(timeout: float = 12.0) -> tuple[dict[tuple[str, str], di
             "mensaje": f"{len(_cache)} partidos ESPN/DraftKings (cache)",
         }
     try:
-        r = _session.get(
-            ESPN_HEADER,
-            params={"sport": "baseball", "league": "mlb"},
-            headers=_HEADERS,
-            timeout=timeout,
-        )
-        r.raise_for_status()
-        mapa = parsear_eventos_espn(r.json())
+        mapa, api_usada, err = _fetch_mapa_espn(timeout)
+        if not mapa:
+            raise RuntimeError(err or "ESPN sin moneyline")
     except Exception as e:
         disco = _cargar_disco()
         if disco:
@@ -319,8 +432,9 @@ def obtener_lineas_espn(timeout: float = 12.0) -> tuple[dict[tuple[str, str], di
     _guardar_disco(mapa)
     meta["ok"] = bool(mapa)
     meta["partidos"] = len(mapa)
+    meta["api"] = api_usada
     meta["mensaje"] = (
-        f"{len(mapa)} partidos con moneyline ESPN (DraftKings)"
+        f"{len(mapa)} partidos ESPN/DraftKings ({api_usada})"
         if mapa
         else "ESPN sin moneyline MLB ahora"
     )

@@ -676,6 +676,45 @@ def apostable_con_mercado(juego: dict[str, Any] | None) -> bool:
     return bool(juego.get("apostable")) and tiene_cuota_mercado(juego)
 
 
+def favorito_inflado_cfg(cfg: dict[str, Any]) -> dict[str, Any]:
+    estr = cfg.get("estrategia") or {}
+    fi = estr.get("favorito_inflado")
+    if not isinstance(fi, dict):
+        fi = {}
+    return {
+        "activo": bool(fi.get("activo", True)),
+        "umbral_prob": float(fi.get("umbral_prob", 62.0)),
+        "min_edge_pct": float(fi.get("min_edge_pct", 15.0)),
+    }
+
+
+def bloqueado_favorito_inflado(
+    juego: dict[str, Any],
+    cfg: dict[str, Any],
+) -> tuple[bool, str]:
+    """
+    Modelo muy confiado (≥62%) con edge insuficiente vs mercado.
+    Aprendido de las 3 pérdidas reales (Padres/Pirates/Brewers): papel sí, dinero no.
+    """
+    if not isinstance(juego, dict):
+        return False, ""
+    fi = favorito_inflado_cfg(cfg)
+    if not fi["activo"] or not tiene_cuota_mercado(juego):
+        return False, ""
+    try:
+        prob = float(juego.get("probPick") or 0)
+        edge = float(juego.get("edge") or 0)
+    except (TypeError, ValueError):
+        return False, ""
+    if prob < fi["umbral_prob"] or edge >= fi["min_edge_pct"]:
+        return False, ""
+    return (
+        True,
+        f"Favorito inflado: modelo {prob:.0f}% exige edge≥{fi['min_edge_pct']:.0f}% "
+        f"(tiene +{edge:.1f}%) · solo papel",
+    )
+
+
 def marcar_estudio_sin_mercado(
     juego: dict[str, Any],
     *,
@@ -1200,6 +1239,11 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         ):
             juego["apostable"] = False
             juego["motivo_apuesta"] = "Spot no apto para dinero ahora"
+        else:
+            bloqueado, motivo_fi = bloqueado_favorito_inflado(juego, cfg)
+            if bloqueado:
+                juego["apostable"] = False
+                juego["motivo_apuesta"] = motivo_fi
     elif not juego.get("pick"):
         # SIEMPRE hacer una predicción, aunque no sea apostable
         if prob_away >= prob_home:

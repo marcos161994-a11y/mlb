@@ -138,15 +138,77 @@ def _fecha_iso(d: datetime | None = None) -> str:
     return d.strftime("%Y-%m-%d")
 
 
+def _relevistas_desde_boxscore(box: dict, team_id: int) -> list[dict[str, Any]]:
+    """Relevistas de un boxscore con pitches, IP y ERA."""
+    lado = None
+    for side in ("away", "home"):
+        tid = ((box.get("teams") or {}).get(side) or {}).get("team", {}).get("id")
+        if tid == int(team_id):
+            lado = side
+            break
+    if not lado:
+        return []
+    players = ((box.get("teams") or {}).get(lado) or {}).get("players") or {}
+    out: list[dict[str, Any]] = []
+    for pid, pl in players.items():
+        stats = (pl.get("stats") or {}).get("pitching") or {}
+        if not stats:
+            continue
+        gs = int(float(stats.get("gamesStarted") or 0))
+        if gs >= 1:
+            continue
+        npitch = stats.get("numberOfPitches") or stats.get("pitchesThrown")
+        try:
+            n = int(float(npitch or 0))
+        except (TypeError, ValueError):
+            ip = str(stats.get("inningsPitched") or "0")
+            try:
+                if "." in ip:
+                    e, d = ip.split(".", 1)
+                    outs = int(e) * 3 + int(d[:1] or 0)
+                else:
+                    outs = int(float(ip)) * 3
+                n = outs * 5
+            except (TypeError, ValueError):
+                n = 0
+        if n <= 0:
+            continue
+        ip_str = str(stats.get("inningsPitched") or "0")
+        try:
+            if "." in ip_str:
+                e, d = ip_str.split(".", 1)
+                ip_outs = int(e) * 3 + int(d[:1] or 0)
+            else:
+                ip_outs = int(float(ip_str)) * 3
+        except (TypeError, ValueError):
+            ip_outs = 0
+        try:
+            era = float(stats.get("era") or 0)
+        except (TypeError, ValueError):
+            era = 0.0
+        person = pl.get("person") or {}
+        out.append(
+            {
+                "id": str(pid),
+                "nombre": person.get("fullName") or pid,
+                "pitches": n,
+                "ip_outs": ip_outs,
+                "era": era,
+            }
+        )
+    return out
+
+
 def analizar_bullpen_dia(
     team_id: int | None,
     *,
     season: int,
     nombre: str = "",
 ) -> dict[str, Any]:
-    """Pitches de relevistas en el último juego final (últimos 3 días)."""
+    """Bullpen index L3D: pitches, IP relevo, ERA promedio (últimos 3 juegos finales)."""
     if not team_id:
-        return {"ok": False, "fatiga": 0.3, "motivo": "sin team_id"}
+        return {"ok": False, "fatiga": 0.3, "motivo": "sin team_id", "bullpen_index": 30.0}
+
     key = f"{team_id}:{_fecha_iso()}"
     if key in _bullpen_cache:
         return _bullpen_cache[key]
@@ -154,9 +216,15 @@ def analizar_bullpen_dia(
     out: dict[str, Any] = {
         "ok": False,
         "fatiga": 0.3,
+        "bullpen_index": 30.0,
         "pitches_relevo": 0,
+        "pitches_l3d": 0,
+        "ip_relevo": 0.0,
+        "era_relevo_prom": None,
         "relevistas": 0,
+        "juegos_analizados": 0,
         "horas_desde": None,
+        "relevistas_detalle": [],
         "resumen": "",
         "nombre": nombre,
     }
@@ -186,83 +254,103 @@ def analizar_bullpen_dia(
             out["motivo"] = "sin juego final reciente"
             _bullpen_cache[key] = out
             return out
+
         games.sort(key=lambda g: str(g.get("gameDate") or ""), reverse=True)
-        last = games[0]
-        gpk = last.get("gamePk")
-        game_date = str(last.get("gameDate") or "")
-        # Boxscore
-        rb = _session.get(
-            f"https://statsapi.mlb.com/api/v1/game/{gpk}/boxscore",
-            timeout=12,
-        )
-        rb.raise_for_status()
-        box = rb.json()
-        lado = None
-        for side in ("away", "home"):
-            tid = ((box.get("teams") or {}).get(side) or {}).get("team", {}).get("id")
-            if tid == int(team_id):
-                lado = side
-                break
-        if not lado:
-            out["motivo"] = "equipo no en boxscore"
-            _bullpen_cache[key] = out
-            return out
-        players = ((box.get("teams") or {}).get(lado) or {}).get("players") or {}
-        pitches = 0
-        n_rel = 0
-        for _pid, pl in players.items():
-            stats = (pl.get("stats") or {}).get("pitching") or {}
-            if not stats:
-                continue
-            # Starter: gamesStarted >= 1
-            gs = int(float(stats.get("gamesStarted") or 0))
-            if gs >= 1:
-                continue
-            npitch = stats.get("numberOfPitches") or stats.get("pitchesThrown")
-            try:
-                n = int(float(npitch or 0))
-            except (TypeError, ValueError):
-                # fallback innings * 15
-                ip = str(stats.get("inningsPitched") or "0")
-                try:
-                    if "." in ip:
-                        e, d = ip.split(".", 1)
-                        outs = int(e) * 3 + int(d[:1] or 0)
-                    else:
-                        outs = int(float(ip)) * 3
-                    n = outs * 5
-                except (TypeError, ValueError):
-                    n = 0
-            if n <= 0:
-                continue
-            pitches += n
-            n_rel += 1
+        games = games[:3]
+
+        agg: dict[str, dict[str, Any]] = {}
+        pitches_total = 0
+        ip_outs_total = 0
+        eras: list[tuple[float, int]] = []
+
+        for g in games:
+            gpk = g.get("gamePk")
+            rb = _session.get(
+                f"https://statsapi.mlb.com/api/v1/game/{gpk}/boxscore",
+                timeout=12,
+            )
+            rb.raise_for_status()
+            for rel in _relevistas_desde_boxscore(rb.json(), int(team_id)):
+                rid = rel["id"]
+                if rid not in agg:
+                    agg[rid] = {
+                        "nombre": rel["nombre"],
+                        "pitches": 0,
+                        "ip_outs": 0,
+                        "era": rel["era"],
+                        "apariciones": 0,
+                    }
+                agg[rid]["pitches"] += rel["pitches"]
+                agg[rid]["ip_outs"] += rel["ip_outs"]
+                agg[rid]["apariciones"] += 1
+                pitches_total += rel["pitches"]
+                ip_outs_total += rel["ip_outs"]
+                if rel["era"] > 0:
+                    eras.append((rel["era"], rel["pitches"]))
 
         horas = None
         try:
-            gd = datetime.fromisoformat(game_date.replace("Z", "+00:00"))
+            gd = datetime.fromisoformat(str(games[0].get("gameDate") or "").replace("Z", "+00:00"))
             horas = max(0.0, (datetime.now(timezone.utc) - gd).total_seconds() / 3600.0)
         except ValueError:
             horas = 24.0
 
-        # Fatiga 0-1: >80 pitches bullpen ayer = alto; decae con horas
-        bruto = min(1.0, pitches / 90.0)
-        if horas is not None and horas >= 36:
-            bruto *= 0.55
-        elif horas is not None and horas >= 20:
-            bruto *= 0.75
-        fatiga = round(max(0.05, min(0.95, 0.15 + bruto * 0.75)), 3)
+        ip_relevo = round(ip_outs_total / 3.0, 1)
+        era_prom = None
+        if eras:
+            wsum = sum(w for _, w in eras)
+            if wsum > 0:
+                era_prom = round(sum(e * w for e, w in eras) / wsum, 2)
+
+        # Index 0–100: más alto = bullpen más castigado / peor forma
+        bruto_pitches = min(1.0, pitches_total / 220.0)
+        bruto_ip = min(1.0, ip_outs_total / 27.0)  # ~9 IP relevo L3D
+        era_pen = 0.0
+        if era_prom is not None and era_prom > 0:
+            era_pen = min(0.35, max(0.0, (era_prom - 3.8) / 12.0))
+        descanso = 1.0
+        if horas is not None:
+            if horas >= 36:
+                descanso = 0.55
+            elif horas >= 20:
+                descanso = 0.75
+        score = 0.12 + bruto_pitches * 0.45 + bruto_ip * 0.18 + era_pen
+        score *= descanso
+        bullpen_index = round(max(5.0, min(95.0, score * 100)), 1)
+        fatiga = round(max(0.05, min(0.95, bullpen_index / 100.0)), 3)
+
+        detalle = sorted(
+            [
+                {
+                    "nombre": v["nombre"],
+                    "pitches": v["pitches"],
+                    "ip": round(v["ip_outs"] / 3.0, 1),
+                    "era": v["era"],
+                    "apariciones": v["apariciones"],
+                }
+                for v in agg.values()
+            ],
+            key=lambda x: -x["pitches"],
+        )[:6]
+
+        era_txt = f" ERA rel {era_prom:.2f}" if era_prom else ""
         out.update(
             {
                 "ok": True,
                 "fatiga": fatiga,
-                "pitches_relevo": pitches,
-                "relevistas": n_rel,
+                "bullpen_index": bullpen_index,
+                "pitches_relevo": pitches_total,
+                "pitches_l3d": pitches_total,
+                "ip_relevo": ip_relevo,
+                "era_relevo_prom": era_prom,
+                "relevistas": len(agg),
+                "juegos_analizados": len(games),
                 "horas_desde": round(horas, 1) if horas is not None else None,
-                "game_pk": gpk,
+                "game_pk": games[0].get("gamePk"),
+                "relevistas_detalle": detalle,
                 "resumen": (
-                    f"Bullpen {nombre or team_id}: {pitches} pitches relevo "
-                    f"({n_rel} brazos) · fatiga {fatiga:.2f}"
+                    f"Bullpen {nombre or team_id}: {pitches_total} pitches L3D "
+                    f"({len(agg)} brazos, {ip_relevo} IP){era_txt} · índice {bullpen_index:.0f}/100"
                 ),
             }
         )
