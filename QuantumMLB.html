@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Quantum MLB — Experimento 5 Días</title>
+    <title>Quantum MLB</title>
     <style>
         :root {
             --bg: #050a0f;
@@ -566,7 +566,7 @@ const API = (!window.location.origin || window.location.protocol === 'file:')
 const ES_NUBE = API.includes('onrender.com') || API.includes('render.com');
 const REFRESH_MS = ES_NUBE ? 45000 : 8000;
 const CACHE_KEY = 'qmlb_last_state_v2';
-const PANEL_VER = '2026-08-31-linea';
+const PANEL_VER = '2026-08-31-merged';
 let cargandoEstado = false;
 let cargandoBoot = false;
 let cargandoJuegos = false;
@@ -640,6 +640,23 @@ function reintentarAhora() {
     cargarEstado();
 }
 
+function actualizarTituloExperimento(m) {
+    if (!m || typeof m !== 'object') return;
+    const total = Number(m.dias_totales || 0);
+    const dia = Number(m.dia_actual || 0);
+    if (m.experimento_activo === false) {
+        document.title = 'Quantum MLB — Experimento finalizado';
+        return;
+    }
+    if (total > 0 && dia > 0) {
+        document.title = `Quantum MLB — Día ${dia} de ${total}`;
+    } else if (total > 0) {
+        document.title = `Quantum MLB — Experimento ${total} días`;
+    } else {
+        document.title = 'Quantum MLB';
+    }
+}
+
 function aplicarHealthRapido(h) {
     if (!h || typeof h !== 'object') return;
     try {
@@ -649,7 +666,17 @@ function aplicarHealthRapido(h) {
         }
         if (h.dia_actual != null) {
             const dEl = document.getElementById('dia-actual');
-            if (dEl) dEl.textContent = 'DÍA ' + h.dia_actual;
+            if (dEl) {
+                const total = h.dias_totales || null;
+                dEl.textContent = total
+                    ? `DÍA ${h.dia_actual} DE ${total}`
+                    : `DÍA ${h.dia_actual}`;
+            }
+            actualizarTituloExperimento({
+                dia_actual: h.dia_actual,
+                dias_totales: h.dias_totales,
+                experimento_activo: h.experimento_activo !== false,
+            });
         }
         const hs = document.getElementById('historial-sello');
         const seal = h.historial || h.historial_sello || {};
@@ -1183,15 +1210,19 @@ function fmtMoneyPlain(n) {
     return '$' + Math.abs(Number(n) || 0).toFixed(2);
 }
 
-function rendCard(titulo, w, l, wr, ganado, perdido, neto) {
+function rendCard(titulo, w, l, wr, ganado, perdido, neto, roiPct) {
     const netoCls = (neto || 0) >= 0 ? 'pos' : 'neg';
     const netoTxt = ((neto || 0) >= 0 ? '+' : '-') + fmtMoneyPlain(neto);
+    const roiLine = (roiPct != null && !isNaN(roiPct))
+        ? `<div class="rend-row"><span class="k">ROI</span><span class="v ${roiPct >= 0 ? 'pos' : 'neg'}">${roiPct >= 0 ? '+' : ''}${Number(roiPct).toFixed(1)}%</span></div>`
+        : '';
     return `<div class="rend-card">
         <h4>${titulo}</h4>
         <div class="wr">${(wr || 0).toFixed ? (wr || 0).toFixed(1) : (wr || 0)}%<span> · ${w||0}✓ / ${l||0}✗</span></div>
         <div class="rend-row"><span class="k">Ganado</span><span class="v pos">${fmtMoneyPlain(ganado)}</span></div>
         <div class="rend-row"><span class="k">Perdido</span><span class="v neg">${fmtMoneyPlain(perdido)}</span></div>
         <div class="rend-row"><span class="k">Neto</span><span class="v ${netoCls}">${netoTxt}</span></div>
+        ${roiLine}
     </div>`;
 }
 
@@ -1214,14 +1245,38 @@ function pintarEstado(data) {
     const split = data.pl_split || {};
     const pred = split.predicciones || {};
     const din = split.dinero || {};
+    const div = split.divergencia || {};
+    const clv = data.clv_meta || {};
     const statsContent = document.getElementById('stats-modelo-content');
+    const ml = data.ml_meta || {};
     if (statsContent) {
         if ((pred.total || 0) > 0 || (din.total || 0) > 0) {
+            let extra = '';
+            if (div.alerta && div.mensaje) {
+                extra += `<p class="meta-line" style="margin-top:8px;color:#ffbc00;font-size:0.82rem">⚠ ${div.mensaje}</p>`;
+            } else if (div.mensaje) {
+                extra += `<p class="meta-line" style="margin-top:8px;color:var(--muted);font-size:0.78rem">${div.mensaje}</p>`;
+            }
+            if (clv.mensaje) {
+                const clvCol = clv.nivel === 'ok' ? '#00ff88' : (clv.nivel === 'aviso' ? '#ffbc00' : '#8899aa');
+                extra += `<p class="meta-line" style="margin-top:4px;color:${clvCol};font-size:0.78rem">📈 ${clv.mensaje}</p>`;
+            }
+            if (ml.muestras != null) {
+                const ratioPct = ml.ratio_features_reales != null
+                    ? Math.round(Number(ml.ratio_features_reales) * 100) + '%'
+                    : '—';
+                const bloq = ml.entreno_bloqueado ? ' · entreno pausado' : '';
+                extra +=
+                    `<p class="meta-line" style="margin-top:4px;color:var(--muted);font-size:0.78rem">` +
+                    `🤖 ML: ${ml.muestras_reales ?? 0}/${ml.muestras} features reales (${ratioPct})${bloq}` +
+                    (ml.mensaje ? ' · ' + ml.mensaje : '') +
+                    `</p>`;
+            }
             statsContent.innerHTML =
                 `<div class="rend-grid">` +
-                rendCard('📋 Papel', pred.aciertos, pred.fallos, pred.win_rate, pred.ganado, pred.perdido, pred.neto) +
-                rendCard('💰 Dinero', din.ganadas, din.perdidas, din.win_rate, din.ganado, din.perdido, din.neto) +
-                `</div>`;
+                rendCard('📋 Papel (solo)', pred.aciertos, pred.fallos, pred.win_rate, pred.ganado, pred.perdido, pred.neto, pred.roi_pct) +
+                rendCard('💰 Dinero real', din.ganadas, din.perdidas, din.win_rate, din.ganado, din.perdido, din.neto, din.roi_pct) +
+                `</div>` + extra;
         } else {
             statsContent.innerHTML = '<p class="meta-line">Sin datos suficientes todavía.</p>';
         }
@@ -1231,6 +1286,7 @@ function pintarEstado(data) {
         m.experimento_activo
             ? `DÍA ${m.dia_actual} DE ${m.dias_totales}`
             : 'EXPERIMENTO FINALIZADO';
+    actualizarTituloExperimento(m);
 
     const plEl = document.getElementById('pl-hoy');
     // Hoy = predicciones en papel (todas). Dinero va aparte en Rendimiento / banca.
@@ -1950,13 +2006,27 @@ function pintarJuegos(juegos) {
                 <div style="font-size:0.7rem;color:#8899aa;margin-top:4px">${j.motivo_apuesta || ''}</div>
                 ${(() => {
                     const mov = j.linea_movimiento_pct;
-                    if (mov == null || mov === '') return '';
-                    const n = Number(mov);
-                    if (isNaN(n)) return '';
-                    const col = n <= -5 ? 'var(--red)' : (n >= 5 ? 'var(--green)' : '#8899aa');
-                    const tag = n <= -5 ? ' · línea en contra' : '';
-                    return `<div style="font-size:0.68rem;color:${col};margin-top:4px">📉 Cuota ${n >= 0 ? '+' : ''}${n.toFixed(1)}% vs congelada${tag}</div>`;
+                    if (mov != null && mov !== '') {
+                        const n = Number(mov);
+                        if (!isNaN(n)) {
+                            const col = n <= -5 ? 'var(--red)' : (n >= 5 ? 'var(--green)' : '#8899aa');
+                            const tag = n <= -5 ? ' · línea en contra' : '';
+                            return `<div style="font-size:0.68rem;color:${col};margin-top:4px">📉 Cuota ${n >= 0 ? '+' : ''}${n.toFixed(1)}% vs congelada${tag}</div>`;
+                        }
+                    }
+                    return '';
                 })()}
+                ${(() => {
+                    const bp = j.bullpen_dia;
+                    if (!bp || typeof bp !== 'object') return '';
+                    const side = (j.pick || '').includes(j.home) ? (bp.home || {}) : (bp.away || {});
+                    const opp = (j.pick || '').includes(j.home) ? (bp.away || {}) : (bp.home || {});
+                    if (!side.bullpen_index && !opp.bullpen_index) return '';
+                    const idx = side.bullpen_index != null ? side.bullpen_index : opp.bullpen_index;
+                    const col = idx >= 65 ? '#ffbc00' : '#8899aa';
+                    return `<div style="font-size:0.68rem;color:${col};margin-top:4px">🔥 Bullpen índice ${idx}/100 · ${(side.pitches_l3d || side.pitches_relevo || '?')} pitches L3D</div>`;
+                })()}
+                ${j.clv_pct != null ? `<div style="font-size:0.68rem;color:${j.clv_pct >= 0 ? 'var(--green)' : 'var(--red)'};margin-top:4px">📈 CLV ${j.clv_pct >= 0 ? '+' : ''}${Number(j.clv_pct).toFixed(1)}% vs Pinnacle</div>` : ''}
                 ${j.factores_humanos && j.factores_humanos.ok ? `<div style="font-size:0.68rem;color:#9ab;margin-top:4px">👤 ${(j.factores_humanos.resumen || '').slice(0, 110)}</div>` : ''}
                 ${j.ia_mente && j.ia_mente.decision ? `<div style="font-size:0.72rem;margin-top:6px;padding:6px 8px;border-radius:6px;border:1px solid ${j.ia_mente.autoriza_dinero ? 'rgba(0,255,136,0.35)' : 'rgba(255,188,0,0.35)'};color:${j.ia_mente.autoriza_dinero ? 'var(--green)' : 'var(--gold)'}">🧠 MENTE <b>${j.ia_mente.decision}</b>${j.ia_mente.autoriza_dinero ? ' · dinero OK' : (j.ia_mente.decision === 'APOSTAR' ? ' · sin dinero' : '')} · conf ${j.ia_mente.confianza || '?'} · ${(j.ia_mente.razones || []).slice(0,2).join('; ').slice(0,90)}</div>` : ''}
             </div>
