@@ -15,6 +15,14 @@ from typing import Any
 
 import requests
 
+from aprendizaje_mlb import (
+    TIPO_ACIERTO,
+    analisis_capas_inteligencia,
+    calcular_movimiento_linea,
+    lecciones_seleccionadas_para_prompt,
+    peso_muestra_aprendizaje,
+)
+
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 DEFAULT_MODEL = "llama-3.1-8b-instant"
 MAX_LECCIONES = 80
@@ -29,6 +37,10 @@ PATRONES = (
     "clima_park",
     "edge_falso",
     "underdog_trampa",
+    "underdog_valor",
+    "retry_cuota_ok",
+    "linea_en_contra",
+    "refuerzo_capas",
     "oportunidad_perdida",
     "veto_acertado",
     "mala_practica_sin_mercado",
@@ -81,16 +93,17 @@ def texto_lecciones_para_prompt(memoria: dict | None, max_n: int = MAX_PARA_PROM
     lec = [x for x in asegurar_lista_lecciones(memoria) if isinstance(x, dict)]
     if not lec:
         return "Lecciones previas: ninguna aún."
-    ultimas = lec[-max_n:]
+    seleccion = lecciones_seleccionadas_para_prompt(lec, max_n=max_n)
     lineas = []
-    for i, item in enumerate(reversed(ultimas), 1):
+    for i, item in enumerate(seleccion, 1):
+        signo = "+" if item.get("tipo") == TIPO_ACIERTO else "−"
         lineas.append(
-            f"{i}. [{item.get('patron') or 'otro'}"
+            f"{i}. [{signo}{item.get('patron') or 'otro'}"
             f"{('/' + str(item['tipo'])) if item.get('tipo') else ''}] "
             f"{item.get('leccion') or item.get('motivo') or ''}"
             f" (pick={item.get('pick') or '?'}, {item.get('fecha') or ''})"
         )
-    return "Lecciones de fallos recientes (aplícalas si el spot se parece):\n" + "\n".join(lineas)
+    return "Lecciones recientes (fallos y aciertos; aplica si el spot se parece):\n" + "\n".join(lineas)
 
 
 def _ya_existe_leccion(
@@ -211,12 +224,19 @@ def _heuristica_leccion(pred: dict, juego: dict | None = None) -> dict[str, Any]
     elif edge_f > 0 and edge_f < 6:
         patron = "edge_falso"
         leccion = "Exigir edge >= 6% contra cuota real; edge bajo no basta."
+    elif float(pred.get("probPick") or 0) >= 62 and edge_f < 15:
+        patron = "favorito_inflado"
+        leccion = "Prob ≥62% exige edge ≥15% para dinero; si no, solo papel."
     elif "bullpen" in motivo or float((pred.get("ml_features") or {}).get("fatiga_bullpen") or 0) >= 0.7:
         patron = "bullpen"
         leccion = "Desconfiar de favoritos con bullpen cargado / fatiga alta."
-    elif float(pred.get("probPick") or 0) >= 60:
-        patron = "favorito_inflado"
-        leccion = "Favorito con % alto también falla; validar vs mercado y matchup."
+    elif float(pred.get("linea_movimiento_pct") or 0) <= -5:
+        patron = "linea_en_contra"
+        leccion = "Cuota empeoró tras T-60; mercado en contra del pick."
+
+    capas = analisis_capas_inteligencia(pred)
+    if capas.get("capas"):
+        leccion = f"{leccion} · Capas: {','.join(capas['capas'][:4])}"
 
     return {
         "patron": patron,
@@ -356,6 +376,89 @@ def registrar_leccion_desde_fallo(
         fuente=str(detalle.get("fuente") or "heuristica"),
     )
     item["modelo"] = detalle.get("modelo")
+    item["capas"] = analisis_capas_inteligencia(pred)
+    return _append_leccion(memoria, item)
+
+
+def _heuristica_leccion_positiva(pred: dict, juego: dict | None = None) -> dict[str, Any] | None:
+    """Clasifica aciertos reforzables."""
+    try:
+        prob = float(pred.get("probPick") or 0)
+        edge = float(pred.get("edge") or 0)
+        odds = float(pred.get("odds") or 0)
+    except (TypeError, ValueError):
+        return None
+    fuente = str(pred.get("lineas_fuente") or (juego or {}).get("lineas_fuente") or "").lower()
+    if fuente in ("modelo", "", "none"):
+        return None
+
+    capas = analisis_capas_inteligencia(pred)
+    mente = pred.get("ia_mente") if isinstance(pred.get("ia_mente"), dict) else {}
+
+    if pred.get("cuota_retry"):
+        return {
+            "patron": "retry_cuota_ok",
+            "leccion": "Cuota llegó en retry T-45/T-30 y el pick acertó; priorizar refresh.",
+            "motivo": "retry cuota + acierto",
+            "confianza": 4,
+            "fuente": "heuristica",
+        }
+    if odds >= 2.0 and 58 <= prob <= 62 and edge >= 6:
+        return {
+            "patron": "underdog_valor",
+            "leccion": "Underdog con edge moderado y prob 58-62% funcionó; mantener filtro.",
+            "motivo": "underdog valor + acierto",
+            "confianza": 4,
+            "fuente": "heuristica",
+        }
+    if str(mente.get("decision") or "").upper() in ("PASAR", "ESPERAR") and not pred.get("con_dinero"):
+        return {
+            "patron": "veto_acertado",
+            "leccion": "Sin dinero pero pick acertó en papel; calibrar si conviene suavizar veto.",
+            "motivo": "paper acierto sin dinero",
+            "confianza": 3,
+            "fuente": "heuristica",
+        }
+    if capas.get("capas"):
+        return {
+            "patron": "refuerzo_capas",
+            "leccion": f"Acierto con capas {','.join(capas['capas'][:3])}; contexto alineado.",
+            "motivo": "inteligencia + acierto",
+            "confianza": 3,
+            "fuente": "heuristica",
+        }
+    return None
+
+
+def registrar_leccion_desde_acierto(
+    memoria: dict,
+    pred: dict,
+    juego: dict | None = None,
+    cuando: str | None = None,
+) -> dict[str, Any] | None:
+    """Lección positiva tras acierto (refuerzo)."""
+    if pred.get("resultado") != "acierto":
+        return None
+    if not _pred_permite_leccion(pred):
+        return None
+    game_id = pred.get("game_id")
+    if _ya_existe_leccion(memoria, game_id, TIPO_ACIERTO):
+        return None
+    detalle = _heuristica_leccion_positiva(pred, juego)
+    if not detalle:
+        return None
+    item = _base_item(
+        pred,
+        tipo=TIPO_ACIERTO,
+        patron=str(detalle.get("patron") or "refuerzo_capas"),
+        leccion=str(detalle.get("leccion") or ""),
+        motivo=str(detalle.get("motivo") or ""),
+        cuando=cuando,
+        confianza=int(detalle.get("confianza") or 3),
+        fuente=str(detalle.get("fuente") or "heuristica"),
+    )
+    item["con_dinero"] = bool(pred.get("con_dinero"))
+    item["capas"] = analisis_capas_inteligencia(pred)
     return _append_leccion(memoria, item)
 
 
@@ -413,11 +516,11 @@ def registrar_experiencia_negativa(
             creadas.append(_append_leccion(memoria, item))
 
     if _sin_cuota_real(pred, juego):
-        # Mala práctica si falló en papel O si hubo dinero real
         con_dinero = bool(pred.get("con_dinero"))
         if (resultado == "fallo" or con_dinero) and not _ya_existe_leccion(
             memoria, game_id, TIPO_SIN_CUOTA
         ):
+            # Evitar spam: solo 1 lección sin_cuota por game_id (ya cubierto por idempotencia)
             item = _base_item(
                 pred,
                 tipo=TIPO_SIN_CUOTA,
@@ -439,15 +542,17 @@ def registrar_experiencias_tras_liquidar(
     juego: dict | None = None,
     cuando: str | None = None,
 ) -> dict[str, Any]:
-    """Hook único tras liquidar: post-mortem de fallo + negativas + stats mente (V2)."""
-    out: dict[str, Any] = {"fallo": None, "negativas": [], "mente_stats": None}
+    """Hook único tras liquidar: post-mortem + positivas + stats mente."""
+    out: dict[str, Any] = {"fallo": None, "positiva": None, "negativas": [], "mente_stats": None}
     if pred.get("resultado") == "fallo":
         out["fallo"] = registrar_leccion_desde_fallo(memoria, pred, cfg, juego, cuando)
+    elif pred.get("resultado") == "acierto":
+        out["positiva"] = registrar_leccion_desde_acierto(memoria, pred, juego, cuando)
     out["negativas"] = registrar_experiencia_negativa(memoria, pred, juego, cuando)
     try:
         from mente_aprendizaje import actualizar_stats_tras_liquidar
 
-        out["mente_stats"] = actualizar_stats_tras_liquidar(memoria, pred, juego)
+        out["mente_stats"] = actualizar_stats_tras_liquidar(memoria, pred, juego, cfg)
     except Exception as e:
         print(f"[MENTE-APRENDIZAJE] aviso: {e}")
     return out

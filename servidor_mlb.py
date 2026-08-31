@@ -50,6 +50,7 @@ from modelo_mlb import (
     tiene_cuota_mercado,
     apostable_con_mercado,
 )
+from aprendizaje_mlb import calcular_movimiento_linea, peso_muestra_aprendizaje
 from ml_predictor import auto_entrenar_ml
 from ia_groq import ia_veto_disponible, probar_conexion_groq, veto_apuesta
 from mente_mlb import (
@@ -706,20 +707,12 @@ def actualizar_mercado_en_prediccion(
     """Si el pick congelado era solo papel y ahora hay cuota real, actualiza odds/edge."""
     if not isinstance(existente, dict) or not isinstance(juego, dict):
         return False
-    if fuente_es_mercado(existente.get("lineas_fuente")) and tiene_cuota_mercado(existente):
-        return False
-    if not tiene_cuota_mercado(juego):
-        return False
 
     pick = (existente.get("pick") or "").strip()
     if not pick:
         return False
 
     cfg = cfg or cargar_config()
-    estr = cfg.get("estrategia") or {}
-    min_edge = float(estr.get("min_edge_pct", 6.0))
-    min_prob = float(estr.get("min_prob_modelo", 58.0))
-    prob = float(existente.get("probPick") or 0)
     visitante = juego.get("visitante") or existente.get("visitante") or ""
     home = juego.get("home") or existente.get("home") or ""
 
@@ -740,8 +733,35 @@ def actualizar_mercado_en_prediccion(
     if dec_f <= 1.0:
         return False
 
-    edge = edge_pct(prob, dec_f)
+    ya_mercado = fuente_es_mercado(existente.get("lineas_fuente")) and tiene_cuota_mercado(existente)
+    if ya_mercado:
+        mov = calcular_movimiento_linea(existente, dec_f)
+        if mov is None:
+            return False
+        existente["linea_movimiento_pct"] = mov
+        existente["odds"] = dec_f
+        if amer is not None:
+            existente["odds_american"] = amer
+        existente["cuota_retry"] = True
+        juego["linea_movimiento_pct"] = mov
+        juego["odds"] = dec_f
+        return True
+
+    if not tiene_cuota_mercado(juego):
+        return False
+
+    estr = cfg.get("estrategia") or {}
+    min_edge = float(estr.get("min_edge_pct", 6.0))
+    min_prob = float(estr.get("min_prob_modelo", 58.0))
+    prob = float(existente.get("probPick") or 0)
     fuente = juego.get("lineas_fuente") or "mercado"
+    if not existente.get("odds_congelada"):
+        existente["odds_congelada"] = existente.get("odds") or dec_f
+    if str(existente.get("lineas_fuente") or "").lower() in ("modelo", "", "none"):
+        existente["cuota_retry"] = True
+        existente["lineas_fuente_inicial"] = existente.get("lineas_fuente") or "modelo"
+
+    edge = edge_pct(prob, dec_f)
     apostable = prob >= min_prob and edge >= min_edge
     bloqueado, motivo_fi = bloqueado_favorito_inflado(
         {**juego, "probPick": prob, "edge": edge if edge > -900 else 0},
@@ -749,6 +769,10 @@ def actualizar_mercado_en_prediccion(
     )
     if bloqueado:
         apostable = False
+
+    mov = calcular_movimiento_linea(existente, dec_f)
+    if mov is not None:
+        existente["linea_movimiento_pct"] = mov
 
     existente["lineas_fuente"] = fuente
     existente["odds"] = dec_f
@@ -816,30 +840,39 @@ def asegurar_dia_operativo(memoria: dict, fecha: str | None = None) -> dict:
 
 def calcular_bias_aprendizaje(memoria: dict) -> float:
     """
-    Lógica de Auto-Aprendizaje: Analiza si el modelo ha fallado mucho recientemente.
-    Retorna un valor que ajusta la fuerza de los equipos en el modelo.
+    Auto-aprendizaje: WR ponderado (papel + dinero×3).
+    Retorna ajuste de fuerza del modelo.
     """
-    todas = []
+    muestras: list[tuple[bool, float]] = []
     for d in memoria.get("dias", []):
-        for a in d.get("apuestas", []):
-            if a["estado"] in ("ganada", "perdida"):
-                todas.append(a)
-    
-    if len(todas) < 5: # No hay suficiente historial para aprender todavía
+        for pred in d.get("predicciones", []):
+            if pred.get("estado") != "liquidado" or pred.get("resultado") not in ("acierto", "fallo"):
+                continue
+            w = peso_muestra_aprendizaje(pred)
+            if w <= 0:
+                continue
+            if not prediccion_valida_para_stats(pred) and not pred.get("aprendizaje_solo"):
+                continue
+            muestras.append((pred["resultado"] == "acierto", w))
+        for ap in d.get("apuestas", []):
+            if ap.get("estado") not in ("ganada", "perdida"):
+                continue
+            w = peso_muestra_aprendizaje(ap)
+            if w <= 0:
+                continue
+            muestras.append((ap["estado"] == "ganada", w))
+
+    peso_total = sum(w for _, w in muestras)
+    if peso_total < 15:
         return 0.0
-    
-    ganadas = sum(1 for a in todas if a["estado"] == "ganada")
-    win_rate = ganadas / len(todas)
-    
-    # Si el win rate es bajo (ej. < 45%), el modelo se vuelve más "pesimista" (bias negativo)
-    # Esto obliga a que los equipos tengan que ser mucho mejores para ser elegidos.
+
+    win_rate = sum(w for ok, w in muestras if ok) / peso_total
     if win_rate < 0.45:
-        print(f"[APRENDIZAJE] Win rate bajo ({win_rate:.1%}). Aplicando bias cauteloso.")
+        print(f"[APRENDIZAJE] WR ponderado bajo ({win_rate:.1%}, n≈{peso_total:.0f}). Bias cauteloso.")
         return -1.2
-    elif win_rate > 0.60:
-        print(f"[APRENDIZAJE] Excelente rendimiento ({win_rate:.1%}). Modelo con confianza.")
+    if win_rate > 0.60:
+        print(f"[APRENDIZAJE] WR ponderado alto ({win_rate:.1%}). Modelo con confianza.")
         return 0.5
-    
     return 0.0
 
 
@@ -1741,6 +1774,8 @@ def guardar_prediccion(
             "lineas_total": juego.get("lineas_total")
             if isinstance(juego.get("lineas_total"), dict)
             else None,
+            "odds_congelada": float(odds),
+            "lineas_fuente_inicial": juego.get("lineas_fuente") or "modelo",
         }
     )
     return True

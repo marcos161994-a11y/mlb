@@ -820,21 +820,24 @@ def mente_conclusion(
 
     modo = _modo_cfg(cfg)
     briefing = _briefing_para_decision(juego, memoria)
-    # Señales activas del briefing (+ extras)
-    senales = list(briefing.get("alertas") or [])
     try:
-        edge = float(juego.get("edge") or 0)
-        prob = float(juego.get("probPick") or 0)
-    except (TypeError, ValueError):
-        edge, prob = 0.0, 0.0
-    if edge < 5 and "edge_bajo" not in senales:
-        senales.append("edge_bajo")
-    if prob >= 62 and "favorito_alto" not in senales:
-        senales.append("favorito_alto")
-    if not senales:
-        senales.append("limpio")
+        from mente_aprendizaje import senales_de_juego
 
-    # Inyectar texto de aprendizaje en briefing para Groq
+        senales = senales_de_juego(juego, cfg)
+    except Exception:
+        senales = list(briefing.get("alertas") or [])
+        try:
+            edge = float(juego.get("edge") or 0)
+            prob = float(juego.get("probPick") or 0)
+        except (TypeError, ValueError):
+            edge, prob = 0.0, 0.0
+        if edge < 5 and "edge_bajo" not in senales:
+            senales.append("edge_bajo")
+        if prob >= 62 and "favorito_alto" not in senales:
+            senales.append("favorito_alto")
+        if not senales:
+            senales.append("limpio")
+
     try:
         from mente_aprendizaje import texto_aprendizaje_para_prompt
 

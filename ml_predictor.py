@@ -182,12 +182,9 @@ def _features_desde_registro(reg: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def cargar_datos_entrenamiento_desde_memoria(memoria: dict) -> List[Dict[str, Any]]:
-    """Apuestas y predicciones liquidadas → dataset para Random Forest.
+    """Apuestas y predicciones liquidadas → dataset para ML (con pesos de muestra)."""
+    from aprendizaje_mlb import peso_muestra_aprendizaje
 
-    Si un juego tiene apuesta liquidada, no se añade también su predicción
-    (evita doble muestra casi idéntica).
-    Prefiere features reales; marca fuente en cada fila.
-    """
     datos: List[Dict[str, Any]] = []
     for dia in memoria.get("dias", []):
         game_ids_apostados: set = set()
@@ -200,7 +197,9 @@ def cargar_datos_entrenamiento_desde_memoria(memoria: dict) -> List[Dict[str, An
             fila, fuente = features_desde_registro(apuesta)
             fila["resultado"] = 1 if apuesta["estado"] == "ganada" else 0
             fila["_fuente_features"] = fuente
-            datos.append(fila)
+            fila["_peso"] = peso_muestra_aprendizaje(apuesta)
+            if fila["_peso"] > 0:
+                datos.append(fila)
         for pred in dia.get("predicciones", []):
             if pred.get("estado") != "liquidado" or pred.get("resultado") not in (
                 "acierto",
@@ -212,7 +211,9 @@ def cargar_datos_entrenamiento_desde_memoria(memoria: dict) -> List[Dict[str, An
             fila, fuente = features_desde_registro(pred)
             fila["resultado"] = 1 if pred["resultado"] == "acierto" else 0
             fila["_fuente_features"] = fuente
-            datos.append(fila)
+            fila["_peso"] = peso_muestra_aprendizaje(pred)
+            if fila["_peso"] > 0:
+                datos.append(fila)
     return datos
 
 
@@ -229,15 +230,23 @@ def entrenar_modelo_rf(datos_historicos: List[Dict[str, Any]]) -> RandomForestCl
     df = pd.DataFrame(datos_historicos)
     X = df[FEATURE_COLUMNS].fillna(0)
     y = df["resultado"]
+    sample_weight = df["_peso"].fillna(1.0).astype(float) if "_peso" in df.columns else None
 
     n = len(df)
     acc_holdout = None
     if n >= 20:
         from sklearn.model_selection import train_test_split
 
-        X_tr, X_te, y_tr, y_te = train_test_split(
-            X, y, test_size=0.2, random_state=42, stratify=y if y.nunique() > 1 else None
-        )
+        sw = sample_weight
+        if sw is not None:
+            X_tr, X_te, y_tr, y_te, sw_tr, _sw_te = train_test_split(
+                X, y, sw, test_size=0.2, random_state=42, stratify=y if y.nunique() > 1 else None
+            )
+        else:
+            X_tr, X_te, y_tr, y_te = train_test_split(
+                X, y, test_size=0.2, random_state=42, stratify=y if y.nunique() > 1 else None
+            )
+            sw_tr = None
         scaler_tmp = StandardScaler()
         X_tr_s = scaler_tmp.fit_transform(X_tr)
         X_te_s = scaler_tmp.transform(X_te)
@@ -248,7 +257,7 @@ def entrenar_modelo_rf(datos_historicos: List[Dict[str, Any]]) -> RandomForestCl
             random_state=42,
             n_jobs=_ml_n_jobs(),
         )
-        rf_tmp.fit(X_tr_s, y_tr)
+        rf_tmp.fit(X_tr_s, y_tr, sample_weight=sw_tr.to_numpy() if sw_tr is not None else None)
         acc_holdout = float(rf_tmp.score(X_te_s, y_te))
         print(f"[ML] Accuracy holdout (20%): {acc_holdout:.3f}")
 
@@ -262,7 +271,7 @@ def entrenar_modelo_rf(datos_historicos: List[Dict[str, Any]]) -> RandomForestCl
         random_state=42,
         n_jobs=_ml_n_jobs(),
     )
-    _modelo_rf.fit(X_scaled, y)
+    _modelo_rf.fit(X_scaled, y, sample_weight=sample_weight.to_numpy() if sample_weight is not None else None)
 
     with open(_modelo_path(), "wb") as f:
         pickle.dump(_modelo_rf, f)
@@ -301,6 +310,7 @@ def entrenar_modelo_xgb(datos_historicos: List[Dict[str, Any]]) -> Any:
     df = pd.DataFrame(datos_historicos)
     X = df[FEATURE_COLUMNS].fillna(0)
     y = df["resultado"]
+    sample_weight = df["_peso"].fillna(1.0).astype(float) if "_peso" in df.columns else None
     X_scaled = _scaler.transform(X)
 
     _modelo_xgb = XGBClassifier(
@@ -316,7 +326,7 @@ def entrenar_modelo_xgb(datos_historicos: List[Dict[str, Any]]) -> Any:
         random_state=42,
         n_jobs=_ml_n_jobs(),
     )
-    _modelo_xgb.fit(X_scaled, y)
+    _modelo_xgb.fit(X_scaled, y, sample_weight=sample_weight.to_numpy() if sample_weight is not None else None)
 
     acc_h = None
     if len(df) >= 20 and y.nunique() > 1:
