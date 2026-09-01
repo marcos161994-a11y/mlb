@@ -3539,6 +3539,7 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
             "stats": mente_stats_meta,
         },
         "vigilancia": vigilancia,
+        "perdidos_hoy": list((vigilancia or {}).get("perdidos") or [])[:8],
         "mente_errores": _resumen_mente_errores(cfg_ops),
         "historial_sello": _resumen_sello(memoria),
         "telegram": telegram_disponible(cfg_ops),
@@ -3584,10 +3585,28 @@ def api_panel_boot():
     except Exception:
         pass
     memoria = cargar_memoria()
-    pl_split = resumen_predicciones_y_dinero(memoria)
-    pl_split.pop("_mutado", None)
     fecha_hoy = fecha_str()
     dia = dia_por_fecha(memoria, fecha_hoy) or dia_operativo(memoria)
+    # Liquidación rápida (solo marcadores MLB) para que el historial muestre ✓/✗ al abrir.
+    perdidos_hoy: list[dict] = []
+    if dia and any(p.get("estado") == "pendiente" for p in (dia.get("predicciones") or [])):
+        try:
+            n = liquidar_dia(memoria, dia)
+            if n:
+                memoria = cargar_memoria()
+                dia = dia_por_fecha(memoria, fecha_hoy) or dia
+                print(f"[BOOT] Liquidados {n} resultado(s) papel/dinero hoy")
+        except Exception as e:
+            print(f"[BOOT] liquidar hoy: {e}")
+    try:
+        juegos_res = obtener_juegos_fecha(fecha_hoy, solo_resultados=True)
+        cfg_boot = cargar_config()
+        vig = vigilancia_t60(juegos_res, memoria, cfg_boot)
+        perdidos_hoy = list(vig.get("perdidos") or [])[:8]
+    except Exception as e:
+        print(f"[BOOT] vigilancia: {e}")
+    pl_split = resumen_predicciones_y_dinero(memoria)
+    pl_split.pop("_mutado", None)
     dia_panel = None
     if dia:
         if not dia.get("resumen"):
@@ -3646,6 +3665,7 @@ def api_panel_boot():
         "estrategia": cfg.get("estrategia", {}),
         "games": games_boot,
         "minutos_antes_juego": cfg.get("minutos_antes_juego", 60),
+        "perdidos_hoy": perdidos_hoy,
     }
 
 
