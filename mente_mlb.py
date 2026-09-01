@@ -20,8 +20,10 @@ from typing import Any
 
 import requests
 
+from ia_groq import modelo_groq
+
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-DEFAULT_MODEL = "llama-3.1-8b-instant"
+DEFAULT_MODEL = "openai/gpt-oss-20b"
 DEFAULT_TIMEOUT = 10.0
 
 # Cache por game_id
@@ -596,7 +598,7 @@ def _conclusion_groq(
     if not key:
         return None
     groq_cfg = cfg.get("groq") or {}
-    model = str(groq_cfg.get("model") or DEFAULT_MODEL)
+    model = modelo_groq(cfg)
     timeout = min(float(groq_cfg.get("timeout_sec") or DEFAULT_TIMEOUT), 14.0)
 
     prompt = (

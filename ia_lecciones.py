@@ -23,8 +23,10 @@ from aprendizaje_mlb import (
     peso_muestra_aprendizaje,
 )
 
+from ia_groq import modelo_groq
+
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-DEFAULT_MODEL = "llama-3.1-8b-instant"
+DEFAULT_MODEL = "openai/gpt-oss-20b"
 MAX_LECCIONES = 80
 MAX_PARA_PROMPT = 8
 
@@ -270,7 +272,7 @@ def _postmortem_groq(pred: dict, cfg: dict, juego: dict | None = None) -> dict[s
     if not key:
         return None
     groq_cfg = cfg.get("groq") or {}
-    model = str(groq_cfg.get("model") or DEFAULT_MODEL)
+    model = modelo_groq(cfg)
     timeout = min(float(groq_cfg.get("timeout_sec") or 8), 12.0)
 
     visitante = pred.get("visitante") or (juego or {}).get("visitante") or "?"

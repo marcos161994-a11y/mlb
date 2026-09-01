@@ -43,7 +43,14 @@ except ImportError:
         return "Historial oficial: sin modulo"
 
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
-DEFAULT_MODEL = "llama-3.1-8b-instant"
+DEFAULT_MODEL = "openai/gpt-oss-20b"
+# Groq retiró llama-3.1-8b-instant el 2026-08-16 → 404 si sigue en config/Render env.
+MODELOS_GROQ_DEPRECADOS: dict[str, str] = {
+    "llama-3.1-8b-instant": "openai/gpt-oss-20b",
+    "llama3-8b-8192": "openai/gpt-oss-20b",
+    "llama-3.3-70b-versatile": "openai/gpt-oss-120b",
+    "llama3-70b-8192": "openai/gpt-oss-120b",
+}
 DEFAULT_TIMEOUT = 8.0
 
 # Cache por game_id para no spamear la API en el mismo ciclo
@@ -59,6 +66,13 @@ def _api_key(cfg: dict | None = None) -> str:
     return ""
 
 
+def modelo_groq(cfg: dict | None = None) -> str:
+    """Modelo Groq activo; remapea IDs retirados (404) al reemplazo oficial."""
+    groq_cfg = (cfg or {}).get("groq") if isinstance((cfg or {}).get("groq"), dict) else {}
+    raw = str((groq_cfg or {}).get("model") or DEFAULT_MODEL).strip()
+    return MODELOS_GROQ_DEPRECADOS.get(raw, raw) or DEFAULT_MODEL
+
+
 def ia_veto_disponible(cfg: dict | None = None) -> bool:
     cfg = cfg or {}
     if not cfg.get("usar_ia_veto", False):
@@ -72,7 +86,7 @@ def probar_conexion_groq(cfg: dict | None = None) -> dict[str, Any]:
     key = _api_key(cfg)
     if not key:
         return {"ok": False, "motivo": "Sin GROQ_API_KEY"}
-    model = str((cfg.get("groq") or {}).get("model") or DEFAULT_MODEL)
+    model = modelo_groq(cfg)
     timeout = min(float((cfg.get("groq") or {}).get("timeout_sec") or DEFAULT_TIMEOUT), 8.0)
     try:
         r = requests.post(
@@ -92,7 +106,13 @@ def probar_conexion_groq(cfg: dict | None = None) -> dict[str, Any]:
             timeout=timeout,
         )
         if r.status_code != 200:
-            return {"ok": False, "motivo": f"HTTP {r.status_code}", "modelo": model}
+            det = (r.text or "")[:120]
+            motivo = f"HTTP {r.status_code}"
+            if r.status_code == 404:
+                motivo += " · modelo retirado o ID inválido (usa openai/gpt-oss-20b)"
+            elif det:
+                motivo += f" · {det}"
+            return {"ok": False, "motivo": motivo, "modelo": model}
         return {"ok": True, "motivo": "Groq responde", "modelo": model}
     except requests.Timeout:
         return {"ok": False, "motivo": "Timeout", "modelo": model}
@@ -161,7 +181,7 @@ def veto_apuesta(juego: dict[str, Any], cfg: dict | None = None, memoria: dict |
         return base
 
     groq_cfg = cfg.get("groq") or {}
-    model = str(groq_cfg.get("model") or DEFAULT_MODEL)
+    model = modelo_groq(cfg)
     timeout = float(groq_cfg.get("timeout_sec") or DEFAULT_TIMEOUT)
 
     pick = (juego.get("pick") or "").strip()
