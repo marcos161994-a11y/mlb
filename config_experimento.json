@@ -86,7 +86,7 @@
     "min_muestras_bias": 15,
     "senales_activas": true,
     "lecciones_positivas": true,
-    "max_lecciones": 325,
+    "max_lecciones": 1000,
     "max_lecciones_prompt": 12,
     "ml_pesos_inteligentes": true,
     "calibracion_segmentada": true,
