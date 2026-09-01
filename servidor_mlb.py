@@ -4875,37 +4875,20 @@ def api_subir_memoria(
     }
 
 
-@app.post("/api/importar-aprendizaje")
-def api_importar_aprendizaje(payload: dict, secret: str | None = None):
-    """
-    Plan 4: importa pasado para aprender (no infla WR del panel).
-
-    Body:
-      - dump completo de memoria, o
-      - {"memoria": {...}} dump, o
-      - {"experiencias": [ {...}, ... ]}
-    Requiere CRON_SECRET.
-    """
-    _verificar_cron_secreto(secret)
-    if not isinstance(payload, dict):
-        raise HTTPException(status_code=400, detail="JSON invalido")
-
+def _ejecutar_import_aprendizaje(memoria: dict, dump: dict | None = None, *, experiencias: list | None = None) -> dict:
+    """Fusiona dump/experiencias retroactivas, escanea lecciones y reentrena ML."""
     from ia_importar import importar_dump_aprendizaje, importar_experiencias_lista
     from ia_lecciones import escanear_experiencias_negativas, resumen_lecciones
 
-    memoria = cargar_memoria()
     stats: dict = {}
-    dump = payload.get("memoria") if isinstance(payload.get("memoria"), dict) else None
-    if dump is None and "capital" in payload and "dias" in payload:
-        dump = payload
-    if dump is not None:
+    if isinstance(dump, dict):
         stats["dump"] = importar_dump_aprendizaje(memoria, dump)
-    if isinstance(payload.get("experiencias"), list):
-        stats["lista"] = importar_experiencias_lista(memoria, payload["experiencias"])
+    if isinstance(experiencias, list):
+        stats["lista"] = importar_experiencias_lista(memoria, experiencias)
     if not stats:
         raise HTTPException(
             status_code=400,
-            detail="Envía memoria dump o {'experiencias': [...]}",
+            detail="Nada que importar (dump o experiencias vacíos)",
         )
 
     n_lec = escanear_experiencias_negativas(memoria)
@@ -4922,6 +4905,59 @@ def api_importar_aprendizaje(payload: dict, secret: str | None = None):
         "ml_meta": ml,
         "dias": len(memoria.get("dias") or []),
     }
+
+
+@app.post("/api/importar-aprendizaje")
+def api_importar_aprendizaje(payload: dict, secret: str | None = None):
+    """
+    Plan 4: importa pasado para aprender (no infla WR del panel).
+
+    Body:
+      - dump completo de memoria, o
+      - {"memoria": {...}} dump, o
+      - {"experiencias": [ {...}, ... ]}
+    Requiere CRON_SECRET.
+    """
+    _verificar_cron_secreto(secret)
+    if not isinstance(payload, dict):
+        raise HTTPException(status_code=400, detail="JSON invalido")
+
+    memoria = cargar_memoria()
+    dump = payload.get("memoria") if isinstance(payload.get("memoria"), dict) else None
+    if dump is None and "capital" in payload and "dias" in payload:
+        dump = payload
+    exp = payload.get("experiencias") if isinstance(payload.get("experiencias"), list) else None
+    return _ejecutar_import_aprendizaje(memoria, dump, experiencias=exp)
+
+
+@app.post("/api/importar-aprendizaje-repo")
+@app.get("/api/importar-aprendizaje-repo")
+def api_importar_aprendizaje_repo(secret: str | None = None):
+    """
+    Importa lecciones y preds retroactivos desde memoria_auditoria.json del repo.
+    No sube capital ni infla WR del panel (solo aprendizaje + ML).
+    Requiere CRON_SECRET.
+    """
+    _verificar_cron_secreto(secret)
+    origen = BASE_DIR / "memoria_auditoria.json"
+    if not origen.exists():
+        raise HTTPException(status_code=404, detail="No hay memoria_auditoria.json en el servidor")
+    try:
+        bundled = json.loads(origen.read_text(encoding="utf-8"))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Backup ilegible: {e}") from e
+    if not isinstance(bundled, dict) or "dias" not in bundled:
+        raise HTTPException(status_code=400, detail="memoria_auditoria.json inválido")
+
+    memoria = cargar_memoria()
+    antes = len((memoria.get("lecciones") or []))
+    out = _ejecutar_import_aprendizaje(memoria, bundled)
+    despues = len((cargar_memoria().get("lecciones") or []))
+    out["fuente"] = str(origen.name)
+    out["lecciones_antes"] = antes
+    out["lecciones_despues"] = despues
+    out["lecciones_nuevas"] = max(0, despues - antes)
+    return out
 
 
 @app.post("/api/procesar-experiencias")

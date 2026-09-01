@@ -1,0 +1,36 @@
+# Importa lecciones y preds retroactivos desde memoria_auditoria.json del repo.
+# No infla WR del panel — solo alimenta IA + ML.
+# Requiere: secret CRON_SECRET (mismo valor que en Render).
+name: Importar aprendizaje
+
+on:
+  workflow_dispatch:
+
+jobs:
+  importar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Importar desde backup del repo
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::Falta CRON_SECRET en GitHub Secrets."
+            exit 1
+          fi
+          body=$(curl -fsS --max-time 300 \
+            -X POST "https://mlb-1-en7i.onrender.com/api/importar-aprendizaje-repo?secret=${CRON_SECRET}")
+          echo "$body" | python3 -m json.tool
+          ok=$(echo "$body" | python3 -c "import json,sys; d=json.load(sys.stdin); print('1' if d.get('ok') else '0')")
+          if [ "$ok" != "1" ]; then
+            echo "::error::Import falló"
+            exit 1
+          fi
+          echo "$body" | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)
+          imp=d.get('import',{}).get('dump',{})
+          print(f\"::notice::Lecciones +{d.get('lecciones_nuevas',0)} (total {d.get('lecciones_despues',0)})\")
+          print(f\"::notice::Preds nuevas retroactivas: {imp.get('preds_nuevas',0)}\")
+          "
