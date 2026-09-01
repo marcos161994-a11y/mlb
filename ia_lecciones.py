@@ -138,15 +138,23 @@ def resumen_lecciones(memoria: dict, limite: int = 12) -> dict[str, Any]:
     }
 
 
-def texto_lecciones_para_prompt(memoria: dict | None, max_n: int | None = None) -> str:
+def texto_lecciones_para_prompt(
+    memoria: dict | None,
+    max_n: int | None = None,
+    *,
+    juego: dict | None = None,
+    cfg: dict | None = None,
+) -> str:
     if not memoria:
         return "Lecciones previas: ninguna aún."
     if max_n is None:
-        max_n = max_lecciones_prompt()
+        max_n = max_lecciones_prompt(cfg.get("aprendizaje") if isinstance(cfg, dict) else None)
     lec = [x for x in asegurar_lista_lecciones(memoria) if isinstance(x, dict)]
     if not lec:
         return "Lecciones previas: ninguna aún."
-    seleccion = lecciones_seleccionadas_para_prompt(lec, max_n=max_n)
+    seleccion = lecciones_seleccionadas_para_prompt(
+        lec, max_n=max_n, juego=juego, cfg=cfg
+    )
     lineas = []
     for i, item in enumerate(seleccion, 1):
         signo = "+" if item.get("tipo") == TIPO_ACIERTO else "−"

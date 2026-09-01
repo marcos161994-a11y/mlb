@@ -204,7 +204,7 @@ def veto_apuesta(juego: dict[str, Any], cfg: dict | None = None, memoria: dict |
     try:
         from ia_lecciones import texto_lecciones_para_prompt
 
-        bloque_lecciones = texto_lecciones_para_prompt(memoria)
+        bloque_lecciones = texto_lecciones_para_prompt(memoria, juego=juego, cfg=cfg)
     except Exception:
         bloque_lecciones = "Lecciones previas: no disponibles."
 

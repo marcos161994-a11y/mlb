@@ -48,6 +48,28 @@ PATRONES_PROMPT_PRIORIDAD = (
     "edge_falso",
 )
 
+PATRON_SENALES_RELACIONADAS: dict[str, tuple[str, ...]] = {
+    "favorito_inflado": ("favorito_inflado", "favorito_alto"),
+    "scratch_lineup": ("scratch",),
+    "starter_riesgo": ("starter_riesgo",),
+    "linea_en_contra": ("linea_en_contra",),
+    "bullpen": ("mc_over", "mc_under"),
+    "underdog_valor": ("underdog_valor",),
+    "edge_falso": ("edge_bajo",),
+    "sin_cuota_real": ("sin_mercado",),
+    "mala_practica_sin_mercado": ("sin_mercado",),
+    "retry_cuota_ok": ("linea_tarde",),
+    "refuerzo_capas": ("mc_over", "preferir_f5"),
+    "underdog_trampa": ("underdog_valor",),
+    "clima_park": ("humanos",),
+}
+
+PATRON_SEGMENTO_RELACIONADO: dict[str, str] = {
+    "underdog_valor": "underdog_cuota",
+    "favorito_inflado": "prob_alta",
+    "refuerzo_capas": "entorno_f5",
+}
+
 TIPO_ACIERTO = "acierto_refuerzo"
 PESO_DINERO = 3.0
 PESO_PAPEL = 1.0
@@ -260,24 +282,88 @@ def bloqueado_linea_en_contra(reg: dict[str, Any], cfg: dict | None = None) -> t
     )
 
 
+def perfil_spot_aprendizaje(
+    juego: dict[str, Any],
+    cfg: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Perfil del spot actual para priorizar lecciones similares en el prompt Groq."""
+    senales = set(extraer_senales_aprendizaje(juego, juego, cfg))
+    capas_info = analisis_capas_inteligencia(juego)
+    return {
+        "senales": senales,
+        "segmento": segmento_calibracion(juego),
+        "capas": set(capas_info.get("capas") or []),
+        "preferir_f5": bool(capas_info.get("preferir_f5")),
+        "mc_senal": str(capas_info.get("mc_senal") or "").lower(),
+    }
+
+
+def relevancia_leccion_para_spot(
+    leccion: dict[str, Any],
+    perfil: dict[str, Any] | None,
+) -> int:
+    """Puntúa cuánto se parece una lección al spot actual (0 = genérica)."""
+    if not perfil:
+        return 0
+    score = 0
+    patron = str(leccion.get("patron") or "otro")
+    senales = perfil.get("senales") or set()
+
+    for senal in PATRON_SENALES_RELACIONADAS.get(patron, ()):
+        if senal in senales:
+            score += 3
+
+    seg = PATRON_SEGMENTO_RELACIONADO.get(patron)
+    if seg and seg == perfil.get("segmento"):
+        score += 2
+
+    lec_capas = (leccion.get("capas") or {}) if isinstance(leccion.get("capas"), dict) else {}
+    overlap = set(lec_capas.get("capas") or []) & set(perfil.get("capas") or set())
+    score += min(3, len(overlap))
+
+    if perfil.get("preferir_f5") and lec_capas.get("preferir_f5"):
+        score += 2
+
+    mc_lec = str(lec_capas.get("mc_senal") or "").lower()
+    mc_spot = str(perfil.get("mc_senal") or "").lower()
+    if mc_lec and mc_spot and mc_lec == mc_spot:
+        score += 1
+
+    if leccion.get("con_dinero") and "sin_mercado" not in senales:
+        score += 1
+
+    return score
+
+
 def lecciones_seleccionadas_para_prompt(
     lecciones: list[dict[str, Any]],
     max_n: int = 8,
+    *,
+    juego: dict[str, Any] | None = None,
+    cfg: dict[str, Any] | None = None,
 ) -> list[dict[str, Any]]:
-    """Dedup por patrón, prioriza dinero/fallos, limita ruido sin_cuota."""
+    """Dedup por patrón; prioriza spot similar, dinero y patrones clave."""
     items = [x for x in lecciones if isinstance(x, dict)]
     if not items:
         return []
 
-    def score(item: dict) -> tuple[int, int, int]:
+    perfil = perfil_spot_aprendizaje(juego, cfg) if isinstance(juego, dict) else None
+
+    def score(item: dict) -> tuple[int, int, int, int]:
+        relevancia = relevancia_leccion_para_spot(item, perfil)
         patron = str(item.get("patron") or "otro")
-        prio = len(PATRONES_PROMPT_PRIORIDAD) - PATRONES_PROMPT_PRIORIDAD.index(patron) if patron in PATRONES_PROMPT_PRIORIDAD else 0
+        prio = (
+            len(PATRONES_PROMPT_PRIORIDAD) - PATRONES_PROMPT_PRIORIDAD.index(patron)
+            if patron in PATRONES_PROMPT_PRIORIDAD
+            else 0
+        )
         dinero = 1 if item.get("con_dinero") or item.get("tipo") == TIPO_ACIERTO else 0
         conf = int(item.get("confianza") or 3)
-        return (dinero, prio, conf)
+        return (relevancia, dinero, prio, conf)
 
     vistos_patron: dict[str, int] = {}
     seleccion: list[dict] = []
+    pool = max_n * (3 if perfil else 2)
     for item in reversed(items):
         patron = str(item.get("patron") or "otro")
         cnt = vistos_patron.get(patron, 0)
@@ -286,7 +372,7 @@ def lecciones_seleccionadas_para_prompt(
             continue
         seleccion.append(item)
         vistos_patron[patron] = cnt + 1
-        if len(seleccion) >= max_n * 2:
+        if len(seleccion) >= pool:
             break
 
     seleccion.sort(key=score, reverse=True)
