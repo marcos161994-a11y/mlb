@@ -548,7 +548,15 @@
         <span>🧠 Lecciones IA (fallos → veto futuro)</span>
         <span id="lecciones-toggle" style="font-size:1.2rem;">▼</span>
     </h3>
-    <div id="lista-lecciones" style="display:none;"><p style="color:var(--muted)">Sin lecciones aún. Aparecen al liquidar fallos.</p></div>
+    <div id="lista-lecciones" style="display:none;">
+        <p style="color:var(--muted);font-size:0.82rem;margin:0 0 10px;">
+            Importar historial viejo (solo aprendizaje, no mueve WR del panel):
+            <a href="https://github.com/marcos161994-a11y/mlb/actions/workflows/importar-aprendizaje.yml"
+                target="_blank" rel="noopener" style="color:var(--cyan);">GitHub Action → Importar aprendizaje</a>
+            · Run workflow (usa el backup del repo).
+        </p>
+        <p style="color:var(--muted)">Sin lecciones aún. Aparecen al liquidar fallos.</p>
+    </div>
 </div>
 
 <div id="contenedor-juegos" class="grid-juegos">
@@ -1535,6 +1543,14 @@ function resumenLeccionesLocal(memoria) {
     return { total: lec.length, por_patron: {}, recientes: [...lec].reverse().slice(0, 12) };
 }
 
+function htmlAyudaImportAprendizaje() {
+    return '<p style="color:var(--muted);font-size:0.78rem;margin:0 0 10px;line-height:1.45">' +
+        'Importar historial viejo (solo aprendizaje, no mueve WR): ' +
+        '<a href="https://github.com/marcos161994-a11y/mlb/actions/workflows/importar-aprendizaje.yml" ' +
+        'target="_blank" rel="noopener" style="color:var(--cyan);">GitHub Action → Importar aprendizaje</a>' +
+        '</p>';
+}
+
 function pintarLecciones(meta, mente) {
     const lista = document.getElementById('lista-lecciones');
     if (!lista) return;
@@ -1557,7 +1573,7 @@ function pintarLecciones(meta, mente) {
         .slice(0, 4)
         .map(([k, v]) => k + (v > 0 ? '+' : '') + v)
         .join(' · ');
-    let html = '';
+    let html = htmlAyudaImportAprendizaje();
     if ((ap.n || pa.n || Object.keys(pens).length)) {
         html += '<p style="color:var(--muted);font-size:0.75rem;margin:0 0 8px">' +
             '🧠 Aprendizaje · APOSTAR ' + (ap.aciertos || 0) + '✓/' + (ap.fallos || 0) + '✗ · ' +
