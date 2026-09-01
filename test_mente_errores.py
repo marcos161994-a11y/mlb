@@ -17,7 +17,7 @@ def _cfg_base(**extra):
             "notificar": False,
             "cooldown_alerta_min": 360,
         },
-        "lineas": {"proveedor": "oddspapi", "fallback_internet": True},
+        "lineas": {"proveedor": "espn", "fallback_internet": True},
         "mente": {"modo": "normal", "shadow": False},
         "telegram": {"activo": False},
     }
@@ -25,32 +25,17 @@ def _cfg_base(**extra):
     return cfg
 
 
-def test_forzar_espn_si_circuito(tmp_path, monkeypatch):
+def test_forzar_espn_si_cuotas_fallo(tmp_path, monkeypatch):
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
-    circuit = tmp_path / "oddspapi_circuit.json"
-    circuit.write_text(
-        json.dumps(
-            {
-                "hasta": "2099-01-01T00:00:00",
-                "hasta_hora": "00:00",
-                "mensaje": "401",
-                "http_status": 401,
-            }
-        ),
-        encoding="utf-8",
-    )
-    # estado_circuito lee DATA_DIR via lineas_oddspapi
-    import lineas_oddspapi as op
-
-    monkeypatch.setattr(op, "DATA_DIR", Path(tmp_path))
     monkeypatch.setattr(me, "DATA_DIR", Path(tmp_path))
 
-    out = me.ejecutar_ciclo(_cfg_base())
+    meta = {"ok": False, "mensaje": "Sin cuotas de mercado"}
+    out = me.ejecutar_ciclo(_cfg_base(), lineas_meta=meta)
     assert out["ok"]
     assert out["nivel"] == "alerta"
     assert (out.get("overrides") or {}).get("lineas.proveedor") == "espn"
     codigos = {h["codigo"] for h in out["hallazgos"]}
-    assert "oddspapi_circuito" in codigos
+    assert "cuotas_fallo" in codigos
 
     cfg2 = me.aplicar_overrides_config(_cfg_base())
     assert cfg2["lineas"]["proveedor"] == "espn"

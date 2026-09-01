@@ -16,7 +16,7 @@ def _pred(gid, decision, resultado, **extra):
         "pick": "Home ML",
         "edge": 7,
         "probPick": 60,
-        "lineas_fuente": "oddspapi",
+        "lineas_fuente": "draftkings",
         "ia_mente": {
             "decision": decision,
             "autoriza_dinero": decision == "APOSTAR",

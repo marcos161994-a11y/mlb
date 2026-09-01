@@ -1063,19 +1063,11 @@ def _mercado_requiere_cuotas(cfg: dict | None = None) -> bool:
 
 
 def precalentar_cuotas_mercado(cfg: dict | None = None) -> dict:
-    """Refresca cuotas ANTES del cron T-60 (OddsPapi → ESPN si falla)."""
+    """Refresca cuotas ANTES del cron T-60 (ESPN/DraftKings)."""
     global _lineas_meta_cache
     cfg = cfg or cargar_config()
     if not _mercado_requiere_cuotas(cfg):
         return {"ok": True, "omitido": True, "motivo": "modo_papel"}
-    try:
-        from lineas_oddspapi import intentar_reabrir_oddspapi_si_expirado
-
-        probe = intentar_reabrir_oddspapi_si_expirado(cfg)
-        if probe.get("ok"):
-            print(f"[CUOTAS] OddsPapi probe OK · {probe.get('mensaje', '')[:60]}")
-    except Exception as e:
-        print(f"[CUOTAS] probe OddsPapi: {e}")
     hoy = fecha_str()
     juegos = obtener_juegos_fecha(hoy, solo_resultados=True)
     if not juegos:
@@ -1238,18 +1230,9 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
             juegos = evaluar_juegos(juegos, cfg, bias)
         else:
             juegos, _lineas_meta_cache = aplicar_lineas_a_juegos(juegos, cfg)
-            try:
-                from lineas_oddspapi import redactar_secretos
-
-                if isinstance(_lineas_meta_cache, dict) and _lineas_meta_cache.get("mensaje"):
-                    _lineas_meta_cache["mensaje"] = redactar_secretos(
-                        _lineas_meta_cache["mensaje"]
-                    )
-            except Exception:
-                pass
             bias = calcular_bias_aprendizaje(memoria)
             cfg_eval = cfg
-            # Si OddsPapi/API falla Y ESPN no trajo cuotas: estudio, no apostar.
+            # Si ESPN no trajo cuotas: estudio, no apostar.
             if not (_lineas_meta_cache or {}).get("ok") and (cfg.get("estrategia") or {}).get(
                 "fallback_solo_modelo", True
             ):
@@ -1257,7 +1240,7 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
                 _lineas_meta_cache = {
                     **(_lineas_meta_cache or {}),
                     "fallback_solo_modelo": True,
-                    "mensaje": "Sin cuota de casa ahora · estudio (no apostar). ESPN/OddsPapi no disponibles.",
+                    "mensaje": "Sin cuota de casa ahora · estudio (no apostar). ESPN no disponible.",
                 }
             juegos = evaluar_juegos(juegos, cfg_eval, bias)
     else:
@@ -2815,7 +2798,7 @@ def programar_bloqueos_por_juego() -> None:
 
 def refrescar_cuotas_pendientes_hoy(cfg: dict | None = None) -> dict:
     """
-    Upgrade masivo: predicciones con cuota estimada → cuota de casa cuando ESPN/OddsPapi responde.
+    Upgrade masivo: predicciones con cuota estimada → cuota de casa cuando ESPN responde.
     Evita que el papel quede congelado en 📐 mientras el mercado ya está disponible.
     """
     cfg = cfg or cargar_config()
@@ -2876,12 +2859,6 @@ def refrescar_cuotas_juego(game_id: str) -> dict:
     if not _mercado_requiere_cuotas(cfg):
         return {"ok": True, "omitido": True, "motivo": "modo_papel"}
 
-    try:
-        from lineas_oddspapi import invalidar_cache_oddspapi
-
-        invalidar_cache_oddspapi()
-    except Exception:
-        pass
     try:
         from lineas_espn import invalidar_cache_espn
 
@@ -3223,7 +3200,7 @@ async def lifespan(app: FastAPI):
         max_d = (cfg_boot.get("estrategia") or {}).get("max_apuestas_dia", 4)
         print(
             f"[BOOT] Mercado ACTIVO · stake=${stake} · max {max_d} apuestas/día · "
-            f"proveedor={(cfg_boot.get('lineas') or {}).get('proveedor', 'oddspapi')}"
+            f"proveedor={(cfg_boot.get('lineas') or {}).get('proveedor', 'espn')}"
         )
     else:
         print("[BOOT] Modo papel (sin mercado para dinero)")
@@ -3924,13 +3901,6 @@ def api_health():
     ni ML — eso va en boot, /api/historial-status y /api/auto-bloqueo-externo.
     """
     cfg = cargar_config()
-    circ: dict = {"abierto": False}
-    try:
-        from lineas_oddspapi import estado_circuito
-
-        circ = estado_circuito()
-    except Exception:
-        pass
     mem_h = cargar_memoria()
     hist_fechas = sorted(_fechas_con_historial(mem_h))
     hist_ap, hist_pr = _contar_historial(mem_h)
@@ -4013,20 +3983,12 @@ def api_health():
                 if cfg.get("modo_solo_modelo")
                 else None
             ),
-            "proveedor": (cfg.get("lineas") or {}).get("proveedor") or "oddspapi",
+            "proveedor": (cfg.get("lineas") or {}).get("proveedor") or "espn",
             "requiere_mercado": bool((cfg.get("estrategia") or {}).get("requiere_betmgm", True))
             and not bool(cfg.get("modo_solo_modelo")),
             "fallback_internet": bool((cfg.get("lineas") or {}).get("fallback_internet", True)),
             "bookmakers": (cfg.get("lineas") or {}).get("bookmakers") or "draftkings",
             "min_edge_pct": float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0)),
-            "key_presente": bool(
-                os.environ.get("ODDSPAPI_API_KEY", "").strip()
-                or os.environ.get("ODDS_PAPI_KEY", "").strip()
-                or ((cfg.get("lineas") or {}).get("api_key") or "").strip()
-                or (DATA_DIR / "oddspapi_api_key.txt").exists()
-            ),
-            "circuito": bool(circ.get("abierto")),
-            "circuito_hasta_hora": circ.get("hasta_hora"),
         },
         "scratch_lineup": {
             "activo": bool(cfg.get("usar_scratch_lineup", True)),
@@ -4164,7 +4126,7 @@ def api_odds_status():
     cfg = cargar_config()
     solo = bool(cfg.get("modo_solo_modelo"))
     requiere = bool((cfg.get("estrategia") or {}).get("requiere_betmgm", True))
-    proveedor = str((cfg.get("lineas") or {}).get("proveedor") or "oddspapi").lower()
+    proveedor = str((cfg.get("lineas") or {}).get("proveedor") or "espn").lower()
     base = {
         "activo": not solo and requiere,
         "requiere_mercado": requiere and not solo,
@@ -4200,7 +4162,7 @@ def api_odds_status():
                 out["fallback_espn"] = True
                 out["espn_partidos"] = me.get("partidos")
                 out["mensaje"] = (
-                    f"{out.get('mensaje') or out.get('motivo') or 'OddsPapi no disponible'} · "
+                    f"{out.get('mensaje') or out.get('motivo') or 'Cuotas no disponibles'} · "
                     f"{me.get('mensaje')}"
                 )
                 out["motivo"] = None
@@ -4221,74 +4183,6 @@ def api_odds_status():
                 "partidos": me.get("partidos"),
                 "mensaje": me.get("mensaje"),
             }
-
-        if proveedor in ("oddspapi", "odds-papi", "odds_papi"):
-            from lineas_oddspapi import (
-                cargar_api_key,
-                circuito_abierto,
-                estado_circuito,
-                fingerprint_key,
-                obtener_lineas_oddspapi,
-            )
-
-            key = cargar_api_key(cfg)
-            if circuito_abierto():
-                st = estado_circuito()
-                return _con_espn({
-                    **base,
-                    "ok": False,
-                    "key_presente": bool(key),
-                    "key_fingerprint": fingerprint_key(key) if key else None,
-                    "key_source": getattr(cargar_api_key, "last_source", None),
-                    "circuito": True,
-                    "circuito_hasta": st.get("hasta"),
-                    "circuito_hasta_hora": st.get("hasta_hora"),
-                    "http_status": st.get("http_status"),
-                    "motivo": st.get("mensaje"),
-                    "mensaje": st.get("mensaje"),
-                    "ayuda": (
-                        "OddsPapi se pausó sola (401/429). "
-                        "Las cuotas salen de ESPN/DraftKings. "
-                        "Se reintenta al vencer la pausa o al pegar una key nueva."
-                    ),
-                })
-            if not key:
-                return _con_espn({
-                    **base,
-                    "ok": False,
-                    "key_presente": False,
-                    "motivo": "Falta ODDSPAPI_API_KEY · se intenta ESPN/DraftKings",
-                    "ayuda": "Crea key en https://oddspapi.io o usa el fallback ESPN (sin key)",
-                })
-            _, meta = obtener_lineas_oddspapi(cfg)
-            return _con_espn({
-                **base,
-                "ok": bool(meta.get("ok")),
-                "key_presente": True,
-                "key_fingerprint": meta.get("key_fingerprint") or fingerprint_key(key),
-                "key_source": meta.get("key_source") or getattr(cargar_api_key, "last_source", None),
-                "key_length": meta.get("key_length") or len(key),
-                "key_score": meta.get("key_score"),
-                "api_version": meta.get("api_version"),
-                "http_status": meta.get("http_status"),
-                "error_api": meta.get("error_api"),
-                "tournament_id": meta.get("tournament_id"),
-                "partidos": meta.get("partidos"),
-                "fixtures_mlb": meta.get("fixtures_mlb"),
-                "mensaje": meta.get("mensaje"),
-                "cache": meta.get("cache"),
-                "intentos": meta.get("intentos"),
-                "circuito": bool(meta.get("circuito")),
-                "circuito_hasta": meta.get("circuito_hasta"),
-                "ayuda": (
-                    None
-                    if meta.get("ok")
-                    else (
-                        "Si OddsPapi falla, se usan cuotas ESPN/DraftKings de internet. "
-                        "Key incompleta: GitHub Action 'Configurar OddsPapi' o UUID de 36 caracteres."
-                    )
-                ),
-            })
 
         # Legacy The Odds API (proveedor betmgm / the-odds-api)
         from lineas_betmgm import cargar_api_key, enmascarar_api_key, obtener_lineas_betmgm
@@ -4458,7 +4352,7 @@ def api_mente_status():
                 "probPick": 62,
                 "edge": 7.5,
                 "odds": 1.9,
-                "lineas_fuente": "oddspapi",
+                "lineas_fuente": "draftkings",
                 "pitcherAway": "A",
                 "pitcherHome": "B",
             },
@@ -4868,101 +4762,6 @@ def _cron_externo_en_fondo() -> None:
             pass
     finally:
         _cron_externo_activo = False
-
-
-@app.get("/api/oddspapi-setup")
-def api_oddspapi_setup(probe: bool = False, secret: str | None = None):
-    """
-    Guía y diagnóstico para montar OddsPapi (sin exponer la key).
-    ?probe=1&secret=CRON_SECRET fuerza un probe (cierra circuito si la key es válida).
-    """
-    from lineas_oddspapi import estado_setup_oddspapi, probar_conexion_oddspapi
-
-    cfg = cargar_config()
-    out = estado_setup_oddspapi(cfg)
-    if probe:
-        _verificar_cron_secreto(secret)
-        probe_res = probar_conexion_oddspapi(cfg, registrar_circuito=False)
-        out["probe"] = {
-            "ok": bool(probe_res.get("ok")),
-            "http_status": probe_res.get("http_status"),
-            "mensaje": probe_res.get("mensaje"),
-            "error_api": probe_res.get("error_api"),
-            "api_version": probe_res.get("api_version"),
-        }
-        out.update(estado_setup_oddspapi(cfg))
-    return out
-
-
-@app.post("/api/configurar-oddspapi")
-@app.get("/api/configurar-oddspapi")
-async def api_configurar_oddspapi(request: Request, secret: str | None = None, key: str | None = None):
-    """
-    Guarda ODDSPAPI key en disco persistente (DATA_DIR).
-    Requiere CRON_SECRET. Body JSON {"key":"..."} o ?key=
-    """
-    _verificar_cron_secreto(secret)
-    raw = key
-    if request.method == "POST":
-        try:
-            body = await request.json()
-        except Exception:
-            body = None
-        if isinstance(body, dict):
-            raw = raw or body.get("key") or body.get("api_key") or body.get("apiKey")
-    if not raw:
-        raise HTTPException(status_code=400, detail="Falta key (body JSON o ?key=)")
-    try:
-        from lineas_oddspapi import guardar_api_key, invalidar_cache_oddspapi, probar_conexion_oddspapi
-
-        info = guardar_api_key(str(raw))
-        invalidar_cache_oddspapi()
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e)) from e
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)[:160]) from e
-
-    cfg = cargar_config()
-    probe = probar_conexion_oddspapi(cfg, registrar_circuito=False)
-    oddspapi_ok = bool(probe.get("ok"))
-    guardado_ok = bool(info.get("ok"))
-    return {
-        "ok": guardado_ok,
-        "guardado_ok": guardado_ok,
-        "oddspapi_ok": oddspapi_ok,
-        "guardado": info,
-        "probe": probe,
-        "partidos": probe.get("partidos"),
-        "http_status": probe.get("http_status"),
-        "error_api": probe.get("error_api"),
-        "mensaje": (
-            probe.get("mensaje")
-            if oddspapi_ok
-            else (
-                f"Key guardada en disco · OddsPapi rechazó la key"
-                f" (HTTP {probe.get('http_status') or '?'})"
-                f": {probe.get('mensaje') or probe.get('error_api') or '401'}"
-            )
-        ),
-        "key_fingerprint": probe.get("key_fingerprint") or info.get("key_fingerprint"),
-        "key_source": probe.get("key_source") or info.get("prioridad"),
-        "circuito": bool(probe.get("circuito")),
-        "api_version": probe.get("api_version") or "v5",
-        "aviso_env": info.get("aviso_env"),
-        "espn_fallback": (
-            "Las cuotas siguen por ESPN/DraftKings (12/12). "
-            "OddsPapi/Pinnacle es opcional hasta que la key sea válida."
-        ),
-        "ayuda": (
-            None
-            if oddspapi_ok
-            else (
-                "401 = key inválida, revocada o plan sin acceso REST v5. "
-                "Crea key nueva en https://oddspapi.io, revoca las viejas, "
-                "borra ODDSPAPI_API_KEY en Render Environment (la del disco manda)."
-            )
-        ),
-    }
 
 
 @app.get("/api/auto-bloqueo-externo")

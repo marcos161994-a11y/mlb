@@ -651,7 +651,7 @@ _FUENTES_SIN_MERCADO = frozenset({"", "modelo", "none", "null", "import"})
 
 
 def fuente_es_mercado(fuente: Any) -> bool:
-    """True solo si la fuente es una casa/API real (Pinnacle, DK, OddsPapi…)."""
+    """True solo si la fuente es una casa/API real (Pinnacle, DK, ESPN…)."""
     return str(fuente or "").strip().lower() not in _FUENTES_SIN_MERCADO
 
 

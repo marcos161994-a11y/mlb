@@ -78,7 +78,7 @@ def test_mente_pasa_por_l10_fria_del_pick():
         "probPick": 60,
         "edge": 7.0,
         "odds": 2.1,
-        "lineas_fuente": "oddspapi",
+        "lineas_fuente": "draftkings",
         "historico_oficial": {
             "ok": True,
             "riesgo": True,
@@ -110,7 +110,7 @@ def test_mente_no_castiga_l10_fria_del_rival():
         "probPick": 61,
         "edge": 9.0,
         "odds": 1.9,
-        "lineas_fuente": "oddspapi",
+        "lineas_fuente": "draftkings",
         "pitcherAway": "X",
         "pitcherHome": "Y",
         "historico_oficial": {
@@ -139,7 +139,7 @@ def test_briefing_incluye_historico():
             "pick": "X ML",
             "probPick": 58,
             "edge": 5,
-            "lineas_fuente": "oddspapi",
+            "lineas_fuente": "draftkings",
             "historico_oficial": {
                 "ok": True,
                 "riesgo": True,

@@ -331,9 +331,9 @@ def _juegos_con_cuota(juegos: list[dict]) -> int:
 
 
 def aplicar_lineas_a_juegos(juegos: list[dict], cfg: dict) -> tuple[list[dict], dict]:
-    """OddsPapi / The Odds API, y si faltan líneas: ESPN (DraftKings, sin key)."""
+    """Cuotas vía ESPN/DraftKings (sin key) o The Odds API legacy."""
     lineas_cfg = cfg.get("lineas") or {}
-    proveedor = str(lineas_cfg.get("proveedor") or "oddspapi").lower()
+    proveedor = str(lineas_cfg.get("proveedor") or "espn").lower()
     usar_espn = bool(lineas_cfg.get("fallback_internet", True))
 
     if proveedor in ("espn", "espn-draftkings", "internet"):
@@ -341,44 +341,26 @@ def aplicar_lineas_a_juegos(juegos: list[dict], cfg: dict) -> tuple[list[dict], 
 
         return aplicar_lineas_espn(juegos, cfg, solo_vacios=False)
 
-    if proveedor in ("oddspapi", "odds-papi", "odds_papi"):
-        from lineas_oddspapi import aplicar_lineas_oddspapi, circuito_abierto, estado_circuito
+    mapa, meta = obtener_lineas_betmgm(cfg)
+    for juego in juegos:
+        lineas = buscar_lineas_partido(mapa, juego["visitante"], juego["home"])
+        juego["lineas_betmgm"] = lineas
+        juego["odds_away_american"] = None
+        juego["odds_home_american"] = None
+        juego["odds_away_decimal"] = None
+        juego["odds_home_decimal"] = None
+        juego["lineas_fuente"] = "modelo"
 
-        if circuito_abierto():
-            st = estado_circuito()
-            meta = {
-                "ok": False,
-                "fuente": "oddspapi",
-                "circuito": True,
-                "circuito_hasta": st.get("hasta"),
-                "circuito_hasta_hora": st.get("hasta_hora"),
-                "http_status": st.get("http_status"),
-                "mensaje": st.get("mensaje") or "OddsPapi en pausa automática",
-                "partidos": 0,
-            }
-        else:
-            juegos, meta = aplicar_lineas_oddspapi(juegos, cfg)
-    else:
-        mapa, meta = obtener_lineas_betmgm(cfg)
-        for juego in juegos:
-            lineas = buscar_lineas_partido(mapa, juego["visitante"], juego["home"])
-            juego["lineas_betmgm"] = lineas
-            juego["odds_away_american"] = None
-            juego["odds_home_american"] = None
-            juego["odds_away_decimal"] = None
-            juego["odds_home_decimal"] = None
-            juego["lineas_fuente"] = "modelo"
-
-            if lineas:
-                away_l = lineas.get("away")
-                home_l = lineas.get("home")
-                if away_l:
-                    juego["odds_away_american"] = away_l["american"]
-                    juego["odds_away_decimal"] = away_l["decimal"]
-                if home_l:
-                    juego["odds_home_american"] = home_l["american"]
-                    juego["odds_home_decimal"] = home_l["decimal"]
-                juego["lineas_fuente"] = away_l.get("casa") or home_l.get("casa") or "odds-api"
+        if lineas:
+            away_l = lineas.get("away")
+            home_l = lineas.get("home")
+            if away_l:
+                juego["odds_away_american"] = away_l["american"]
+                juego["odds_away_decimal"] = away_l["decimal"]
+            if home_l:
+                juego["odds_home_american"] = home_l["american"]
+                juego["odds_home_decimal"] = home_l["decimal"]
+            juego["lineas_fuente"] = away_l.get("casa") or home_l.get("casa") or "odds-api"
 
     n_ok = _juegos_con_cuota(juegos)
     if usar_espn and n_ok < len(juegos):
@@ -389,16 +371,6 @@ def aplicar_lineas_a_juegos(juegos: list[dict], cfg: dict) -> tuple[list[dict], 
         except Exception as e:
             meta_e = {"ok": False, "mensaje": f"ESPN fallback: {e}"[:160]}
         n2 = _juegos_con_cuota(juegos)
-        aviso_papi = str((meta or {}).get("mensaje") or "OddsPapi no disponible")
-        # Nunca reenviar la URL/key de OddsPapi al panel.
-        try:
-            from lineas_oddspapi import redactar_secretos
-
-            aviso_papi = redactar_secretos(aviso_papi)
-        except Exception:
-            aviso_papi = "OddsPapi no disponible"
-        if len(aviso_papi) > 80:
-            aviso_papi = "OddsPapi no disponible"
         if meta_e.get("ok") or n2 > n_ok:
             meta = {
                 **(meta or {}),
@@ -407,27 +379,13 @@ def aplicar_lineas_a_juegos(juegos: list[dict], cfg: dict) -> tuple[list[dict], 
                 "espn_partidos": meta_e.get("partidos_aplicados") or (n2 - n_ok),
                 "partidos": n2,
                 "fuente": "espn" if n_ok == 0 else (meta or {}).get("fuente") or "mixto",
-                "mensaje": (
-                    (
-                        f"OddsPapi en pausa automática hasta {(meta or {}).get('circuito_hasta_hora') or 'luego'} · "
-                        if (meta or {}).get("circuito")
-                        else ""
-                    )
-                    + f"ESPN/DraftKings · {n2} partidos con cuota real"
-                    + (
-                        f" ({aviso_papi})"
-                        if n_ok == 0 and not (meta or {}).get("circuito")
-                        else ""
-                    )
-                ),
+                "mensaje": f"ESPN/DraftKings · {n2} partidos con cuota real",
             }
         elif n_ok == 0:
             meta = {
                 **(meta or {}),
                 "ok": False,
                 "fallback_espn": True,
-                "mensaje": (
-                    f"{aviso_papi} · {meta_e.get('mensaje') or 'ESPN sin cuotas'}"
-                )[:200],
+                "mensaje": (meta_e.get("mensaje") or "ESPN sin cuotas")[:200],
             }
     return juegos, meta

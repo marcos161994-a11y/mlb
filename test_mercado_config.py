@@ -13,7 +13,7 @@ def test_config_mercado_activo():
     assert estr.get("requiere_betmgm") is True
     assert float(cfg.get("stake_por_juego") or 0) <= 3.0
     assert int(estr.get("max_apuestas_dia") or 99) <= 4
-    assert lineas.get("proveedor") == "oddspapi"
+    assert lineas.get("proveedor") == "espn"
     assert lineas.get("fallback_internet") is True
     books = lineas.get("bookmakers") or ""
     assert "draftkings" in books

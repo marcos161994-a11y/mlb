@@ -59,7 +59,7 @@ def odds_justas_sin_vig(
 
 def consenso_mercado(juego: dict[str, Any]) -> dict[str, Any]:
     """
-    Consenso = promedio de fuentes disponibles (ESPN/DK, OddsPapi, etc.).
+    Consenso = promedio de fuentes disponibles (ESPN/DK, etc.).
     Si solo hay una casa, usa odds justas sin vig como ancla.
     """
     fuentes: list[dict[str, Any]] = []

@@ -28,7 +28,7 @@ jobs:
           echo "$body"
           ok=$(echo "$body" | python3 -c "import json,sys; d=json.load(sys.stdin); print('1' if d.get('ok') else '0')" 2>/dev/null || echo 0)
           if [ "$ok" != "1" ]; then
-            echo "::warning::Cuotas de mercado no OK — revisa OddsPapi key o ESPN fallback."
+            echo "::warning::Cuotas de mercado no OK — revisa ESPN/DraftKings."
           fi
 
       - name: Iniciar cron en segundo plano (respuesta rapida)

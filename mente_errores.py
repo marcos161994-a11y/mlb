@@ -1,11 +1,11 @@
 """
 Mente de errores — director operativo de la aplicación (no decide apuestas).
 
-Detecta fallos recurrentes (OddsPapi quemado, circuito, Telegram caído,
+Detecta fallos recurrentes (Telegram caído,
 T-60 sin congelar, juegos perdidos por sueño Render, shadow accidental)
 y aplica remediaciones seguras:
   - forzar proveedor ESPN + fallback internet
-  - respetar/abrir circuito OddsPapi
+  - respetar overrides de líneas
   - apagar shadow de la mente de picks
   - forzar registro T-60 al despertar
   - registrar incidentes en DATA_DIR
@@ -183,16 +183,6 @@ def _filtrar_hallazgos_remediados(
         cod = _clave_hallazgo(h)
         if cod == "fallback_internet_off" and ov.get("lineas.fallback_internet") is True:
             continue
-        if cod == "proveedor_oddspapi_activo_con_circuito" and ov.get("lineas.proveedor") == "espn":
-            continue
-        if cod == "mente_shadow" and ov.get("mente.shadow") is False:
-            continue
-        if cod == "oddspapi_circuito" and ov.get("lineas.proveedor") == "espn":
-            copia = dict(h)
-            copia["severidad"] = "aviso"
-            copia["mensaje"] = "OddsPapi en pausa · remediado con ESPN/fallback"
-            out.append(copia)
-            continue
         out.append(h)
     return out
 
@@ -363,86 +353,18 @@ def diagnosticar(
     est = estado if isinstance(estado, dict) else _leer_estado()
     lineas = cfg.get("lineas") if isinstance(cfg.get("lineas"), dict) else {}
     mente = cfg.get("mente") if isinstance(cfg.get("mente"), dict) else {}
-    proveedor = str(lineas.get("proveedor") or "oddspapi").lower()
+    proveedor = str(lineas.get("proveedor") or "espn").lower()
     fallback = bool(lineas.get("fallback_internet", True))
     mercado_activo = not bool(cfg.get("modo_solo_modelo")) and bool(
         (cfg.get("estrategia") or {}).get("requiere_betmgm", True)
     )
-
-    circ: dict[str, Any] = {"abierto": False}
-    try:
-        from lineas_oddspapi import estado_circuito
-
-        circ = estado_circuito() or {"abierto": False}
-    except Exception as e:
-        hallazgos.append(
-            {
-                "codigo": "circuito_lectura",
-                "severidad": "baja",
-                "mensaje": f"No se pudo leer circuito OddsPapi: {e}"[:160],
-                "acciones": [ACCION_REGISTRAR],
-            }
-        )
-
-    if mercado_activo and proveedor in ("oddspapi", "odds-papi", "odds_papi"):
-        key_ok = False
-        try:
-            from lineas_oddspapi import cargar_api_key
-
-            key_ok = bool(cargar_api_key(cfg))
-        except Exception:
-            key_ok = False
-        if not key_ok and not circ.get("abierto"):
-            hallazgos.append(
-                {
-                    "codigo": "oddspapi_key_ausente",
-                    "severidad": "media",
-                    "mensaje": (
-                        "Mercado activo sin key OddsPapi · se usará ESPN/DraftKings "
-                        "(pega key en /api/configurar-oddspapi)"
-                    )[:180],
-                    "acciones": [ACCION_FORZAR_ESPN, ACCION_ACTIVAR_FALLBACK, ACCION_REGISTRAR],
-                }
-            )
-
-    if circ.get("abierto"):
-        hallazgos.append(
-            {
-                "codigo": "oddspapi_circuito",
-                "severidad": "alta",
-                "mensaje": (
-                    f"OddsPapi en pausa hasta {circ.get('hasta_hora') or 'luego'}: "
-                    f"{(circ.get('mensaje') or 'auth/rate/red')[:100]}"
-                ),
-                "acciones": [
-                    ACCION_RESPETAR_CIRCUITO,
-                    ACCION_FORZAR_ESPN,
-                    ACCION_ACTIVAR_FALLBACK,
-                    ACCION_NOTIFICAR,
-                ],
-                "meta": {
-                    "hasta_hora": circ.get("hasta_hora"),
-                    "http_status": circ.get("http_status"),
-                },
-            }
-        )
-
-    if proveedor in ("oddspapi", "odds-papi", "odds_papi") and circ.get("abierto"):
-        hallazgos.append(
-            {
-                "codigo": "proveedor_oddspapi_activo_con_circuito",
-                "severidad": "alta",
-                "mensaje": "Proveedor sigue en OddsPapi con circuito abierto · conviene ESPN",
-                "acciones": [ACCION_FORZAR_ESPN, ACCION_ACTIVAR_FALLBACK],
-            }
-        )
 
     if not fallback:
         hallazgos.append(
             {
                 "codigo": "fallback_internet_off",
                 "severidad": "media",
-                "mensaje": "fallback_internet=false · si OddsPapi falla no hay ESPN",
+                "mensaje": "fallback_internet=false · si ESPN falla no hay cuota de respaldo",
                 "acciones": [ACCION_ACTIVAR_FALLBACK],
             }
         )
@@ -1081,7 +1003,7 @@ def resumen_para_panel(cfg: dict | None = None) -> dict[str, Any]:
 
 
 def limpiar_overrides(claves: list[str] | None = None) -> dict[str, Any]:
-    """Quita overrides (todo o claves concretas). Útil tras rotar key OddsPapi."""
+    """Quita overrides (todo o claves concretas)."""
     estado = _leer_estado()
     ov = estado.get("overrides") if isinstance(estado.get("overrides"), dict) else {}
     if claves is None:

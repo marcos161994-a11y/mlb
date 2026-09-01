@@ -24,19 +24,11 @@
 
     "minutos_retry_cuotas": [45, 30],
 
-    "proveedor": "oddspapi",
-
-    "api_version": "v5",
+    "proveedor": "espn",
 
     "region": "us",
 
     "mercado": "h2h",
-
-    "sport_id": 13,
-
-    "tournament_id": 109,
-
-    "api_key": "",
 
     "fallback_internet": true
 

@@ -18,7 +18,7 @@ def test_oportunidad_perdida_pasar_acierto():
         "resultado": "acierto",
         "game_id": "g-op-1",
         "pick": "Yankees ML",
-        "lineas_fuente": "oddspapi",
+        "lineas_fuente": "draftkings",
         "ia_veto": {"decision": "PASAR", "motivo": "scratch"},
         "valida_stats": True,
     }
@@ -37,7 +37,7 @@ def test_veto_acertado_pasar_fallo():
         "resultado": "fallo",
         "game_id": "g-va-1",
         "pick": "Mets ML",
-        "lineas_fuente": "oddspapi",
+        "lineas_fuente": "draftkings",
         "motivo_apuesta": "Modelo 60% · IA PASAR: scratch",
         "valida_stats": True,
     }
@@ -104,7 +104,7 @@ def test_import_lista_y_escaneo():
                 "home": "Yanks",
                 "resultado": "acierto",
                 "ia_veto": {"decision": "PASAR"},
-                "lineas_fuente": "oddspapi",
+                "lineas_fuente": "draftkings",
             }
         ],
     )
