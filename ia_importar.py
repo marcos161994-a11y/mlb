@@ -100,7 +100,7 @@ def importar_dump_aprendizaje(
             dest["apuestas"] = aps
 
     # Fusionar lecciones del dump (por id o game_id+tipo)
-    from ia_lecciones import asegurar_lista_lecciones
+    from ia_lecciones import asegurar_lista_lecciones, aplicar_tope_lecciones
 
     dest_lec = asegurar_lista_lecciones(memoria)
     keys = {
@@ -122,6 +122,8 @@ def importar_dump_aprendizaje(
         dest_lec.append(copia)
         keys.add(k)
         lec_in += 1
+
+    aplicar_tope_lecciones(memoria)
 
     # Reindexar días
     dias = sorted(memoria.get("dias") or [], key=lambda d: d.get("fecha") or "")

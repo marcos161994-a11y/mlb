@@ -4674,16 +4674,21 @@ def api_ia_status():
     cfg = cargar_config()
     lecciones_n = 0
     try:
-        from ia_lecciones import asegurar_lista_lecciones
+        from ia_lecciones import asegurar_lista_lecciones, max_lecciones_almacenadas, max_lecciones_prompt
 
         lecciones_n = len(asegurar_lista_lecciones(cargar_memoria()))
+        max_lec = max_lecciones_almacenadas(cfg.get("aprendizaje"))
+        max_prompt = max_lecciones_prompt(cfg.get("aprendizaje"))
     except Exception:
-        pass
+        max_lec = 80
+        max_prompt = 8
     base = {
         "activo": bool(cfg.get("usar_ia_veto")),
         "key_presente": ia_veto_disponible(cfg),
         "modelo": modelo_groq(cfg),
         "lecciones": lecciones_n,
+        "max_lecciones": max_lec,
+        "max_lecciones_prompt": max_prompt,
     }
     if not base["activo"]:
         return {**base, "ok": False, "motivo": "usar_ia_veto=false en config"}
