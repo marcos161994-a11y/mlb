@@ -53,7 +53,7 @@ from modelo_mlb import (
 from aprendizaje_mlb import calcular_movimiento_linea, peso_muestra_aprendizaje, bloqueado_linea_en_contra
 from clv_mlb import actualizar_clv_registro, resumen_clv_memoria
 from ml_predictor import auto_entrenar_ml
-from ia_groq import ia_veto_disponible, probar_conexion_groq, veto_apuesta
+from ia_groq import ia_veto_disponible, modelo_groq, probar_conexion_groq, veto_apuesta
 from mente_mlb import (
     mente_conclusion,
     mente_disponible,
@@ -3527,7 +3527,7 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
         "ia_veto": {
             "activo": bool(cfg.get("usar_ia_veto")),
             "listo": ia_veto_disponible(cfg),
-            "modelo": (cfg.get("groq") or {}).get("model") or "llama-3.1-8b-instant",
+            "modelo": modelo_groq(cfg),
             "lecciones": lecciones_meta.get("total", 0),
         },
         "mente": {
@@ -4682,7 +4682,7 @@ def api_ia_status():
     base = {
         "activo": bool(cfg.get("usar_ia_veto")),
         "key_presente": ia_veto_disponible(cfg),
-        "modelo": (cfg.get("groq") or {}).get("model") or "llama-3.1-8b-instant",
+        "modelo": modelo_groq(cfg),
         "lecciones": lecciones_n,
     }
     if not base["activo"]:

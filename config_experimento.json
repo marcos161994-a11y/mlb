@@ -176,7 +176,7 @@
   },
 
   "groq": {
-    "model": "llama-3.1-8b-instant",
+    "model": "openai/gpt-oss-20b",
     "timeout_sec": 8,
     "api_key": ""
   },
