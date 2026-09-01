@@ -71,15 +71,28 @@ def _modo_cfg(cfg: dict) -> dict[str, Any]:
     return base
 
 
-def _texto_lecciones(memoria: dict | None, max_n: int = 6) -> tuple[str, list[str]]:
+def _texto_lecciones(
+    memoria: dict | None,
+    max_n: int = 6,
+    *,
+    juego: dict | None = None,
+    cfg: dict | None = None,
+) -> tuple[str, list[str]]:
     ids: list[str] = []
     if not memoria:
         return "Lecciones: ninguna aún.", ids
     try:
+        from aprendizaje_mlb import lecciones_seleccionadas_para_prompt
         from ia_lecciones import texto_lecciones_para_prompt, asegurar_lista_lecciones
 
-        txt = texto_lecciones_para_prompt(memoria, max_n=max_n)
-        for item in asegurar_lista_lecciones(memoria)[-max_n:]:
+        txt = texto_lecciones_para_prompt(memoria, max_n=max_n, juego=juego, cfg=cfg)
+        pool = lecciones_seleccionadas_para_prompt(
+            [x for x in asegurar_lista_lecciones(memoria) if isinstance(x, dict)],
+            max_n=max_n,
+            juego=juego,
+            cfg=cfg,
+        ) if juego else [x for x in asegurar_lista_lecciones(memoria) if isinstance(x, dict)][-max_n:]
+        for item in pool:
             if isinstance(item, dict) and item.get("id"):
                 ids.append(str(item["id"]))
             elif isinstance(item, dict) and item.get("patron"):
@@ -192,7 +205,7 @@ def construir_briefing(juego: dict[str, Any], memoria: dict | None = None) -> di
             "fatiga_bullpen": feats.get("fatiga_bullpen"),
         },
     }
-    lec_txt, lec_ids = _texto_lecciones(memoria)
+    lec_txt, lec_ids = _texto_lecciones(memoria, juego=juego)
     alertas: list[str] = []
     if pilares["lesiones"]["starter_riesgo"]:
         alertas.append("starter_riesgo")
@@ -331,7 +344,7 @@ def _briefing_para_decision(
             "fase": frozen.get("fase") or "t60",
             "creado_en": frozen.get("creado_en"),
         }
-        lec_txt, lec_ids = _texto_lecciones(memoria)
+        lec_txt, lec_ids = _texto_lecciones(memoria, juego=juego)
         briefing["lecciones_txt"] = lec_txt
         if lec_ids and not briefing["lecciones_ids"]:
             briefing["lecciones_ids"] = lec_ids

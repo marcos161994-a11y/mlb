@@ -87,7 +87,7 @@
     "senales_activas": true,
     "lecciones_positivas": true,
     "max_lecciones": 1000,
-    "max_lecciones_prompt": 12,
+    "max_lecciones_prompt": 20,
     "ml_pesos_inteligentes": true,
     "calibracion_segmentada": true,
     "ml_min_muestras_reales": 10,
