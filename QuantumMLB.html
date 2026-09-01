@@ -537,7 +537,7 @@
 
 <div class="historial" id="historial-predicciones">
     <h3 onclick="togglePredicciones()" style="cursor:pointer;display:flex;align-items:center;justify-content:space-between;">
-        <span>📋 Predicciones en papel (todos los juegos · pasado incluido)</span>
+        <span id="predicciones-header-text">📋 Predicciones en papel (todos los juegos · pasado incluido)</span>
         <span id="predicciones-toggle" style="font-size:1.2rem;">▼</span>
     </h3>
     <div id="lista-predicciones" style="display:none;"><p style="color:var(--muted)">Sin predicciones registradas aún.</p></div>
@@ -566,7 +566,7 @@ const API = (!window.location.origin || window.location.protocol === 'file:')
 const ES_NUBE = API.includes('onrender.com') || API.includes('render.com');
 const REFRESH_MS = ES_NUBE ? 45000 : 8000;
 const CACHE_KEY = 'qmlb_last_state_v2';
-const PANEL_VER = '2026-09-01-espn-cuotas';
+const PANEL_VER = '2026-09-01-papel-visible';
 let cargandoEstado = false;
 let cargandoBoot = false;
 let cargandoJuegos = false;
@@ -698,7 +698,10 @@ function pintarEstadoSeguro(data, motivo) {
     }
     try {
         if (data && data.memoria) {
-            pintarPredicciones(data.memoria, data.pl_split);
+            pintarPredicciones(data.memoria, data.pl_split, {
+                fecha_hoy: data.fecha_hoy,
+                perdidos_hoy: data.perdidos_hoy || (data.vigilancia && data.vigilancia.perdidos) || [],
+            });
         }
     } catch (e) {
         console.warn('pintarPredicciones', motivo || '', e);
@@ -1731,7 +1734,8 @@ function pintarPicksHoy(juegos, data) {
     }
 }
 
-function pintarPredicciones(memoria, plSplit) {
+function pintarPredicciones(memoria, plSplit, ctx) {
+    ctx = ctx || {};
     const lista = document.getElementById('lista-predicciones');
     if (!lista) return;
     if (!memoria.dias || memoria.dias.length === 0) {
@@ -1741,8 +1745,17 @@ function pintarPredicciones(memoria, plSplit) {
 
     const pred = (plSplit && plSplit.predicciones) || {};
     const din = (plSplit && plSplit.dinero) || {};
+    const fechaHoy = ctx.fecha_hoy || null;
+    const perdidosHoy = Array.isArray(ctx.perdidos_hoy) ? ctx.perdidos_hoy : [];
 
     const diasOrden = [...memoria.dias].filter(d => (d.predicciones || []).length > 0).reverse();
+    const diaHoy = fechaHoy
+        ? diasOrden.find(d => d.fecha === fechaHoy)
+        : (diasOrden.length ? diasOrden[0] : null);
+    if (diaHoy && diaHoy.dia != null) {
+        picksUi.predDias[diaHoy.dia] = true;
+        picksUi.predHistorial = true;
+    }
 
     let html = `<div style="margin-bottom:12px;padding:10px;background:rgba(0,242,255,0.08);border-radius:8px;border:1px solid rgba(0,242,255,0.25);font-size:0.85rem;line-height:1.55">
         <div><b>Todas las predicciones (papel):</b> ${pred.aciertos||0} ganadas · ${pred.fallos||0} perdidas ·
@@ -1813,11 +1826,36 @@ function pintarPredicciones(memoria, plSplit) {
             porJuego.set(gid, row);
         });
 
+        if (fechaHoy && d.fecha === fechaHoy && perdidosHoy.length) {
+            for (const pg of perdidosHoy) {
+                const gid = String(pg.id || pg.game_id || '');
+                if (!gid || porJuego.has(gid)) continue;
+                porJuego.set(gid, {
+                    game_id: gid,
+                    visitante: pg.visitante,
+                    home: pg.home,
+                    pick: null,
+                    odds: null,
+                    probPick: null,
+                    resultado: null,
+                    estado: pg.estado || 'FINALIZADO',
+                    profit_papel: null,
+                    marcador: null,
+                    con_dinero: false,
+                    stake_dinero: null,
+                    profit_dinero: null,
+                    invalida_tarde: false,
+                    sin_congelar: true,
+                    motivo: pg.motivo || 'T-60 perdido (Render dormido)',
+                });
+            }
+        }
+
         const filas = [...porJuego.values()];
         if (!filas.length) continue;
         hayFilas = true;
 
-        const filasValidas = filas.filter(f => !f.invalida_tarde);
+        const filasValidas = filas.filter(f => !f.invalida_tarde && !f.sin_congelar);
         const nTarde = filas.filter(f => f.invalida_tarde).length;
         const gPapel = filasValidas.filter(f => f.resultado === 'acierto').length;
         const pPapel = filasValidas.filter(f => f.resultado === 'fallo').length;
@@ -1853,13 +1891,16 @@ function pintarPredicciones(memoria, plSplit) {
         filas.forEach(f => {
             let resTxt = '⏳';
             let resColor = 'var(--muted)';
-            if (f.invalida_tarde) {
+            if (f.sin_congelar) {
+                resTxt = '—';
+                resColor = '#ffbc00';
+            } else if (f.invalida_tarde) {
                 resTxt = '⊘';
                 resColor = 'var(--muted)';
             } else if (f.resultado === 'acierto') { resTxt = '✓'; resColor = 'var(--green)'; }
             else if (f.resultado === 'fallo') { resTxt = '✗'; resColor = 'var(--red)'; }
             const marc = f.marcador ? ` <span style="color:var(--muted);font-size:0.7rem">${f.marcador}</span>` : '';
-            const plPapel = f.invalida_tarde ? '—' : (f.profit_papel != null ? fmtMoney(f.profit_papel) : '—');
+            const plPapel = (f.sin_congelar || f.invalida_tarde) ? '—' : (f.profit_papel != null ? fmtMoney(f.profit_papel) : '—');
             const plColor = (f.profit_papel || 0) > 0 ? 'var(--green)' : ((f.profit_papel || 0) < 0 ? 'var(--red)' : 'var(--muted)');
             let dinTxt = '—';
             let dinColor = 'var(--muted)';
@@ -1872,9 +1913,12 @@ function pintarPredicciones(memoria, plSplit) {
                     dinColor = 'var(--gold)';
                 }
             }
-            html += `<tr style="border-bottom:1px solid rgba(255,255,255,0.04)">
+            const pickTxt = f.sin_congelar
+                ? `<span style="color:#ffbc00;font-size:0.72rem">Sin congelar · ${f.motivo || 'T-60 perdido'}</span>`
+                : (nombrePick(f.pick) || '—');
+            html += `<tr style="border-bottom:1px solid rgba(255,255,255,0.04)${f.sin_congelar ? ';opacity:0.85' : ''}">
                 <td style="padding:7px 4px">${f.visitante || '?'} @ ${f.home || '?'}</td>
-                <td style="padding:7px 4px;color:var(--cyan)">${nombrePick(f.pick) || '—'}${marc}</td>
+                <td style="padding:7px 4px;color:var(--cyan)">${pickTxt}${marc}</td>
                 <td style="padding:7px 4px;color:${resColor};font-weight:700">${resTxt}</td>
                 <td style="padding:7px 4px">${f.probPick != null ? Number(f.probPick).toFixed(0) + '%' : '—'}</td>
                 <td style="padding:7px 4px;color:${plColor}">${plPapel}</td>
@@ -1889,6 +1933,17 @@ function pintarPredicciones(memoria, plSplit) {
 
     const listaWrap = document.getElementById('lista-predicciones');
     const listaToggle = document.getElementById('predicciones-toggle');
+    const headerTxt = document.getElementById('predicciones-header-text');
+    if (headerTxt && diaHoy) {
+        const hoyRows = (diaHoy.predicciones || []).filter(p => !p.invalida_tarde && p.valida_stats !== false);
+        const g = hoyRows.filter(p => p.resultado === 'acierto').length;
+        const p = hoyRows.filter(p => p.resultado === 'fallo').length;
+        const pend = hoyRows.filter(p => !p.resultado && p.estado === 'pendiente').length;
+        let extra = ` · hoy ${g}✓/${p}✗`;
+        if (pend) extra += ` · ${pend} ⏳`;
+        if (perdidosHoy.length) extra += ` · ${perdidosHoy.length} sin congelar`;
+        headerTxt.textContent = '📋 Predicciones en papel' + extra;
+    }
     if (listaWrap && listaToggle) {
         if (picksUi.predHistorial && hayFilas) {
             listaWrap.style.display = 'block';
