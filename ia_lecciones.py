@@ -11,6 +11,7 @@ import json
 import os
 import re
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -25,10 +26,58 @@ from aprendizaje_mlb import (
 
 from ia_groq import modelo_groq
 
+BASE_DIR = Path(__file__).resolve().parent
 GROQ_URL = "https://api.groq.com/openai/v1/chat/completions"
 DEFAULT_MODEL = "openai/gpt-oss-20b"
-MAX_LECCIONES = 80
-MAX_PARA_PROMPT = 8
+MAX_LECCIONES = 80  # default; override en config → aprendizaje.max_lecciones
+MAX_PARA_PROMPT = 8  # default; override en config → aprendizaje.max_lecciones_prompt
+MAX_LECCIONES_MIN = 80
+MAX_LECCIONES_MAX = 2000
+MAX_PROMPT_MIN = 4
+MAX_PROMPT_MAX = 24
+
+
+def _cfg_aprendizaje() -> dict[str, Any]:
+    try:
+        path = BASE_DIR / "config_experimento.json"
+        if path.exists():
+            cfg = json.loads(path.read_text(encoding="utf-8"))
+            ap = cfg.get("aprendizaje")
+            if isinstance(ap, dict):
+                return ap
+    except Exception:
+        pass
+    return {}
+
+
+def max_lecciones_almacenadas(cfg: dict | None = None) -> int:
+    """Cuántas lecciones se guardan en memoria (tope duro en disco)."""
+    ap = cfg if isinstance(cfg, dict) else _cfg_aprendizaje()
+    try:
+        n = int(ap.get("max_lecciones", MAX_LECCIONES))
+    except (TypeError, ValueError):
+        n = MAX_LECCIONES
+    return max(MAX_LECCIONES_MIN, min(n, MAX_LECCIONES_MAX))
+
+
+def max_lecciones_prompt(cfg: dict | None = None) -> int:
+    """Cuántas lecciones entran al prompt Groq por decisión (subset curado)."""
+    ap = cfg if isinstance(cfg, dict) else _cfg_aprendizaje()
+    try:
+        n = int(ap.get("max_lecciones_prompt", MAX_PARA_PROMPT))
+    except (TypeError, ValueError):
+        n = MAX_PARA_PROMPT
+    return max(MAX_PROMPT_MIN, min(n, MAX_PROMPT_MAX))
+
+
+def aplicar_tope_lecciones(memoria: dict, cfg: dict | None = None) -> int:
+    """Recorta la lista conservando las más recientes. Devuelve cuántas se eliminaron."""
+    limite = max_lecciones_almacenadas(cfg)
+    lista = asegurar_lista_lecciones(memoria)
+    exceso = len(lista) - limite
+    if exceso > 0:
+        memoria["lecciones"] = lista[-limite:]
+    return max(0, exceso)
 
 PATRONES = (
     "favorito_inflado",
@@ -89,9 +138,11 @@ def resumen_lecciones(memoria: dict, limite: int = 12) -> dict[str, Any]:
     }
 
 
-def texto_lecciones_para_prompt(memoria: dict | None, max_n: int = MAX_PARA_PROMPT) -> str:
+def texto_lecciones_para_prompt(memoria: dict | None, max_n: int | None = None) -> str:
     if not memoria:
         return "Lecciones previas: ninguna aún."
+    if max_n is None:
+        max_n = max_lecciones_prompt()
     lec = [x for x in asegurar_lista_lecciones(memoria) if isinstance(x, dict)]
     if not lec:
         return "Lecciones previas: ninguna aún."
@@ -128,11 +179,10 @@ def _ya_existe_leccion(
     return False
 
 
-def _append_leccion(memoria: dict, item: dict) -> dict:
+def _append_leccion(memoria: dict, item: dict, cfg: dict | None = None) -> dict:
     lista = asegurar_lista_lecciones(memoria)
     lista.append(item)
-    if len(lista) > MAX_LECCIONES:
-        memoria["lecciones"] = lista[-MAX_LECCIONES:]
+    aplicar_tope_lecciones(memoria, cfg)
     print(f"[LECCIONES] + {item.get('tipo') or item.get('patron')}: {item.get('leccion')}")
     return item
 
