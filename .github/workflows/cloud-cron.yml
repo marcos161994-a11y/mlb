@@ -41,3 +41,22 @@ jobs:
           fi
           curl -fsS --max-time 60 \
             "https://mlb-1-en7i.onrender.com/api/auto-bloqueo-externo?secret=${CRON_SECRET}&en_fondo=1"
+
+      - name: Importar aprendizaje si falta (idempotente)
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::warning::Falta CRON_SECRET — no se importa aprendizaje."
+            exit 0
+          fi
+          body=$(curl -fsS --max-time 300 \
+            -X POST "https://mlb-1-en7i.onrender.com/api/importar-aprendizaje-repo?secret=${CRON_SECRET}" \
+            || echo '{"ok":false}')
+          echo "$body" | python3 -m json.tool 2>/dev/null || echo "$body"
+          echo "$body" | python3 -c "
+          import json,sys
+          d=json.load(sys.stdin)
+          if d.get('ok'):
+            print(f\"::notice::Import OK · lecciones {d.get('lecciones_antes')}→{d.get('lecciones_despues')} (+{d.get('lecciones_nuevas',0)})\")
+          " 2>/dev/null || true
