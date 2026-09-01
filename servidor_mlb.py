@@ -3584,6 +3584,15 @@ def api_panel_boot():
         _intentar_recuperar_wipe()
     except Exception:
         pass
+    # Auto-import aprendizaje si el disco va detrás del backup del repo
+    try:
+        threading.Thread(
+            target=_intentar_import_aprendizaje_repo_automatico,
+            daemon=True,
+            name="import-aprendizaje-boot",
+        ).start()
+    except Exception as e:
+        print(f"[IMPORT-AUTO] thread: {e}")
     memoria = cargar_memoria()
     fecha_hoy = fecha_str()
     dia = dia_por_fecha(memoria, fecha_hoy) or dia_operativo(memoria)
@@ -4748,6 +4757,11 @@ def ejecutar_trabajo_cron_externo() -> dict:
             registrar_error_runtime("cron", str(e))
         except Exception:
             pass
+    import_meta = None
+    try:
+        import_meta = _intentar_import_aprendizaje_repo_automatico()
+    except Exception as e:
+        print(f"[CRON] import aprendizaje: {e}")
     return {
         "ok": True,
         "mensaje": "Auto-bloqueo ejecutado",
@@ -4755,6 +4769,7 @@ def ejecutar_trabajo_cron_externo() -> dict:
         "capital": memoria["capital"],
         "dia_actual": memoria.get("dia_actual"),
         "fecha_hoy": fecha_str(),
+        "import_aprendizaje": import_meta,
         "vigilancia": {
             "nivel": (vigilancia or {}).get("nivel"),
             "total_riesgo": (vigilancia or {}).get("total_riesgo"),
@@ -4873,6 +4888,58 @@ def api_subir_memoria(
         "dia_actual": memoria.get("dia_actual"),
         "dias": len(memoria.get("dias", [])),
     }
+
+
+def _intentar_import_aprendizaje_repo_automatico() -> dict | None:
+    """
+    Si el disco tiene menos lecciones que memoria_auditoria.json del repo, importa.
+    Idempotente — no requiere CRON_SECRET (solo compara counts locales).
+    """
+    origen = BASE_DIR / "memoria_auditoria.json"
+    if not origen.exists():
+        return None
+    try:
+        bundled = json.loads(origen.read_text(encoding="utf-8"))
+    except Exception as e:
+        print(f"[IMPORT-AUTO] backup ilegible: {e}")
+        return None
+    if not isinstance(bundled, dict):
+        return None
+    n_bundle = len(bundled.get("lecciones") or [])
+    n_bundle_preds = sum(
+        1
+        for d in bundled.get("dias") or []
+        for p in (d.get("predicciones") or [])
+        if isinstance(p, dict) and p.get("estado") == "liquidado"
+    )
+    memoria = cargar_memoria(force=True)
+    n_disk = len(memoria.get("lecciones") or [])
+    n_disk_preds = sum(
+        1
+        for d in memoria.get("dias") or []
+        for p in (d.get("predicciones") or [])
+        if isinstance(p, dict) and p.get("estado") == "liquidado"
+    )
+    # Ya sincronizado
+    if n_disk >= n_bundle - 2 and n_disk_preds >= n_bundle_preds - 2:
+        return None
+    print(
+        f"[IMPORT-AUTO] disco lecciones={n_disk} preds_liq={n_disk_preds} "
+        f"· repo lecciones={n_bundle} preds_liq={n_bundle_preds} → importando"
+    )
+    with _memoria_lock:
+        memoria = cargar_memoria(force=True)
+        try:
+            out = _ejecutar_import_aprendizaje(memoria, bundled)
+            n_after = len(cargar_memoria(force=True).get("lecciones") or [])
+            print(f"[IMPORT-AUTO] OK · lecciones ahora {n_after}")
+            return out
+        except HTTPException as e:
+            print(f"[IMPORT-AUTO] omitido: {e.detail}")
+            return None
+        except Exception as e:
+            print(f"[IMPORT-AUTO] fallo: {e}")
+            return None
 
 
 def _ejecutar_import_aprendizaje(memoria: dict, dump: dict | None = None, *, experiencias: list | None = None) -> dict:
