@@ -3,7 +3,6 @@ Cuotas MLB públicas (sin API key) vía ESPN.
 
 Fuente principal: scoreboard por fecha (partidos correctos del día).
 Respaldo: header ESPN (puede mezclar slate distinto — solo si scoreboard falla).
-Se usa cuando OddsPapi / The Odds API no traen línea.
 """
 
 from __future__ import annotations

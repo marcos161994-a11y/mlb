@@ -25,7 +25,7 @@ def test_heuristica_sin_cuota_real():
 def test_heuristica_scratch():
     pred = {
         "resultado": "fallo",
-        "lineas_fuente": "oddspapi",
+        "lineas_fuente": "draftkings",
         "scratch_lineup": {"riesgo": True, "alerta": "star out"},
         "probPick": 55,
         "edge": 7,

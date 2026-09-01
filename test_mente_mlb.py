@@ -41,7 +41,7 @@ def test_pasar_scratch_del_pick():
         "probPick": 60,
         "edge": 7,
         "odds": 1.85,
-        "lineas_fuente": "oddspapi",
+        "lineas_fuente": "draftkings",
         "scratch_lineup": {
             "ok": True,
             "riesgo": True,
@@ -63,7 +63,7 @@ def test_apostar_heuristico_con_edge():
         "probPick": 61,
         "edge": 9.0,
         "odds": 1.95,
-        "lineas_fuente": "oddspapi",
+        "lineas_fuente": "draftkings",
         "pitcherAway": "X",
         "pitcherHome": "Y",
     }
@@ -142,7 +142,7 @@ def test_conf_baja_no_autoriza_en_estricto():
         "probPick": 56,
         "edge": 6.2,
         "odds": 2.05,
-        "lineas_fuente": "oddspapi",
+        "lineas_fuente": "draftkings",
     }
     c = mente_conclusion(juego, cfg, {}, forzar=True, solo_local=True)
     # Heurística da conf 3 → no alcanza 5
@@ -178,7 +178,7 @@ def test_briefing_congelado_se_reusa():
         "probPick": 61,
         "edge": 9,
         "odds": 1.9,
-        "lineas_fuente": "oddspapi",
+        "lineas_fuente": "draftkings",
         "pitcherAway": "X",
         "pitcherHome": "Y",
     }
