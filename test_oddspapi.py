@@ -312,6 +312,43 @@ def test_aplicar_con_circuito_usa_espn_sin_oddspapi(monkeypatch, tmp_path):
     assert "pausa" in (meta.get("mensaje") or "").lower()
 
 
+def test_probe_v4_fallback_si_v5_401(monkeypatch, tmp_path):
+    monkeypatch.setattr("lineas_oddspapi.KEY_FILE_DATA", tmp_path / "k.txt")
+    monkeypatch.setattr("lineas_oddspapi.DATA_DIR", tmp_path)
+    monkeypatch.setattr("lineas_oddspapi._circuit_path", lambda: tmp_path / "c.json")
+    from lineas_oddspapi import guardar_api_key, probar_conexion_oddspapi
+
+    guardar_api_key("aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee")
+    calls: list[str] = []
+
+    class R401:
+        status_code = 401
+
+        @staticmethod
+        def json():
+            return {"code": "invalid_api_key", "message": "invalid apiKey"}
+
+    class R200:
+        status_code = 200
+
+        @staticmethod
+        def json():
+            return [{"sportId": 13, "sportName": "Baseball"}]
+
+    def fake_get(url, params=None, timeout=None):
+        calls.append(url)
+        if "v5" in url:
+            return R401()
+        return R200()
+
+    monkeypatch.setattr("lineas_oddspapi.requests.get", fake_get)
+    meta = probar_conexion_oddspapi({})
+    assert meta.get("ok") is True
+    assert meta.get("api_version") == "v4"
+    assert any("v5" in u for u in calls)
+    assert any("v4" in u for u in calls)
+
+
 def test_probe_oddspapi_ok_cierra_circuito(monkeypatch, tmp_path):
     path = tmp_path / "c.json"
     monkeypatch.setattr("lineas_oddspapi._circuit_path", lambda: path)

@@ -883,8 +883,8 @@ def probar_conexion_oddspapi(cfg: dict, *, registrar_circuito: bool = True) -> d
     if r.status_code >= 400:
         err = _parse_api_error(r)
         meta.update({"http_status": r.status_code, "mensaje": err, "error_api": err})
-        # Algunos planes solo tienen v4; probar antes de abrir circuito por 403.
-        if r.status_code in (403, 404):
+        # Plan free a veces responde en v4; probar v4 antes de fallar (401/403/404 en v5).
+        if r.status_code in (401, 403, 404):
             r4 = _probe_v4()
             if r4 is not None and r4.status_code < 400:
                 cerrar_circuito()
@@ -896,6 +896,11 @@ def probar_conexion_oddspapi(cfg: dict, *, registrar_circuito: bool = True) -> d
                 meta["circuito_cerrado"] = True
                 meta.pop("error_api", None)
                 return meta
+            if r4 is not None and r4.status_code >= 400:
+                err4 = _parse_api_error(r4)
+                meta["v4_http_status"] = r4.status_code
+                meta["v4_error"] = err4
+                meta["mensaje"] = f"v5: {err} | v4: {err4}"
         if registrar_circuito:
             extra = registrar_fallo_circuito(meta)
             if extra and extra.get("abierto"):
@@ -923,10 +928,17 @@ def estado_setup_oddspapi(cfg: dict | None = None) -> dict[str, Any]:
     if env_raw:
         env_fp = fingerprint_key(_limpiar_key(str(env_raw)))
     disk_exists = KEY_FILE_DATA.exists()
-    listo = bool(key) and not circ.get("abierto")
+    probe: dict[str, Any] = {}
+    if key and not circ.get("abierto"):
+        probe = probar_conexion_oddspapi(cfg, registrar_circuito=False)
+    oddspapi_ok = bool(probe.get("ok"))
+    key_guardada = bool(key)
+    listo = oddspapi_ok
     return {
         "ok": listo,
-        "key_presente": bool(key),
+        "oddspapi_ok": oddspapi_ok,
+        "key_guardada_ok": key_guardada,
+        "key_presente": key_guardada,
         "key_fingerprint": fp,
         "key_source": source,
         "key_length": len(key) if key else 0,
@@ -938,8 +950,11 @@ def estado_setup_oddspapi(cfg: dict | None = None) -> dict[str, Any]:
         "disco_key_existe": disk_exists,
         "circuito": bool(circ.get("abierto")),
         "circuito_hasta_hora": circ.get("hasta_hora"),
-        "http_status": circ.get("http_status"),
+        "http_status": probe.get("http_status") or circ.get("http_status"),
         "mensaje_circuito": circ.get("mensaje"),
+        "probe_mensaje": probe.get("mensaje"),
+        "probe_api_version": probe.get("api_version"),
+        "v4_error": probe.get("v4_error"),
         "workflow_url": "https://github.com/marcos161994-a11y/mlb/actions/workflows/configurar-oddspapi.yml",
         "dashboard_url": "https://oddspapi.io",
         "pasos": [
@@ -951,12 +966,19 @@ def estado_setup_oddspapi(cfg: dict | None = None) -> dict[str, Any]:
         ],
         "ayuda": (
             None
-            if listo
+            if oddspapi_ok
             else (
-                "401 = key inválida/revocada. "
-                "Si creaste key nueva en oddspapi.io debes pegarla en GitHub Action "
-                "(el servidor no la recibe sola). "
-                "Tras redeploy en Render Free, pon la misma key en Environment."
+                "La key está guardada pero OddsPapi la rechaza (401). "
+                "Prueba en el navegador: "
+                "https://api.oddspapi.io/v4/sports?apiKey=TU_KEY "
+                "Si también da 401, el problema es la cuenta/key en oddspapi.io "
+                "(email sin verificar, key revocada, o plan sin REST). "
+                "Contacta soporte@oddspapi.io con tu fingerprint."
+                if key_guardada
+                else (
+                    "401 = key inválida/revocada. "
+                    "Pega la key en GitHub Action y Render Environment."
+                )
             )
         ),
     }
