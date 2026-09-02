@@ -152482,9 +152482,9 @@
           "pitcher_away_id": 663554,
           "pitcher_home_id": 682227,
           "inicio_juego": "2026-09-02T12:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -3.0,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-02T11:40:09.297343-04:00",
@@ -153179,7 +153179,9 @@
           "odds_congelada": 1.617,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": -0.93,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "San Diego Padres 3 - Cincinnati Reds 7",
+          "liquidado_en": "2026-09-02T16:16:36.850874-04:00"
         },
         {
           "game_id": "822686",
@@ -177680,6 +177682,40 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-09-02T05:48:54.405711Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-824470-1788380197",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-09-02",
+      "game_id": "824470",
+      "visitante": "San Diego Padres",
+      "home": "Cincinnati Reds",
+      "pick": "San Diego Padres ML",
+      "probPick": 58.8,
+      "edge": -3.6,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "San Diego Padres 3 - Cincinnati Reds 7",
+      "patron": "otro",
+      "leccion": "Revisar edge real vs cuota y contexto de roster antes de dinero. · Capas: bullpen,park_umpire,monte_carlo,mc_totales",
+      "motivo": "Heurística post-fallo (otro)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-02T20:16:37.380143Z",
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "over",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1494/1510 pitch +21/-52 → 55/45% · fusión 60/40%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 59/41% · MC totales μ=13.0 (F5 7.2) vs ",
+        "preferir_f5": true
+      }
     }
   ],
   "mente_stats": {
@@ -177695,9 +177731,9 @@
         "oportunidad_perdida": 91
       },
       "ESPERAR": {
-        "n": 67,
+        "n": 68,
         "aciertos": 38,
-        "fallos": 29
+        "fallos": 30
       }
     },
     "patrones": {
@@ -177716,8 +177752,8 @@
         "apostar_fail": 0.0
       },
       "humanos": {
-        "n": 181.5,
-        "pasar_ok": 57.5,
+        "n": 182.5,
+        "pasar_ok": 58.5,
         "pasar_miss": 104.0,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
@@ -177730,8 +177766,8 @@
         "apostar_fail": 0.0
       },
       "edge_bajo": {
-        "n": 146.5,
-        "pasar_ok": 49.0,
+        "n": 147.5,
+        "pasar_ok": 50.0,
         "pasar_miss": 97.5,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
@@ -177751,8 +177787,8 @@
         "apostar_fail": 10.0
       },
       "mc_over": {
-        "n": 157.5,
-        "pasar_ok": 53.0,
+        "n": 158.5,
+        "pasar_ok": 54.0,
         "pasar_miss": 81.5,
         "apostar_ok": 12.0,
         "apostar_fail": 11.0
@@ -177765,8 +177801,8 @@
         "apostar_fail": 0.0
       },
       "preferir_f5": {
-        "n": 159.0,
-        "pasar_ok": 51.5,
+        "n": 160.0,
+        "pasar_ok": 52.5,
         "pasar_miss": 87.5,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
@@ -177793,8 +177829,8 @@
         "apostar_fail": 0.0
       },
       "linea_tarde": {
-        "n": 22.0,
-        "pasar_ok": 9.0,
+        "n": 23.0,
+        "pasar_ok": 10.0,
         "pasar_miss": 10.0,
         "apostar_ok": 3.0,
         "apostar_fail": 0.0
@@ -178044,29 +178080,30 @@
       "824313:fallo",
       "823984:acierto",
       "825038:acierto",
-      "823908:fallo"
+      "823908:fallo",
+      "824470:fallo"
     ],
-    "actualizado_en": "2026-09-02T05:48:54.405939Z"
+    "actualizado_en": "2026-09-02T20:16:37.385178Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 212,
-    "muestras_reales": 212,
+    "muestras": 213,
+    "muestras_reales": 213,
     "muestras_sinteticas": 0,
     "ratio_features_reales": 1.0,
     "entreno_bloqueado": false,
     "schema": 4,
-    "mensaje": "Reentrenado con 212 muestras (212 reales, RF acc 97.2%, RF holdout 67.4%, XGB acc 98.1%, XGB holdout 67.4%)",
-    "accuracy_train": 0.972,
-    "accuracy_holdout": 0.674,
+    "mensaje": "Reentrenado con 213 muestras (213 reales, RF acc 95.8%, RF holdout 65.1%, XGB acc 98.1%, XGB holdout 62.8%)",
+    "accuracy_train": 0.958,
+    "accuracy_holdout": 0.651,
     "accuracy_xgb_train": 0.981,
-    "accuracy_xgb_holdout": 0.674,
-    "ultimo_entreno": "2026-09-02T18:00:22.240233",
+    "accuracy_xgb_holdout": 0.628,
+    "ultimo_entreno": "2026-09-02T20:16:48.248777",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 212,
+    "muestras": 213,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
@@ -178086,11 +178123,11 @@
       },
       "limpio": {
         "ok": true,
-        "muestras": 47,
+        "muestras": 48,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 212 muestras (ECE≈0.04) · 4 tipos",
+    "mensaje": "Calibrado isotonic con 213 muestras (ECE≈0.04) · 4 tipos",
     "por_segmento": {
       "prob_alta": {
         "ok": true,
@@ -178104,7 +178141,7 @@
       },
       "mc_over": {
         "ok": true,
-        "muestras": 92,
+        "muestras": 93,
         "metodo": "isotonic"
       },
       "entorno_f5": {
@@ -178117,13 +178154,13 @@
         "muestras": 7
       }
     },
-    "ece": 0.043
+    "ece": 0.04
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-02T17:32:10.547078Z"
+    "actualizado_en": "2026-09-02T20:15:35.955588Z"
   }
 }
