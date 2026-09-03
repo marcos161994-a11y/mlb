@@ -2,7 +2,7 @@
   "modo": "simulacion",
   "capital": 100.68,
   "capital_inicial": 100.0,
-  "dia_actual": 19,
+  "dia_actual": 20,
   "dias_totales": 200,
   "stake_por_juego": 5.0,
   "experimento_activo": true,
@@ -156977,9 +156977,9 @@
           "pitcher_away_id": 694738,
           "pitcher_home_id": 696149,
           "inicio_juego": "2026-09-02T18:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -3.0,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-02T14:01:27.550324-04:00",
@@ -157679,7 +157679,9 @@
             "fuente": "espn"
           },
           "odds_congelada": 1.641,
-          "lineas_fuente_inicial": "draftkings"
+          "lineas_fuente_inicial": "draftkings",
+          "marcador_final": "San Francisco Giants 5 - Pittsburgh Pirates 4",
+          "liquidado_en": "2026-09-02T21:57:38.733464-04:00"
         },
         {
           "game_id": "822931",
@@ -157698,9 +157700,9 @@
           "pitcher_away_id": 663795,
           "pitcher_home_id": 643377,
           "inicio_juego": "2026-09-02T18:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -3.0,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-02T14:01:27.743225-04:00",
@@ -158413,7 +158415,9 @@
             "fuente": "espn"
           },
           "odds_congelada": 1.538,
-          "lineas_fuente_inicial": "draftkings"
+          "lineas_fuente_inicial": "draftkings",
+          "marcador_final": "New York Mets 10 - Tampa Bay Rays 4",
+          "liquidado_en": "2026-09-02T21:57:39.100318-04:00"
         },
         {
           "game_id": "824390",
@@ -158432,9 +158436,9 @@
           "pitcher_away_id": 656302,
           "pitcher_home_id": 676282,
           "inicio_juego": "2026-09-02T18:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -3.0,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-02T14:01:27.853494-04:00",
@@ -159108,7 +159112,9 @@
             "fuente": "espn"
           },
           "odds_congelada": 1.87,
-          "lineas_fuente_inicial": "draftkings"
+          "lineas_fuente_inicial": "draftkings",
+          "marcador_final": "Toronto Blue Jays 11 - Cleveland Guardians 0",
+          "liquidado_en": "2026-09-02T21:57:39.359007-04:00"
         },
         {
           "game_id": "823660",
@@ -159127,9 +159133,9 @@
           "pitcher_away_id": 623454,
           "pitcher_home_id": 665152,
           "inicio_juego": "2026-09-02T19:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -3.0,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-02T14:01:28.045518-04:00",
@@ -159868,7 +159874,9 @@
             "fuente": "espn"
           },
           "odds_congelada": 1.893,
-          "lineas_fuente_inicial": "draftkings"
+          "lineas_fuente_inicial": "draftkings",
+          "marcador_final": "Detroit Tigers 11 - Minnesota Twins 6",
+          "liquidado_en": "2026-09-03T01:14:13.673189-04:00"
         },
         {
           "game_id": "824068",
@@ -159887,9 +159895,9 @@
           "pitcher_away_id": 691587,
           "pitcher_home_id": 702070,
           "inicio_juego": "2026-09-02T19:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -3.0,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-02T14:01:28.239214-04:00",
@@ -160616,7 +160624,9 @@
             "fuente": "espn"
           },
           "odds_congelada": 2.06,
-          "lineas_fuente_inicial": "draftkings"
+          "lineas_fuente_inicial": "draftkings",
+          "marcador_final": "Miami Marlins 9 - Kansas City Royals 6",
+          "liquidado_en": "2026-09-03T01:14:14.021514-04:00"
         },
         {
           "game_id": "824634",
@@ -160635,9 +160645,9 @@
           "pitcher_away_id": 694819,
           "pitcher_home_id": 656849,
           "inicio_juego": "2026-09-02T19:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.61,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-02T14:01:28.345467-04:00",
@@ -161365,7 +161375,9 @@
             "fuente": "espn"
           },
           "odds_congelada": 1.87,
-          "lineas_fuente_inicial": "draftkings"
+          "lineas_fuente_inicial": "draftkings",
+          "marcador_final": "Milwaukee Brewers 9 - Chicago Cubs 5",
+          "liquidado_en": "2026-09-03T01:14:14.360770-04:00"
         },
         {
           "game_id": "824147",
@@ -161384,9 +161396,9 @@
           "pitcher_away_id": 663436,
           "pitcher_home_id": 669713,
           "inicio_juego": "2026-09-02T20:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -3.0,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-02T14:01:28.452622-04:00",
@@ -162080,7 +162092,9 @@
             "fuente": "espn"
           },
           "odds_congelada": 2.3,
-          "lineas_fuente_inicial": "draftkings"
+          "lineas_fuente_inicial": "draftkings",
+          "marcador_final": "Chicago White Sox 0 - Houston Astros 2",
+          "liquidado_en": "2026-09-03T01:14:14.363369-04:00"
         },
         {
           "game_id": "823983",
@@ -162099,9 +162113,9 @@
           "pitcher_away_id": 693645,
           "pitcher_home_id": 672282,
           "inicio_juego": "2026-09-02T21:38:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 1.84,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-02T14:01:28.644934-04:00",
@@ -162831,7 +162845,9 @@
             "fuente": "espn"
           },
           "odds_congelada": 1.613,
-          "lineas_fuente_inicial": "draftkings"
+          "lineas_fuente_inicial": "draftkings",
+          "marcador_final": "New York Yankees 6 - Los Angeles Angels 3",
+          "liquidado_en": "2026-09-03T01:14:14.679974-04:00"
         },
         {
           "game_id": "823906",
@@ -162850,9 +162866,9 @@
           "pitcher_away_id": 802408,
           "pitcher_home_id": 808967,
           "inicio_juego": "2026-09-02T22:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -3.0,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-02T21:10:05.165067-04:00",
@@ -163540,7 +163556,9 @@
           "odds_congelada": 1.322,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 0.0,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "St. Louis Cardinals 8 - Los Angeles Dodgers 6",
+          "liquidado_en": "2026-09-03T01:54:02.732603-04:00"
         }
       ],
       "resumen": {
@@ -163551,6 +163569,28 @@
         "profit_dia": 0,
         "capital_arriesgado": 0,
         "total_apostado": 0
+      }
+    },
+    {
+      "dia": 20,
+      "fecha": "2026-09-03",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0,
+        "pred_aciertos": 0,
+        "pred_fallos": 0,
+        "pred_pendientes": 0,
+        "pred_excluidas_tarde": 0,
+        "pred_neto": 0,
+        "pred_total": 0
       }
     }
   ],
@@ -178665,6 +178705,474 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-09-02T23:16:29.079129Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-823339-1788400659",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-09-02",
+      "game_id": "823339",
+      "visitante": "San Francisco Giants",
+      "home": "Pittsburgh Pirates",
+      "pick": "Pittsburgh Pirates ML",
+      "probPick": 52.7,
+      "edge": -8.2,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "San Francisco Giants 5 - Pittsburgh Pirates 4",
+      "patron": "otro",
+      "leccion": "Revisar edge real vs cuota y contexto de roster antes de dinero. · Capas: bullpen,park_umpire,monte_carlo,mc_totales",
+      "motivo": "Heurística post-fallo (otro)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-03T01:57:39.096073Z",
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "neutro",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1465/1507 pitch +13/+3 → 42/58% · fusión 50/50%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 47/53% · MC totales μ=9.2 (F5 5.1) vs 8",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-veto_acertado-823339-1788400659",
+      "tipo": "veto_acertado",
+      "fecha": "2026-09-02",
+      "game_id": "823339",
+      "visitante": "San Francisco Giants",
+      "home": "Pittsburgh Pirates",
+      "pick": "Pittsburgh Pirates ML",
+      "probPick": 52.7,
+      "edge": -8.2,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "San Francisco Giants 5 - Pittsburgh Pirates 4",
+      "patron": "veto_acertado",
+      "leccion": "Bloqueo de dinero acertó: el pick falló; mantener señales parecidas.",
+      "motivo": "mente bloqueó dinero + fallo",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-03T01:57:39.096784Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-822931-1788400659",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-09-02",
+      "game_id": "822931",
+      "visitante": "New York Mets",
+      "home": "Tampa Bay Rays",
+      "pick": "Tampa Bay Rays ML",
+      "probPick": 62.6,
+      "edge": -2.4,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "New York Mets 10 - Tampa Bay Rays 4",
+      "patron": "starter_riesgo",
+      "leccion": "PASAR si el abridor del pick está en riesgo o lesionado. · Capas: bullpen,park_umpire,monte_carlo,mc_totales",
+      "motivo": "Heurística post-fallo (starter_riesgo)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-03T01:57:39.358083Z",
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "over",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1462/1569 pitch -1/+7 → 31/69% · fusión 39/61%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 37/63% · MC totales μ=9.6 (F5 5.4) vs 8",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-veto_acertado-822931-1788400659",
+      "tipo": "veto_acertado",
+      "fecha": "2026-09-02",
+      "game_id": "822931",
+      "visitante": "New York Mets",
+      "home": "Tampa Bay Rays",
+      "pick": "Tampa Bay Rays ML",
+      "probPick": 62.6,
+      "edge": -2.4,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "New York Mets 10 - Tampa Bay Rays 4",
+      "patron": "veto_acertado",
+      "leccion": "Bloqueo de dinero acertó: el pick falló; mantener señales parecidas.",
+      "motivo": "mente bloqueó dinero + fallo",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-03T01:57:39.358575Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-824390-1788400659",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-09-02",
+      "game_id": "824390",
+      "visitante": "Toronto Blue Jays",
+      "home": "Cleveland Guardians",
+      "pick": "Cleveland Guardians ML",
+      "probPick": 52.8,
+      "edge": -0.7,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Toronto Blue Jays 11 - Cleveland Guardians 0",
+      "patron": "otro",
+      "leccion": "Revisar edge real vs cuota y contexto de roster antes de dinero. · Capas: bullpen,park_umpire,monte_carlo,mc_totales",
+      "motivo": "Heurística post-fallo (otro)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-03T01:57:39.748370Z",
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "neutro",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1511/1511 pitch +50/+5 → 53/47% · fusión 46/54%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 47/53% · MC totales μ=7.9 (F5 4.4) vs 7",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-veto_acertado-824390-1788400659",
+      "tipo": "veto_acertado",
+      "fecha": "2026-09-02",
+      "game_id": "824390",
+      "visitante": "Toronto Blue Jays",
+      "home": "Cleveland Guardians",
+      "pick": "Cleveland Guardians ML",
+      "probPick": 52.8,
+      "edge": -0.7,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Toronto Blue Jays 11 - Cleveland Guardians 0",
+      "patron": "veto_acertado",
+      "leccion": "Bloqueo de dinero acertó: el pick falló; mantener señales parecidas.",
+      "motivo": "mente bloqueó dinero + fallo",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-03T01:57:39.748876Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-823660-1788412454",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-09-02",
+      "game_id": "823660",
+      "visitante": "Detroit Tigers",
+      "home": "Minnesota Twins",
+      "pick": "Minnesota Twins ML",
+      "probPick": 51.5,
+      "edge": -1.3,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Detroit Tigers 11 - Minnesota Twins 6",
+      "patron": "otro",
+      "leccion": "Revisar edge real vs cuota y contexto de roster antes de dinero. · Capas: bullpen,park_umpire,monte_carlo,mc_totales",
+      "motivo": "Heurística post-fallo (otro)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-03T05:14:14.020452Z",
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "over",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1447/1495 pitch +0/-31 → 44/56% · fusión 50/50%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 49/51% · MC totales μ=11.4 (F5 6.5) vs ",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-veto_acertado-823660-1788412454",
+      "tipo": "veto_acertado",
+      "fecha": "2026-09-02",
+      "game_id": "823660",
+      "visitante": "Detroit Tigers",
+      "home": "Minnesota Twins",
+      "pick": "Minnesota Twins ML",
+      "probPick": 51.5,
+      "edge": -1.3,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Detroit Tigers 11 - Minnesota Twins 6",
+      "patron": "veto_acertado",
+      "leccion": "Bloqueo de dinero acertó: el pick falló; mantener señales parecidas.",
+      "motivo": "mente bloqueó dinero + fallo",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-03T05:14:14.021018Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-824068-1788412454",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-09-02",
+      "game_id": "824068",
+      "visitante": "Miami Marlins",
+      "home": "Kansas City Royals",
+      "pick": "Kansas City Royals ML",
+      "probPick": 52.9,
+      "edge": 4.4,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Miami Marlins 9 - Kansas City Royals 6",
+      "patron": "edge_falso",
+      "leccion": "Exigir edge >= 6% contra cuota real; edge bajo no basta. · Capas: bullpen,park_umpire,monte_carlo,mc_totales",
+      "motivo": "Heurística post-fallo (edge_falso)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-03T05:14:14.359273Z",
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "over",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1502/1481 pitch +11/+15 → 49/51% · fusión 47/53%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 47/53% · MC totales μ=9.4 (F5 5.1) vs 8",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-veto_acertado-824068-1788412454",
+      "tipo": "veto_acertado",
+      "fecha": "2026-09-02",
+      "game_id": "824068",
+      "visitante": "Miami Marlins",
+      "home": "Kansas City Royals",
+      "pick": "Kansas City Royals ML",
+      "probPick": 52.9,
+      "edge": 4.4,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Miami Marlins 9 - Kansas City Royals 6",
+      "patron": "veto_acertado",
+      "leccion": "Bloqueo de dinero acertó: el pick falló; mantener señales parecidas.",
+      "motivo": "mente bloqueó dinero + fallo",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-03T05:14:14.360103Z"
+    },
+    {
+      "id": "lec-acierto_refuerzo-824634-1788412454",
+      "tipo": "acierto_refuerzo",
+      "fecha": "2026-09-02",
+      "game_id": "824634",
+      "visitante": "Milwaukee Brewers",
+      "home": "Chicago Cubs",
+      "pick": "Milwaukee Brewers ML",
+      "probPick": 62.5,
+      "edge": 9.0,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Milwaukee Brewers 9 - Chicago Cubs 5",
+      "patron": "veto_acertado",
+      "leccion": "Sin dinero pero pick acertó en papel; calibrar si conviene suavizar veto.",
+      "motivo": "paper acierto sin dinero",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-03T05:14:14.361098Z",
+      "con_dinero": false,
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "neutro",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1563/1506 pitch +55/+4 → 62/38% · fusión 65/35%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 62/38% · MC totales μ=8.7 (F5 5.0) vs 8",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-oportunidad_perdida-824634-1788412454",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-09-02",
+      "game_id": "824634",
+      "visitante": "Milwaukee Brewers",
+      "home": "Chicago Cubs",
+      "pick": "Milwaukee Brewers ML",
+      "probPick": 62.5,
+      "edge": 9.0,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Milwaukee Brewers 9 - Chicago Cubs 5",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-03T05:14:14.361446Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-824147-1788412454",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-09-02",
+      "game_id": "824147",
+      "visitante": "Chicago White Sox",
+      "home": "Houston Astros",
+      "pick": "Chicago White Sox ML",
+      "probPick": 50.3,
+      "edge": 6.8,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Chicago White Sox 0 - Houston Astros 2",
+      "patron": "otro",
+      "leccion": "Revisar edge real vs cuota y contexto de roster antes de dinero. · Capas: bullpen,park_umpire,monte_carlo,mc_totales",
+      "motivo": "Heurística post-fallo (otro)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-03T05:14:14.678756Z",
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "neutro",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1526/1510 pitch +13/+23 → 47/53% · fusión 51/49%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 50/50% · MC totales μ=9.2 (F5 5.1) vs 8",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-veto_acertado-824147-1788412454",
+      "tipo": "veto_acertado",
+      "fecha": "2026-09-02",
+      "game_id": "824147",
+      "visitante": "Chicago White Sox",
+      "home": "Houston Astros",
+      "pick": "Chicago White Sox ML",
+      "probPick": 50.3,
+      "edge": 6.8,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Chicago White Sox 0 - Houston Astros 2",
+      "patron": "veto_acertado",
+      "leccion": "Bloqueo de dinero acertó: el pick falló; mantener señales parecidas.",
+      "motivo": "mente bloqueó dinero + fallo",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-03T05:14:14.679485Z"
+    },
+    {
+      "id": "lec-acierto_refuerzo-823983-1788412454",
+      "tipo": "acierto_refuerzo",
+      "fecha": "2026-09-02",
+      "game_id": "823983",
+      "visitante": "New York Yankees",
+      "home": "Los Angeles Angels",
+      "pick": "New York Yankees ML",
+      "probPick": 58.5,
+      "edge": -3.5,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "New York Yankees 6 - Los Angeles Angels 3",
+      "patron": "veto_acertado",
+      "leccion": "Sin dinero pero pick acertó en papel; calibrar si conviene suavizar veto.",
+      "motivo": "paper acierto sin dinero",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-03T05:14:14.680303Z",
+      "con_dinero": false,
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "over",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1536/1429 pitch +44/+28 → 64/36% · fusión 57/43%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 58/42% · MC totales μ=7.4 (F5 4.2) vs 6",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-oportunidad_perdida-823983-1788412454",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-09-02",
+      "game_id": "823983",
+      "visitante": "New York Yankees",
+      "home": "Los Angeles Angels",
+      "pick": "New York Yankees ML",
+      "probPick": 58.5,
+      "edge": -3.5,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "New York Yankees 6 - Los Angeles Angels 3",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-03T05:14:14.680626Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-823906-1788414843",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-09-02",
+      "game_id": "823906",
+      "visitante": "St. Louis Cardinals",
+      "home": "Los Angeles Dodgers",
+      "pick": "Los Angeles Dodgers ML",
+      "probPick": 64.1,
+      "edge": -11.5,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "St. Louis Cardinals 8 - Los Angeles Dodgers 6",
+      "patron": "favorito_inflado",
+      "leccion": "Prob ≥62% exige edge ≥15% para dinero; si no, solo papel. · Capas: bullpen,park_umpire,monte_carlo,mc_totales",
+      "motivo": "Heurística post-fallo (favorito_inflado)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-03T05:54:03.085501Z",
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "neutro",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1498/1513 pitch +22/+26 → 44/56% · fusión 35/65%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 36/64% · MC totales μ=7.5 (F5 4.1) vs 8",
+        "preferir_f5": false
+      }
     }
   ],
   "mente_stats": {
@@ -178675,14 +179183,14 @@
         "fallos": 5
       },
       "PASAR": {
-        "n": 139,
-        "evito_fallo": 48,
-        "oportunidad_perdida": 91
+        "n": 146,
+        "evito_fallo": 53,
+        "oportunidad_perdida": 93
       },
       "ESPERAR": {
-        "n": 70,
+        "n": 72,
         "aciertos": 38,
-        "fallos": 32
+        "fallos": 34
       }
     },
     "patrones": {
@@ -178694,16 +179202,16 @@
         "apostar_fail": 0.0
       },
       "starter_riesgo": {
-        "n": 1.0,
-        "pasar_ok": 0.0,
+        "n": 2.0,
+        "pasar_ok": 1.0,
         "pasar_miss": 1.0,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
       "humanos": {
-        "n": 187.5,
-        "pasar_ok": 63.5,
-        "pasar_miss": 104.0,
+        "n": 196.5,
+        "pasar_ok": 70.5,
+        "pasar_miss": 106.0,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
       },
@@ -178715,30 +179223,30 @@
         "apostar_fail": 0.0
       },
       "edge_bajo": {
-        "n": 150.5,
-        "pasar_ok": 53.0,
-        "pasar_miss": 97.5,
+        "n": 157.5,
+        "pasar_ok": 59.0,
+        "pasar_miss": 98.5,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
       "favorito_alto": {
-        "n": 62.5,
-        "pasar_ok": 16.0,
-        "pasar_miss": 36.5,
+        "n": 65.5,
+        "pasar_ok": 18.0,
+        "pasar_miss": 37.5,
         "apostar_ok": 0.0,
         "apostar_fail": 10.0
       },
       "favorito_inflado": {
-        "n": 53.0,
-        "pasar_ok": 14.0,
-        "pasar_miss": 29.0,
+        "n": 56.0,
+        "pasar_ok": 16.0,
+        "pasar_miss": 30.0,
         "apostar_ok": 0.0,
         "apostar_fail": 10.0
       },
       "mc_over": {
-        "n": 163.5,
-        "pasar_ok": 59.0,
-        "pasar_miss": 81.5,
+        "n": 167.5,
+        "pasar_ok": 62.0,
+        "pasar_miss": 82.5,
         "apostar_ok": 12.0,
         "apostar_fail": 11.0
       },
@@ -178750,9 +179258,9 @@
         "apostar_fail": 0.0
       },
       "preferir_f5": {
-        "n": 165.0,
-        "pasar_ok": 57.5,
-        "pasar_miss": 87.5,
+        "n": 173.0,
+        "pasar_ok": 63.5,
+        "pasar_miss": 89.5,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
       },
@@ -178764,8 +179272,8 @@
         "apostar_fail": 0.0
       },
       "pitcher_vs_rival_malo": {
-        "n": 19.5,
-        "pasar_ok": 8.0,
+        "n": 21.5,
+        "pasar_ok": 10.0,
         "pasar_miss": 11.5,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
@@ -178778,8 +179286,8 @@
         "apostar_fail": 0.0
       },
       "linea_tarde": {
-        "n": 28.0,
-        "pasar_ok": 15.0,
+        "n": 29.0,
+        "pasar_ok": 16.0,
         "pasar_miss": 10.0,
         "apostar_ok": 3.0,
         "apostar_fail": 0.0
@@ -178811,7 +179319,7 @@
       "mc_under": -1,
       "preferir_f5": -2,
       "forma_fria": 1,
-      "pitcher_vs_rival_malo": -1,
+      "pitcher_vs_rival_malo": 0,
       "linea_en_contra": 0,
       "linea_tarde": 1,
       "underdog_valor": 0,
@@ -179015,14 +179523,14 @@
       "824635:fallo",
       "823663:acierto",
       "825040:acierto",
-      "822929:acierto",
       "824472:fallo",
       "824391:acierto",
-      "822687:fallo",
-      "824716:acierto",
-      "824070:fallo",
       "823340:acierto",
+      "822929:acierto",
+      "824716:acierto",
+      "822687:fallo",
       "824633:fallo",
+      "824070:fallo",
       "823661:acierto",
       "822854:acierto",
       "824148:acierto",
@@ -179035,39 +179543,48 @@
       "822851:fallo",
       "824312:fallo",
       "825037:fallo",
-      "824717:fallo"
+      "824717:fallo",
+      "823339:fallo",
+      "822931:fallo",
+      "824390:fallo",
+      "823660:fallo",
+      "824068:fallo",
+      "824634:acierto",
+      "824147:fallo",
+      "823983:acierto",
+      "823906:fallo"
     ],
-    "actualizado_en": "2026-09-02T23:16:29.079432Z"
+    "actualizado_en": "2026-09-03T05:54:03.086035Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 218,
-    "muestras_reales": 218,
+    "muestras": 226,
+    "muestras_reales": 226,
     "muestras_sinteticas": 0,
     "ratio_features_reales": 1.0,
     "entreno_bloqueado": false,
     "schema": 4,
-    "mensaje": "Reentrenado con 218 muestras (218 reales, RF acc 96.8%, RF holdout 59.1%, XGB acc 96.8%, XGB holdout 65.9%)",
-    "accuracy_train": 0.968,
-    "accuracy_holdout": 0.591,
-    "accuracy_xgb_train": 0.968,
-    "accuracy_xgb_holdout": 0.659,
-    "ultimo_entreno": "2026-09-03T01:12:13.260948",
+    "mensaje": "Reentrenado con 226 muestras (226 reales, RF acc 97.8%, RF holdout 58.7%, XGB acc 97.8%, XGB holdout 54.3%)",
+    "accuracy_train": 0.978,
+    "accuracy_holdout": 0.587,
+    "accuracy_xgb_train": 0.978,
+    "accuracy_xgb_holdout": 0.543,
+    "ultimo_entreno": "2026-09-03T05:14:25.531597",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 218,
+    "muestras": 226,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
         "ok": true,
-        "muestras": 44,
+        "muestras": 46,
         "metodo": "isotonic"
       },
       "underdog": {
         "ok": true,
-        "muestras": 56,
+        "muestras": 60,
         "metodo": "isotonic"
       },
       "scratch": {
@@ -179077,30 +179594,30 @@
       },
       "limpio": {
         "ok": true,
-        "muestras": 50,
+        "muestras": 52,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 218 muestras (ECE≈0.03) · 4 tipos",
+    "mensaje": "Calibrado isotonic con 226 muestras (ECE≈0.02) · 4 tipos",
     "por_segmento": {
       "prob_alta": {
         "ok": true,
-        "muestras": 65,
+        "muestras": 67,
         "metodo": "isotonic"
       },
       "underdog_cuota": {
         "ok": true,
-        "muestras": 27,
+        "muestras": 29,
         "metodo": "isotonic"
       },
       "mc_over": {
         "ok": true,
-        "muestras": 96,
+        "muestras": 98,
         "metodo": "isotonic"
       },
       "entorno_f5": {
         "ok": true,
-        "muestras": 23,
+        "muestras": 25,
         "metodo": "isotonic"
       },
       "general": {
@@ -179108,13 +179625,13 @@
         "muestras": 7
       }
     },
-    "ece": 0.029
+    "ece": 0.016
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-02T23:41:12.469355Z"
+    "actualizado_en": "2026-09-03T01:56:38.933802Z"
   }
 }
