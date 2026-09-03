@@ -163594,9 +163594,9 @@
           "pitcher_away_id": 694918,
           "pitcher_home_id": 669199,
           "inicio_juego": "2026-09-03T12:35:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -3.0,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-03T11:35:06.527864-04:00",
@@ -164284,7 +164284,9 @@
           "odds_congelada": 2.41,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 0.0,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "San Francisco Giants 2 - Pittsburgh Pirates 5",
+          "liquidado_en": "2026-09-03T16:17:11.666136-04:00"
         },
         {
           "game_id": "824388",
@@ -181275,6 +181277,40 @@
         "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 36/64% · MC totales μ=7.5 (F5 4.1) vs 8",
         "preferir_f5": false
       }
+    },
+    {
+      "id": "lec-fallo_postmortem-823337-1788466632",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-09-03",
+      "game_id": "823337",
+      "visitante": "San Francisco Giants",
+      "home": "Pittsburgh Pirates",
+      "pick": "San Francisco Giants ML",
+      "probPick": 52.2,
+      "edge": 10.7,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "San Francisco Giants 2 - Pittsburgh Pirates 5",
+      "patron": "otro",
+      "leccion": "Revisar edge real vs cuota y contexto de roster antes de dinero. · Capas: bullpen,park_umpire,monte_carlo,mc_totales",
+      "motivo": "Heurística post-fallo (otro)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-03T20:17:12.073488Z",
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "over",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1483/1504 pitch -5/-13 → 45/55% · fusión 57/43%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 52/48% · MC totales μ=11.4 (F5 6.6) vs ",
+        "preferir_f5": true
+      }
     }
   ],
   "mente_stats": {
@@ -181290,9 +181326,9 @@
         "oportunidad_perdida": 93
       },
       "ESPERAR": {
-        "n": 72,
+        "n": 73,
         "aciertos": 38,
-        "fallos": 34
+        "fallos": 35
       }
     },
     "patrones": {
@@ -181311,8 +181347,8 @@
         "apostar_fail": 0.0
       },
       "humanos": {
-        "n": 196.5,
-        "pasar_ok": 70.5,
+        "n": 197.5,
+        "pasar_ok": 71.5,
         "pasar_miss": 106.0,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
@@ -181346,8 +181382,8 @@
         "apostar_fail": 10.0
       },
       "mc_over": {
-        "n": 167.5,
-        "pasar_ok": 62.0,
+        "n": 168.5,
+        "pasar_ok": 63.0,
         "pasar_miss": 82.5,
         "apostar_ok": 12.0,
         "apostar_fail": 11.0
@@ -181360,8 +181396,8 @@
         "apostar_fail": 0.0
       },
       "preferir_f5": {
-        "n": 173.0,
-        "pasar_ok": 63.5,
+        "n": 174.0,
+        "pasar_ok": 64.5,
         "pasar_miss": 89.5,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
@@ -181388,8 +181424,8 @@
         "apostar_fail": 0.0
       },
       "linea_tarde": {
-        "n": 29.0,
-        "pasar_ok": 16.0,
+        "n": 30.0,
+        "pasar_ok": 17.0,
         "pasar_miss": 10.0,
         "apostar_ok": 3.0,
         "apostar_fail": 0.0
@@ -181654,39 +181690,40 @@
       "824634:acierto",
       "824147:fallo",
       "823983:acierto",
-      "823906:fallo"
+      "823906:fallo",
+      "823337:fallo"
     ],
-    "actualizado_en": "2026-09-03T05:54:03.086035Z"
+    "actualizado_en": "2026-09-03T20:17:12.076504Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 227,
-    "muestras_reales": 227,
+    "muestras": 228,
+    "muestras_reales": 228,
     "muestras_sinteticas": 0,
     "ratio_features_reales": 1.0,
     "entreno_bloqueado": false,
     "schema": 4,
-    "mensaje": "Reentrenado con 227 muestras (227 reales, RF acc 98.2%, RF holdout 58.7%, XGB acc 98.7%, XGB holdout 54.3%)",
-    "accuracy_train": 0.982,
+    "mensaje": "Reentrenado con 228 muestras (228 reales, RF acc 97.4%, RF holdout 58.7%, XGB acc 98.2%, XGB holdout 58.7%)",
+    "accuracy_train": 0.974,
     "accuracy_holdout": 0.587,
-    "accuracy_xgb_train": 0.987,
-    "accuracy_xgb_holdout": 0.543,
-    "ultimo_entreno": "2026-09-03T18:17:50.793197",
+    "accuracy_xgb_train": 0.982,
+    "accuracy_xgb_holdout": 0.587,
+    "ultimo_entreno": "2026-09-03T20:17:22.126246",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 226,
+    "muestras": 228,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
         "ok": true,
-        "muestras": 46,
+        "muestras": 47,
         "metodo": "isotonic"
       },
       "underdog": {
         "ok": true,
-        "muestras": 60,
+        "muestras": 61,
         "metodo": "isotonic"
       },
       "scratch": {
@@ -181700,16 +181737,16 @@
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 226 muestras (ECE≈0.02) · 4 tipos",
+    "mensaje": "Calibrado isotonic con 228 muestras (ECE≈0.01) · 4 tipos",
     "por_segmento": {
       "prob_alta": {
         "ok": true,
-        "muestras": 67,
+        "muestras": 68,
         "metodo": "isotonic"
       },
       "underdog_cuota": {
         "ok": true,
-        "muestras": 29,
+        "muestras": 30,
         "metodo": "isotonic"
       },
       "mc_over": {
@@ -181727,13 +181764,13 @@
         "muestras": 7
       }
     },
-    "ece": 0.016
+    "ece": 0.011
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-03T17:23:32.901687Z"
+    "actualizado_en": "2026-09-03T20:16:31.629080Z"
   }
 }
