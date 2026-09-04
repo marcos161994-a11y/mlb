@@ -170271,7 +170271,703 @@
       "fecha": "2026-09-04",
       "bloqueado_en": null,
       "apuestas": [],
-      "predicciones": [],
+      "predicciones": [
+        {
+          "game_id": "824424",
+          "visitante": "Detroit Tigers",
+          "home": "Cleveland Guardians",
+          "pick": "Cleveland Guardians ML",
+          "odds": 1.699,
+          "odds_american": -143,
+          "edge": -6.4,
+          "probPick": 52.5,
+          "apostable": false,
+          "lineas_fuente": "draftkings",
+          "motivo_apuesta": "Sin valor (mínimo +6.0% edge)",
+          "pitcherAway": "Keider Montero",
+          "pitcherHome": "Logan Allen",
+          "pitcher_away_id": 672456,
+          "pitcher_home_id": 671106,
+          "inicio_juego": "2026-09-04T14:10:00-04:00",
+          "estado": "pendiente",
+          "resultado": null,
+          "profit": null,
+          "stake_virtual": 3.0,
+          "con_dinero": false,
+          "predicho_en": "2026-09-04T13:10:12.673505-04:00",
+          "congelado_en_gracia": false,
+          "valida_stats": true,
+          "invalida_tarde": false,
+          "clima": {
+            "ok": false,
+            "fuente": "none",
+            "temp_f": null,
+            "viento_mph": null,
+            "humedad": null,
+            "run_env": 0.0,
+            "motivo": "429 Client Error: Too Many Requests for url: https://api.open-meteo.com/v1/forecast?latitude=41.4962&longitude=-81.6852&",
+            "estadio": "Progressive Field",
+            "es_domo": false
+          },
+          "lesiones": {
+            "ok": true,
+            "fuente": "espn",
+            "motivo": "280 bajas indexadas",
+            "away": [
+              {
+                "jugador": "Jack Flaherty",
+                "apellido": "flaherty",
+                "pos": "SP",
+                "status": "15-Day-IL",
+                "comentario": "Tigers manager A.J. Hinch said Friday that Flaherty (forearm) could begin a rehab assignment with Triple-A Toledo this weekend, Chris McCosk",
+                "severidad": 5,
+                "equipo": "Detroit Tigers"
+              },
+              {
+                "jugador": "Brant Hurter",
+                "apellido": "hurter",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Hurter (back) will resume his rehab assignment with Triple-A Toledo on Wednesday, Chris McCosky of The Detroit News reports.",
+                "severidad": 5,
+                "equipo": "Detroit Tigers"
+              },
+              {
+                "jugador": "Wenceel Perez",
+                "apellido": "perez",
+                "pos": "RF",
+                "status": "60-Day-IL",
+                "comentario": "Perez (orbital) was pulled off his rehab assignment Tuesday, Cody Stavenhagen of The Athletic reports.",
+                "severidad": 5,
+                "equipo": "Detroit Tigers"
+              },
+              {
+                "jugador": "Will Vest",
+                "apellido": "vest",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Vest (elbow) underwent hip surgery Tuesday, Chris McCosky of The Detroit News reports.",
+                "severidad": 5,
+                "equipo": "Detroit Tigers"
+              },
+              {
+                "jugador": "Justin Verlander",
+                "apellido": "verlander",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Verlander (hamstring/hip) threw off the front of the bullpen mound Wednesday, Jason Beck of MLB.com reports.",
+                "severidad": 5,
+                "equipo": "Detroit Tigers"
+              },
+              {
+                "jugador": "Burch Smith",
+                "apellido": "smith",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Smith is being evaluated after exiting a rehab appearance with Triple-A Toledo on Thursday with right shoulder/lat discomfort, Cody Stavenha",
+                "severidad": 5,
+                "equipo": "Detroit Tigers"
+              },
+              {
+                "jugador": "Bailey Horn",
+                "apellido": "horn",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Horn (elbow) will undergo season-ending Tommy John surgery, Chris McCosky of The Detroit News reports.",
+                "severidad": 5,
+                "equipo": "Detroit Tigers"
+              },
+              {
+                "jugador": "Parker Meadows",
+                "apellido": "meadows",
+                "pos": "CF",
+                "status": "60-Day-IL",
+                "comentario": "Tigers manager A.J. Hinch said Tuesday that Meadows (forearm) has yet to resume hitting and is without a timeline to return from the 60-day ",
+                "severidad": 5,
+                "equipo": "Detroit Tigers"
+              }
+            ],
+            "home": [
+              {
+                "jugador": "Shawn Armstrong",
+                "apellido": "armstrong",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Armstrong (calf) threw a bullpen session Friday, Tim Stebbins of MLB.com reports.",
+                "severidad": 5,
+                "equipo": "Cleveland Guardians"
+              },
+              {
+                "jugador": "Colin Holderman",
+                "apellido": "holderman",
+                "pos": "RP",
+                "status": "15-Day-IL",
+                "comentario": "The Guardians placed Holderman on the 15-day injured list Friday with right wrist inflammation, Tim Stebbins of MLB.com reports.",
+                "severidad": 4,
+                "equipo": "Cleveland Guardians"
+              },
+              {
+                "jugador": "Rhys Hoskins",
+                "apellido": "hoskins",
+                "pos": "1B",
+                "status": "10-Day-IL",
+                "comentario": "Hoskins (back) is feeling better but has not yet resumed baseball activity, MLB.com reports.",
+                "severidad": 3,
+                "equipo": "Cleveland Guardians"
+              }
+            ],
+            "resumen": "Detroit Tigers: Jack Flaherty(SP/15-Day-IL), Brant Hurter(RP/60-Day-IL), Wenceel Perez(RF/60-Day-IL), Will Vest(RP/60-Day-IL) | Cleveland Guardians: Shawn Armstrong(RP/60-Day-IL), Colin Holderman(RP/15-Day-IL), Rhys Hoskins(1B/10-Day-IL)",
+            "ajuste_away": -3.6,
+            "ajuste_home": -1.85,
+            "starter_riesgo": false,
+            "starter_away_lesionado": false,
+            "starter_home_lesionado": false,
+            "alerta": ""
+          },
+          "scratch_lineup": {
+            "ok": true,
+            "lineup_confirmado": true,
+            "scratch_away": false,
+            "scratch_home": false,
+            "estrellas_fuera_away": [
+              {
+                "id": 680664,
+                "nombre": "Eduardo Valencia",
+                "ops": 0.956,
+                "pa": 85
+              }
+            ],
+            "estrellas_fuera_home": [
+              {
+                "id": 682657,
+                "nombre": "Angel Martínez",
+                "ops": 0.722,
+                "pa": 350
+              }
+            ],
+            "ajuste_away": 0.0,
+            "ajuste_home": 0.0,
+            "min_estrellas_fuera": 2,
+            "riesgo": false,
+            "alerta": "",
+            "resumen": "Lineup OK"
+          },
+          "factores_humanos": {
+            "ok": true,
+            "away": {
+              "ok": true,
+              "dias_descanso": 1.0,
+              "back_to_back": false,
+              "juegos_seguidos_visita": 4,
+              "cambio_zona": 1,
+              "fatiga_viaje": 0.51,
+              "ultimo_rival": "Minnesota Twins",
+              "ultimo_venue": "Target Field",
+              "motivo": "descanso 1d · Δzona 1h · road×4 · fatiga 0.51"
+            },
+            "home": {
+              "ok": true,
+              "dias_descanso": 0.0,
+              "back_to_back": true,
+              "juegos_seguidos_visita": 0,
+              "cambio_zona": 0,
+              "fatiga_viaje": 0.35,
+              "ultimo_rival": "Toronto Blue Jays",
+              "ultimo_venue": "Progressive Field",
+              "motivo": "B2B · descanso 0d"
+            },
+            "serie": {
+              "game_number": 1,
+              "games_in_series": 4,
+              "leverage": 0.25,
+              "rubber": false,
+              "day_night": "day"
+            },
+            "umpire": {
+              "ok": true,
+              "hp_nombre": "Tom Hanahan",
+              "hp_id": 665297,
+              "sesgo_runs": 0.0,
+              "motivo": "HP Tom Hanahan"
+            },
+            "ajuste_away": -1.12,
+            "ajuste_home": -0.99,
+            "sesgo_umpire_runs": 0.0,
+            "alertas": [
+              "Visita fatigada (descanso 1d · Δzona 1h · road×4 · fatiga 0.51)"
+            ],
+            "resumen": "AWAY: descanso 1d · Δzona 1h · road×4 · fatiga 0.51 | HOME: B2B · descanso 0d | Serie 1/4 | day | HP Tom Hanahan",
+            "riesgo": true,
+            "features_away": {
+              "fatiga_viaje": 0.51,
+              "dias_descanso": 1.0,
+              "cambio_zona": 1.0,
+              "leverage_serie": 0.25,
+              "umpire_runs": 0.0
+            },
+            "features_home": {
+              "fatiga_viaje": 0.35,
+              "dias_descanso": 0.0,
+              "cambio_zona": 0.0,
+              "leverage_serie": 0.25,
+              "umpire_runs": 0.0
+            }
+          },
+          "historico_oficial": {
+            "ok": true,
+            "season": 2026,
+            "l10_away": {
+              "ok": true,
+              "wins": 3,
+              "losses": 7,
+              "pct": 0.3,
+              "marca": "3-7",
+              "streak_code": "W1",
+              "streak_type": "wins",
+              "streak_n": 1,
+              "forma": "mala"
+            },
+            "l10_home": {
+              "ok": true,
+              "wins": 6,
+              "losses": 4,
+              "pct": 0.6,
+              "marca": "6-4",
+              "streak_code": "L2",
+              "streak_type": "losses",
+              "streak_n": 2,
+              "forma": "buena"
+            },
+            "pitcher_vs_rival_away": {
+              "ok": true,
+              "pitcher_id": 672456,
+              "pitcher": "Keider Montero",
+              "rival_id": 114,
+              "gs": 2,
+              "ip": 11.3,
+              "era": 2.39,
+              "whip": 0.88,
+              "k": 1,
+              "bb": 5,
+              "hr": 1,
+              "ops_contra": 0.449,
+              "avg_contra": 0.135,
+              "calidad": "bueno",
+              "motivo": "ERA 2.39 en 11.3 IP vs rival",
+              "fechas": [
+                "2026-05-19",
+                "2026-08-13"
+              ],
+              "resumenes": [
+                "5.0 IP, 3 ER, K, 4 BB",
+                "6.1 IP, 0 ER, 0 K, BB"
+              ]
+            },
+            "pitcher_vs_rival_home": {
+              "ok": true,
+              "pitcher_id": 671106,
+              "pitcher": "Logan Allen",
+              "rival_id": 116,
+              "gs": 0,
+              "ip": 0.0,
+              "era": null,
+              "whip": null,
+              "k": 0,
+              "bb": 0,
+              "hr": 0,
+              "ops_contra": null,
+              "avg_contra": null,
+              "calidad": "desconocido",
+              "motivo": "sin historial vs rival",
+              "fechas": [],
+              "resumenes": []
+            },
+            "alertas": [
+              "pvr_bueno_away"
+            ],
+            "riesgo": false,
+            "ajuste_away": 0.2,
+            "ajuste_home": 0.2,
+            "resumen": "L10 visita 3-7 · L10 local 6-4 · SP visita vs rival: ERA 2.39 en 11.3 IP vs rival"
+          },
+          "ia_briefing": {
+            "ok": true,
+            "fase": "t60",
+            "creado_en": "2026-09-04T17:10:12.767788Z",
+            "alertas": [
+              "humanos",
+              "pvr_bueno_away",
+              "mc_over",
+              "preferir_f5"
+            ],
+            "resumen": "Pick Cleveland Guardians ML @ 52.5% edge=-6.4 · cuotas=draftkings · Elo 1471/1482 pitch +10/-22 → 49/51% · fusión 47/53% · Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 47/53% · MC totales μ=10.5 (F · alertas=humanos,pvr_bueno_away,mc_over,preferir_f5 · AWAY: descanso 1d · Δzona 1h · road×4 · fatiga 0.51",
+            "pilares": {
+              "modelo": {
+                "pick": "Cleveland Guardians ML",
+                "prob": 52.5,
+                "edge": -6.4,
+                "odds": 1.699,
+                "fuente_cuotas": "draftkings",
+                "motivo": "Sin valor (mínimo +6.0% edge)"
+              },
+              "clima": {
+                "ok": false,
+                "run_env": 0.0,
+                "motivo": "429 Client Error: Too Many Requests for url: https://api.open-meteo.com/v1/forecast?latitude=41.4962"
+              },
+              "lesiones": {
+                "ok": true,
+                "starter_riesgo": false,
+                "resumen": "Detroit Tigers: Jack Flaherty(SP/15-Day-IL), Brant Hurter(RP/60-Day-IL), Wenceel Perez(RF/60-Day-IL), Will Vest(RP/60-Day-IL) | Cleveland Gu"
+              },
+              "scratch": {
+                "ok": true,
+                "riesgo": false,
+                "resumen": "Lineup OK"
+              },
+              "humanos": {
+                "ok": true,
+                "riesgo": true,
+                "resumen": "AWAY: descanso 1d · Δzona 1h · road×4 · fatiga 0.51 | HOME: B2B · descanso 0d | Serie 1/4 | day | HP Tom Hanahan",
+                "fatiga_away": 0.51,
+                "fatiga_home": 0.35
+              },
+              "historico": {
+                "ok": true,
+                "riesgo": false,
+                "resumen": "L10 visita 3-7 · L10 local 6-4 · SP visita vs rival: ERA 2.39 en 11.3 IP vs rival",
+                "l10_away": "3-7",
+                "l10_home": "6-4",
+                "pvr_away": "bueno",
+                "pvr_home": "desconocido"
+              },
+              "elo": {
+                "ok": true,
+                "resumen": "Elo 1471/1482 pitch +10/-22 → 49/51% · fusión 47/53%",
+                "prob_elo_away": 49.42,
+                "prob_elo_home": 50.58,
+                "adj_pitcher_away": 9.52,
+                "adj_pitcher_home": -21.84,
+                "peso_elo": 0.4
+              },
+              "inteligencia": {
+                "ok": true,
+                "capas": [
+                  "bullpen",
+                  "park_umpire",
+                  "monte_carlo",
+                  "mc_totales",
+                  "consenso"
+                ],
+                "resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 47/53% · MC totales μ=10.5 (F5 5.7) vs 8.0 → over 72% · F5→over · preferir F5 (bullpen)",
+                "tipo_pick": "limpio",
+                "consenso_n": 1,
+                "mc": "MC×800 → 46/54%",
+                "totales": {
+                  "ok": true,
+                  "mu": 10.52,
+                  "mu_f5": 5.7,
+                  "señal": "over",
+                  "señal_f5": "over",
+                  "preferir_f5": true,
+                  "resumen": "MC totales μ=10.5 (F5 5.7) vs 8.0 → over 72% · F5→over · preferir F5 (bullpen)"
+                }
+              },
+              "pitchers": {
+                "away": "Keider Montero",
+                "home": "Logan Allen",
+                "fip": 4.98,
+                "fatiga_bullpen": 0.4
+              }
+            },
+            "lecciones_ids": [
+              "lec-acierto_refuerzo-824073-1788304472",
+              "lec-acierto_refuerzo-825039-1788304473",
+              "lec-fallo_postmortem-824632-1788486724",
+              "lec-fallo_postmortem-824070-1788315365",
+              "lec-acierto_refuerzo-822773-1788304473",
+              "lec-acierto_refuerzo-824796-1788493251"
+            ]
+          },
+          "ia_mente": null,
+          "ml_features": {
+            "era_pitcher": 3.77,
+            "whip_pitcher": 1.47,
+            "k9_pitcher": 9.42,
+            "woba_equipo": 0.313,
+            "ops_equipo": 0.685,
+            "win_pct_equipo": 0.5,
+            "es_local": 1.0,
+            "park_factor": 1.0,
+            "fatiga_bullpen": 0.4,
+            "matchup_zurdo_diestro": 0.43999999999999817,
+            "edge_estadistico": -6.4,
+            "bb9_pitcher": 2.51,
+            "hr9_pitcher": 1.88,
+            "racha_equipo": 0.6,
+            "diferencia_run": 0.0,
+            "vs_pitcher_hand": 0.0,
+            "temp_f": 72.0,
+            "viento_mph": 5.0,
+            "run_env": 0.0,
+            "fip_pitcher": 4.98,
+            "xfip_pitcher": 3.28,
+            "k_pct_pitcher": 22.4,
+            "bb_pct_pitcher": 6.0,
+            "fatiga_viaje": 0.35,
+            "dias_descanso": 1.0,
+            "cambio_zona": 0.0,
+            "leverage_serie": 0.25,
+            "umpire_runs": 0.0
+          },
+          "tipo_pick": "limpio",
+          "inteligencia": {
+            "ok": true,
+            "capas": [
+              "bullpen",
+              "park_umpire",
+              "monte_carlo",
+              "mc_totales",
+              "consenso"
+            ],
+            "bullpen": {
+              "away": {
+                "ok": true,
+                "fatiga": 0.383,
+                "bullpen_index": 38.3,
+                "pitches_relevo": 194,
+                "pitches_l3d": 194,
+                "ip_relevo": 9.0,
+                "era_relevo_prom": null,
+                "relevistas": 7,
+                "juegos_analizados": 2,
+                "horas_desde": 36.8,
+                "relevistas_detalle": [
+                  {
+                    "nombre": "Kyle Finnegan",
+                    "pitches": 64,
+                    "ip": 2.3,
+                    "era": 0.0,
+                    "apariciones": 2
+                  },
+                  {
+                    "nombre": "Jacob Waguespack",
+                    "pitches": 36,
+                    "ip": 2.3,
+                    "era": 0.0,
+                    "apariciones": 2
+                  },
+                  {
+                    "nombre": "Beau Brieske",
+                    "pitches": 27,
+                    "ip": 1.3,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Kenley Jansen",
+                    "pitches": 17,
+                    "ip": 0.3,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Drew Sommers",
+                    "pitches": 17,
+                    "ip": 0.3,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Tyler Kinley",
+                    "pitches": 17,
+                    "ip": 1.3,
+                    "era": 0.0,
+                    "apariciones": 1
+                  }
+                ],
+                "resumen": "Bullpen Detroit Tigers: 194 pitches L3D (7 brazos, 9.0 IP) · índice 38/100",
+                "nombre": "Detroit Tigers",
+                "game_pk": 823660
+              },
+              "home": {
+                "ok": true,
+                "fatiga": 0.685,
+                "bullpen_index": 68.5,
+                "pitches_relevo": 188,
+                "pitches_l3d": 188,
+                "ip_relevo": 10.7,
+                "era_relevo_prom": null,
+                "relevistas": 7,
+                "juegos_analizados": 3,
+                "horas_desde": 19.3,
+                "relevistas_detalle": [
+                  {
+                    "nombre": "Carlos Hernández",
+                    "pitches": 51,
+                    "ip": 3.0,
+                    "era": 0.0,
+                    "apariciones": 2
+                  },
+                  {
+                    "nombre": "Matt Festa",
+                    "pitches": 36,
+                    "ip": 2.0,
+                    "era": 0.0,
+                    "apariciones": 2
+                  },
+                  {
+                    "nombre": "Tim Herrin",
+                    "pitches": 25,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Austin Hedges",
+                    "pitches": 25,
+                    "ip": 1.7,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Colin Holderman",
+                    "pitches": 22,
+                    "ip": 0.3,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Craig Yoho",
+                    "pitches": 16,
+                    "ip": 1.3,
+                    "era": 0.0,
+                    "apariciones": 1
+                  }
+                ],
+                "resumen": "Bullpen Cleveland Guardians: 188 pitches L3D (7 brazos, 10.7 IP) · índice 68/100",
+                "nombre": "Cleveland Guardians",
+                "game_pk": 824388
+              },
+              "shift_hacia_away": 1.21
+            },
+            "park_umpire": {
+              "ok": true,
+              "adj_away": 0.0,
+              "adj_home": 0.0,
+              "park_factor": 1.0,
+              "sesgo_umpire": 0.0,
+              "resumen": "Park×1.00 ump +0.00 → 48/52%"
+            },
+            "monte_carlo": {
+              "ok": true,
+              "n": 800,
+              "prob_home": 53.62,
+              "prob_away": 46.38,
+              "resumen": "MC×800 → 46/54%"
+            },
+            "totales": {
+              "ok": true,
+              "n": 800,
+              "lambda_away": 5.77,
+              "lambda_home": 4.62,
+              "mu_total": 10.52,
+              "mu_f5": 5.7,
+              "p10": 6.0,
+              "p50": 10.0,
+              "p90": 15.0,
+              "linea_total": 8.0,
+              "linea_f5": 4.5,
+              "linea_fuente": "mercado",
+              "linea_es_default": false,
+              "p_over": 71.9,
+              "p_under": 18.8,
+              "p_over_f5": 66.6,
+              "p_under_f5": 33.4,
+              "señal": "over",
+              "señal_f5": "over",
+              "preferir_f5": true,
+              "resumen": "MC totales μ=10.5 (F5 5.7) vs 8.0 → over 72% · F5→over · preferir F5 (bullpen)"
+            },
+            "preferir_f5": true,
+            "consenso": {
+              "ok": true,
+              "n_fuentes": 1,
+              "fuentes": [
+                "draftkings"
+              ],
+              "dec_away": 2.19,
+              "dec_home": 1.699,
+              "prob_away": 43.69,
+              "prob_home": 56.31,
+              "vig_pct": 4.52,
+              "discrepancia_casas_pct": 0.0,
+              "resumen": "Consenso 1 casa(s) · fair 43.69/56.31% · vig 4.52%"
+            },
+            "tipo_pre": "limpio",
+            "resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 47/53% · MC totales μ=10.5 (F5 5.7) vs 8.0 → over 72% · F5→over · preferir F5 (bullpen)",
+            "tipo_pick": "limpio"
+          },
+          "elo": {
+            "ok": true,
+            "activo": true,
+            "peso_elo": 0.4,
+            "elo_away": 1471.0,
+            "elo_home": 1482.3,
+            "adj_pitcher_away": 9.52,
+            "adj_pitcher_home": -21.84,
+            "elo_adj_away": 1480.5,
+            "elo_adj_home": 1460.5,
+            "prob_elo_away": 49.42,
+            "prob_elo_home": 50.58,
+            "prob_modelo_away": 45.6,
+            "prob_modelo_home": 54.4,
+            "prob_fusion_away": 47.13,
+            "prob_fusion_home": 52.87,
+            "fip_away": 3.86,
+            "fip_home": 4.98,
+            "resumen": "Elo 1471/1482 pitch +10/-22 → 49/51% · fusión 47/53%"
+          },
+          "mc_totales": {
+            "ok": true,
+            "n": 800,
+            "lambda_away": 5.77,
+            "lambda_home": 4.62,
+            "mu_total": 10.52,
+            "mu_f5": 5.7,
+            "p10": 6.0,
+            "p50": 10.0,
+            "p90": 15.0,
+            "linea_total": 8.0,
+            "linea_f5": 4.5,
+            "linea_fuente": "mercado",
+            "linea_es_default": false,
+            "p_over": 71.9,
+            "p_under": 18.8,
+            "p_over_f5": 66.6,
+            "p_under_f5": 33.4,
+            "señal": "over",
+            "señal_f5": "over",
+            "preferir_f5": true,
+            "resumen": "MC totales μ=10.5 (F5 5.7) vs 8.0 → over 72% · F5→over · preferir F5 (bullpen)"
+          },
+          "preferir_f5": true,
+          "total_linea": 8.0,
+          "lineas_total": {
+            "linea": 8.0,
+            "over_american": null,
+            "over_decimal": null,
+            "under_american": null,
+            "under_decimal": null,
+            "casa": "draftkings",
+            "fuente": "espn"
+          },
+          "odds_congelada": 1.699,
+          "lineas_fuente_inicial": "draftkings",
+          "linea_movimiento_pct": 0.0,
+          "cuota_retry": true
+        }
+      ],
       "resumen": {
         "jugadas": 0,
         "ganadas": 0,
@@ -186640,7 +187336,7 @@
     "accuracy_holdout": 0.596,
     "accuracy_xgb_train": 0.991,
     "accuracy_xgb_holdout": 0.596,
-    "ultimo_entreno": "2026-09-04T10:31:32.703592",
+    "ultimo_entreno": "2026-09-04T14:31:44.969327",
     "xgb": true
   },
   "calib_meta": {
@@ -186703,6 +187399,6 @@
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-04T12:21:16.137217Z"
+    "actualizado_en": "2026-09-04T12:26:13.665616Z"
   }
 }
