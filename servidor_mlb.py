@@ -1827,6 +1827,50 @@ def guardar_prediccion(
     return True
 
 
+def omitir_congelar_papel(juego: dict, cfg: dict | None = None) -> tuple[bool, str]:
+    """
+    Si True, no congelar este pick en papel.
+
+    El board de papel estaba lleno de picks sin valor (edge negativo) y el WR
+    diario parecía un desastre aunque el dinero estuviera protegido.
+    Con papel_solo_valor=true solo se congela lo que pasa la misma barra
+    mínima de valor vs mercado.
+    """
+    cfg = cfg or {}
+    estr = cfg.get("estrategia") or {}
+    if not bool(estr.get("papel_solo_valor", True)):
+        return False, ""
+    if not (juego.get("pick") or "").strip():
+        return True, "sin_pick"
+    if not tiene_cuota_mercado(juego):
+        return True, "sin_cuota_mercado"
+    try:
+        prob = float(juego.get("probPick") or 0)
+        odds = float(juego.get("odds") or 0)
+    except (TypeError, ValueError):
+        return True, "prob_odds_invalidos"
+    try:
+        edge = float(juego.get("edge")) if juego.get("edge") is not None else None
+    except (TypeError, ValueError):
+        edge = None
+    if edge is None and odds > 1.0:
+        edge = edge_pct(prob, odds)
+    min_prob = float(estr.get("min_prob_modelo", 58.0))
+    min_edge = float(estr.get("papel_min_edge_pct", estr.get("min_edge_pct", 6.0)))
+    if prob < min_prob:
+        return True, f"prob<{min_prob:g}"
+    if edge is None or edge < min_edge:
+        return True, f"edge<{min_edge:g}"
+    if bool(estr.get("papel_respeta_favorito_inflado", True)):
+        bloq, motivo = bloqueado_favorito_inflado(
+            {**juego, "probPick": prob, "edge": edge if edge > -900 else 0},
+            cfg,
+        )
+        if bloq:
+            return True, motivo or "favorito_inflado"
+    return False, ""
+
+
 def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     """
     Registra pick en PAPEL para juegos PROGRAMADOS (tras T-60).
@@ -1842,6 +1886,7 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     ya = {str(p.get("game_id")) for p in dia.get("predicciones", [])}
     nuevas = 0
     omitidas_vivo = 0
+    omitidas_sin_valor = 0
     cfg = cargar_config()
     gracia = float(cfg.get("minutos_gracia_bloqueo", 30))
 
@@ -1869,6 +1914,14 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
                 continue
             if hb > ahora:
                 continue
+        omitir, motivo_omit = omitir_congelar_papel(juego, cfg)
+        if omitir:
+            omitidas_sin_valor += 1
+            print(
+                f"[PREDICCIONES] Omitido sin valor "
+                f"({juego.get('visitante')}@{juego.get('home')} · {juego.get('pick')}): {motivo_omit}"
+            )
+            continue
         if guardar_prediccion(
             dia,
             juego,
@@ -1909,10 +1962,13 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
         guardar_memoria(memoria)
     if omitidas_vivo:
         print(f"[PREDICCIONES] Omitidas {omitidas_vivo} EN VIVO (fuera de gracia / ya empezados).")
+    if omitidas_sin_valor:
+        print(f"[PREDICCIONES] Omitidas {omitidas_sin_valor} sin valor (papel_solo_valor).")
     return {
         "ok": True,
         "predicciones_nuevas": nuevas,
         "omitidas_en_vivo": omitidas_vivo,
+        "omitidas_sin_valor": omitidas_sin_valor,
         "fecha": hoy,
     }
 
