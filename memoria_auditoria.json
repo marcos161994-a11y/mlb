@@ -168743,6 +168743,1499 @@
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 0.0,
           "cuota_retry": true
+        },
+        {
+          "game_id": "823095",
+          "visitante": "Athletics",
+          "home": "Seattle Mariners",
+          "pick": "Seattle Mariners ML",
+          "odds": 1.452,
+          "odds_american": -221,
+          "edge": -11.1,
+          "probPick": 57.8,
+          "apostable": false,
+          "lineas_fuente": "draftkings",
+          "motivo_apuesta": "Prob. modelo bajo 58.0%",
+          "pitcherAway": "Jack Perkins",
+          "pitcherHome": "Kade Anderson",
+          "pitcher_away_id": 678022,
+          "pitcher_home_id": 807739,
+          "inicio_juego": "2026-09-03T21:40:00-04:00",
+          "estado": "pendiente",
+          "resultado": null,
+          "profit": null,
+          "stake_virtual": 3.0,
+          "con_dinero": false,
+          "predicho_en": "2026-09-03T20:40:11.343903-04:00",
+          "congelado_en_gracia": false,
+          "valida_stats": true,
+          "invalida_tarde": false,
+          "clima": {
+            "ok": true,
+            "fuente": "open-meteo",
+            "temp_f": 54.6,
+            "viento_mph": 2.2,
+            "humedad": 89,
+            "run_env": -1.1,
+            "motivo": "55°F · viento 2 mph · frío → favorece pitchers",
+            "estadio": "T-Mobile Park",
+            "es_domo": false
+          },
+          "lesiones": {
+            "ok": true,
+            "fuente": "espn",
+            "motivo": "281 bajas indexadas",
+            "away": [
+              {
+                "jugador": "Joshua Kuroda-Grauer",
+                "apellido": "kurodagrauer",
+                "pos": "3B",
+                "status": "60-Day-IL",
+                "comentario": "The Athletics transferred Kuroda-Grauer (groin) to the 60-day injured list Tuesday.",
+                "severidad": 5,
+                "equipo": "Athletics"
+              },
+              {
+                "jugador": "Jacob Wilson",
+                "apellido": "wilson",
+                "pos": "SS",
+                "status": "60-Day-IL",
+                "comentario": "Wilson will undergo surgery on his left shoulder Sept. 16, Martin Gallegos of MLB.com reports.",
+                "severidad": 5,
+                "equipo": "Athletics"
+              },
+              {
+                "jugador": "Tyler Soderstrom",
+                "apellido": "soderstrom",
+                "pos": "LF",
+                "status": "60-Day-IL",
+                "comentario": "The Athletics transferred Soderstrom (hip) to the 60-day injured list Thursday.",
+                "severidad": 5,
+                "equipo": "Athletics"
+              },
+              {
+                "jugador": "Justin Sterner",
+                "apellido": "sterner",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "The Athletics transferred Sterner (knee) from the 15-day injured list to the 60-day IL on Sunday.",
+                "severidad": 5,
+                "equipo": "Athletics"
+              },
+              {
+                "jugador": "Luis Severino",
+                "apellido": "severino",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Athletics manager Mark Kotsay said he does not expect Severino (shoulder) to return to a big-league mound this season, Martin Gallegos of ML",
+                "severidad": 5,
+                "equipo": "Athletics"
+              },
+              {
+                "jugador": "Mark Leiter Jr.",
+                "apellido": "jr",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Leiter will undergo surgery Tuesday to address a right hip impingement and is expected to miss the remainder of the season, Martin Gallegos ",
+                "severidad": 5,
+                "equipo": "Athletics"
+              },
+              {
+                "jugador": "Brooks Kriske",
+                "apellido": "kriske",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Kriske (shoulder) began a throwing progression Thursday, MLB.com reports.",
+                "severidad": 5,
+                "equipo": "Athletics"
+              },
+              {
+                "jugador": "Gunnar Hoglund",
+                "apellido": "hoglund",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Hoglund (knee/back) will be sidelined for the rest of the 2026 season after undergoing surgery on his left hip Monday.",
+                "severidad": 5,
+                "equipo": "Athletics"
+              }
+            ],
+            "home": [
+              {
+                "jugador": "Brennen Davis",
+                "apellido": "davis",
+                "pos": "CF",
+                "status": "60-Day-IL",
+                "comentario": "The Mariners recalled Davis (hamstring) from Triple-A Tacoma on Thursday and placed him on the 60-day injured list.",
+                "severidad": 5,
+                "equipo": "Seattle Mariners"
+              },
+              {
+                "jugador": "Colt Emerson",
+                "apellido": "emerson",
+                "pos": "SS",
+                "status": "60-Day-IL",
+                "comentario": "The Mariners transferred Emerson (wrist) from the 10-day injured list to the 60-day IL on Monday.",
+                "severidad": 5,
+                "equipo": "Seattle Mariners"
+              },
+              {
+                "jugador": "Emerson Hancock",
+                "apellido": "hancock",
+                "pos": "SP",
+                "status": "15-Day-IL",
+                "comentario": "Seattle placed Hancock (groin) on the 15-day injured list Sunday with a left adductor strain, retroactive to Aug. 29.",
+                "severidad": 5,
+                "equipo": "Seattle Mariners"
+              },
+              {
+                "jugador": "Matt Brash",
+                "apellido": "brash",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Brash (lat) threw a bullpen session Saturday and is scheduled to throw another one in Boston early next week, Ryan Divish of The Seattle Tim",
+                "severidad": 5,
+                "equipo": "Seattle Mariners"
+              },
+              {
+                "jugador": "Luke Raley",
+                "apellido": "raley",
+                "pos": "RF",
+                "status": "60-Day-IL",
+                "comentario": "The Mariners transferred Raley (forearm) from the 10-day injured list to the 60-day IL on Wednesday.",
+                "severidad": 5,
+                "equipo": "Seattle Mariners"
+              },
+              {
+                "jugador": "Will Wilson",
+                "apellido": "wilson",
+                "pos": "3B",
+                "status": "60-Day-IL",
+                "comentario": "Wilson (thumb) has gone 3-for-9 with two RBI and a 1:2 BB:K in his first three rehab games between High-A Everett and Triple-A Tacoma.",
+                "severidad": 5,
+                "equipo": "Seattle Mariners"
+              },
+              {
+                "jugador": "Logan Evans",
+                "apellido": "evans",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "The Mariners placed Evans (elbow) on the 60-day injured list Monday.",
+                "severidad": 5,
+                "equipo": "Seattle Mariners"
+              },
+              {
+                "jugador": "Brendan Donovan",
+                "apellido": "donovan",
+                "pos": "3B",
+                "status": "7-Day IL",
+                "comentario": "Donovan (concussion) hasn't been cleared to return to action yet, Ryan Divish of The Seattle Times reports.",
+                "severidad": 4,
+                "equipo": "Seattle Mariners"
+              }
+            ],
+            "resumen": "Athletics: Joshua Kuroda-Grauer(3B/60-Day-IL), Jacob Wilson(SS/60-Day-IL), Tyler Soderstrom(LF/60-Day-IL), Justin Sterner(RP/60-Day-IL) | Seattle Mariners: Brennen Davis(CF/60-Day-IL), Colt Emerson(SS/60-Day-IL), Emerson Hancock(SP/15-Day-IL), Matt Brash(RP/60-Day-IL)",
+            "ajuste_away": -3.7,
+            "ajuste_home": -3.9,
+            "starter_riesgo": false,
+            "starter_away_lesionado": false,
+            "starter_home_lesionado": false,
+            "alerta": ""
+          },
+          "scratch_lineup": {
+            "ok": true,
+            "lineup_confirmado": true,
+            "scratch_away": false,
+            "scratch_home": false,
+            "estrellas_fuera_away": [
+              {
+                "id": 622268,
+                "nombre": "Donovan Walton",
+                "ops": 0.807,
+                "pa": 198
+              }
+            ],
+            "estrellas_fuera_home": [
+              {
+                "id": 640902,
+                "nombre": "Jhonny Pereda",
+                "ops": 0.716,
+                "pa": 86
+              }
+            ],
+            "ajuste_away": 0.0,
+            "ajuste_home": 0.0,
+            "min_estrellas_fuera": 2,
+            "riesgo": false,
+            "alerta": "",
+            "resumen": "Lineup OK"
+          },
+          "factores_humanos": {
+            "ok": true,
+            "away": {
+              "ok": true,
+              "dias_descanso": 0.0,
+              "back_to_back": true,
+              "juegos_seguidos_visita": 4,
+              "cambio_zona": 2,
+              "fatiga_viaje": 0.98,
+              "ultimo_rival": "Texas Rangers",
+              "ultimo_venue": "Globe Life Field",
+              "motivo": "B2B · descanso 0d · Δzona 2h · road×4 · fatiga 0.98"
+            },
+            "home": {
+              "ok": true,
+              "dias_descanso": 0.0,
+              "back_to_back": true,
+              "juegos_seguidos_visita": 0,
+              "cambio_zona": 3,
+              "fatiga_viaje": 0.95,
+              "ultimo_rival": "Boston Red Sox",
+              "ultimo_venue": "Fenway Park",
+              "motivo": "B2B · descanso 0d · Δzona 3h · fatiga 0.95"
+            },
+            "serie": {
+              "game_number": 1,
+              "games_in_series": 4,
+              "leverage": 0.25,
+              "rubber": false,
+              "day_night": "night"
+            },
+            "umpire": {
+              "ok": true,
+              "hp_nombre": "James Hoye",
+              "hp_id": 428442,
+              "sesgo_runs": 0.0,
+              "motivo": "HP James Hoye"
+            },
+            "ajuste_away": -2.16,
+            "ajuste_home": -1.33,
+            "sesgo_umpire_runs": 0.0,
+            "alertas": [
+              "Visita fatigada (B2B · descanso 0d · Δzona 2h · road×4 · fatiga 0.98)",
+              "Local fatigada (B2B · descanso 0d · Δzona 3h · fatiga 0.95)"
+            ],
+            "resumen": "AWAY: B2B · descanso 0d · Δzona 2h · road×4 · fatiga 0.98 | HOME: B2B · descanso 0d · Δzona 3h · fatiga 0.95 | Serie 1/4 | night | HP James Hoye",
+            "riesgo": true,
+            "features_away": {
+              "fatiga_viaje": 0.98,
+              "dias_descanso": 0.0,
+              "cambio_zona": 2.0,
+              "leverage_serie": 0.25,
+              "umpire_runs": 0.0
+            },
+            "features_home": {
+              "fatiga_viaje": 0.95,
+              "dias_descanso": 0.0,
+              "cambio_zona": 3.0,
+              "leverage_serie": 0.25,
+              "umpire_runs": 0.0
+            }
+          },
+          "historico_oficial": {
+            "ok": true,
+            "season": 2026,
+            "l10_away": {
+              "ok": true,
+              "wins": 4,
+              "losses": 6,
+              "pct": 0.4,
+              "marca": "4-6",
+              "streak_code": "W1",
+              "streak_type": "wins",
+              "streak_n": 1,
+              "forma": "neutra"
+            },
+            "l10_home": {
+              "ok": true,
+              "wins": 4,
+              "losses": 6,
+              "pct": 0.4,
+              "marca": "4-6",
+              "streak_code": "W2",
+              "streak_type": "wins",
+              "streak_n": 2,
+              "forma": "neutra"
+            },
+            "pitcher_vs_rival_away": {
+              "ok": true,
+              "pitcher_id": 678022,
+              "pitcher": "Jack Perkins",
+              "rival_id": 136,
+              "gs": 2,
+              "ip": 6.7,
+              "era": 2.69,
+              "whip": 0.45,
+              "k": 9,
+              "bb": 0,
+              "hr": 1,
+              "ops_contra": 0.375,
+              "avg_contra": 0.125,
+              "calidad": "bueno",
+              "motivo": "ERA 2.69 en 6.7 IP vs rival",
+              "fechas": [
+                "2026-04-21",
+                "2026-05-25"
+              ],
+              "resumenes": [
+                "2.0 IP, 0 ER, 2 K, 0 BB",
+                "4.2 IP, 2 ER, 7 K, 0 BB"
+              ]
+            },
+            "pitcher_vs_rival_home": {
+              "ok": true,
+              "pitcher_id": 807739,
+              "pitcher": "Kade Anderson",
+              "rival_id": 133,
+              "gs": 0,
+              "ip": 0.0,
+              "era": null,
+              "whip": null,
+              "k": 0,
+              "bb": 0,
+              "hr": 0,
+              "ops_contra": null,
+              "avg_contra": null,
+              "calidad": "desconocido",
+              "motivo": "sin historial vs rival",
+              "fechas": [],
+              "resumenes": []
+            },
+            "alertas": [
+              "pvr_bueno_away"
+            ],
+            "riesgo": false,
+            "ajuste_away": 0.4,
+            "ajuste_home": -0.2,
+            "resumen": "L10 visita 4-6 · L10 local 4-6 · SP visita vs rival: ERA 2.69 en 6.7 IP vs rival"
+          },
+          "ia_briefing": {
+            "ok": true,
+            "fase": "t60",
+            "creado_en": "2026-09-04T00:40:11.444314Z",
+            "alertas": [
+              "humanos",
+              "pvr_bueno_away",
+              "mc_over"
+            ],
+            "resumen": "Pick Seattle Mariners ML @ 57.8% edge=-11.1 · cuotas=draftkings · Elo 1426/1473 pitch -19/-39 → 43/57% · fusión 43/57% · Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 42/58% · MC totales μ=10.5 (F · alertas=humanos,pvr_bueno_away,mc_over · AWAY: B2B · descanso 0d · Δzona 2h · road×4 · fatiga 0.98 | HOME:",
+            "pilares": {
+              "modelo": {
+                "pick": "Seattle Mariners ML",
+                "prob": 57.8,
+                "edge": -11.1,
+                "odds": 1.452,
+                "fuente_cuotas": "draftkings",
+                "motivo": "Prob. modelo bajo 58.0%"
+              },
+              "clima": {
+                "ok": true,
+                "run_env": -1.1,
+                "motivo": "55°F · viento 2 mph · frío → favorece pitchers"
+              },
+              "lesiones": {
+                "ok": true,
+                "starter_riesgo": false,
+                "resumen": "Athletics: Joshua Kuroda-Grauer(3B/60-Day-IL), Jacob Wilson(SS/60-Day-IL), Tyler Soderstrom(LF/60-Day-IL), Justin Sterner(RP/60-Day-IL) | Se"
+              },
+              "scratch": {
+                "ok": true,
+                "riesgo": false,
+                "resumen": "Lineup OK"
+              },
+              "humanos": {
+                "ok": true,
+                "riesgo": true,
+                "resumen": "AWAY: B2B · descanso 0d · Δzona 2h · road×4 · fatiga 0.98 | HOME: B2B · descanso 0d · Δzona 3h · fatiga 0.95 | Serie 1/4 | night | HP James Hoye",
+                "fatiga_away": 0.98,
+                "fatiga_home": 0.95
+              },
+              "historico": {
+                "ok": true,
+                "riesgo": false,
+                "resumen": "L10 visita 4-6 · L10 local 4-6 · SP visita vs rival: ERA 2.69 en 6.7 IP vs rival",
+                "l10_away": "4-6",
+                "l10_home": "4-6",
+                "pvr_away": "bueno",
+                "pvr_home": "desconocido"
+              },
+              "elo": {
+                "ok": true,
+                "resumen": "Elo 1426/1473 pitch -19/-39 → 43/57% · fusión 43/57%",
+                "prob_elo_away": 42.68,
+                "prob_elo_home": 57.32,
+                "adj_pitcher_away": -18.76,
+                "adj_pitcher_home": -39.2,
+                "peso_elo": 0.4
+              },
+              "inteligencia": {
+                "ok": true,
+                "capas": [
+                  "bullpen",
+                  "park_umpire",
+                  "monte_carlo",
+                  "mc_totales",
+                  "consenso"
+                ],
+                "resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 42/58% · MC totales μ=10.5 (F5 5.8) vs 7.5 → over 84% · F5→over",
+                "tipo_pick": "favorito_alto",
+                "consenso_n": 1,
+                "mc": "MC×800 → 43/57%",
+                "totales": {
+                  "ok": true,
+                  "mu": 10.48,
+                  "mu_f5": 5.84,
+                  "señal": "over",
+                  "señal_f5": "over",
+                  "preferir_f5": false,
+                  "resumen": "MC totales μ=10.5 (F5 5.8) vs 7.5 → over 84% · F5→over"
+                }
+              },
+              "pitchers": {
+                "away": "Jack Perkins",
+                "home": "Kade Anderson",
+                "fip": 5.6,
+                "fatiga_bullpen": 0.4
+              }
+            },
+            "lecciones_ids": [
+              "lec-acierto_refuerzo-825039-1788304473",
+              "lec-acierto_refuerzo-824073-1788304472",
+              "lec-fallo_postmortem-824070-1788315365",
+              "lec-fallo_postmortem-824068-1788412454",
+              "lec-fallo_postmortem-822686-1788390987",
+              "lec-acierto_refuerzo-822773-1788304473"
+            ]
+          },
+          "ia_mente": null,
+          "ml_features": {
+            "era_pitcher": 4.5,
+            "whip_pitcher": 1.3,
+            "k9_pitcher": 7.2,
+            "woba_equipo": 0.313,
+            "ops_equipo": 0.685,
+            "win_pct_equipo": 0.471,
+            "es_local": 1.0,
+            "park_factor": 0.93,
+            "fatiga_bullpen": 0.4,
+            "matchup_zurdo_diestro": 1.459999999999999,
+            "edge_estadistico": -11.1,
+            "bb9_pitcher": 4.5,
+            "hr9_pitcher": 1.8,
+            "racha_equipo": 0.4,
+            "diferencia_run": 0.0,
+            "vs_pitcher_hand": 0.0,
+            "temp_f": 54.6,
+            "viento_mph": 2.2,
+            "run_env": -1.1,
+            "fip_pitcher": 5.6,
+            "xfip_pitcher": 4.25,
+            "k_pct_pitcher": 19.5,
+            "bb_pct_pitcher": 12.2,
+            "fatiga_viaje": 0.95,
+            "dias_descanso": 1.0,
+            "cambio_zona": 3.0,
+            "leverage_serie": 0.25,
+            "umpire_runs": 0.0
+          },
+          "tipo_pick": "favorito_alto",
+          "inteligencia": {
+            "ok": true,
+            "capas": [
+              "bullpen",
+              "park_umpire",
+              "monte_carlo",
+              "mc_totales",
+              "consenso"
+            ],
+            "bullpen": {
+              "away": {
+                "ok": true,
+                "fatiga": 0.449,
+                "bullpen_index": 44.9,
+                "pitches_relevo": 149,
+                "pitches_l3d": 149,
+                "ip_relevo": 8.7,
+                "era_relevo_prom": null,
+                "relevistas": 6,
+                "juegos_analizados": 2,
+                "horas_desde": 30.1,
+                "relevistas_detalle": [
+                  {
+                    "nombre": "Scott Blewett",
+                    "pitches": 38,
+                    "ip": 1.7,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Yunior Tur",
+                    "pitches": 29,
+                    "ip": 2.3,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Geoff Hartlieb",
+                    "pitches": 26,
+                    "ip": 2.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Luis Medina",
+                    "pitches": 21,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "José Suarez",
+                    "pitches": 18,
+                    "ip": 0.7,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Hogan Harris",
+                    "pitches": 17,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  }
+                ],
+                "resumen": "Bullpen Athletics: 149 pitches L3D (6 brazos, 8.7 IP) · índice 45/100",
+                "nombre": "Athletics",
+                "game_pk": 822851
+              },
+              "home": {
+                "ok": true,
+                "fatiga": 0.367,
+                "bullpen_index": 36.7,
+                "pitches_relevo": 109,
+                "pitches_l3d": 109,
+                "ip_relevo": 7.3,
+                "era_relevo_prom": null,
+                "relevistas": 7,
+                "juegos_analizados": 2,
+                "horas_desde": 28.5,
+                "relevistas_detalle": [
+                  {
+                    "nombre": "Michael Rucker",
+                    "pitches": 36,
+                    "ip": 2.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "José A. Ferrer",
+                    "pitches": 26,
+                    "ip": 1.7,
+                    "era": 0.0,
+                    "apariciones": 2
+                  },
+                  {
+                    "nombre": "Carlos Vargas",
+                    "pitches": 20,
+                    "ip": 0.7,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Cooper Criswell",
+                    "pitches": 9,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Seranthony Domínguez",
+                    "pitches": 7,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Hoby Milner",
+                    "pitches": 7,
+                    "ip": 0.3,
+                    "era": 0.0,
+                    "apariciones": 1
+                  }
+                ],
+                "resumen": "Bullpen Seattle Mariners: 109 pitches L3D (7 brazos, 7.3 IP) · índice 37/100",
+                "nombre": "Seattle Mariners",
+                "game_pk": 824717
+              },
+              "shift_hacia_away": -0.33
+            },
+            "park_umpire": {
+              "ok": true,
+              "adj_away": -0.2,
+              "adj_home": -0.31,
+              "park_factor": 0.93,
+              "sesgo_umpire": 0.0,
+              "resumen": "Park×0.93 ump +0.00 → 43/57%"
+            },
+            "monte_carlo": {
+              "ok": true,
+              "n": 800,
+              "prob_home": 56.75,
+              "prob_away": 43.25,
+              "resumen": "MC×800 → 43/57%"
+            },
+            "totales": {
+              "ok": true,
+              "n": 800,
+              "lambda_away": 5.27,
+              "lambda_home": 5.03,
+              "mu_total": 10.48,
+              "mu_f5": 5.84,
+              "p10": 7.0,
+              "p50": 10.0,
+              "p90": 15.0,
+              "linea_total": 7.5,
+              "linea_f5": 4.5,
+              "linea_fuente": "mercado",
+              "linea_es_default": false,
+              "p_over": 84.5,
+              "p_under": 15.5,
+              "p_over_f5": 66.5,
+              "p_under_f5": 33.5,
+              "señal": "over",
+              "señal_f5": "over",
+              "preferir_f5": false,
+              "resumen": "MC totales μ=10.5 (F5 5.8) vs 7.5 → over 84% · F5→over"
+            },
+            "consenso": {
+              "ok": true,
+              "n_fuentes": 1,
+              "fuentes": [
+                "draftkings"
+              ],
+              "dec_away": 2.8,
+              "dec_home": 1.452,
+              "prob_away": 34.15,
+              "prob_home": 65.85,
+              "vig_pct": 4.58,
+              "discrepancia_casas_pct": 0.0,
+              "resumen": "Consenso 1 casa(s) · fair 34.15/65.85% · vig 4.58%"
+            },
+            "tipo_pre": "limpio",
+            "resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 42/58% · MC totales μ=10.5 (F5 5.8) vs 7.5 → over 84% · F5→over",
+            "tipo_pick": "favorito_alto"
+          },
+          "elo": {
+            "ok": true,
+            "activo": true,
+            "peso_elo": 0.4,
+            "elo_away": 1425.6,
+            "elo_home": 1473.2,
+            "adj_pitcher_away": -18.76,
+            "adj_pitcher_home": -39.2,
+            "elo_adj_away": 1406.8,
+            "elo_adj_home": 1434.0,
+            "prob_elo_away": 42.68,
+            "prob_elo_home": 57.32,
+            "prob_modelo_away": 43.8,
+            "prob_modelo_home": 56.2,
+            "prob_fusion_away": 43.35,
+            "prob_fusion_home": 56.65,
+            "fip_away": 4.87,
+            "fip_home": 5.6,
+            "resumen": "Elo 1426/1473 pitch -19/-39 → 43/57% · fusión 43/57%"
+          },
+          "mc_totales": {
+            "ok": true,
+            "n": 800,
+            "lambda_away": 5.27,
+            "lambda_home": 5.03,
+            "mu_total": 10.48,
+            "mu_f5": 5.84,
+            "p10": 7.0,
+            "p50": 10.0,
+            "p90": 15.0,
+            "linea_total": 7.5,
+            "linea_f5": 4.5,
+            "linea_fuente": "mercado",
+            "linea_es_default": false,
+            "p_over": 84.5,
+            "p_under": 15.5,
+            "p_over_f5": 66.5,
+            "p_under_f5": 33.5,
+            "señal": "over",
+            "señal_f5": "over",
+            "preferir_f5": false,
+            "resumen": "MC totales μ=10.5 (F5 5.8) vs 7.5 → over 84% · F5→over"
+          },
+          "preferir_f5": false,
+          "total_linea": 7.5,
+          "lineas_total": {
+            "linea": 7.5,
+            "over_american": null,
+            "over_decimal": null,
+            "under_american": null,
+            "under_decimal": null,
+            "casa": "draftkings",
+            "fuente": "espn"
+          },
+          "odds_congelada": 1.452,
+          "lineas_fuente_inicial": "draftkings",
+          "linea_movimiento_pct": 0.0,
+          "cuota_retry": true
+        },
+        {
+          "game_id": "823907",
+          "visitante": "St. Louis Cardinals",
+          "home": "Los Angeles Dodgers",
+          "pick": "Los Angeles Dodgers ML",
+          "odds": 1.795,
+          "odds_american": -126,
+          "edge": 0,
+          "probPick": 55.7,
+          "apostable": false,
+          "lineas_fuente": "modelo",
+          "motivo_apuesta": "Prob. modelo bajo 58.0% · sin cuota real",
+          "pitcherAway": "Quinn Mathews",
+          "pitcherHome": "Tarik Skubal",
+          "pitcher_away_id": 687273,
+          "pitcher_home_id": 669373,
+          "inicio_juego": "2026-09-03T22:10:00-04:00",
+          "estado": "pendiente",
+          "resultado": null,
+          "profit": null,
+          "stake_virtual": 3.0,
+          "con_dinero": false,
+          "predicho_en": "2026-09-03T21:06:07.738518-04:00",
+          "congelado_en_gracia": false,
+          "valida_stats": true,
+          "invalida_tarde": false,
+          "clima": {
+            "ok": true,
+            "fuente": "open-meteo",
+            "temp_f": 60.7,
+            "viento_mph": 4.1,
+            "humedad": 93,
+            "run_env": -0.4,
+            "motivo": "61°F · viento 4 mph · clima neutro",
+            "estadio": "Dodger Stadium",
+            "es_domo": false
+          },
+          "lesiones": {
+            "ok": true,
+            "fuente": "espn",
+            "motivo": "281 bajas indexadas",
+            "away": [
+              {
+                "jugador": "Hunter Dobbins",
+                "apellido": "dobbins",
+                "pos": "SP",
+                "status": "15-Day-IL",
+                "comentario": "Dobbins underwent reconstructive surgery on his right elbow Wednesday, and he is expected to require a 12-month recovery, Derrick Goold of t",
+                "severidad": 5,
+                "equipo": "St. Louis Cardinals"
+              },
+              {
+                "jugador": "Andre Pallante",
+                "apellido": "pallante",
+                "pos": "SP",
+                "status": "15-Day-IL",
+                "comentario": "Pallante (elbow) threw around 50 pitches in a live batting practice session Friday and remains on track to rejoin the Cardinals' rotation ne",
+                "severidad": 5,
+                "equipo": "St. Louis Cardinals"
+              },
+              {
+                "jugador": "Max Rajcic",
+                "apellido": "rajcic",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Rajcic revealed on his Instagram account Thursday that he recently underwent a right elbow UCL reconstruction.",
+                "severidad": 5,
+                "equipo": "St. Louis Cardinals"
+              },
+              {
+                "jugador": "Masyn Winn",
+                "apellido": "winn",
+                "pos": "SS",
+                "status": "10-Day-IL",
+                "comentario": "Winn (thumb) could return from the 10-day injured list as soon as Thursday, Derrick Goold of the St. Louis Post-Dispatch reports.",
+                "severidad": 4,
+                "equipo": "St. Louis Cardinals"
+              },
+              {
+                "jugador": "Blaze Jordan",
+                "apellido": "jordan",
+                "pos": "3B",
+                "status": "10-Day-IL",
+                "comentario": "Cardinals manager Oli Marmol said Friday that Jordan is expected to miss \"several weeks\" due to a left ankle sprain, Jeff Jones of the Belle",
+                "severidad": 4,
+                "equipo": "St. Louis Cardinals"
+              },
+              {
+                "jugador": "Everson Pereira",
+                "apellido": "pereira",
+                "pos": "RF",
+                "status": "10-Day-IL",
+                "comentario": "Cardinals manager Oliver Marmol said Thursday that Pereira (hand) is \"making progress\" and is \"in a good spot,\" Daniel Guerrero of the St. L",
+                "severidad": 4,
+                "equipo": "St. Louis Cardinals"
+              },
+              {
+                "jugador": "Peter Strzelecki",
+                "apellido": "strzelecki",
+                "pos": "RP",
+                "status": "15-Day-IL",
+                "comentario": "The Cardinals placed Strzelecki on the 15-day injured list Thursday with right forearm extensor inflammation.",
+                "severidad": 4,
+                "equipo": "St. Louis Cardinals"
+              },
+              {
+                "jugador": "JJ Wetherholt",
+                "apellido": "wetherholt",
+                "pos": "2B",
+                "status": "10-Day-IL",
+                "comentario": "Wetherholt was given a cortisone injection Tuesday to combat tendinitis in his right wrist, Derrick Goold of the St. Louis Post-Dispatch rep",
+                "severidad": 3,
+                "equipo": "St. Louis Cardinals"
+              }
+            ],
+            "home": [
+              {
+                "jugador": "Jake Cousins",
+                "apellido": "cousins",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Cousins (elbow) began a rehab assignment with Triple-A Oklahoma City on Wednesday, striking out one and issuing one walk in a scoreless fram",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              },
+              {
+                "jugador": "Will Klein",
+                "apellido": "klein",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "The Dodgers transferred Klein (elbow) to the 60-day injured list Wednesday.",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              },
+              {
+                "jugador": "Eric Lauer",
+                "apellido": "lauer",
+                "pos": "SP",
+                "status": "15-Day-IL",
+                "comentario": "The Dodgers placed Lauer on the 15-day injured list Wednesday with left elbow inflammation.",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              },
+              {
+                "jugador": "Ben Casparius",
+                "apellido": "casparius",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Casparius (shoulder) experienced arm fatigue while on a minor-league rehab assignment and has been shut down from throwing, MLB.com reports.",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              },
+              {
+                "jugador": "Kris Bubic",
+                "apellido": "bubic",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Bubic (shoulder) began a rehab assignment with Triple-A Oklahoma City on Tuesday, striking out two in a perfect inning.",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              },
+              {
+                "jugador": "Roki Sasaki",
+                "apellido": "sasaki",
+                "pos": "SP",
+                "status": "15-Day-IL",
+                "comentario": "The Dodgers placed Sasaki on the 15-day injured list Thursday due to a blister on his right middle finger.",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              },
+              {
+                "jugador": "Gavin Stone",
+                "apellido": "stone",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Stone (shoulder) struck out five and allowed one hit and no walks over four shutout innings during his rehab start Wednesday with Triple-A O",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              },
+              {
+                "jugador": "Bobby Miller",
+                "apellido": "miller",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Miller (shoulder) struck out three and allowed two hits and one walk over three scoreless innings in a rehab appearance Sunday with Triple-A",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              }
+            ],
+            "resumen": "St. Louis Cardinals: Hunter Dobbins(SP/15-Day-IL), Andre Pallante(SP/15-Day-IL), Max Rajcic(RP/60-Day-IL), Masyn Winn(SS/10-Day-IL) | Los Angeles Dodgers: Jake Cousins(RP/60-Day-IL), Will Klein(RP/60-Day-IL), Eric Lauer(SP/15-Day-IL), Ben Casparius(RP/60-Day-IL)",
+            "ajuste_away": -3.8,
+            "ajuste_home": -4.0,
+            "starter_riesgo": false,
+            "starter_away_lesionado": false,
+            "starter_home_lesionado": false,
+            "alerta": ""
+          },
+          "scratch_lineup": {
+            "ok": true,
+            "lineup_confirmado": true,
+            "scratch_away": false,
+            "scratch_home": false,
+            "estrellas_fuera_away": [
+              {
+                "id": 676475,
+                "nombre": "Alec Burleson",
+                "ops": 0.815,
+                "pa": 588
+              }
+            ],
+            "estrellas_fuera_home": [
+              {
+                "id": 571970,
+                "nombre": "Max Muncy",
+                "ops": 0.831,
+                "pa": 480
+              },
+              {
+                "id": 687221,
+                "nombre": "Dalton Rushing",
+                "ops": 0.808,
+                "pa": 247
+              }
+            ],
+            "ajuste_away": 0.0,
+            "ajuste_home": -2.4,
+            "min_estrellas_fuera": 2,
+            "riesgo": true,
+            "alerta": "Estrellas out local: Max Muncy, Dalton Rushing",
+            "resumen": "Estrellas out local: Max Muncy, Dalton Rushing"
+          },
+          "factores_humanos": {
+            "ok": true,
+            "away": {
+              "ok": true,
+              "dias_descanso": 0.0,
+              "back_to_back": true,
+              "juegos_seguidos_visita": 2,
+              "cambio_zona": 0,
+              "fatiga_viaje": 0.58,
+              "ultimo_rival": "Los Angeles Dodgers",
+              "ultimo_venue": "UNIQLO Field at Dodger Stadium",
+              "motivo": "B2B · descanso 0d · fatiga 0.58"
+            },
+            "home": {
+              "ok": true,
+              "dias_descanso": 0.0,
+              "back_to_back": true,
+              "juegos_seguidos_visita": 0,
+              "cambio_zona": 0,
+              "fatiga_viaje": 0.35,
+              "ultimo_rival": "St. Louis Cardinals",
+              "ultimo_venue": "UNIQLO Field at Dodger Stadium",
+              "motivo": "B2B · descanso 0d"
+            },
+            "serie": {
+              "game_number": 3,
+              "games_in_series": 3,
+              "leverage": 1.0,
+              "rubber": true,
+              "day_night": "night"
+            },
+            "umpire": {
+              "ok": true,
+              "hp_nombre": "Jim Wolf",
+              "hp_id": 427554,
+              "sesgo_runs": 0.0,
+              "motivo": "HP Jim Wolf"
+            },
+            "ajuste_away": -1.28,
+            "ajuste_home": -0.49,
+            "sesgo_umpire_runs": 0.0,
+            "alertas": [
+              "Visita fatigada (B2B · descanso 0d · fatiga 0.58)",
+              "Rubber match (3/3)"
+            ],
+            "resumen": "AWAY: B2B · descanso 0d · fatiga 0.58 | HOME: B2B · descanso 0d | Serie 3/3 rubber | night | HP Jim Wolf",
+            "riesgo": true,
+            "features_away": {
+              "fatiga_viaje": 0.58,
+              "dias_descanso": 0.0,
+              "cambio_zona": 0.0,
+              "leverage_serie": 1.0,
+              "umpire_runs": 0.0
+            },
+            "features_home": {
+              "fatiga_viaje": 0.35,
+              "dias_descanso": 0.0,
+              "cambio_zona": 0.0,
+              "leverage_serie": 1.0,
+              "umpire_runs": 0.0
+            }
+          },
+          "historico_oficial": {
+            "ok": true,
+            "season": 2026,
+            "l10_away": {
+              "ok": true,
+              "wins": 4,
+              "losses": 6,
+              "pct": 0.4,
+              "marca": "4-6",
+              "streak_code": "W2",
+              "streak_type": "wins",
+              "streak_n": 2,
+              "forma": "neutra"
+            },
+            "l10_home": {
+              "ok": true,
+              "wins": 4,
+              "losses": 6,
+              "pct": 0.4,
+              "marca": "4-6",
+              "streak_code": "L2",
+              "streak_type": "losses",
+              "streak_n": 2,
+              "forma": "neutra"
+            },
+            "pitcher_vs_rival_away": {
+              "ok": true,
+              "pitcher_id": 687273,
+              "pitcher": "Quinn Mathews",
+              "rival_id": 119,
+              "gs": 0,
+              "ip": 0.0,
+              "era": null,
+              "whip": null,
+              "k": 0,
+              "bb": 0,
+              "hr": 0,
+              "ops_contra": null,
+              "avg_contra": null,
+              "calidad": "desconocido",
+              "motivo": "sin historial vs rival",
+              "fechas": [],
+              "resumenes": []
+            },
+            "pitcher_vs_rival_home": {
+              "ok": true,
+              "pitcher_id": 669373,
+              "pitcher": "Tarik Skubal",
+              "rival_id": 138,
+              "gs": 0,
+              "ip": 0.0,
+              "era": null,
+              "whip": null,
+              "k": 0,
+              "bb": 0,
+              "hr": 0,
+              "ops_contra": null,
+              "avg_contra": null,
+              "calidad": "desconocido",
+              "motivo": "sin historial vs rival",
+              "fechas": [],
+              "resumenes": []
+            },
+            "alertas": [],
+            "riesgo": false,
+            "ajuste_away": -0.2,
+            "ajuste_home": -0.2,
+            "resumen": "L10 visita 4-6 · L10 local 4-6"
+          },
+          "ia_briefing": {
+            "ok": true,
+            "fase": "t60",
+            "creado_en": "2026-09-04T01:06:07.833980Z",
+            "alertas": [
+              "scratch",
+              "humanos",
+              "sin_mercado",
+              "tipo_scratch",
+              "mc_under",
+              "preferir_f5"
+            ],
+            "resumen": "Pick Los Angeles Dodgers ML @ 55.7% edge=0 · cuotas=modelo · Elo 1520/1511 pitch +31/+47 → 45/55% · fusión 44/56% · Intel[bullpen,park_umpire,monte_carlo,mc_totales] → 44/56% · MC totales μ=6.9 (F5 3.7) vs  · alertas=scratch,humanos,sin_mercado,tipo_scratch,mc_under,preferir_f5 · AWAY: B2B · descanso 0d · fatiga 0.58 |",
+            "pilares": {
+              "modelo": {
+                "pick": "Los Angeles Dodgers ML",
+                "prob": 55.7,
+                "edge": 0,
+                "odds": 1.795,
+                "fuente_cuotas": "modelo",
+                "motivo": "Prob. modelo bajo 58.0% · sin cuota real"
+              },
+              "clima": {
+                "ok": true,
+                "run_env": -0.4,
+                "motivo": "61°F · viento 4 mph · clima neutro"
+              },
+              "lesiones": {
+                "ok": true,
+                "starter_riesgo": false,
+                "resumen": "St. Louis Cardinals: Hunter Dobbins(SP/15-Day-IL), Andre Pallante(SP/15-Day-IL), Max Rajcic(RP/60-Day-IL), Masyn Winn(SS/10-Day-IL) | Los An"
+              },
+              "scratch": {
+                "ok": true,
+                "riesgo": true,
+                "resumen": "Estrellas out local: Max Muncy, Dalton Rushing"
+              },
+              "humanos": {
+                "ok": true,
+                "riesgo": true,
+                "resumen": "AWAY: B2B · descanso 0d · fatiga 0.58 | HOME: B2B · descanso 0d | Serie 3/3 rubber | night | HP Jim Wolf",
+                "fatiga_away": 0.58,
+                "fatiga_home": 0.35
+              },
+              "historico": {
+                "ok": true,
+                "riesgo": false,
+                "resumen": "L10 visita 4-6 · L10 local 4-6",
+                "l10_away": "4-6",
+                "l10_home": "4-6",
+                "pvr_away": "desconocido",
+                "pvr_home": "desconocido"
+              },
+              "elo": {
+                "ok": true,
+                "resumen": "Elo 1520/1511 pitch +31/+47 → 45/55% · fusión 44/56%",
+                "prob_elo_away": 45.48,
+                "prob_elo_home": 54.52,
+                "adj_pitcher_away": 30.8,
+                "adj_pitcher_home": 46.76,
+                "peso_elo": 0.4
+              },
+              "inteligencia": {
+                "ok": true,
+                "capas": [
+                  "bullpen",
+                  "park_umpire",
+                  "monte_carlo",
+                  "mc_totales"
+                ],
+                "resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales] → 44/56% · MC totales μ=6.9 (F5 3.7) vs 8.5 (def) → under 73% · F5→under · preferir F5 (bullpen)",
+                "tipo_pick": "scratch",
+                "consenso_n": 0,
+                "mc": "MC×800 → 46/54%",
+                "totales": {
+                  "ok": true,
+                  "mu": 6.88,
+                  "mu_f5": 3.71,
+                  "señal": "under",
+                  "señal_f5": "under",
+                  "preferir_f5": true,
+                  "resumen": "MC totales μ=6.9 (F5 3.7) vs 8.5 (def) → under 73% · F5→under · preferir F5 (bullpen)"
+                }
+              },
+              "pitchers": {
+                "away": "Quinn Mathews",
+                "home": "Tarik Skubal",
+                "fip": 2.53,
+                "fatiga_bullpen": 0.4
+              }
+            },
+            "lecciones_ids": [
+              "lec-acierto_refuerzo-824073-1788304472",
+              "lec-acierto_refuerzo-825039-1788304473",
+              "lec-fallo_postmortem-824388-1788476826",
+              "lec-fallo_postmortem-822851-1788390988",
+              "lec-fallo_postmortem-824068-1788412454",
+              "lec-fallo_postmortem-822686-1788390987"
+            ]
+          },
+          "ia_mente": {
+            "ok": true,
+            "decision": "PASAR",
+            "stake_pct": 0.0,
+            "razones": [
+              "Scratch/lineup debilita el pick"
+            ],
+            "confianza": 5,
+            "lecciones_usadas": [],
+            "fuente": "regla-local",
+            "modelo": null,
+            "briefing": null,
+            "alertas": [
+              "scratch",
+              "humanos",
+              "sin_mercado",
+              "tipo_scratch",
+              "mc_under",
+              "preferir_f5"
+            ],
+            "senales": [
+              "sin_mercado",
+              "scratch",
+              "humanos",
+              "edge_bajo",
+              "mc_under",
+              "preferir_f5"
+            ],
+            "penalizacion_aprendizaje": -4,
+            "modo": "normal",
+            "min_confianza": 3,
+            "shadow": false,
+            "briefing_fase": "t60",
+            "autoriza_dinero": false
+          },
+          "ml_features": {
+            "era_pitcher": 2.84,
+            "whip_pitcher": 0.94,
+            "k9_pitcher": 10.87,
+            "woba_equipo": 0.346,
+            "ops_equipo": 0.758,
+            "win_pct_equipo": 0.59,
+            "es_local": 1.0,
+            "park_factor": 0.92,
+            "fatiga_bullpen": 0.4,
+            "matchup_zurdo_diestro": -0.3600000000000003,
+            "edge_estadistico": 0.0,
+            "bb9_pitcher": 1.49,
+            "hr9_pitcher": 0.85,
+            "racha_equipo": 0.4,
+            "diferencia_run": 0.0,
+            "vs_pitcher_hand": 0.0,
+            "temp_f": 60.7,
+            "viento_mph": 4.1,
+            "run_env": -0.4,
+            "fip_pitcher": 2.53,
+            "xfip_pitcher": 2.03,
+            "k_pct_pitcher": 30.9,
+            "bb_pct_pitcher": 4.2,
+            "fatiga_viaje": 0.35,
+            "dias_descanso": 1.0,
+            "cambio_zona": 0.0,
+            "leverage_serie": 1.0,
+            "umpire_runs": 0.0
+          },
+          "tipo_pick": "scratch",
+          "inteligencia": {
+            "ok": true,
+            "capas": [
+              "bullpen",
+              "park_umpire",
+              "monte_carlo",
+              "mc_totales"
+            ],
+            "bullpen": {
+              "away": {
+                "ok": true,
+                "fatiga": 0.562,
+                "bullpen_index": 56.2,
+                "pitches_relevo": 237,
+                "pitches_l3d": 237,
+                "ip_relevo": 13.0,
+                "era_relevo_prom": null,
+                "relevistas": 8,
+                "juegos_analizados": 2,
+                "horas_desde": 22.5,
+                "relevistas_detalle": [
+                  {
+                    "nombre": "Ryan Fernandez",
+                    "pitches": 51,
+                    "ip": 2.7,
+                    "era": 0.0,
+                    "apariciones": 2
+                  },
+                  {
+                    "nombre": "Gordon Graceffo",
+                    "pitches": 48,
+                    "ip": 3.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Luis Gastelum",
+                    "pitches": 38,
+                    "ip": 2.0,
+                    "era": 0.0,
+                    "apariciones": 2
+                  },
+                  {
+                    "nombre": "Cade Winquest",
+                    "pitches": 25,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Justin Bruihl",
+                    "pitches": 23,
+                    "ip": 1.3,
+                    "era": 0.0,
+                    "apariciones": 2
+                  },
+                  {
+                    "nombre": "George Soriano",
+                    "pitches": 20,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  }
+                ],
+                "resumen": "Bullpen St. Louis Cardinals: 237 pitches L3D (8 brazos, 13.0 IP) · índice 56/100",
+                "nombre": "St. Louis Cardinals",
+                "game_pk": 823906
+              },
+              "home": {
+                "ok": true,
+                "fatiga": 0.441,
+                "bullpen_index": 44.1,
+                "pitches_relevo": 141,
+                "pitches_l3d": 141,
+                "ip_relevo": 9.0,
+                "era_relevo_prom": null,
+                "relevistas": 8,
+                "juegos_analizados": 2,
+                "horas_desde": 22.5,
+                "relevistas_detalle": [
+                  {
+                    "nombre": "Justin Wrobleski",
+                    "pitches": 36,
+                    "ip": 2.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Seth Halvorsen",
+                    "pitches": 21,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Kyle Hurt",
+                    "pitches": 18,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Tanner Scott",
+                    "pitches": 16,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Brock Stewart",
+                    "pitches": 15,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Jack Dreyer",
+                    "pitches": 14,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  }
+                ],
+                "resumen": "Bullpen Los Angeles Dodgers: 141 pitches L3D (8 brazos, 9.0 IP) · índice 44/100",
+                "nombre": "Los Angeles Dodgers",
+                "game_pk": 823906
+              },
+              "shift_hacia_away": -0.48
+            },
+            "park_umpire": {
+              "ok": true,
+              "adj_away": -0.22,
+              "adj_home": -0.35,
+              "park_factor": 0.92,
+              "sesgo_umpire": 0.0,
+              "resumen": "Park×0.92 ump +0.00 → 44/56%"
+            },
+            "monte_carlo": {
+              "ok": true,
+              "n": 800,
+              "prob_home": 53.62,
+              "prob_away": 46.38,
+              "resumen": "MC×800 → 46/54%"
+            },
+            "totales": {
+              "ok": true,
+              "n": 800,
+              "lambda_away": 2.95,
+              "lambda_home": 3.79,
+              "mu_total": 6.88,
+              "mu_f5": 3.71,
+              "p10": 3.0,
+              "p50": 7.0,
+              "p90": 10.0,
+              "linea_total": 8.5,
+              "linea_f5": 4.5,
+              "linea_fuente": "default",
+              "linea_es_default": true,
+              "p_over": 27.4,
+              "p_under": 72.6,
+              "p_over_f5": 33.0,
+              "p_under_f5": 67.0,
+              "señal": "under",
+              "señal_f5": "under",
+              "preferir_f5": true,
+              "resumen": "MC totales μ=6.9 (F5 3.7) vs 8.5 (def) → under 73% · F5→under · preferir F5 (bullpen)"
+            },
+            "preferir_f5": true,
+            "consenso": {
+              "ok": false,
+              "motivo": "sin mercado",
+              "n_fuentes": 0
+            },
+            "tipo_pre": "limpio",
+            "resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales] → 44/56% · MC totales μ=6.9 (F5 3.7) vs 8.5 (def) → under 73% · F5→under · preferir F5 (bullpen)",
+            "tipo_pick": "scratch"
+          },
+          "elo": {
+            "ok": true,
+            "activo": true,
+            "peso_elo": 0.4,
+            "elo_away": 1519.5,
+            "elo_home": 1511.1,
+            "adj_pitcher_away": 30.8,
+            "adj_pitcher_home": 46.76,
+            "elo_adj_away": 1550.3,
+            "elo_adj_home": 1557.8,
+            "prob_elo_away": 45.48,
+            "prob_elo_home": 54.52,
+            "prob_modelo_away": 43.3,
+            "prob_modelo_home": 56.7,
+            "prob_fusion_away": 44.17,
+            "prob_fusion_home": 55.83,
+            "fip_away": 3.1,
+            "fip_home": 2.53,
+            "resumen": "Elo 1520/1511 pitch +31/+47 → 45/55% · fusión 44/56%"
+          },
+          "mc_totales": {
+            "ok": true,
+            "n": 800,
+            "lambda_away": 2.95,
+            "lambda_home": 3.79,
+            "mu_total": 6.88,
+            "mu_f5": 3.71,
+            "p10": 3.0,
+            "p50": 7.0,
+            "p90": 10.0,
+            "linea_total": 8.5,
+            "linea_f5": 4.5,
+            "linea_fuente": "default",
+            "linea_es_default": true,
+            "p_over": 27.4,
+            "p_under": 72.6,
+            "p_over_f5": 33.0,
+            "p_under_f5": 67.0,
+            "señal": "under",
+            "señal_f5": "under",
+            "preferir_f5": true,
+            "resumen": "MC totales μ=6.9 (F5 3.7) vs 8.5 (def) → under 73% · F5→under · preferir F5 (bullpen)"
+          },
+          "preferir_f5": true,
+          "total_linea": null,
+          "lineas_total": null,
+          "odds_congelada": 1.795,
+          "lineas_fuente_inicial": "modelo"
         }
       ],
       "resumen": {
@@ -184843,7 +186336,7 @@
     "accuracy_holdout": 0.587,
     "accuracy_xgb_train": 0.983,
     "accuracy_xgb_holdout": 0.587,
-    "ultimo_entreno": "2026-09-03T23:07:16.899266",
+    "ultimo_entreno": "2026-09-04T01:05:33.733628",
     "xgb": true
   },
   "calib_meta": {
@@ -184906,6 +186399,6 @@
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-03T23:06:12.698086Z"
+    "actualizado_en": "2026-09-03T23:40:02.944137Z"
   }
 }
