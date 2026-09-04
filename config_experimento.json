@@ -76,7 +76,11 @@
       "activo": true,
       "umbral_pct": 5.0,
       "min_edge_excepcion_pct": 18.0
-    }
+    },
+
+    "papel_solo_valor": true,
+    "papel_min_edge_pct": 6.0,
+    "papel_respeta_favorito_inflado": true
 
   },
 
