@@ -180543,9 +180543,9 @@
           "pitcher_away_id": 800600,
           "pitcher_home_id": 605483,
           "inicio_juego": "2026-09-04T22:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 1.3,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-04T18:19:07.729464-04:00",
@@ -181270,7 +181270,9 @@
             "fuente": "espn"
           },
           "odds_congelada": 1.433,
-          "lineas_fuente_inicial": "draftkings"
+          "lineas_fuente_inicial": "draftkings",
+          "marcador_final": "Washington Nationals 3 - Los Angeles Dodgers 5",
+          "liquidado_en": "2026-09-05T02:29:44.405260-04:00"
         },
         {
           "game_id": "823093",
@@ -181289,9 +181291,9 @@
           "pitcher_away_id": 695034,
           "pitcher_home_id": 669302,
           "inicio_juego": "2026-09-04T22:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -3.0,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-04T18:19:07.806059-04:00",
@@ -182028,7 +182030,9 @@
             "fuente": "espn"
           },
           "odds_congelada": 1.437,
-          "lineas_fuente_inicial": "draftkings"
+          "lineas_fuente_inicial": "draftkings",
+          "marcador_final": "Athletics 7 - Seattle Mariners 6",
+          "liquidado_en": "2026-09-05T02:29:44.488744-04:00"
         }
       ],
       "resumen": {
@@ -198622,6 +198626,115 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-09-05T04:38:22.024973Z"
+    },
+    {
+      "id": "lec-acierto_refuerzo-823905-1788589784",
+      "tipo": "acierto_refuerzo",
+      "fecha": "2026-09-04",
+      "game_id": "823905",
+      "visitante": "Washington Nationals",
+      "home": "Los Angeles Dodgers",
+      "pick": "Los Angeles Dodgers ML",
+      "probPick": 75.9,
+      "edge": 6.1,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Washington Nationals 3 - Los Angeles Dodgers 5",
+      "patron": "veto_acertado",
+      "leccion": "Sin dinero pero pick acertó en papel; calibrar si conviene suavizar veto.",
+      "motivo": "paper acierto sin dinero",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-05T06:29:44.485494Z",
+      "con_dinero": false,
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "neutro",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1510/1530 pitch -4/+55 → 36/64% · fusión 26/74%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 30/70% · MC totales μ=7.7 (F5 4.4) vs 8",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-oportunidad_perdida-823905-1788589784",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-09-04",
+      "game_id": "823905",
+      "visitante": "Washington Nationals",
+      "home": "Los Angeles Dodgers",
+      "pick": "Los Angeles Dodgers ML",
+      "probPick": 75.9,
+      "edge": 6.1,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Washington Nationals 3 - Los Angeles Dodgers 5",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-05T06:29:44.485708Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-823093-1788589784",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-09-04",
+      "game_id": "823093",
+      "visitante": "Athletics",
+      "home": "Seattle Mariners",
+      "pick": "Seattle Mariners ML",
+      "probPick": 75.9,
+      "edge": 6.3,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Athletics 7 - Seattle Mariners 6",
+      "patron": "favorito_inflado",
+      "leccion": "Prob ≥62% exige edge ≥15% para dinero; si no, solo papel. · Capas: bullpen,park_umpire,monte_carlo,mc_totales",
+      "motivo": "Heurística post-fallo (favorito_inflado)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-05T06:29:44.919866Z",
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "over",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1439/1462 pitch -55/+15 → 34/66% · fusión 33/67%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 34/66% · MC totales μ=11.7 (F5 6.5) vs ",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-veto_acertado-823093-1788589784",
+      "tipo": "veto_acertado",
+      "fecha": "2026-09-04",
+      "game_id": "823093",
+      "visitante": "Athletics",
+      "home": "Seattle Mariners",
+      "pick": "Seattle Mariners ML",
+      "probPick": 75.9,
+      "edge": 6.3,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Athletics 7 - Seattle Mariners 6",
+      "patron": "veto_acertado",
+      "leccion": "Bloqueo de dinero acertó: el pick falló; mantener señales parecidas.",
+      "motivo": "mente bloqueó dinero + fallo",
+      "confianza": 5,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-05T06:29:44.920409Z"
     }
   ],
   "mente_stats": {
@@ -198632,9 +198745,9 @@
         "fallos": 5
       },
       "PASAR": {
-        "n": 154,
-        "evito_fallo": 57,
-        "oportunidad_perdida": 97
+        "n": 156,
+        "evito_fallo": 58,
+        "oportunidad_perdida": 98
       },
       "ESPERAR": {
         "n": 85,
@@ -198658,9 +198771,9 @@
         "apostar_fail": 0.0
       },
       "humanos": {
-        "n": 215.0,
-        "pasar_ok": 80.5,
-        "pasar_miss": 114.5,
+        "n": 217.0,
+        "pasar_ok": 81.5,
+        "pasar_miss": 115.5,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
       },
@@ -198679,22 +198792,22 @@
         "apostar_fail": 0.0
       },
       "favorito_alto": {
-        "n": 71.5,
-        "pasar_ok": 20.0,
-        "pasar_miss": 41.5,
+        "n": 73.5,
+        "pasar_ok": 21.0,
+        "pasar_miss": 42.5,
         "apostar_ok": 0.0,
         "apostar_fail": 10.0
       },
       "favorito_inflado": {
-        "n": 58.0,
-        "pasar_ok": 16.0,
-        "pasar_miss": 32.0,
+        "n": 60.0,
+        "pasar_ok": 17.0,
+        "pasar_miss": 33.0,
         "apostar_ok": 0.0,
         "apostar_fail": 10.0
       },
       "mc_over": {
-        "n": 180.5,
-        "pasar_ok": 68.0,
+        "n": 181.5,
+        "pasar_ok": 69.0,
         "pasar_miss": 89.5,
         "apostar_ok": 12.0,
         "apostar_fail": 11.0
@@ -198707,9 +198820,9 @@
         "apostar_fail": 0.0
       },
       "preferir_f5": {
-        "n": 184.5,
-        "pasar_ok": 67.5,
-        "pasar_miss": 97.0,
+        "n": 186.5,
+        "pasar_ok": 68.5,
+        "pasar_miss": 98.0,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
       },
@@ -199022,34 +199135,36 @@
       "824146:acierto",
       "824067:fallo",
       "824311:acierto",
-      "823256:fallo"
+      "823256:fallo",
+      "823905:acierto",
+      "823093:fallo"
     ],
-    "actualizado_en": "2026-09-05T04:38:22.025266Z"
+    "actualizado_en": "2026-09-05T06:29:44.920635Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 248,
-    "muestras_reales": 248,
+    "muestras": 250,
+    "muestras_reales": 250,
     "muestras_sinteticas": 0,
     "ratio_features_reales": 1.0,
     "entreno_bloqueado": false,
     "schema": 4,
-    "mensaje": "Reentrenado con 248 muestras (248 reales, RF acc 97.2%, RF holdout 52.0%, XGB acc 98.8%, XGB holdout 56.0%)",
-    "accuracy_train": 0.972,
-    "accuracy_holdout": 0.52,
-    "accuracy_xgb_train": 0.988,
-    "accuracy_xgb_holdout": 0.56,
-    "ultimo_entreno": "2026-09-05T04:38:34.026600",
+    "mensaje": "Reentrenado con 250 muestras (250 reales, RF acc 98.0%, RF holdout 54.0%, XGB acc 99.2%, XGB holdout 52.0%)",
+    "accuracy_train": 0.98,
+    "accuracy_holdout": 0.54,
+    "accuracy_xgb_train": 0.992,
+    "accuracy_xgb_holdout": 0.52,
+    "ultimo_entreno": "2026-09-05T06:29:57.596196",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 248,
+    "muestras": 250,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
         "ok": true,
-        "muestras": 52,
+        "muestras": 54,
         "metodo": "isotonic"
       },
       "underdog": {
@@ -199068,11 +199183,11 @@
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 248 muestras (ECE≈0.00) · 4 tipos",
+    "mensaje": "Calibrado isotonic con 250 muestras (ECE≈0.01) · 4 tipos",
     "por_segmento": {
       "prob_alta": {
         "ok": true,
-        "muestras": 74,
+        "muestras": 76,
         "metodo": "isotonic"
       },
       "underdog_cuota": {
@@ -199095,13 +199210,13 @@
         "muestras": 9
       }
     },
-    "ece": 0.005
+    "ece": 0.007
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-05T01:52:12.837055Z"
+    "actualizado_en": "2026-09-05T06:28:58.586882Z"
   }
 }
