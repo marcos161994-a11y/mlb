@@ -182799,9 +182799,9 @@
           "pitcher_away_id": 683627,
           "pitcher_home_id": 804267,
           "inicio_juego": "2026-09-05T16:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -3.0,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-05T15:10:22.021682-04:00",
@@ -183485,7 +183485,9 @@
           "odds_congelada": 1.599,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 0.0,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "San Francisco Giants 9 - New York Mets 5",
+          "liquidado_en": "2026-09-05T19:08:02.359875-04:00"
         },
         {
           "game_id": "823419",
@@ -209881,6 +209883,40 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-09-05T06:29:44.920409Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-823577-1788649682",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-09-05",
+      "game_id": "823577",
+      "visitante": "San Francisco Giants",
+      "home": "New York Mets",
+      "pick": "New York Mets ML",
+      "probPick": 65.5,
+      "edge": 3.0,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "San Francisco Giants 9 - New York Mets 5",
+      "patron": "edge_falso",
+      "leccion": "Exigir edge >= 6% contra cuota real; edge bajo no basta. · Capas: bullpen,park_umpire,monte_carlo,mc_totales",
+      "motivo": "Heurística post-fallo (edge_falso)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-05T23:08:02.629157Z",
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "over",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1463/1507 pitch +3/+8 → 40/60% · fusión 33/67%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 34/66% · MC totales μ=9.3 (F5 5.4) vs 8",
+        "preferir_f5": true
+      }
     }
   ],
   "mente_stats": {
@@ -209896,9 +209932,9 @@
         "oportunidad_perdida": 98
       },
       "ESPERAR": {
-        "n": 85,
+        "n": 86,
         "aciertos": 45,
-        "fallos": 40
+        "fallos": 41
       }
     },
     "patrones": {
@@ -209917,8 +209953,8 @@
         "apostar_fail": 0.0
       },
       "humanos": {
-        "n": 217.0,
-        "pasar_ok": 81.5,
+        "n": 218.0,
+        "pasar_ok": 82.5,
         "pasar_miss": 115.5,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
@@ -209931,29 +209967,29 @@
         "apostar_fail": 0.0
       },
       "edge_bajo": {
-        "n": 170.0,
-        "pasar_ok": 64.0,
+        "n": 171.0,
+        "pasar_ok": 65.0,
         "pasar_miss": 106.0,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
       "favorito_alto": {
-        "n": 73.5,
-        "pasar_ok": 21.0,
+        "n": 74.5,
+        "pasar_ok": 22.0,
         "pasar_miss": 42.5,
         "apostar_ok": 0.0,
         "apostar_fail": 10.0
       },
       "favorito_inflado": {
-        "n": 60.0,
-        "pasar_ok": 17.0,
+        "n": 61.0,
+        "pasar_ok": 18.0,
         "pasar_miss": 33.0,
         "apostar_ok": 0.0,
         "apostar_fail": 10.0
       },
       "mc_over": {
-        "n": 181.5,
-        "pasar_ok": 69.0,
+        "n": 182.5,
+        "pasar_ok": 70.0,
         "pasar_miss": 89.5,
         "apostar_ok": 12.0,
         "apostar_fail": 11.0
@@ -209966,8 +210002,8 @@
         "apostar_fail": 0.0
       },
       "preferir_f5": {
-        "n": 186.5,
-        "pasar_ok": 68.5,
+        "n": 187.5,
+        "pasar_ok": 69.5,
         "pasar_miss": 98.0,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
@@ -209994,8 +210030,8 @@
         "apostar_fail": 0.0
       },
       "linea_tarde": {
-        "n": 48.0,
-        "pasar_ok": 26.0,
+        "n": 49.0,
+        "pasar_ok": 27.0,
         "pasar_miss": 19.0,
         "apostar_ok": 3.0,
         "apostar_fail": 0.0
@@ -210283,34 +210319,35 @@
       "824311:acierto",
       "823256:fallo",
       "823905:acierto",
-      "823093:fallo"
+      "823093:fallo",
+      "823577:fallo"
     ],
-    "actualizado_en": "2026-09-05T06:29:44.920635Z"
+    "actualizado_en": "2026-09-05T23:08:02.629661Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 250,
-    "muestras_reales": 250,
+    "muestras": 251,
+    "muestras_reales": 251,
     "muestras_sinteticas": 0,
     "ratio_features_reales": 1.0,
     "entreno_bloqueado": false,
     "schema": 4,
-    "mensaje": "Reentrenado con 250 muestras (250 reales, RF acc 98.0%, RF holdout 54.0%, XGB acc 99.2%, XGB holdout 52.0%)",
-    "accuracy_train": 0.98,
-    "accuracy_holdout": 0.54,
-    "accuracy_xgb_train": 0.992,
-    "accuracy_xgb_holdout": 0.52,
-    "ultimo_entreno": "2026-09-05T21:22:28.329567",
+    "mensaje": "Reentrenado con 251 muestras (251 reales, RF acc 97.6%, RF holdout 60.8%, XGB acc 98.8%, XGB holdout 60.8%)",
+    "accuracy_train": 0.976,
+    "accuracy_holdout": 0.608,
+    "accuracy_xgb_train": 0.988,
+    "accuracy_xgb_holdout": 0.608,
+    "ultimo_entreno": "2026-09-05T23:08:14.578491",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 250,
+    "muestras": 251,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
         "ok": true,
-        "muestras": 54,
+        "muestras": 55,
         "metodo": "isotonic"
       },
       "underdog": {
@@ -210329,11 +210366,11 @@
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 250 muestras (ECE≈0.01) · 4 tipos",
+    "mensaje": "Calibrado isotonic con 251 muestras (ECE≈0.01) · 4 tipos",
     "por_segmento": {
       "prob_alta": {
         "ok": true,
-        "muestras": 76,
+        "muestras": 77,
         "metodo": "isotonic"
       },
       "underdog_cuota": {
@@ -210363,6 +210400,6 @@
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-05T20:14:58.935033Z"
+    "actualizado_en": "2026-09-05T21:47:02.470587Z"
   }
 }
