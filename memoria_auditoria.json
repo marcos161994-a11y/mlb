@@ -199946,9 +199946,9 @@
           "pitcher_away_id": 693855,
           "pitcher_home_id": 669022,
           "inicio_juego": "2026-09-06T14:35:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.78,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-06T12:20:45.934388-04:00",
@@ -200714,7 +200714,9 @@
           "odds_congelada": 1.926,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 0.0,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "Tampa Bay Rays 6 - Texas Rangers 8",
+          "liquidado_en": "2026-09-06T17:51:33.798931-04:00"
         },
         {
           "game_id": "824309",
@@ -200733,9 +200735,9 @@
           "pitcher_away_id": 681517,
           "pitcher_home_id": 685299,
           "inicio_juego": "2026-09-06T15:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.22,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-06T12:20:46.131655-04:00",
@@ -201457,7 +201459,9 @@
             "fuente": "espn"
           },
           "odds_congelada": 1.741,
-          "lineas_fuente_inicial": "draftkings"
+          "lineas_fuente_inicial": "draftkings",
+          "marcador_final": "St. Louis Cardinals 10 - Colorado Rockies 8",
+          "liquidado_en": "2026-09-06T18:28:37.387718-04:00"
         },
         {
           "game_id": "823091",
@@ -222315,6 +222319,116 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-09-06T21:23:46.953691Z"
+    },
+    {
+      "id": "lec-acierto_refuerzo-822848-1788731493",
+      "tipo": "acierto_refuerzo",
+      "fecha": "2026-09-06",
+      "game_id": "822848",
+      "visitante": "Tampa Bay Rays",
+      "home": "Texas Rangers",
+      "pick": "Texas Rangers ML",
+      "probPick": 50.7,
+      "edge": -1.2,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Tampa Bay Rays 6 - Texas Rangers 8",
+      "patron": "retry_cuota_ok",
+      "leccion": "Cuota llegó en retry T-45/T-30 y el pick acertó; priorizar refresh.",
+      "motivo": "retry cuota + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-06T21:51:33.890147Z",
+      "con_dinero": false,
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "over",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1542/1502 pitch +8/+13 → 51/49% · fusión 47/53%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 49/51% · MC totales μ=10.5 (F5 5.8) vs ",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-oportunidad_perdida-822848-1788731493",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-09-06",
+      "game_id": "822848",
+      "visitante": "Tampa Bay Rays",
+      "home": "Texas Rangers",
+      "pick": "Texas Rangers ML",
+      "probPick": 50.7,
+      "edge": -1.2,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Tampa Bay Rays 6 - Texas Rangers 8",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-06T21:51:33.890352Z"
+    },
+    {
+      "id": "lec-acierto_refuerzo-824309-1788733717",
+      "tipo": "acierto_refuerzo",
+      "fecha": "2026-09-06",
+      "game_id": "824309",
+      "visitante": "St. Louis Cardinals",
+      "home": "Colorado Rockies",
+      "pick": "St. Louis Cardinals ML",
+      "probPick": 53.3,
+      "edge": -4.1,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "St. Louis Cardinals 10 - Colorado Rockies 8",
+      "patron": "veto_acertado",
+      "leccion": "Sin dinero pero pick acertó en papel; calibrar si conviene suavizar veto.",
+      "motivo": "paper acierto sin dinero",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-06T22:28:37.388116Z",
+      "con_dinero": false,
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "neutro",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1499/1465 pitch +17/-11 → 55/45% · fusión 54/46%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 53/47% · MC totales μ=11.8 (F5 6.6) vs ",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-oportunidad_perdida-824309-1788733717",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-09-06",
+      "game_id": "824309",
+      "visitante": "St. Louis Cardinals",
+      "home": "Colorado Rockies",
+      "pick": "St. Louis Cardinals ML",
+      "probPick": 53.3,
+      "edge": -4.1,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "St. Louis Cardinals 10 - Colorado Rockies 8",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-06T22:28:37.388340Z"
     }
   ],
   "mente_stats": {
@@ -222325,21 +222439,21 @@
         "fallos": 5
       },
       "PASAR": {
-        "n": 170,
+        "n": 171,
         "evito_fallo": 64,
-        "oportunidad_perdida": 106
+        "oportunidad_perdida": 107
       },
       "ESPERAR": {
-        "n": 95,
-        "aciertos": 47,
+        "n": 96,
+        "aciertos": 48,
         "fallos": 48
       }
     },
     "patrones": {
       "scratch": {
-        "n": 77.0,
+        "n": 78.0,
         "pasar_ok": 30.0,
-        "pasar_miss": 47.0,
+        "pasar_miss": 48.0,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
@@ -222351,9 +222465,9 @@
         "apostar_fail": 0.0
       },
       "humanos": {
-        "n": 240.0,
+        "n": 242.0,
         "pasar_ok": 95.5,
-        "pasar_miss": 124.5,
+        "pasar_miss": 126.5,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
       },
@@ -222365,9 +222479,9 @@
         "apostar_fail": 0.0
       },
       "edge_bajo": {
-        "n": 193.0,
+        "n": 195.0,
         "pasar_ok": 77.0,
-        "pasar_miss": 116.0,
+        "pasar_miss": 118.0,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
@@ -222386,9 +222500,9 @@
         "apostar_fail": 10.0
       },
       "mc_over": {
-        "n": 203.5,
+        "n": 204.5,
         "pasar_ok": 83.0,
-        "pasar_miss": 97.5,
+        "pasar_miss": 98.5,
         "apostar_ok": 12.0,
         "apostar_fail": 11.0
       },
@@ -222400,9 +222514,9 @@
         "apostar_fail": 0.0
       },
       "preferir_f5": {
-        "n": 204.5,
+        "n": 206.5,
         "pasar_ok": 78.5,
-        "pasar_miss": 106.0,
+        "pasar_miss": 108.0,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
       },
@@ -222428,9 +222542,9 @@
         "apostar_fail": 0.0
       },
       "linea_tarde": {
-        "n": 63.0,
+        "n": 64.0,
         "pasar_ok": 35.0,
-        "pasar_miss": 25.0,
+        "pasar_miss": 26.0,
         "apostar_ok": 3.0,
         "apostar_fail": 0.0
       },
@@ -222741,29 +222855,31 @@
       "824385:acierto",
       "823822:fallo",
       "824142:fallo",
-      "824065:acierto"
+      "824065:acierto",
+      "822848:acierto",
+      "824309:acierto"
     ],
-    "actualizado_en": "2026-09-06T21:23:46.953930Z"
+    "actualizado_en": "2026-09-06T22:28:37.388538Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 269,
-    "muestras_reales": 269,
+    "muestras": 275,
+    "muestras_reales": 275,
     "muestras_sinteticas": 0,
     "ratio_features_reales": 1.0,
     "entreno_bloqueado": false,
     "schema": 4,
-    "mensaje": "Reentrenado con 269 muestras (269 reales, RF acc 98.5%, RF holdout 55.6%, XGB acc 98.5%, XGB holdout 51.9%)",
-    "accuracy_train": 0.985,
-    "accuracy_holdout": 0.556,
+    "mensaje": "Reentrenado con 275 muestras (275 reales, RF acc 98.9%, RF holdout 52.7%, XGB acc 98.5%, XGB holdout 52.7%)",
+    "accuracy_train": 0.989,
+    "accuracy_holdout": 0.527,
     "accuracy_xgb_train": 0.985,
-    "accuracy_xgb_holdout": 0.519,
-    "ultimo_entreno": "2026-09-06T20:20:37.350417",
+    "accuracy_xgb_holdout": 0.527,
+    "ultimo_entreno": "2026-09-06T21:51:46.196769",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 269,
+    "muestras": 275,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
@@ -222773,35 +222889,35 @@
       },
       "underdog": {
         "ok": true,
-        "muestras": 69,
+        "muestras": 70,
         "metodo": "isotonic"
       },
       "scratch": {
         "ok": true,
-        "muestras": 85,
+        "muestras": 88,
         "metodo": "isotonic"
       },
       "limpio": {
         "ok": true,
-        "muestras": 56,
+        "muestras": 58,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 269 muestras (ECE≈0.01) · 4 tipos",
+    "mensaje": "Calibrado isotonic con 275 muestras (ECE≈0.01) · 4 tipos",
     "por_segmento": {
       "prob_alta": {
         "ok": true,
-        "muestras": 80,
+        "muestras": 81,
         "metodo": "isotonic"
       },
       "underdog_cuota": {
         "ok": true,
-        "muestras": 35,
+        "muestras": 36,
         "metodo": "isotonic"
       },
       "mc_over": {
         "ok": true,
-        "muestras": 118,
+        "muestras": 122,
         "metodo": "isotonic"
       },
       "entorno_f5": {
@@ -222814,13 +222930,13 @@
         "muestras": 9
       }
     },
-    "ece": 0.012
+    "ece": 0.009
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-06T20:19:17.454959Z"
+    "actualizado_en": "2026-09-06T21:50:27.891811Z"
   }
 }
