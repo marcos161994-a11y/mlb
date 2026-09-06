@@ -193266,9 +193266,9 @@
           "pitcher_away_id": 690986,
           "pitcher_home_id": 663903,
           "inicio_juego": "2026-09-06T12:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -3.0,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-06T11:10:11.639169-04:00",
@@ -193942,7 +193942,9 @@
           "odds_congelada": 1.699,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": -1.12,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "Milwaukee Brewers 8 - Cincinnati Reds 12",
+          "liquidado_en": "2026-09-06T15:45:00.736090-04:00"
         },
         {
           "game_id": "823417",
@@ -221846,6 +221848,40 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-09-06T05:47:37.795480Z"
+    },
+    {
+      "id": "lec-fallo_postmortem-824469-1788723901",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-09-06",
+      "game_id": "824469",
+      "visitante": "Milwaukee Brewers",
+      "home": "Cincinnati Reds",
+      "pick": "Milwaukee Brewers ML",
+      "probPick": 52.2,
+      "edge": -7.3,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Milwaukee Brewers 8 - Cincinnati Reds 12",
+      "patron": "scratch_lineup",
+      "leccion": "PASAR si scratch/lineup debilita el lado del pick. · Capas: bullpen,park_umpire,monte_carlo,mc_totales",
+      "motivo": "Heurística post-fallo (scratch_lineup)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-06T19:45:01.288221Z",
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "over",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1531/1515 pitch +8/-24 → 54/46% · fusión 52/48%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 52/48% · MC totales μ=11.7 (F5 6.6) vs ",
+        "preferir_f5": true
+      }
     }
   ],
   "mente_stats": {
@@ -221861,15 +221897,15 @@
         "oportunidad_perdida": 101
       },
       "ESPERAR": {
-        "n": 92,
+        "n": 93,
         "aciertos": 47,
-        "fallos": 45
+        "fallos": 46
       }
     },
     "patrones": {
       "scratch": {
-        "n": 73.0,
-        "pasar_ok": 29.0,
+        "n": 74.0,
+        "pasar_ok": 30.0,
         "pasar_miss": 44.0,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
@@ -221882,8 +221918,8 @@
         "apostar_fail": 0.0
       },
       "humanos": {
-        "n": 231.0,
-        "pasar_ok": 91.5,
+        "n": 232.0,
+        "pasar_ok": 92.5,
         "pasar_miss": 119.5,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
@@ -221896,8 +221932,8 @@
         "apostar_fail": 0.0
       },
       "edge_bajo": {
-        "n": 184.0,
-        "pasar_ok": 73.0,
+        "n": 185.0,
+        "pasar_ok": 74.0,
         "pasar_miss": 111.0,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
@@ -221917,8 +221953,8 @@
         "apostar_fail": 10.0
       },
       "mc_over": {
-        "n": 195.5,
-        "pasar_ok": 79.0,
+        "n": 196.5,
+        "pasar_ok": 80.0,
         "pasar_miss": 93.5,
         "apostar_ok": 12.0,
         "apostar_fail": 11.0
@@ -221931,8 +221967,8 @@
         "apostar_fail": 0.0
       },
       "preferir_f5": {
-        "n": 196.5,
-        "pasar_ok": 75.5,
+        "n": 197.5,
+        "pasar_ok": 76.5,
         "pasar_miss": 101.0,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
@@ -221959,8 +221995,8 @@
         "apostar_fail": 0.0
       },
       "linea_tarde": {
-        "n": 54.0,
-        "pasar_ok": 31.0,
+        "n": 55.0,
+        "pasar_ok": 32.0,
         "pasar_miss": 20.0,
         "apostar_ok": 3.0,
         "apostar_fail": 0.0
@@ -222263,29 +222299,30 @@
       "824468:fallo",
       "824310:fallo",
       "823904:acierto",
-      "823094:fallo"
+      "823094:fallo",
+      "824469:fallo"
     ],
-    "actualizado_en": "2026-09-06T05:47:37.795718Z"
+    "actualizado_en": "2026-09-06T19:45:01.291743Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 265,
-    "muestras_reales": 265,
+    "muestras": 266,
+    "muestras_reales": 266,
     "muestras_sinteticas": 0,
     "ratio_features_reales": 1.0,
     "entreno_bloqueado": false,
     "schema": 4,
-    "mensaje": "Reentrenado con 265 muestras (265 reales, RF acc 98.9%, RF holdout 58.5%, XGB acc 97.7%, XGB holdout 56.6%)",
-    "accuracy_train": 0.989,
-    "accuracy_holdout": 0.585,
+    "mensaje": "Reentrenado con 266 muestras (266 reales, RF acc 98.5%, RF holdout 48.1%, XGB acc 97.7%, XGB holdout 57.4%)",
+    "accuracy_train": 0.985,
+    "accuracy_holdout": 0.481,
     "accuracy_xgb_train": 0.977,
-    "accuracy_xgb_holdout": 0.566,
-    "ultimo_entreno": "2026-09-06T18:27:02.456929",
+    "accuracy_xgb_holdout": 0.574,
+    "ultimo_entreno": "2026-09-06T19:45:14.793586",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 265,
+    "muestras": 266,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
@@ -222300,7 +222337,7 @@
       },
       "scratch": {
         "ok": true,
-        "muestras": 83,
+        "muestras": 84,
         "metodo": "isotonic"
       },
       "limpio": {
@@ -222309,7 +222346,7 @@
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 265 muestras (ECE≈0.01) · 4 tipos",
+    "mensaje": "Calibrado isotonic con 266 muestras (ECE≈0.01) · 4 tipos",
     "por_segmento": {
       "prob_alta": {
         "ok": true,
@@ -222323,7 +222360,7 @@
       },
       "mc_over": {
         "ok": true,
-        "muestras": 115,
+        "muestras": 116,
         "metodo": "isotonic"
       },
       "entorno_f5": {
@@ -222336,13 +222373,13 @@
         "muestras": 9
       }
     },
-    "ece": 0.011
+    "ece": 0.013
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-06T17:52:08.357336Z"
+    "actualizado_en": "2026-09-06T19:43:45.991169Z"
   }
 }
