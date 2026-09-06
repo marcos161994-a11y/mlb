@@ -2569,6 +2569,31 @@ def _bloquear_juego_locked(
                 "prediccion_guardada": True,
             }
 
+    # Favoritos cortos (cuota baja) han quemado bankroll histórico → exigir cuota mínima.
+    min_cuota_dinero = float((cfg.get("estrategia") or {}).get("min_cuota_dinero", 0) or 0)
+    if min_cuota_dinero > 1.0 and tiene_cuota_mercado(juego):
+        try:
+            odds_now = float(juego.get("odds") or 0)
+        except (TypeError, ValueError):
+            odds_now = 0.0
+        if odds_now > 1.0 and odds_now < min_cuota_dinero:
+            motivo = (
+                f"Cuota {odds_now:.3f} < mínimo dinero {min_cuota_dinero:.2f} "
+                "(evitar favoritos cortos)"
+            )
+            if pred_existente is not None:
+                pred_existente["apostable"] = False
+                pred_existente["motivo_apuesta"] = (
+                    f"{pred_existente.get('motivo_apuesta') or ''} · {motivo}"
+                ).strip(" ·")
+            guardar_memoria(memoria)
+            return {
+                "ok": False,
+                "motivo": motivo,
+                "juego": juego["visitante"] + " vs " + juego["home"],
+                "prediccion_guardada": True,
+            }
+
     # Modelo propone → MENTE concluye (APOSTAR/PASAR/ESPERAR) → solo entonces dinero.
     # Si mente off: cae al veto Groq legacy (con lecciones en memoria).
     mente = None

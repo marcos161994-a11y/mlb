@@ -36,11 +36,13 @@
 
   "estrategia": {
 
-    "min_edge_pct": 6.0,
+    "min_edge_pct": 8.0,
 
-    "max_apuestas_dia": 4,
+    "max_apuestas_dia": 2,
 
     "min_prob_modelo": 58.0,
+
+    "min_cuota_dinero": 1.70,
 
     "requiere_betmgm": true,
 
@@ -79,7 +81,7 @@
     },
 
     "papel_solo_valor": true,
-    "papel_min_edge_pct": 6.0,
+    "papel_min_edge_pct": 8.0,
     "papel_respeta_favorito_inflado": true
 
   },
@@ -146,8 +148,8 @@
   },
 
   "mente": {
-    "modo": "normal",
-    "min_confianza": 3,
+    "modo": "estricto",
+    "min_confianza": 4,
     "requiere_mercado": true,
     "shadow": false
   },

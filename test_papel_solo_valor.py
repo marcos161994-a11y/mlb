@@ -5,10 +5,10 @@ from servidor_mlb import omitir_congelar_papel
 
 CFG = {
     "estrategia": {
-        "min_edge_pct": 6.0,
+        "min_edge_pct": 8.0,
         "min_prob_modelo": 58.0,
         "papel_solo_valor": True,
-        "papel_min_edge_pct": 6.0,
+        "papel_min_edge_pct": 8.0,
         "papel_respeta_favorito_inflado": True,
         "favorito_inflado": {
             "activo": True,
@@ -63,12 +63,40 @@ def test_acepta_pick_con_valor():
         "pick": "Twins ML",
         "probPick": 60.1,
         "odds": 1.87,
-        "edge": 6.6,
+        "edge": 8.6,
         "lineas_fuente": "draftkings",
     }
     omitir, motivo = omitir_congelar_papel(juego, CFG)
     assert omitir is False
     assert motivo == ""
+
+
+def test_omite_edge_entre_6_y_8():
+    """Con barra a 8%, un edge 6.5% ya no entra a papel."""
+    juego = {
+        "pick": "Twins ML",
+        "probPick": 60.1,
+        "odds": 1.87,
+        "edge": 6.5,
+        "lineas_fuente": "draftkings",
+    }
+    omitir, motivo = omitir_congelar_papel(juego, CFG)
+    assert omitir is True
+    assert "edge" in motivo
+
+
+def test_config_fase_a_defensiva():
+    import json
+    from pathlib import Path
+
+    cfg = json.loads(Path("config_experimento.json").read_text(encoding="utf-8"))
+    estr = cfg["estrategia"]
+    assert float(estr["min_edge_pct"]) >= 8.0
+    assert int(estr["max_apuestas_dia"]) <= 2
+    assert float(estr.get("papel_min_edge_pct", 0)) >= 8.0
+    assert float(estr.get("min_cuota_dinero", 0)) >= 1.70
+    assert cfg["mente"]["modo"] == "estricto"
+    assert int(cfg["mente"]["min_confianza"]) >= 4
 
 
 def test_desactivado_deja_pasar_sin_valor():
