@@ -204496,9 +204496,9 @@
           "pitcher_away_id": 656550,
           "pitcher_home_id": 666200,
           "inicio_juego": "2026-09-07T13:05:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 1.57,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-07T11:52:37.179114-04:00",
@@ -205226,7 +205226,9 @@
           "odds_congelada": 1.541,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": -1.1,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "Atlanta Braves 0 - Philadelphia Phillies 1",
+          "liquidado_en": "2026-09-07T15:35:51.430869-04:00"
         },
         {
           "game_id": "823820",
@@ -230227,6 +230229,61 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-09-07T06:46:36.726579Z"
+    },
+    {
+      "id": "lec-acierto_refuerzo-823415-1788809751",
+      "tipo": "acierto_refuerzo",
+      "fecha": "2026-09-07",
+      "game_id": "823415",
+      "visitante": "Atlanta Braves",
+      "home": "Philadelphia Phillies",
+      "pick": "Philadelphia Phillies ML",
+      "probPick": 63.3,
+      "edge": -2.3,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Atlanta Braves 0 - Philadelphia Phillies 1",
+      "patron": "retry_cuota_ok",
+      "leccion": "Cuota llegó en retry T-45/T-30 y el pick acertó; priorizar refresh.",
+      "motivo": "retry cuota + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-07T19:35:51.431320Z",
+      "con_dinero": false,
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "over",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1534/1521 pitch -15/+38 → 41/59% · fusión 35/65%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 37/63% · MC totales μ=9.8 (F5 5.5) vs 8",
+        "preferir_f5": false
+      }
+    },
+    {
+      "id": "lec-oportunidad_perdida-823415-1788809751",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-09-07",
+      "game_id": "823415",
+      "visitante": "Atlanta Braves",
+      "home": "Philadelphia Phillies",
+      "pick": "Philadelphia Phillies ML",
+      "probPick": 63.3,
+      "edge": -2.3,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Atlanta Braves 0 - Philadelphia Phillies 1",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-07T19:35:51.431672Z"
     }
   ],
   "mente_stats": {
@@ -230237,9 +230294,9 @@
         "fallos": 5
       },
       "PASAR": {
-        "n": 175,
+        "n": 176,
         "evito_fallo": 65,
-        "oportunidad_perdida": 110
+        "oportunidad_perdida": 111
       },
       "ESPERAR": {
         "n": 96,
@@ -230249,9 +230306,9 @@
     },
     "patrones": {
       "scratch": {
-        "n": 78.0,
+        "n": 79.0,
         "pasar_ok": 30.0,
-        "pasar_miss": 48.0,
+        "pasar_miss": 49.0,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
@@ -230263,9 +230320,9 @@
         "apostar_fail": 0.0
       },
       "humanos": {
-        "n": 246.0,
+        "n": 247.0,
         "pasar_ok": 96.5,
-        "pasar_miss": 129.5,
+        "pasar_miss": 130.5,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
       },
@@ -230277,30 +230334,30 @@
         "apostar_fail": 0.0
       },
       "edge_bajo": {
-        "n": 199.0,
+        "n": 200.0,
         "pasar_ok": 78.0,
-        "pasar_miss": 121.0,
+        "pasar_miss": 122.0,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
       "favorito_alto": {
-        "n": 78.5,
+        "n": 79.5,
         "pasar_ok": 24.0,
-        "pasar_miss": 44.5,
+        "pasar_miss": 45.5,
         "apostar_ok": 0.0,
         "apostar_fail": 10.0
       },
       "favorito_inflado": {
-        "n": 65.0,
+        "n": 66.0,
         "pasar_ok": 20.0,
-        "pasar_miss": 35.0,
+        "pasar_miss": 36.0,
         "apostar_ok": 0.0,
         "apostar_fail": 10.0
       },
       "mc_over": {
-        "n": 206.5,
+        "n": 207.5,
         "pasar_ok": 84.0,
-        "pasar_miss": 99.5,
+        "pasar_miss": 100.5,
         "apostar_ok": 12.0,
         "apostar_fail": 11.0
       },
@@ -230340,9 +230397,9 @@
         "apostar_fail": 0.0
       },
       "linea_tarde": {
-        "n": 64.0,
+        "n": 65.0,
         "pasar_ok": 35.0,
-        "pasar_miss": 26.0,
+        "pasar_miss": 27.0,
         "apostar_ok": 3.0,
         "apostar_fail": 0.0
       },
@@ -230659,29 +230716,30 @@
       "823091:acierto",
       "823253:fallo",
       "824552:acierto",
-      "823903:acierto"
+      "823903:acierto",
+      "823415:acierto"
     ],
-    "actualizado_en": "2026-09-07T06:46:36.729982Z"
+    "actualizado_en": "2026-09-07T19:35:51.432070Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 280,
-    "muestras_reales": 280,
+    "muestras": 281,
+    "muestras_reales": 281,
     "muestras_sinteticas": 0,
     "ratio_features_reales": 1.0,
     "entreno_bloqueado": false,
     "schema": 4,
-    "mensaje": "Reentrenado con 280 muestras (280 reales, RF acc 99.3%, RF holdout 50.0%, XGB acc 98.9%, XGB holdout 53.6%)",
-    "accuracy_train": 0.993,
-    "accuracy_holdout": 0.5,
-    "accuracy_xgb_train": 0.989,
-    "accuracy_xgb_holdout": 0.536,
-    "ultimo_entreno": "2026-09-07T15:51:58.570188",
+    "mensaje": "Reentrenado con 281 muestras (281 reales, RF acc 98.2%, RF holdout 49.1%, XGB acc 98.6%, XGB holdout 57.9%)",
+    "accuracy_train": 0.982,
+    "accuracy_holdout": 0.491,
+    "accuracy_xgb_train": 0.986,
+    "accuracy_xgb_holdout": 0.579,
+    "ultimo_entreno": "2026-09-07T19:36:03.342602",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 280,
+    "muestras": 281,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
@@ -230696,7 +230754,7 @@
       },
       "scratch": {
         "ok": true,
-        "muestras": 88,
+        "muestras": 89,
         "metodo": "isotonic"
       },
       "limpio": {
@@ -230705,11 +230763,11 @@
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 280 muestras (ECE≈0.01) · 4 tipos",
+    "mensaje": "Calibrado isotonic con 281 muestras (ECE≈0.00) · 4 tipos",
     "por_segmento": {
       "prob_alta": {
         "ok": true,
-        "muestras": 81,
+        "muestras": 82,
         "metodo": "isotonic"
       },
       "underdog_cuota": {
@@ -230732,13 +230790,13 @@
         "muestras": 9
       }
     },
-    "ece": 0.006
+    "ece": 0.005
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-07T13:52:28.480699Z"
+    "actualizado_en": "2026-09-07T18:29:05.934726Z"
   }
 }
