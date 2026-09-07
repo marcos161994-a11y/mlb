@@ -2,7 +2,7 @@
   "modo": "simulacion",
   "capital": 100.68,
   "capital_inicial": 100.0,
-  "dia_actual": 23,
+  "dia_actual": 24,
   "dias_totales": 200,
   "stake_por_juego": 5.0,
   "experimento_activo": true,
@@ -202981,9 +202981,9 @@
           "pitcher_away_id": 641927,
           "pitcher_home_id": 663542,
           "inicio_juego": "2026-09-06T18:20:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.0,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-06T12:20:46.639401-04:00",
@@ -203726,7 +203726,9 @@
             "fuente": "espn"
           },
           "odds_congelada": 1.667,
-          "lineas_fuente_inicial": "draftkings"
+          "lineas_fuente_inicial": "draftkings",
+          "marcador_final": "Minnesota Twins 1 - Chicago White Sox 10",
+          "liquidado_en": "2026-09-06T21:44:57.142051-04:00"
         },
         {
           "game_id": "823903",
@@ -204459,6 +204461,22 @@
           "lineas_fuente_inicial": "draftkings"
         }
       ],
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
+    },
+    {
+      "dia": 24,
+      "fecha": "2026-09-07",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
       "resumen": {
         "jugadas": 0,
         "ganadas": 0,
@@ -222542,6 +222560,61 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-09-06T23:22:02.069500Z"
+    },
+    {
+      "id": "lec-acierto_refuerzo-824552-1788745497",
+      "tipo": "acierto_refuerzo",
+      "fecha": "2026-09-06",
+      "game_id": "824552",
+      "visitante": "Minnesota Twins",
+      "home": "Chicago White Sox",
+      "pick": "Chicago White Sox ML",
+      "probPick": 59.4,
+      "edge": -0.6,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Minnesota Twins 1 - Chicago White Sox 10",
+      "patron": "veto_acertado",
+      "leccion": "Sin dinero pero pick acertó en papel; calibrar si conviene suavizar veto.",
+      "motivo": "paper acierto sin dinero",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-07T01:44:57.230181Z",
+      "con_dinero": false,
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "neutro",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1507/1482 pitch -12/+29 → 44/56% · fusión 37/63%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 41/59% · MC totales μ=9.1 (F5 5.0) vs 8",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-oportunidad_perdida-824552-1788745497",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-09-06",
+      "game_id": "824552",
+      "visitante": "Minnesota Twins",
+      "home": "Chicago White Sox",
+      "pick": "Chicago White Sox ML",
+      "probPick": 59.4,
+      "edge": -0.6,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Minnesota Twins 1 - Chicago White Sox 10",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-07T01:44:57.230492Z"
     }
   ],
   "mente_stats": {
@@ -222552,9 +222625,9 @@
         "fallos": 5
       },
       "PASAR": {
-        "n": 173,
+        "n": 174,
         "evito_fallo": 65,
-        "oportunidad_perdida": 108
+        "oportunidad_perdida": 109
       },
       "ESPERAR": {
         "n": 96,
@@ -222578,9 +222651,9 @@
         "apostar_fail": 0.0
       },
       "humanos": {
-        "n": 244.0,
+        "n": 245.0,
         "pasar_ok": 96.5,
-        "pasar_miss": 127.5,
+        "pasar_miss": 128.5,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
       },
@@ -222592,9 +222665,9 @@
         "apostar_fail": 0.0
       },
       "edge_bajo": {
-        "n": 197.0,
+        "n": 198.0,
         "pasar_ok": 78.0,
-        "pasar_miss": 119.0,
+        "pasar_miss": 120.0,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
@@ -222627,9 +222700,9 @@
         "apostar_fail": 0.0
       },
       "preferir_f5": {
-        "n": 208.5,
+        "n": 209.5,
         "pasar_ok": 79.5,
-        "pasar_miss": 109.0,
+        "pasar_miss": 110.0,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
       },
@@ -222972,29 +223045,30 @@
       "822848:acierto",
       "824309:acierto",
       "823091:acierto",
-      "823253:fallo"
+      "823253:fallo",
+      "824552:acierto"
     ],
-    "actualizado_en": "2026-09-06T23:22:02.069714Z"
+    "actualizado_en": "2026-09-07T01:44:57.233640Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 278,
-    "muestras_reales": 278,
+    "muestras": 279,
+    "muestras_reales": 279,
     "muestras_sinteticas": 0,
     "ratio_features_reales": 1.0,
     "entreno_bloqueado": false,
     "schema": 4,
-    "mensaje": "Reentrenado con 278 muestras (278 reales, RF acc 98.9%, RF holdout 46.4%, XGB acc 98.6%, XGB holdout 57.1%)",
-    "accuracy_train": 0.989,
-    "accuracy_holdout": 0.464,
-    "accuracy_xgb_train": 0.986,
-    "accuracy_xgb_holdout": 0.571,
-    "ultimo_entreno": "2026-09-06T23:22:15.384884",
+    "mensaje": "Reentrenado con 279 muestras (279 reales, RF acc 98.6%, RF holdout 50.0%, XGB acc 98.9%, XGB holdout 55.4%)",
+    "accuracy_train": 0.986,
+    "accuracy_holdout": 0.5,
+    "accuracy_xgb_train": 0.989,
+    "accuracy_xgb_holdout": 0.554,
+    "ultimo_entreno": "2026-09-07T01:45:08.934504",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 278,
+    "muestras": 279,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
@@ -223014,11 +223088,11 @@
       },
       "limpio": {
         "ok": true,
-        "muestras": 59,
+        "muestras": 60,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 278 muestras (ECE≈0.01) · 4 tipos",
+    "mensaje": "Calibrado isotonic con 279 muestras (ECE≈0.01) · 4 tipos",
     "por_segmento": {
       "prob_alta": {
         "ok": true,
@@ -223037,7 +223111,7 @@
       },
       "entorno_f5": {
         "ok": true,
-        "muestras": 28,
+        "muestras": 29,
         "metodo": "isotonic"
       },
       "general": {
@@ -223045,13 +223119,13 @@
         "muestras": 9
       }
     },
-    "ece": 0.008
+    "ece": 0.006
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-06T23:20:45.977365Z"
+    "actualizado_en": "2026-09-07T01:43:49.728925Z"
   }
 }
