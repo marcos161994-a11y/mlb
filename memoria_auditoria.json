@@ -209831,9 +209831,9 @@
           "pitcher_away_id": 663623,
           "pitcher_home_id": 601713,
           "inicio_juego": "2026-09-07T17:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 1.56,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-07T11:52:38.571996-04:00",
@@ -210559,7 +210559,9 @@
             "fuente": "espn"
           },
           "odds_congelada": 1.521,
-          "lineas_fuente_inicial": "draftkings"
+          "lineas_fuente_inicial": "draftkings",
+          "marcador_final": "Washington Nationals 2 - San Diego Padres 3",
+          "liquidado_en": "2026-09-07T20:31:30.641665-04:00"
         },
         {
           "game_id": "823175",
@@ -212046,6 +212048,691 @@
           },
           "odds_congelada": 1.485,
           "lineas_fuente_inicial": "draftkings"
+        },
+        {
+          "game_id": "823902",
+          "visitante": "Cincinnati Reds",
+          "home": "Los Angeles Dodgers",
+          "pick": "Los Angeles Dodgers ML",
+          "odds": 1.296,
+          "odds_american": -338,
+          "edge": -21.1,
+          "probPick": 56.1,
+          "apostable": false,
+          "lineas_fuente": "draftkings",
+          "motivo_apuesta": "Prob. modelo bajo 58.0%",
+          "pitcherAway": "Chase Burns",
+          "pitcherHome": "Emmet Sheehan",
+          "pitcher_away_id": 695505,
+          "pitcher_home_id": 686218,
+          "inicio_juego": "2026-09-07T21:10:00-04:00",
+          "estado": "pendiente",
+          "resultado": null,
+          "profit": null,
+          "stake_virtual": 3.0,
+          "con_dinero": false,
+          "predicho_en": "2026-09-07T20:10:14.046279-04:00",
+          "congelado_en_gracia": false,
+          "valida_stats": true,
+          "invalida_tarde": false,
+          "clima": {
+            "ok": true,
+            "fuente": "open-meteo",
+            "temp_f": 74.2,
+            "viento_mph": 5.7,
+            "humedad": 43,
+            "run_env": 0.0,
+            "motivo": "74°F · viento 6 mph · clima neutro",
+            "estadio": "Dodger Stadium",
+            "es_domo": false
+          },
+          "lesiones": {
+            "ok": true,
+            "fuente": "espn",
+            "motivo": "276 bajas indexadas",
+            "away": [
+              {
+                "jugador": "Hunter Greene",
+                "apellido": "greene",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Greene (elbow) will be out for 12-to-18 months after undergoing his second Tommy John surgery Wednesday, Gordon Wittenmyer of The Cincinnati",
+                "severidad": 5,
+                "equipo": "Cincinnati Reds"
+              },
+              {
+                "jugador": "Blake Dunn",
+                "apellido": "dunn",
+                "pos": "CF",
+                "status": "60-Day-IL",
+                "comentario": "The Reds transferred Dunn (elbow) from the 10-day injured list to the 60-day IL on Thursday.",
+                "severidad": 5,
+                "equipo": "Cincinnati Reds"
+              },
+              {
+                "jugador": "Michael Toglia",
+                "apellido": "toglia",
+                "pos": "1B",
+                "status": "60-Day-IL",
+                "comentario": "The Reds transferred Toglia (shoulder) to the 60-day injured list Friday.",
+                "severidad": 4,
+                "equipo": "Cincinnati Reds"
+              },
+              {
+                "jugador": "Spencer Steer",
+                "apellido": "steer",
+                "pos": "1B",
+                "status": "10-Day-IL",
+                "comentario": "Steer (wrist) is scheduled to be examined Sept. 11 to determine if he can begin swinging a bat, MLB.com reports.",
+                "severidad": 3,
+                "equipo": "Cincinnati Reds"
+              }
+            ],
+            "home": [
+              {
+                "jugador": "Roki Sasaki",
+                "apellido": "sasaki",
+                "pos": "SP",
+                "status": "15-Day-IL",
+                "comentario": "Sasaki (finger) indicated that he felt good following a bullpen session Friday, MLB.com reports.",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              },
+              {
+                "jugador": "Gavin Stone",
+                "apellido": "stone",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Stone (shoulder) hasn't made a rehab appearance for Triple-A Oklahoma City since Aug. 26 due to a minor biceps injury, Jack Harris of the Ca",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              },
+              {
+                "jugador": "Jake Cousins",
+                "apellido": "cousins",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Cousins (elbow) began a rehab assignment with Triple-A Oklahoma City on Wednesday, striking out one and issuing one walk in a scoreless fram",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              },
+              {
+                "jugador": "Will Klein",
+                "apellido": "klein",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "The Dodgers transferred Klein (elbow) to the 60-day injured list Wednesday.",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              },
+              {
+                "jugador": "Eric Lauer",
+                "apellido": "lauer",
+                "pos": "SP",
+                "status": "15-Day-IL",
+                "comentario": "The Dodgers placed Lauer on the 15-day injured list Wednesday with left elbow inflammation.",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              },
+              {
+                "jugador": "Ben Casparius",
+                "apellido": "casparius",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Casparius (shoulder) experienced arm fatigue while on a minor-league rehab assignment and has been shut down from throwing, MLB.com reports.",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              },
+              {
+                "jugador": "Kris Bubic",
+                "apellido": "bubic",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Bubic (shoulder) began a rehab assignment with Triple-A Oklahoma City on Tuesday, striking out two in a perfect inning.",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              },
+              {
+                "jugador": "Brusdar Graterol",
+                "apellido": "graterol",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Graterol (shoulder) underwent surgery recently for a back injury he suffered while on a rehab assignment, Jack Harris of the California Post",
+                "severidad": 5,
+                "equipo": "Los Angeles Dodgers"
+              }
+            ],
+            "resumen": "Cincinnati Reds: Hunter Greene(SP/60-Day-IL), Blake Dunn(CF/60-Day-IL), Michael Toglia(1B/60-Day-IL), Spencer Steer(1B/10-Day-IL) | Los Angeles Dodgers: Roki Sasaki(SP/15-Day-IL), Gavin Stone(SP/60-Day-IL), Jake Cousins(RP/60-Day-IL), Will Klein(RP/60-Day-IL)",
+            "ajuste_away": -2.5,
+            "ajuste_home": -3.8,
+            "starter_riesgo": false,
+            "starter_away_lesionado": false,
+            "starter_home_lesionado": false,
+            "alerta": ""
+          },
+          "scratch_lineup": {
+            "ok": true,
+            "lineup_confirmado": true,
+            "scratch_away": false,
+            "scratch_home": false,
+            "estrellas_fuera_away": [],
+            "estrellas_fuera_home": [
+              {
+                "id": 605141,
+                "nombre": "Mookie Betts",
+                "ops": 0.731,
+                "pa": 452
+              }
+            ],
+            "ajuste_away": 0.0,
+            "ajuste_home": 0.0,
+            "min_estrellas_fuera": 2,
+            "riesgo": false,
+            "alerta": "",
+            "resumen": "Lineup OK"
+          },
+          "factores_humanos": {
+            "ok": true,
+            "away": {
+              "ok": true,
+              "dias_descanso": 0.0,
+              "back_to_back": true,
+              "juegos_seguidos_visita": 1,
+              "cambio_zona": 3,
+              "fatiga_viaje": 0.85,
+              "ultimo_rival": "Milwaukee Brewers",
+              "ultimo_venue": "Great American Ball Park",
+              "motivo": "B2B · descanso 0d · Δzona 3h · fatiga 0.85"
+            },
+            "home": {
+              "ok": true,
+              "dias_descanso": 0.0,
+              "back_to_back": true,
+              "juegos_seguidos_visita": 0,
+              "cambio_zona": 0,
+              "fatiga_viaje": 0.35,
+              "ultimo_rival": "Washington Nationals",
+              "ultimo_venue": "UNIQLO Field at Dodger Stadium",
+              "motivo": "B2B · descanso 0d"
+            },
+            "serie": {
+              "game_number": 1,
+              "games_in_series": 3,
+              "leverage": 0.333,
+              "rubber": false,
+              "day_night": "night"
+            },
+            "umpire": {
+              "ok": true,
+              "hp_nombre": "Cory Blaser",
+              "hp_id": 484183,
+              "sesgo_runs": 0.0,
+              "motivo": "HP Cory Blaser"
+            },
+            "ajuste_away": -1.87,
+            "ajuste_home": -0.49,
+            "sesgo_umpire_runs": 0.0,
+            "alertas": [
+              "Visita fatigada (B2B · descanso 0d · Δzona 3h · fatiga 0.85)"
+            ],
+            "resumen": "AWAY: B2B · descanso 0d · Δzona 3h · fatiga 0.85 | HOME: B2B · descanso 0d | Serie 1/3 | night | HP Cory Blaser",
+            "riesgo": true,
+            "features_away": {
+              "fatiga_viaje": 0.85,
+              "dias_descanso": 0.0,
+              "cambio_zona": 3.0,
+              "leverage_serie": 0.333,
+              "umpire_runs": 0.0
+            },
+            "features_home": {
+              "fatiga_viaje": 0.35,
+              "dias_descanso": 0.0,
+              "cambio_zona": 0.0,
+              "leverage_serie": 0.333,
+              "umpire_runs": 0.0
+            }
+          },
+          "historico_oficial": {
+            "ok": true,
+            "season": 2026,
+            "l10_away": {
+              "ok": true,
+              "wins": 7,
+              "losses": 3,
+              "pct": 0.7,
+              "marca": "7-3",
+              "streak_code": "W2",
+              "streak_type": "wins",
+              "streak_n": 2,
+              "forma": "buena"
+            },
+            "l10_home": {
+              "ok": true,
+              "wins": 6,
+              "losses": 4,
+              "pct": 0.6,
+              "marca": "6-4",
+              "streak_code": "W4",
+              "streak_type": "wins",
+              "streak_n": 4,
+              "forma": "buena"
+            },
+            "pitcher_vs_rival_away": {
+              "ok": true,
+              "pitcher_id": 695505,
+              "pitcher": "Chase Burns",
+              "rival_id": 119,
+              "gs": 0,
+              "ip": 0.0,
+              "era": null,
+              "whip": null,
+              "k": 0,
+              "bb": 0,
+              "hr": 0,
+              "ops_contra": null,
+              "avg_contra": null,
+              "calidad": "desconocido",
+              "motivo": "sin historial vs rival",
+              "fechas": [],
+              "resumenes": []
+            },
+            "pitcher_vs_rival_home": {
+              "ok": true,
+              "pitcher_id": 686218,
+              "pitcher": "Emmet Sheehan",
+              "rival_id": 113,
+              "gs": 0,
+              "ip": 0.0,
+              "era": null,
+              "whip": null,
+              "k": 0,
+              "bb": 0,
+              "hr": 0,
+              "ops_contra": null,
+              "avg_contra": null,
+              "calidad": "desconocido",
+              "motivo": "sin historial vs rival",
+              "fechas": [],
+              "resumenes": []
+            },
+            "alertas": [],
+            "riesgo": false,
+            "ajuste_away": 0.4,
+            "ajuste_home": 0.2,
+            "resumen": "L10 visita 7-3 · L10 local 6-4"
+          },
+          "ia_briefing": {
+            "ok": true,
+            "fase": "t60",
+            "creado_en": "2026-09-08T00:10:14.238297Z",
+            "alertas": [
+              "humanos"
+            ],
+            "resumen": "Pick Los Angeles Dodgers ML @ 56.1% edge=-21.1 · cuotas=draftkings · Elo 1519/1554 pitch +30/-16 → 48/52% · fusión 46/54% · Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 44/56% · MC totales μ=9.1 (F5 · alertas=humanos · AWAY: B2B · descanso 0d · Δzona 3h · fatiga 0.85 | HOME: B2B · descanso 0d | Ser · L1",
+            "pilares": {
+              "modelo": {
+                "pick": "Los Angeles Dodgers ML",
+                "prob": 56.1,
+                "edge": -21.1,
+                "odds": 1.296,
+                "fuente_cuotas": "draftkings",
+                "motivo": "Prob. modelo bajo 58.0%"
+              },
+              "clima": {
+                "ok": true,
+                "run_env": 0.0,
+                "motivo": "74°F · viento 6 mph · clima neutro"
+              },
+              "lesiones": {
+                "ok": true,
+                "starter_riesgo": false,
+                "resumen": "Cincinnati Reds: Hunter Greene(SP/60-Day-IL), Blake Dunn(CF/60-Day-IL), Michael Toglia(1B/60-Day-IL), Spencer Steer(1B/10-Day-IL) | Los Ange"
+              },
+              "scratch": {
+                "ok": true,
+                "riesgo": false,
+                "resumen": "Lineup OK"
+              },
+              "humanos": {
+                "ok": true,
+                "riesgo": true,
+                "resumen": "AWAY: B2B · descanso 0d · Δzona 3h · fatiga 0.85 | HOME: B2B · descanso 0d | Serie 1/3 | night | HP Cory Blaser",
+                "fatiga_away": 0.85,
+                "fatiga_home": 0.35
+              },
+              "historico": {
+                "ok": true,
+                "riesgo": false,
+                "resumen": "L10 visita 7-3 · L10 local 6-4",
+                "l10_away": "7-3",
+                "l10_home": "6-4",
+                "pvr_away": "desconocido",
+                "pvr_home": "desconocido"
+              },
+              "elo": {
+                "ok": true,
+                "resumen": "Elo 1519/1554 pitch +30/-16 → 48/52% · fusión 46/54%",
+                "prob_elo_away": 47.92,
+                "prob_elo_home": 52.08,
+                "adj_pitcher_away": 29.68,
+                "adj_pitcher_home": -15.68,
+                "peso_elo": 0.4
+              },
+              "inteligencia": {
+                "ok": true,
+                "capas": [
+                  "bullpen",
+                  "park_umpire",
+                  "monte_carlo",
+                  "mc_totales",
+                  "consenso"
+                ],
+                "resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 44/56% · MC totales μ=9.1 (F5 5.0) vs 8.5 → neutro 55%",
+                "tipo_pick": "favorito_alto",
+                "consenso_n": 1,
+                "mc": "MC×800 → 48/52%",
+                "totales": {
+                  "ok": true,
+                  "mu": 9.06,
+                  "mu_f5": 5.04,
+                  "señal": "neutro",
+                  "señal_f5": "neutro",
+                  "preferir_f5": false,
+                  "resumen": "MC totales μ=9.1 (F5 5.0) vs 8.5 → neutro 55%"
+                }
+              },
+              "pitchers": {
+                "away": "Chase Burns",
+                "home": "Emmet Sheehan",
+                "fip": 4.76,
+                "fatiga_bullpen": 0.4
+              }
+            },
+            "lecciones_ids": [
+              "lec-fallo_postmortem-824229-1788819455",
+              "lec-fallo_postmortem-823253-1788736922",
+              "lec-acierto_refuerzo-824062-1788816438",
+              "lec-acierto_refuerzo-825039-1788304473",
+              "lec-fallo_postmortem-823906-1788414843",
+              "lec-fallo_postmortem-823256-1788583102"
+            ]
+          },
+          "ia_mente": null,
+          "ml_features": {
+            "era_pitcher": 5.29,
+            "whip_pitcher": 1.29,
+            "k9_pitcher": 10.2,
+            "woba_equipo": 0.345,
+            "ops_equipo": 0.756,
+            "win_pct_equipo": 0.601,
+            "es_local": 1.0,
+            "park_factor": 0.92,
+            "fatiga_bullpen": 0.4,
+            "matchup_zurdo_diestro": 0.38000000000000034,
+            "edge_estadistico": -21.1,
+            "bb9_pitcher": 2.83,
+            "hr9_pitcher": 1.89,
+            "racha_equipo": 0.6,
+            "diferencia_run": 0.0,
+            "vs_pitcher_hand": 0.0,
+            "temp_f": 74.2,
+            "viento_mph": 5.7,
+            "run_env": 0.0,
+            "fip_pitcher": 4.76,
+            "xfip_pitcher": 3.15,
+            "k_pct_pitcher": 26.2,
+            "bb_pct_pitcher": 7.3,
+            "fatiga_viaje": 0.35,
+            "dias_descanso": 1.0,
+            "cambio_zona": 0.0,
+            "leverage_serie": 0.333,
+            "umpire_runs": 0.0
+          },
+          "tipo_pick": "favorito_alto",
+          "inteligencia": {
+            "ok": true,
+            "capas": [
+              "bullpen",
+              "park_umpire",
+              "monte_carlo",
+              "mc_totales",
+              "consenso"
+            ],
+            "bullpen": {
+              "away": {
+                "ok": true,
+                "fatiga": 0.486,
+                "bullpen_index": 48.6,
+                "pitches_relevo": 170,
+                "pitches_l3d": 170,
+                "ip_relevo": 9.0,
+                "era_relevo_prom": null,
+                "relevistas": 8,
+                "juegos_analizados": 2,
+                "horas_desde": 32.0,
+                "relevistas_detalle": [
+                  {
+                    "nombre": "Tony Santillan",
+                    "pitches": 29,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Emilio Pagán",
+                    "pitches": 25,
+                    "ip": 1.3,
+                    "era": 0.0,
+                    "apariciones": 2
+                  },
+                  {
+                    "nombre": "Graham Ashcraft",
+                    "pitches": 24,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Brock Burke",
+                    "pitches": 21,
+                    "ip": 2.0,
+                    "era": 0.0,
+                    "apariciones": 2
+                  },
+                  {
+                    "nombre": "Julian Garcia",
+                    "pitches": 21,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Pierce Johnson",
+                    "pitches": 20,
+                    "ip": 0.7,
+                    "era": 0.0,
+                    "apariciones": 1
+                  }
+                ],
+                "resumen": "Bullpen Cincinnati Reds: 170 pitches L3D (8 brazos, 9.0 IP) · índice 49/100",
+                "nombre": "Cincinnati Reds",
+                "game_pk": 824469
+              },
+              "home": {
+                "ok": true,
+                "fatiga": 0.437,
+                "bullpen_index": 43.7,
+                "pitches_relevo": 138,
+                "pitches_l3d": 138,
+                "ip_relevo": 9.0,
+                "era_relevo_prom": null,
+                "relevistas": 7,
+                "juegos_analizados": 2,
+                "horas_desde": 22.0,
+                "relevistas_detalle": [
+                  {
+                    "nombre": "Bobby Miller",
+                    "pitches": 53,
+                    "ip": 3.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Edgardo Henriquez",
+                    "pitches": 17,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Tanner Scott",
+                    "pitches": 17,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Blake Treinen",
+                    "pitches": 16,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Alex Vesia",
+                    "pitches": 15,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Brock Stewart",
+                    "pitches": 11,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  }
+                ],
+                "resumen": "Bullpen Los Angeles Dodgers: 138 pitches L3D (7 brazos, 9.0 IP) · índice 44/100",
+                "nombre": "Los Angeles Dodgers",
+                "game_pk": 823903
+              },
+              "shift_hacia_away": -0.2
+            },
+            "park_umpire": {
+              "ok": true,
+              "adj_away": -0.22,
+              "adj_home": -0.35,
+              "park_factor": 0.92,
+              "sesgo_umpire": 0.0,
+              "resumen": "Park×0.92 ump +0.00 → 45/55%"
+            },
+            "monte_carlo": {
+              "ok": true,
+              "n": 800,
+              "prob_home": 52.38,
+              "prob_away": 47.62,
+              "resumen": "MC×800 → 48/52%"
+            },
+            "totales": {
+              "ok": true,
+              "n": 800,
+              "lambda_away": 5.14,
+              "lambda_home": 3.88,
+              "mu_total": 9.06,
+              "mu_f5": 5.04,
+              "p10": 5.0,
+              "p50": 9.0,
+              "p90": 13.0,
+              "linea_total": 8.5,
+              "linea_f5": 4.5,
+              "linea_fuente": "mercado",
+              "linea_es_default": false,
+              "p_over": 55.4,
+              "p_under": 44.6,
+              "p_over_f5": 57.0,
+              "p_under_f5": 43.0,
+              "señal": "neutro",
+              "señal_f5": "neutro",
+              "preferir_f5": false,
+              "resumen": "MC totales μ=9.1 (F5 5.0) vs 8.5 → neutro 55%"
+            },
+            "consenso": {
+              "ok": true,
+              "n_fuentes": 1,
+              "fuentes": [
+                "draftkings"
+              ],
+              "dec_away": 3.66,
+              "dec_home": 1.296,
+              "prob_away": 26.15,
+              "prob_home": 73.85,
+              "vig_pct": 4.48,
+              "discrepancia_casas_pct": 0.0,
+              "resumen": "Consenso 1 casa(s) · fair 26.15/73.85% · vig 4.48%"
+            },
+            "tipo_pre": "limpio",
+            "resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 44/56% · MC totales μ=9.1 (F5 5.0) vs 8.5 → neutro 55%",
+            "tipo_pick": "favorito_alto"
+          },
+          "elo": {
+            "ok": true,
+            "activo": true,
+            "peso_elo": 0.4,
+            "elo_away": 1518.7,
+            "elo_home": 1554.5,
+            "adj_pitcher_away": 29.68,
+            "adj_pitcher_home": -15.68,
+            "elo_adj_away": 1548.4,
+            "elo_adj_home": 1538.8,
+            "prob_elo_away": 47.92,
+            "prob_elo_home": 52.08,
+            "prob_modelo_away": 44.0,
+            "prob_modelo_home": 56.0,
+            "prob_fusion_away": 45.57,
+            "prob_fusion_home": 54.43,
+            "fip_away": 3.14,
+            "fip_home": 4.76,
+            "resumen": "Elo 1519/1554 pitch +30/-16 → 48/52% · fusión 46/54%"
+          },
+          "mc_totales": {
+            "ok": true,
+            "n": 800,
+            "lambda_away": 5.14,
+            "lambda_home": 3.88,
+            "mu_total": 9.06,
+            "mu_f5": 5.04,
+            "p10": 5.0,
+            "p50": 9.0,
+            "p90": 13.0,
+            "linea_total": 8.5,
+            "linea_f5": 4.5,
+            "linea_fuente": "mercado",
+            "linea_es_default": false,
+            "p_over": 55.4,
+            "p_under": 44.6,
+            "p_over_f5": 57.0,
+            "p_under_f5": 43.0,
+            "señal": "neutro",
+            "señal_f5": "neutro",
+            "preferir_f5": false,
+            "resumen": "MC totales μ=9.1 (F5 5.0) vs 8.5 → neutro 55%"
+          },
+          "preferir_f5": false,
+          "total_linea": 8.5,
+          "lineas_total": {
+            "linea": 8.5,
+            "over_american": null,
+            "over_decimal": null,
+            "under_american": null,
+            "under_decimal": null,
+            "casa": "draftkings",
+            "fuente": "espn"
+          },
+          "odds_congelada": 1.296,
+          "lineas_fuente_inicial": "draftkings",
+          "linea_movimiento_pct": 0.0,
+          "cuota_retry": true
         }
       ],
       "resumen": {
@@ -230624,6 +231311,61 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-09-07T22:17:35.788924Z"
+    },
+    {
+      "id": "lec-acierto_refuerzo-823254-1788827490",
+      "tipo": "acierto_refuerzo",
+      "fecha": "2026-09-07",
+      "game_id": "823254",
+      "visitante": "Washington Nationals",
+      "home": "San Diego Padres",
+      "pick": "San Diego Padres ML",
+      "probPick": 71.4,
+      "edge": 5.7,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Washington Nationals 2 - San Diego Padres 3",
+      "patron": "veto_acertado",
+      "leccion": "Sin dinero pero pick acertó en papel; calibrar si conviene suavizar veto.",
+      "motivo": "paper acierto sin dinero",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-08T00:31:30.642029Z",
+      "con_dinero": false,
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "neutro",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1468/1509 pitch -24/+55 → 30/70% · fusión 27/73%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 29/71% · MC totales μ=9.2 (F5 5.1) vs 8",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-oportunidad_perdida-823254-1788827490",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-09-07",
+      "game_id": "823254",
+      "visitante": "Washington Nationals",
+      "home": "San Diego Padres",
+      "pick": "San Diego Padres ML",
+      "probPick": 71.4,
+      "edge": 5.7,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Washington Nationals 2 - San Diego Padres 3",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-08T00:31:30.642324Z"
     }
   ],
   "mente_stats": {
@@ -230634,9 +231376,9 @@
         "fallos": 5
       },
       "PASAR": {
-        "n": 182,
+        "n": 183,
         "evito_fallo": 67,
-        "oportunidad_perdida": 115
+        "oportunidad_perdida": 116
       },
       "ESPERAR": {
         "n": 96,
@@ -230653,16 +231395,16 @@
         "apostar_fail": 0.0
       },
       "starter_riesgo": {
-        "n": 3.0,
+        "n": 4.0,
         "pasar_ok": 1.0,
-        "pasar_miss": 2.0,
+        "pasar_miss": 3.0,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
       "humanos": {
-        "n": 253.0,
+        "n": 254.0,
         "pasar_ok": 98.5,
-        "pasar_miss": 134.5,
+        "pasar_miss": 135.5,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
       },
@@ -230681,16 +231423,16 @@
         "apostar_fail": 0.0
       },
       "favorito_alto": {
-        "n": 79.5,
+        "n": 80.5,
         "pasar_ok": 24.0,
-        "pasar_miss": 45.5,
+        "pasar_miss": 46.5,
         "apostar_ok": 0.0,
         "apostar_fail": 10.0
       },
       "favorito_inflado": {
-        "n": 66.0,
+        "n": 67.0,
         "pasar_ok": 20.0,
-        "pasar_miss": 36.0,
+        "pasar_miss": 37.0,
         "apostar_ok": 0.0,
         "apostar_fail": 10.0
       },
@@ -230709,9 +231451,9 @@
         "apostar_fail": 0.0
       },
       "preferir_f5": {
-        "n": 214.5,
+        "n": 215.5,
         "pasar_ok": 81.5,
-        "pasar_miss": 113.0,
+        "pasar_miss": 114.0,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
       },
@@ -230760,7 +231502,7 @@
     },
     "penalizacion": {
       "scratch": -1,
-      "starter_riesgo": 0,
+      "starter_riesgo": -2,
       "humanos": -2,
       "sin_mercado": -1,
       "edge_bajo": -1,
@@ -231063,39 +231805,40 @@
       "824793:acierto",
       "824062:acierto",
       "823742:acierto",
-      "824229:fallo"
+      "824229:fallo",
+      "823254:acierto"
     ],
-    "actualizado_en": "2026-09-07T22:17:35.789188Z"
+    "actualizado_en": "2026-09-08T00:31:30.642568Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 286,
-    "muestras_reales": 286,
+    "muestras": 288,
+    "muestras_reales": 288,
     "muestras_sinteticas": 0,
     "ratio_features_reales": 1.0,
     "entreno_bloqueado": false,
     "schema": 4,
-    "mensaje": "Reentrenado con 286 muestras (286 reales, RF acc 98.6%, RF holdout 46.6%, XGB acc 98.3%, XGB holdout 56.9%)",
-    "accuracy_train": 0.986,
-    "accuracy_holdout": 0.466,
+    "mensaje": "Reentrenado con 288 muestras (288 reales, RF acc 99.0%, RF holdout 56.9%, XGB acc 98.3%, XGB holdout 56.9%)",
+    "accuracy_train": 0.99,
+    "accuracy_holdout": 0.569,
     "accuracy_xgb_train": 0.983,
     "accuracy_xgb_holdout": 0.569,
-    "ultimo_entreno": "2026-09-07T21:27:31.186702",
+    "ultimo_entreno": "2026-09-08T00:31:43.448795",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 286,
+    "muestras": 288,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
         "ok": true,
-        "muestras": 61,
+        "muestras": 62,
         "metodo": "isotonic"
       },
       "underdog": {
         "ok": true,
-        "muestras": 71,
+        "muestras": 72,
         "metodo": "isotonic"
       },
       "scratch": {
@@ -231109,16 +231852,16 @@
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 286 muestras (ECE≈0.01) · 4 tipos",
+    "mensaje": "Calibrado isotonic con 288 muestras (ECE≈0.01) · 4 tipos",
     "por_segmento": {
       "prob_alta": {
         "ok": true,
-        "muestras": 82,
+        "muestras": 83,
         "metodo": "isotonic"
       },
       "underdog_cuota": {
         "ok": true,
-        "muestras": 36,
+        "muestras": 37,
         "metodo": "isotonic"
       },
       "mc_over": {
@@ -231136,13 +231879,13 @@
         "muestras": 9
       }
     },
-    "ece": 0.009
+    "ece": 0.007
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-07T21:26:18.977131Z"
+    "actualizado_en": "2026-09-07T22:23:11.048080Z"
   }
 }
