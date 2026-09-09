@@ -54,12 +54,6 @@ from aprendizaje_mlb import calcular_movimiento_linea, peso_muestra_aprendizaje,
 from clv_mlb import actualizar_clv_registro, resumen_clv_memoria
 from ml_predictor import auto_entrenar_ml
 from ia_groq import ia_veto_disponible, modelo_groq, probar_conexion_groq, veto_apuesta
-from ia_grok import (
-    grok_segundo_voto_disponible,
-    modelo_grok,
-    probar_conexion_grok,
-    segundo_voto_dinero,
-)
 from mente_mlb import (
     mente_conclusion,
     mente_disponible,
@@ -2560,38 +2554,13 @@ def _bloquear_juego_locked(
                 "prediccion_guardada": True,
                 "ia_mente": mente,
             }
-        # Segundo voto Grok (xAI): solo si la mente ya autorizó dinero.
-        grok_voto = segundo_voto_dinero(juego, cfg, mente=mente, memoria=memoria)
-        juego["ia_grok"] = grok_voto
-        if pred_existente is not None:
-            pred_existente["ia_grok"] = grok_voto
-        if grok_voto.get("ok") and grok_voto.get("decision") == "PASAR":
-            motivo_g = f"GROK PASAR: {grok_voto.get('motivo') or 'segundo voto'}"
-            if pred_existente is not None:
-                pred_existente["motivo_apuesta"] = (
-                    f"{pred_existente.get('motivo_apuesta') or ''} · {motivo_g}"
-                ).strip(" ·")
-                pred_existente["apostable"] = False
-            guardar_memoria(memoria)
-            print(f"[GROK] Dinero cancelado para {juego.get('pick')}: {motivo_g}")
-            return {
-                "ok": False,
-                "motivo": motivo_g,
-                "juego": juego["visitante"] + " vs " + juego["home"],
-                "prediccion_guardada": True,
-                "ia_mente": mente,
-                "ia_grok": grok_voto,
-            }
         # Compat: mapear a forma de veto para logs antiguos
         veto = {
             "ok": True,
             "decision": "APOSTAR",
             "motivo": "; ".join(mente.get("razones") or [])[:120],
             "confianza": mente.get("confianza"),
-            "fuente": "mente+grok"
-            if grok_voto.get("ok") and grok_voto.get("decision") == "APOSTAR"
-            else ("mente" if grok_voto.get("omitido") or not grok_voto.get("ok") else "mente"),
-            "ia_grok": grok_voto,
+            "fuente": "mente",
         }
     else:
         veto = veto_apuesta(juego, cfg, memoria=memoria)
@@ -2658,9 +2627,6 @@ def _bloquear_juego_locked(
             "motivo_apuesta": motivo_final,
             "ia_veto": veto if veto.get("ok") else None,
             "ia_mente": mente,
-            "ia_grok": juego.get("ia_grok")
-            if isinstance(juego.get("ia_grok"), dict)
-            else None,
             "ia_briefing": juego.get("ia_briefing")
             if isinstance(juego.get("ia_briefing"), dict)
             else None,
@@ -4073,13 +4039,6 @@ def api_health():
             "min_confianza": int((cfg.get("mente") or {}).get("min_confianza") or 3),
             "shadow": bool((cfg.get("mente") or {}).get("shadow", False)),
         },
-        "grok_segundo_voto": {
-            "activo": bool(cfg.get("usar_grok_segundo_voto", False)),
-            "disponible": grok_segundo_voto_disponible(cfg),
-            "modelo": modelo_grok(cfg),
-            "min_edge_pct": float((cfg.get("grok") or {}).get("min_edge_pct") or 8.0),
-            "rol": "confirma_o_veta_dinero_si_mente_autoriza",
-        },
         "mente_errores": _resumen_mente_errores(cfg_ops),
         "vigilancia_cron_min": 5,
         "whatsapp": whatsapp_disponible(cfg_ops),
@@ -4730,43 +4689,12 @@ def api_ia_status():
         "lecciones": lecciones_n,
         "max_lecciones": max_lec,
         "max_lecciones_prompt": max_prompt,
-        "grok_segundo_voto": {
-            "activo": bool(cfg.get("usar_grok_segundo_voto", False)),
-            "key_presente": bool(
-                (os.environ.get("XAI_API_KEY") or os.environ.get("GROK_API_KEY") or "").strip()
-                or ((cfg.get("grok") or {}).get("api_key") or "")
-            ),
-            "modelo": modelo_grok(cfg),
-            "disponible": grok_segundo_voto_disponible(cfg),
-        },
     }
     if not base["activo"]:
         return {**base, "ok": False, "motivo": "usar_ia_veto=false en config"}
     if not base["key_presente"]:
         return {**base, "ok": False, "motivo": "Falta GROQ_API_KEY en Render"}
     ping = probar_conexion_groq(cfg)
-    return {**base, **ping}
-
-
-@app.get("/api/grok-status")
-def api_grok_status():
-    """Comprueba segundo voto Grok/xAI (sin exponer la key)."""
-    cfg = cargar_config()
-    base = {
-        "activo": bool(cfg.get("usar_grok_segundo_voto", False)),
-        "key_presente": bool(
-            (os.environ.get("XAI_API_KEY") or os.environ.get("GROK_API_KEY") or "").strip()
-            or ((cfg.get("grok") or {}).get("api_key") or "")
-        ),
-        "modelo": modelo_grok(cfg),
-        "min_edge_pct": float((cfg.get("grok") or {}).get("min_edge_pct") or 8.0),
-        "rol": "segundo_voto_dinero",
-    }
-    if not base["activo"]:
-        return {**base, "ok": False, "motivo": "usar_grok_segundo_voto=false en config"}
-    if not base["key_presente"]:
-        return {**base, "ok": False, "motivo": "Falta XAI_API_KEY en Render"}
-    ping = probar_conexion_grok(cfg)
     return {**base, **ping}
 
 
