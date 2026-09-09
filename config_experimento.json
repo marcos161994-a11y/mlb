@@ -113,6 +113,8 @@
 
   "usar_mente": true,
 
+  "usar_grok_segundo_voto": true,
+
   "usar_mente_errores": true,
 
   "usar_elo": true,
@@ -181,6 +183,13 @@
     "model": "openai/gpt-oss-20b",
     "timeout_sec": 8,
     "api_key": ""
+  },
+
+  "grok": {
+    "model": "grok-4-1-fast",
+    "timeout_sec": 12,
+    "api_key": "",
+    "min_edge_pct": 8.0
   },
 
   "modo_solo_modelo": false,
