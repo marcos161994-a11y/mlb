@@ -243352,7 +243352,7 @@
     "accuracy_holdout": 0.548,
     "accuracy_xgb_train": 0.98,
     "accuracy_xgb_holdout": 0.677,
-    "ultimo_entreno": "2026-09-09T06:04:49.176937",
+    "ultimo_entreno": "2026-09-09T11:17:00.066402",
     "xgb": true
   },
   "calib_meta": {
@@ -243416,6 +243416,6 @@
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-09T07:09:11.102102Z"
+    "actualizado_en": "2026-09-09T08:18:17.473205Z"
   }
 }
