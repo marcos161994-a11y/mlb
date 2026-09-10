@@ -102,7 +102,7 @@ def test_guardar_en_vivo_con_gracia(monkeypatch):
         "visitante": "A",
         "home": "B",
         "pick": "B ML",
-        "probPick": 60,
+        "probPick": 55,
         "odds": 1.9,
         "inicio_juego": inicio.isoformat(),
         "lineas_fuente": "draftkings",

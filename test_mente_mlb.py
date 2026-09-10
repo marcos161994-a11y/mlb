@@ -60,7 +60,7 @@ def test_apostar_heuristico_con_edge():
         "visitante": "Away",
         "home": "Home",
         "pick": "Home ML",
-        "probPick": 61,
+        "probPick": 59,
         "edge": 9.0,
         "odds": 1.95,
         "lineas_fuente": "draftkings",
@@ -84,7 +84,7 @@ def test_scratch_del_rival_no_tumba_pick():
         "home": "Los Angeles Angels",
         "pick": "Los Angeles Angels ML",
         "probPick": 67,
-        "edge": 16.2,
+        "edge": 19.0,
         "odds": 1.97,
         "lineas_fuente": "draftkings",
         "scratch_lineup": {

@@ -284,9 +284,9 @@ def _heuristica_leccion(pred: dict, juego: dict | None = None) -> dict[str, Any]
     elif edge_f > 0 and edge_f < 6:
         patron = "edge_falso"
         leccion = "Exigir edge >= 6% contra cuota real; edge bajo no basta."
-    elif float(pred.get("probPick") or 0) >= 62 and edge_f < 15:
+    elif float(pred.get("probPick") or 0) >= 60 and edge_f < 18:
         patron = "favorito_inflado"
-        leccion = "Prob ≥62% exige edge ≥15% para dinero; si no, solo papel."
+        leccion = "Prob ≥60% exige edge ≥18% para dinero; si no, no apostar."
     elif "bullpen" in motivo or float((pred.get("ml_features") or {}).get("fatiga_bullpen") or 0) >= 0.7:
         patron = "bullpen"
         leccion = "Desconfiar de favoritos con bullpen cargado / fatiga alta."

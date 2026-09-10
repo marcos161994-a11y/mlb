@@ -36,6 +36,7 @@ def test_peso_dinero_triple():
     assert peso_muestra_aprendizaje({"lineas_fuente": "draftkings"}) == 1.0
     assert peso_muestra_aprendizaje({"lineas_fuente": "modelo"}) == 0.5
     assert peso_muestra_aprendizaje({"invalida_tarde": True}) == 0.0
+    assert peso_muestra_aprendizaje({"confianza_baja": True}) == 0.0
 
 
 def test_lecciones_dedup_sin_cuota():

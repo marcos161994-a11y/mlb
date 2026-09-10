@@ -392,6 +392,7 @@ _PRED_PANEL_KEYS = (
     "con_dinero",
     "invalida_tarde",
     "valida_stats",
+    "confianza_baja",
     "retroactivo",
     "stake_virtual",
     "predicho_en",
@@ -442,6 +443,7 @@ _JUEGO_PANEL_KEYS = (
     "solo_papel",
     "resultado_papel",
     "invalida_tarde",
+    "confianza_baja",
     "logoAway",
     "logoHome",
     "pitcherAway",
@@ -947,6 +949,8 @@ def prediccion_valida_para_stats(pred: dict, gracia_min: float = 5.0) -> bool:
         return False
     if pred.get("valida_stats") is False or pred.get("invalida_tarde"):
         return False
+    if pred.get("confianza_baja"):
+        return False
     if pred.get("retroactivo"):
         return False
     motivo = (pred.get("motivo_apuesta") or "").upper()
@@ -967,7 +971,7 @@ def marcar_predicciones_tardias(memoria: dict, gracia_min: float = 5.0) -> int:
     n = 0
     for dia in memoria.get("dias", []):
         for p in dia.get("predicciones", []) or []:
-            if p.get("invalida_tarde"):
+            if p.get("invalida_tarde") or p.get("confianza_baja"):
                 continue
             if prediccion_valida_para_stats(p, gracia_min=gracia_min):
                 # Asegura flag positivo si faltaba
@@ -977,6 +981,50 @@ def marcar_predicciones_tardias(memoria: dict, gracia_min: float = 5.0) -> int:
             p["invalida_tarde"] = True
             p["valida_stats"] = False
             n += 1
+    return n
+
+
+def min_prob_stats(cfg: dict | None = None) -> float:
+    """Umbral de confianza para que un pick cuente en precisión (quién gana)."""
+    estr = (cfg or {}).get("estrategia") or {}
+    try:
+        return float(estr.get("min_prob_stats", estr.get("min_prob_modelo", 58.0)))
+    except (TypeError, ValueError):
+        return 58.0
+
+
+def aplicar_confianza_prediccion(pred: dict, cfg: dict | None = None) -> bool:
+    """Lean débil: se muestra quién gana, no suma acierto/fallo."""
+    if not isinstance(pred, dict) or pred.get("invalida_tarde"):
+        return False
+    try:
+        prob = float(pred.get("probPick") or 0)
+    except (TypeError, ValueError):
+        prob = 0.0
+    umbral = min_prob_stats(cfg)
+    tag = "Lean débil · se muestra quién gana, no cuenta en precisión"
+    if prob >= umbral:
+        if not pred.get("confianza_baja"):
+            return False
+        pred["confianza_baja"] = False
+        pred["valida_stats"] = True
+        return True
+    already = bool(pred.get("confianza_baja")) and pred.get("valida_stats") is False
+    pred["confianza_baja"] = True
+    pred["valida_stats"] = False
+    motivo = str(pred.get("motivo_apuesta") or "")
+    if tag.lower() not in motivo.lower():
+        pred["motivo_apuesta"] = f"{motivo} · {tag}".strip(" ·")
+    return not already
+
+
+def marcar_predicciones_confianza_baja(memoria: dict, cfg: dict | None = None) -> int:
+    """Backfill: leans < umbral dejan de ensuciar el WR de quién gana."""
+    n = 0
+    for dia in memoria.get("dias", []) or []:
+        for p in dia.get("predicciones") or []:
+            if aplicar_confianza_prediccion(p, cfg):
+                n += 1
     return n
 
 
@@ -1651,6 +1699,19 @@ def reparar_odds_papel(memoria: dict | None = None, *, persistir: bool = True) -
     return cambios
 
 
+def omitir_congelar_papel(juego: dict, cfg: dict | None = None) -> tuple[bool, str]:
+    """No congelar en papel un favorito inflado: el % alto sin edge extra
+    ensucia el historial y no es candidato de dinero."""
+    cfg = cfg or {}
+    estr = cfg.get("estrategia") or {}
+    if not bool(estr.get("papel_respeta_favorito_inflado", False)):
+        return False, ""
+    bloqueado, motivo = bloqueado_favorito_inflado(juego, cfg)
+    if bloqueado:
+        return True, motivo
+    return False, ""
+
+
 def guardar_prediccion(
     dia: dict,
     juego: dict,
@@ -1666,6 +1727,20 @@ def guardar_prediccion(
         return False
     if "predicciones" not in dia:
         dia["predicciones"] = []
+
+    if not con_dinero:
+        omitir, motivo_omit = omitir_congelar_papel(juego, cfg)
+        if omitir:
+            existente_prev = next(
+                (p for p in dia["predicciones"] if str(p.get("game_id")) == str(juego.get("id"))),
+                None,
+            )
+            if existente_prev is None:
+                print(
+                    f"[PREDICCIONES] No se congela favorito inflado "
+                    f"({juego.get('visitante')}@{juego.get('home')}): {motivo_omit}"
+                )
+                return False
 
     stake_v = float(stake_virtual if stake_virtual is not None else stake_virtual_prediccion())
     ahora_dt = datetime.now(tz_experimento())
@@ -1790,6 +1865,7 @@ def guardar_prediccion(
             "congelado_en_gracia": bool(estado == "EN VIVO" and permitir_gracia),
             "valida_stats": True,
             "invalida_tarde": False,
+            "confianza_baja": False,
             "clima": juego.get("clima") if isinstance(juego.get("clima"), dict) else None,
             "lesiones": juego.get("lesiones") if isinstance(juego.get("lesiones"), dict) else None,
             "scratch_lineup": juego.get("scratch_lineup") if isinstance(juego.get("scratch_lineup"), dict) else None,
@@ -1824,6 +1900,10 @@ def guardar_prediccion(
         actualizar_clv_registro(pred_n, juego, fase="entrada")
     except Exception as e:
         print(f"[CLV] aviso guardar predicción: {e}")
+    try:
+        aplicar_confianza_prediccion(dia["predicciones"][-1], cfg)
+    except Exception as e:
+        print(f"[PRED] aviso confianza: {e}")
     return True
 
 
@@ -1886,10 +1966,12 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
                 continue
             if permitir_gracia:
                 pred["valida_stats"] = prediccion_valida_para_stats(pred)
-                pred["invalida_tarde"] = not pred["valida_stats"]
+                pred["invalida_tarde"] = (
+                    not pred["valida_stats"] and not pred.get("confianza_baja")
+                )
             else:
-                pred["valida_stats"] = True
                 pred["invalida_tarde"] = False
+            aplicar_confianza_prediccion(pred, cfg)
             # Mente local para el aviso (sin Groq) + WhatsApp del equipo elegido
             try:
                 cfg_wa = _cfg_con_telegram_memoria(cfg)
@@ -3040,9 +3122,8 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
             else:
                 copia["apostable"] = apostable_con_mercado(pred) or apostable_con_mercado(copia)
             copia["resultado_papel"] = pred.get("resultado")
-            copia["invalida_tarde"] = bool(
-                pred.get("invalida_tarde") or not prediccion_valida_para_stats(pred)
-            )
+            copia["invalida_tarde"] = bool(pred.get("invalida_tarde"))
+            copia["confianza_baja"] = bool(pred.get("confianza_baja"))
             if pred.get("estado") == "liquidado" and pred.get("resultado") in (
                 "acierto",
                 "fallo",
@@ -3056,6 +3137,11 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
                         (copia.get("motivo_apuesta") or "")
                         + " · Pick tardío (no cuenta en precisión)"
                     ).strip(" ·")
+                elif copia["confianza_baja"]:
+                    copia["estado_apuesta"] = "confianza_baja"
+                    copia["profit"] = pred.get("profit")
+                    copia["solo_papel"] = True
+                    copia["resultado_papel"] = pred.get("resultado")
                 else:
                     copia["estado_apuesta"] = (
                         "ganada" if pred["resultado"] == "acierto" else "perdida"
@@ -3341,6 +3427,20 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
     dia = dia_por_fecha(memoria, fecha_hoy) or dia_operativo(memoria)
     if dia:
         dia["resumen"] = resumen_dia(dia)
+
+    # Marcar historial tardío y leans débiles ANTES de fusionar el panel
+    try:
+        n_tarde = marcar_predicciones_tardias(memoria)
+        n_lean = marcar_predicciones_confianza_baja(memoria, cfg)
+        if n_tarde or n_lean:
+            guardar_memoria(memoria)
+            if n_tarde:
+                print(f"[PREDICCIONES] Marcadas {n_tarde} como inválidas (congeladas tras el inicio).")
+            if n_lean:
+                print(f"[PREDICCIONES] Marcadas {n_lean} leans débiles (no cuentan en precisión).")
+    except Exception as e:
+        print(f"[PREDICCIONES] marcar tardías/leans: {e}")
+
     juegos = []
     try:
         juegos = fusionar_apuestas_con_juegos(
@@ -3352,15 +3452,6 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
             pass
     except Exception as e:
         print(f"Error cargando juegos: {e}")
-
-    # Marcar historial tardío (Yankees mid-game, etc.) sin borrar marcadores
-    try:
-        n_tarde = marcar_predicciones_tardias(memoria)
-        if n_tarde:
-            guardar_memoria(memoria)
-            print(f"[PREDICCIONES] Marcadas {n_tarde} como inválidas (congeladas tras el inicio).")
-    except Exception as e:
-        print(f"[PREDICCIONES] marcar tardías: {e}")
 
     # Calcular estadísticas del modelo
     stats_modelo = calcular_estadisticas_modelo(memoria)
