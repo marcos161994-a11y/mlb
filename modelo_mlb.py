@@ -695,7 +695,8 @@ def bloqueado_favorito_inflado(
     """
     Modelo muy confiado (≥60%) con edge insuficiente vs mercado.
     Aprendido de pérdidas reales (Padres/Pirates/Brewers ~62%) y del bucket
-    60–62% en papel (WR ~45%). Ni dinero ni papel puntuable.
+    60–62% en papel (WR ~45%). El pick de quién gana se sigue mostrando;
+    el dinero no entra sin edge extra.
     """
     if not isinstance(juego, dict):
         return False, ""
@@ -712,7 +713,7 @@ def bloqueado_favorito_inflado(
     return (
         True,
         f"Favorito inflado: modelo {prob:.0f}% exige edge≥{fi['min_edge_pct']:.0f}% "
-        f"(tiene {edge:+.1f}%) · no apostar",
+        f"(tiene {edge:+.1f}%) · no apostar dinero",
     )
 
 
@@ -1202,7 +1203,8 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             )
 
     if candidatos:
-        mejor = max(candidatos, key=lambda x: x["edge"])
+        # Quién gana = más probabilidad. El edge solo decide si hay dinero.
+        mejor = max(candidatos, key=lambda x: (x["prob"], x["edge_base"]))
         juego["pick"] = mejor["pick"]
         juego["odds"] = mejor["odds"]
         juego["odds_american"] = mejor["american"]

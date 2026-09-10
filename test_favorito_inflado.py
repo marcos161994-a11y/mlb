@@ -1,4 +1,4 @@
-"""Regla favorito inflado: prob alta + edge bajo → no apostar (ni dinero ni papel)."""
+"""Regla favorito inflado: % alto sin edge extra → no dinero. El pick de quién gana sí se muestra."""
 
 from mente_mlb import mente_conclusion
 from modelo_mlb import bloqueado_favorito_inflado
@@ -12,7 +12,7 @@ CFG = {
     "estrategia": {
         "min_edge_pct": 6.0,
         "min_prob_modelo": 58.0,
-        "papel_respeta_favorito_inflado": True,
+        "papel_respeta_favorito_inflado": False,
         "favorito_inflado": {
             "activo": True,
             "umbral_prob": 60.0,
@@ -37,7 +37,7 @@ def _juego(prob, edge, gid="x"):
 
 
 def test_bloquea_perdidas_reales():
-    """Padres 62.3%/+13.5, Pirates 62.3%/+14.2, Brewers 62.5%/+8.4 → no apostar."""
+    """Padres 62.3%/+13.5, Pirates 62.3%/+14.2, Brewers 62.5%/+8.4 → no dinero."""
     for prob, edge in ((62.3, 13.5), (62.3, 14.2), (62.5, 8.4)):
         ok, msg = bloqueado_favorito_inflado(_juego(prob, edge), CFG)
         assert ok is True
@@ -77,10 +77,11 @@ def test_mente_apostar_bajo_umbral_prob():
     assert c["autoriza_dinero"] is True
 
 
-def test_omite_papel_favorito_inflado():
+def test_inflado_sigue_siendo_quien_gana():
+    """Phillies 67% se congela como quién gana; solo se bloquea el dinero."""
     omitir, motivo = omitir_congelar_papel(_juego(66.8, 0.9, gid="phi"), CFG)
-    assert omitir is True
-    assert "exige edge" in motivo.lower() or "inflado" in motivo.lower()
+    assert omitir is False
+    assert motivo == ""
 
 
 def test_papel_con_valor_no_se_omite():
@@ -98,4 +99,5 @@ def test_config_favorito_inflado_activo():
     assert fi.get("activo") is True
     assert float(fi.get("umbral_prob") or 0) == 60.0
     assert float(fi.get("min_edge_pct") or 0) == 18.0
-    assert (cfg.get("estrategia") or {}).get("papel_respeta_favorito_inflado") is True
+    assert (cfg.get("estrategia") or {}).get("papel_respeta_favorito_inflado") is False
+    assert float((cfg.get("estrategia") or {}).get("min_prob_stats") or 0) == 58.0

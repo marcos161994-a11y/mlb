@@ -129,6 +129,8 @@ def actualizar_stats_tras_liquidar(
         return None
     if pred.get("invalida_tarde") and not pred.get("aprendizaje_solo"):
         return None
+    if pred.get("confianza_baja") and not pred.get("aprendizaje_solo"):
+        return None
 
     peso = peso_muestra_aprendizaje(pred)
     if peso <= 0:

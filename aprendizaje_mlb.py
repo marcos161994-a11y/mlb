@@ -83,6 +83,8 @@ def peso_muestra_aprendizaje(reg: dict[str, Any] | None) -> float:
         return 0.0
     if reg.get("invalida_tarde") and not reg.get("aprendizaje_solo"):
         return 0.0
+    if reg.get("confianza_baja") and not reg.get("aprendizaje_solo"):
+        return 0.0
     if reg.get("congelado_en_gracia"):
         return 0.0
     w = PESO_DINERO if reg.get("con_dinero") or reg.get("estado") in ("ganada", "perdida") else PESO_PAPEL
