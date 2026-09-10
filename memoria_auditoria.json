@@ -256006,7 +256006,7 @@
     "accuracy_holdout": 0.613,
     "accuracy_xgb_train": 0.987,
     "accuracy_xgb_holdout": 0.548,
-    "ultimo_entreno": "2026-09-10T18:23:29.379294",
+    "ultimo_entreno": "2026-09-10T20:17:59.990836",
     "xgb": true
   },
   "calib_meta": {
@@ -256070,6 +256070,6 @@
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-10T18:22:18.190652Z"
+    "actualizado_en": "2026-09-10T20:12:45.598405Z"
   }
 }
