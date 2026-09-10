@@ -68,9 +68,10 @@
 
     "favorito_inflado": {
       "activo": true,
-      "umbral_prob": 62.0,
-      "min_edge_pct": 15.0
+      "umbral_prob": 60.0,
+      "min_edge_pct": 18.0
     },
+    "papel_respeta_favorito_inflado": true,
 
     "linea_en_contra": {
       "activo": true,

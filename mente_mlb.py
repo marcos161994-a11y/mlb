@@ -865,7 +865,7 @@ def mente_conclusion(
             edge, prob = 0.0, 0.0
         if edge < 5 and "edge_bajo" not in senales:
             senales.append("edge_bajo")
-        if prob >= 62 and "favorito_alto" not in senales:
+        if prob >= 60 and "favorito_alto" not in senales:
             senales.append("favorito_alto")
         if not senales:
             senales.append("limpio")

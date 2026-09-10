@@ -683,8 +683,8 @@ def favorito_inflado_cfg(cfg: dict[str, Any]) -> dict[str, Any]:
         fi = {}
     return {
         "activo": bool(fi.get("activo", True)),
-        "umbral_prob": float(fi.get("umbral_prob", 62.0)),
-        "min_edge_pct": float(fi.get("min_edge_pct", 15.0)),
+        "umbral_prob": float(fi.get("umbral_prob", 60.0)),
+        "min_edge_pct": float(fi.get("min_edge_pct", 18.0)),
     }
 
 
@@ -693,8 +693,9 @@ def bloqueado_favorito_inflado(
     cfg: dict[str, Any],
 ) -> tuple[bool, str]:
     """
-    Modelo muy confiado (≥62%) con edge insuficiente vs mercado.
-    Aprendido de las 3 pérdidas reales (Padres/Pirates/Brewers): papel sí, dinero no.
+    Modelo muy confiado (≥60%) con edge insuficiente vs mercado.
+    Aprendido de pérdidas reales (Padres/Pirates/Brewers ~62%) y del bucket
+    60–62% en papel (WR ~45%). Ni dinero ni papel puntuable.
     """
     if not isinstance(juego, dict):
         return False, ""
@@ -711,7 +712,7 @@ def bloqueado_favorito_inflado(
     return (
         True,
         f"Favorito inflado: modelo {prob:.0f}% exige edge≥{fi['min_edge_pct']:.0f}% "
-        f"(tiene +{edge:.1f}%) · solo papel",
+        f"(tiene {edge:+.1f}%) · no apostar",
     )
 
 

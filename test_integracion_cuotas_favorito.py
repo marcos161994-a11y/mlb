@@ -24,8 +24,8 @@ CFG = {
         "requiere_betmgm": True,
         "favorito_inflado": {
             "activo": True,
-            "umbral_prob": 62.0,
-            "min_edge_pct": 15.0,
+            "umbral_prob": 60.0,
+            "min_edge_pct": 18.0,
         },
     },
     "mente": {"modo": "normal", "min_confianza": 3, "requiere_mercado": True, "shadow": False},

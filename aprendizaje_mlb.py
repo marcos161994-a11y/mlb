@@ -140,7 +140,7 @@ def extraer_senales_aprendizaje(
     prob, edge, odds = _prob_edge(src)
     if edge < 5 and "edge_bajo" not in out:
         out.append("edge_bajo")
-    if prob >= 62 and "favorito_alto" not in out:
+    if prob >= 60 and "favorito_alto" not in out:
         out.append("favorito_alto")
 
     try:
@@ -151,8 +151,8 @@ def extraer_senales_aprendizaje(
             out.append("favorito_inflado")
     except Exception:
         fi = ((cfg or {}).get("estrategia") or {}).get("favorito_inflado") or {}
-        umbral = float(fi.get("umbral_prob", 62))
-        min_e = float(fi.get("min_edge_pct", 15))
+        umbral = float(fi.get("umbral_prob", 60))
+        min_e = float(fi.get("min_edge_pct", 18))
         if prob >= umbral and edge < min_e and fuente not in ("modelo", "", "none") and "favorito_inflado" not in out:
             out.append("favorito_inflado")
 

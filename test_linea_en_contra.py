@@ -19,7 +19,7 @@ CFG = {
     "estrategia": {
         "min_edge_pct": 6.0,
         "min_prob_modelo": 58.0,
-        "favorito_inflado": {"activo": True, "umbral_prob": 62.0, "min_edge_pct": 15.0},
+        "favorito_inflado": {"activo": True, "umbral_prob": 60.0, "min_edge_pct": 18.0},
         "linea_en_contra": {
             "activo": True,
             "umbral_pct": 5.0,
@@ -80,7 +80,7 @@ def test_mente_pasa_linea_en_contra():
         "visitante": "A",
         "home": "B",
         "pick": "B ML",
-        "probPick": 60.0,
+        "probPick": 59.0,
         "edge": 9.0,
         "odds": 1.85,
         "lineas_fuente": "draftkings",

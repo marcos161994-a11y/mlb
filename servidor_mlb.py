@@ -1651,6 +1651,19 @@ def reparar_odds_papel(memoria: dict | None = None, *, persistir: bool = True) -
     return cambios
 
 
+def omitir_congelar_papel(juego: dict, cfg: dict | None = None) -> tuple[bool, str]:
+    """No congelar en papel un favorito inflado: el % alto sin edge extra
+    ensucia el historial y no es candidato de dinero."""
+    cfg = cfg or {}
+    estr = cfg.get("estrategia") or {}
+    if not bool(estr.get("papel_respeta_favorito_inflado", True)):
+        return False, ""
+    bloqueado, motivo = bloqueado_favorito_inflado(juego, cfg)
+    if bloqueado:
+        return True, motivo
+    return False, ""
+
+
 def guardar_prediccion(
     dia: dict,
     juego: dict,
@@ -1666,6 +1679,20 @@ def guardar_prediccion(
         return False
     if "predicciones" not in dia:
         dia["predicciones"] = []
+
+    if not con_dinero:
+        omitir, motivo_omit = omitir_congelar_papel(juego, cfg)
+        if omitir:
+            existente_prev = next(
+                (p for p in dia["predicciones"] if str(p.get("game_id")) == str(juego.get("id"))),
+                None,
+            )
+            if existente_prev is None:
+                print(
+                    f"[PREDICCIONES] No se congela favorito inflado "
+                    f"({juego.get('visitante')}@{juego.get('home')}): {motivo_omit}"
+                )
+                return False
 
     stake_v = float(stake_virtual if stake_virtual is not None else stake_virtual_prediccion())
     ahora_dt = datetime.now(tz_experimento())
