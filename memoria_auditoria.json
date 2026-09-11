@@ -236918,7 +236918,732 @@
       "fecha": "2026-09-11",
       "bloqueado_en": null,
       "apuestas": [],
-      "predicciones": [],
+      "predicciones": [
+        {
+          "game_id": "824631",
+          "visitante": "Pittsburgh Pirates",
+          "home": "Chicago Cubs",
+          "pick": "Pittsburgh Pirates ML",
+          "odds": 2.59,
+          "odds_american": 159,
+          "edge": 14.4,
+          "probPick": 53.0,
+          "apostable": false,
+          "lineas_fuente": "draftkings",
+          "motivo_apuesta": "Prob. modelo bajo 58.0% · Lean débil · se muestra quién gana, no cuenta en precisión",
+          "pitcherAway": "Wilber Dotel",
+          "pitcherHome": "Shota Imanaga",
+          "pitcher_away_id": 696062,
+          "pitcher_home_id": 684007,
+          "inicio_juego": "2026-09-11T14:20:00-04:00",
+          "estado": "pendiente",
+          "resultado": null,
+          "profit": null,
+          "stake_virtual": 3.0,
+          "con_dinero": false,
+          "predicho_en": "2026-09-11T13:20:10.142213-04:00",
+          "congelado_en_gracia": false,
+          "valida_stats": false,
+          "invalida_tarde": false,
+          "confianza_baja": true,
+          "clima": {
+            "ok": false,
+            "fuente": "none",
+            "temp_f": null,
+            "viento_mph": null,
+            "humedad": null,
+            "run_env": 0.0,
+            "motivo": "429 Client Error: Too Many Requests for url: https://api.open-meteo.com/v1/forecast?latitude=41.9484&longitude=-87.6553&",
+            "estadio": "Wrigley Field",
+            "es_domo": false
+          },
+          "lesiones": {
+            "ok": true,
+            "fuente": "espn",
+            "motivo": "280 bajas indexadas",
+            "away": [
+              {
+                "jugador": "Braxton Ashcraft",
+                "apellido": "ashcraft",
+                "pos": "SP",
+                "status": "15-Day-IL",
+                "comentario": "Ashcraft (14-6) took the loss against the Angels on Saturday, allowing three runs on seven hits and no walks with nine strikeouts over five ",
+                "severidad": 5,
+                "equipo": "Pittsburgh Pirates"
+              },
+              {
+                "jugador": "Endy Rodriguez",
+                "apellido": "rodriguez",
+                "pos": "C",
+                "status": "60-Day-IL",
+                "comentario": "The Pirates transferred Rodriguez (hip) to the 60-day injured list Tuesday.",
+                "severidad": 5,
+                "equipo": "Pittsburgh Pirates"
+              },
+              {
+                "jugador": "Mitch Keller",
+                "apellido": "keller",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "The Pirates placed Keller on the 60-day injured list Monday due to a right arm teres major muscle injury.",
+                "severidad": 5,
+                "equipo": "Pittsburgh Pirates"
+              },
+              {
+                "jugador": "Isaac Mattson",
+                "apellido": "mattson",
+                "pos": "RP",
+                "status": "15-Day-IL",
+                "comentario": "The Pirates recalled Mattson from Triple-A Indianapolis on Friday, Danny Demilio of PittsburghBaseballNow.com reports.",
+                "severidad": 4,
+                "equipo": "Pittsburgh Pirates"
+              },
+              {
+                "jugador": "Kirby Yates",
+                "apellido": "yates",
+                "pos": "RP",
+                "status": "15-Day-IL",
+                "comentario": "The Pirates placed Yates on the 15-day injured list Thursday with a right shoulder impingement.",
+                "severidad": 4,
+                "equipo": "Pittsburgh Pirates"
+              }
+            ],
+            "home": [
+              {
+                "jugador": "Edward Cabrera",
+                "apellido": "cabrera",
+                "pos": "SP",
+                "status": "15-Day-IL",
+                "comentario": "Cabrera (finger) will continue his rehab assignment with Triple-A Iowa on Friday, Meghan Montemurro of the Chicago Tribune reports.",
+                "severidad": 5,
+                "equipo": "Chicago Cubs"
+              },
+              {
+                "jugador": "Ben Brown",
+                "apellido": "brown",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Brown (neck) has been ruled out for the remainder of the season, Taylor McGregor of Marquee Sports Network reports.",
+                "severidad": 5,
+                "equipo": "Chicago Cubs"
+              },
+              {
+                "jugador": "Justin Steele",
+                "apellido": "steele",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Steele will begin a rehab assignment with Triple-A Iowa on Wednesday, Taylor McGregor of Marquee Sports Network reports.",
+                "severidad": 5,
+                "equipo": "Chicago Cubs"
+              },
+              {
+                "jugador": "Phil Maton",
+                "apellido": "maton",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "The Cubs transferred Maton (knee) to the 60-day injured list Wednesday.",
+                "severidad": 5,
+                "equipo": "Chicago Cubs"
+              },
+              {
+                "jugador": "Riley Martin",
+                "apellido": "martin",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Cubs manager Craig Counsell said Wednesday that Martin (elbow) has been ruled out for the remainder of the season, Meghan Montemurro of the ",
+                "severidad": 5,
+                "equipo": "Chicago Cubs"
+              },
+              {
+                "jugador": "Hunter Harvey",
+                "apellido": "harvey",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Cubs manager Craig Counsell said Wednesday that Harvey's (triceps/shoulder) rehab hasn't come along as hoped, Meghan Montemurro of the Chica",
+                "severidad": 5,
+                "equipo": "Chicago Cubs"
+              },
+              {
+                "jugador": "Shelby Miller",
+                "apellido": "miller",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Miller (elbow) began a rehab assignment Sunday at Triple-A Iowa, striking out two batters while allowing one run on two hits and no walks.",
+                "severidad": 5,
+                "equipo": "Chicago Cubs"
+              },
+              {
+                "jugador": "Porter Hodge",
+                "apellido": "hodge",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "The Cubs transferred Hodge (elbow) to the 60-day injured list Friday, Taylor McGregor of Marquee Sports Network reports.",
+                "severidad": 5,
+                "equipo": "Chicago Cubs"
+              }
+            ],
+            "resumen": "Pittsburgh Pirates: Braxton Ashcraft(SP/15-Day-IL), Endy Rodriguez(C/60-Day-IL), Mitch Keller(SP/60-Day-IL), Isaac Mattson(RP/15-Day-IL) | Chicago Cubs: Edward Cabrera(SP/15-Day-IL), Ben Brown(RP/60-Day-IL), Justin Steele(SP/60-Day-IL), Phil Maton(RP/60-Day-IL)",
+            "ajuste_away": -2.75,
+            "ajuste_home": -3.1,
+            "starter_riesgo": false,
+            "starter_away_lesionado": false,
+            "starter_home_lesionado": false,
+            "alerta": ""
+          },
+          "scratch_lineup": {
+            "ok": true,
+            "lineup_confirmado": true,
+            "scratch_away": false,
+            "scratch_home": false,
+            "estrellas_fuera_away": [
+              {
+                "id": 664040,
+                "nombre": "Brandon Lowe",
+                "ops": 0.802,
+                "pa": 601
+              }
+            ],
+            "estrellas_fuera_home": [
+              {
+                "id": 621438,
+                "nombre": "Tyrone Taylor",
+                "ops": 0.849,
+                "pa": 221
+              }
+            ],
+            "ajuste_away": 0.0,
+            "ajuste_home": 0.0,
+            "min_estrellas_fuera": 2,
+            "riesgo": false,
+            "alerta": "",
+            "resumen": "Lineup OK"
+          },
+          "factores_humanos": {
+            "ok": true,
+            "away": {
+              "ok": true,
+              "dias_descanso": 0.0,
+              "back_to_back": true,
+              "juegos_seguidos_visita": 4,
+              "cambio_zona": 0,
+              "fatiga_viaje": 0.74,
+              "ultimo_rival": "Chicago White Sox",
+              "ultimo_venue": "Rate Field",
+              "motivo": "B2B · descanso 0d · road×4 · fatiga 0.74"
+            },
+            "home": {
+              "ok": true,
+              "dias_descanso": 1.0,
+              "back_to_back": false,
+              "juegos_seguidos_visita": 0,
+              "cambio_zona": 0,
+              "fatiga_viaje": 0.25,
+              "ultimo_rival": "Milwaukee Brewers",
+              "ultimo_venue": "American Family Field",
+              "motivo": "descanso 1d"
+            },
+            "serie": {
+              "game_number": 1,
+              "games_in_series": 3,
+              "leverage": 0.333,
+              "rubber": false,
+              "day_night": "day"
+            },
+            "umpire": {
+              "ok": true,
+              "hp_nombre": "Derek Thomas",
+              "hp_id": 658292,
+              "sesgo_runs": 0.0,
+              "motivo": "HP Derek Thomas"
+            },
+            "ajuste_away": -2.23,
+            "ajuste_home": -0.35,
+            "sesgo_umpire_runs": 0.0,
+            "alertas": [
+              "Visita fatigada (B2B · descanso 0d · road×4 · fatiga 0.74)"
+            ],
+            "resumen": "AWAY: B2B · descanso 0d · road×4 · fatiga 0.74 | HOME: descanso 1d | Serie 1/3 | day | HP Derek Thomas",
+            "riesgo": true,
+            "features_away": {
+              "fatiga_viaje": 0.74,
+              "dias_descanso": 0.0,
+              "cambio_zona": 0.0,
+              "leverage_serie": 0.333,
+              "umpire_runs": 0.0
+            },
+            "features_home": {
+              "fatiga_viaje": 0.25,
+              "dias_descanso": 1.0,
+              "cambio_zona": 0.0,
+              "leverage_serie": 0.333,
+              "umpire_runs": 0.0
+            }
+          },
+          "historico_oficial": {
+            "ok": true,
+            "season": 2026,
+            "l10_away": {
+              "ok": true,
+              "wins": 8,
+              "losses": 2,
+              "pct": 0.8,
+              "marca": "8-2",
+              "streak_code": "W4",
+              "streak_type": "wins",
+              "streak_n": 4,
+              "forma": "caliente"
+            },
+            "l10_home": {
+              "ok": true,
+              "wins": 4,
+              "losses": 6,
+              "pct": 0.4,
+              "marca": "4-6",
+              "streak_code": "L4",
+              "streak_type": "losses",
+              "streak_n": 4,
+              "forma": "neutra"
+            },
+            "pitcher_vs_rival_away": {
+              "ok": true,
+              "pitcher_id": 696062,
+              "pitcher": "Wilber Dotel",
+              "rival_id": 112,
+              "gs": 2,
+              "ip": 4.0,
+              "era": 0.0,
+              "whip": 0.75,
+              "k": 5,
+              "bb": 0,
+              "hr": 0,
+              "ops_contra": 0.4,
+              "avg_contra": 0.2,
+              "calidad": "bueno",
+              "motivo": "ERA 0.0 en 4.0 IP vs rival",
+              "fechas": [
+                "2026-05-25",
+                "2026-07-24"
+              ],
+              "resumenes": [
+                "3.0 IP, 0 ER, 4 K, 0 BB",
+                "1.0 IP, 0 ER, K, 0 BB"
+              ]
+            },
+            "pitcher_vs_rival_home": {
+              "ok": true,
+              "pitcher_id": 684007,
+              "pitcher": "Shota Imanaga",
+              "rival_id": 134,
+              "gs": 2,
+              "ip": 12.0,
+              "era": 0.0,
+              "whip": 0.5,
+              "k": 13,
+              "bb": 2,
+              "hr": 0,
+              "ops_contra": 0.243,
+              "avg_contra": 0.1,
+              "calidad": "bueno",
+              "motivo": "ERA 0.0 en 12.0 IP vs rival",
+              "fechas": [
+                "2026-04-10",
+                "2026-07-25"
+              ],
+              "resumenes": [
+                "6.0 IP, 0 ER, 9 K, BB",
+                "6.0 IP, 0 ER, 4 K, BB"
+              ]
+            },
+            "alertas": [
+              "l10_caliente_away",
+              "pvr_bueno_away",
+              "pvr_bueno_home"
+            ],
+            "riesgo": false,
+            "ajuste_away": 1.2,
+            "ajuste_home": 0.4,
+            "resumen": "L10 visita 8-2 · L10 local 4-6 · SP visita vs rival: ERA 0.0 en 4.0 IP vs rival · SP local vs rival: ERA 0.0 en 12.0 IP vs rival"
+          },
+          "ia_briefing": {
+            "ok": true,
+            "fase": "t60",
+            "creado_en": "2026-09-11T17:20:10.245450Z",
+            "alertas": [
+              "humanos",
+              "l10_caliente_away",
+              "pvr_bueno_away",
+              "pvr_bueno_home",
+              "mc_over",
+              "preferir_f5"
+            ],
+            "resumen": "Pick Pittsburgh Pirates ML @ 53.0% edge=14.4 · cuotas=draftkings · Elo 1536/1499 pitch +31/-14 → 58/42% · fusión 55/45% · Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 53/47% · MC totales μ=9.7 (F5 · alertas=humanos,l10_caliente_away,pvr_bueno_away,pvr_bueno_home,mc_over,preferir_f5 · AWAY: B2B · descans",
+            "pilares": {
+              "modelo": {
+                "pick": "Pittsburgh Pirates ML",
+                "prob": 53.0,
+                "edge": 14.4,
+                "odds": 2.59,
+                "fuente_cuotas": "draftkings",
+                "motivo": "Prob. modelo bajo 58.0%"
+              },
+              "clima": {
+                "ok": false,
+                "run_env": 0.0,
+                "motivo": "429 Client Error: Too Many Requests for url: https://api.open-meteo.com/v1/forecast?latitude=41.9484"
+              },
+              "lesiones": {
+                "ok": true,
+                "starter_riesgo": false,
+                "resumen": "Pittsburgh Pirates: Braxton Ashcraft(SP/15-Day-IL), Endy Rodriguez(C/60-Day-IL), Mitch Keller(SP/60-Day-IL), Isaac Mattson(RP/15-Day-IL) | C"
+              },
+              "scratch": {
+                "ok": true,
+                "riesgo": false,
+                "resumen": "Lineup OK"
+              },
+              "humanos": {
+                "ok": true,
+                "riesgo": true,
+                "resumen": "AWAY: B2B · descanso 0d · road×4 · fatiga 0.74 | HOME: descanso 1d | Serie 1/3 | day | HP Derek Thomas",
+                "fatiga_away": 0.74,
+                "fatiga_home": 0.25
+              },
+              "historico": {
+                "ok": true,
+                "riesgo": false,
+                "resumen": "L10 visita 8-2 · L10 local 4-6 · SP visita vs rival: ERA 0.0 en 4.0 IP vs rival · SP local vs rival: ERA 0.0 en 12.0 IP vs rival",
+                "l10_away": "8-2",
+                "l10_home": "4-6",
+                "pvr_away": "bueno",
+                "pvr_home": "bueno"
+              },
+              "elo": {
+                "ok": true,
+                "resumen": "Elo 1536/1499 pitch +31/-14 → 58/42% · fusión 55/45%",
+                "prob_elo_away": 58.13,
+                "prob_elo_home": 41.87,
+                "adj_pitcher_away": 30.8,
+                "adj_pitcher_home": -13.72,
+                "peso_elo": 0.4
+              },
+              "inteligencia": {
+                "ok": true,
+                "capas": [
+                  "bullpen",
+                  "park_umpire",
+                  "monte_carlo",
+                  "mc_totales",
+                  "consenso"
+                ],
+                "resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 53/47% · MC totales μ=9.7 (F5 5.5) vs 8.0 → over 65% · F5→over · preferir F5 (bullpen)",
+                "tipo_pick": "underdog",
+                "consenso_n": 1,
+                "mc": "MC×800 → 58/42%",
+                "totales": {
+                  "ok": true,
+                  "mu": 9.72,
+                  "mu_f5": 5.52,
+                  "señal": "over",
+                  "señal_f5": "over",
+                  "preferir_f5": true,
+                  "resumen": "MC totales μ=9.7 (F5 5.5) vs 8.0 → over 65% · F5→over · preferir F5 (bullpen)"
+                }
+              },
+              "pitchers": {
+                "away": "Wilber Dotel",
+                "home": "Shota Imanaga",
+                "fip": 3.1,
+                "fatiga_bullpen": 0.4
+              }
+            },
+            "lecciones_ids": [
+              "lec-acierto_refuerzo-823900-1789020374",
+              "lec-acierto_refuerzo-823739-1789020374",
+              "lec-acierto_refuerzo-823251-1788996121",
+              "lec-fallo_postmortem-824228-1788919439",
+              "lec-fallo_postmortem-823093-1788589784",
+              "lec-fallo_postmortem-823090-1788996122"
+            ]
+          },
+          "ia_mente": null,
+          "ml_features": {
+            "era_pitcher": 4.41,
+            "whip_pitcher": 1.32,
+            "k9_pitcher": 9.37,
+            "woba_equipo": 0.335,
+            "ops_equipo": 0.734,
+            "win_pct_equipo": 0.503,
+            "es_local": 0.0,
+            "park_factor": 1.08,
+            "fatiga_bullpen": 0.4,
+            "matchup_zurdo_diestro": -1.399999999999999,
+            "edge_estadistico": 14.4,
+            "bb9_pitcher": 3.86,
+            "hr9_pitcher": 0.55,
+            "racha_equipo": 0.8,
+            "diferencia_run": 0.0,
+            "vs_pitcher_hand": 0.0,
+            "temp_f": 72.0,
+            "viento_mph": 5.0,
+            "run_env": 0.0,
+            "fip_pitcher": 3.1,
+            "xfip_pitcher": 3.05,
+            "k_pct_pitcher": 24.6,
+            "bb_pct_pitcher": 10.1,
+            "fatiga_viaje": 0.74,
+            "dias_descanso": 1.0,
+            "cambio_zona": 0.0,
+            "leverage_serie": 0.333,
+            "umpire_runs": 0.0
+          },
+          "tipo_pick": "underdog",
+          "inteligencia": {
+            "ok": true,
+            "capas": [
+              "bullpen",
+              "park_umpire",
+              "monte_carlo",
+              "mc_totales",
+              "consenso"
+            ],
+            "bullpen": {
+              "away": {
+                "ok": true,
+                "fatiga": 0.699,
+                "bullpen_index": 69.9,
+                "pitches_relevo": 195,
+                "pitches_l3d": 195,
+                "ip_relevo": 12.3,
+                "era_relevo_prom": null,
+                "relevistas": 8,
+                "juegos_analizados": 3,
+                "horas_desde": 12.8,
+                "relevistas_detalle": [
+                  {
+                    "nombre": "Brandon Eisert",
+                    "pitches": 36,
+                    "ip": 2.3,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Luke Weaver",
+                    "pitches": 32,
+                    "ip": 2.0,
+                    "era": 0.0,
+                    "apariciones": 2
+                  },
+                  {
+                    "nombre": "Mason Montgomery",
+                    "pitches": 31,
+                    "ip": 2.0,
+                    "era": 0.0,
+                    "apariciones": 2
+                  },
+                  {
+                    "nombre": "Wilber Dotel",
+                    "pitches": 28,
+                    "ip": 2.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Camilo Doval",
+                    "pitches": 26,
+                    "ip": 0.3,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Gregory Soto",
+                    "pitches": 17,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  }
+                ],
+                "resumen": "Bullpen Pittsburgh Pirates: 195 pitches L3D (8 brazos, 12.3 IP) · índice 70/100",
+                "nombre": "Pittsburgh Pirates",
+                "game_pk": 824550
+              },
+              "home": {
+                "ok": true,
+                "fatiga": 0.31,
+                "bullpen_index": 31.0,
+                "pitches_relevo": 129,
+                "pitches_l3d": 129,
+                "ip_relevo": 9.0,
+                "era_relevo_prom": null,
+                "relevistas": 7,
+                "juegos_analizados": 2,
+                "horas_desde": 36.8,
+                "relevistas_detalle": [
+                  {
+                    "nombre": "Aaron Civale",
+                    "pitches": 26,
+                    "ip": 2.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Daniel Palencia",
+                    "pitches": 19,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Trent Thornton",
+                    "pitches": 19,
+                    "ip": 1.7,
+                    "era": 0.0,
+                    "apariciones": 2
+                  },
+                  {
+                    "nombre": "Jacob Webb",
+                    "pitches": 19,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Caleb Thielbar",
+                    "pitches": 18,
+                    "ip": 1.3,
+                    "era": 0.0,
+                    "apariciones": 2
+                  },
+                  {
+                    "nombre": "Colin Rea",
+                    "pitches": 15,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  }
+                ],
+                "resumen": "Bullpen Chicago Cubs: 129 pitches L3D (7 brazos, 9.0 IP) · índice 31/100",
+                "nombre": "Chicago Cubs",
+                "game_pk": 823739
+              },
+              "shift_hacia_away": -1.56
+            },
+            "park_umpire": {
+              "ok": true,
+              "adj_away": 0.22,
+              "adj_home": 0.35,
+              "park_factor": 1.08,
+              "sesgo_umpire": 0.0,
+              "resumen": "Park×1.08 ump +0.00 → 54/46%"
+            },
+            "monte_carlo": {
+              "ok": true,
+              "n": 800,
+              "prob_home": 41.5,
+              "prob_away": 58.5,
+              "resumen": "MC×800 → 58/42%"
+            },
+            "totales": {
+              "ok": true,
+              "n": 800,
+              "lambda_away": 5.35,
+              "lambda_home": 4.37,
+              "mu_total": 9.72,
+              "mu_f5": 5.52,
+              "p10": 6.0,
+              "p50": 10.0,
+              "p90": 13.0,
+              "linea_total": 8.0,
+              "linea_f5": 4.5,
+              "linea_fuente": "mercado",
+              "linea_es_default": false,
+              "p_over": 64.6,
+              "p_under": 22.4,
+              "p_over_f5": 65.2,
+              "p_under_f5": 34.8,
+              "señal": "over",
+              "señal_f5": "over",
+              "preferir_f5": true,
+              "resumen": "MC totales μ=9.7 (F5 5.5) vs 8.0 → over 65% · F5→over · preferir F5 (bullpen)"
+            },
+            "preferir_f5": true,
+            "consenso": {
+              "ok": true,
+              "n_fuentes": 1,
+              "fuentes": [
+                "draftkings"
+              ],
+              "dec_away": 2.59,
+              "dec_home": 1.518,
+              "prob_away": 36.95,
+              "prob_home": 63.05,
+              "vig_pct": 4.49,
+              "discrepancia_casas_pct": 0.0,
+              "resumen": "Consenso 1 casa(s) · fair 36.95/63.05% · vig 4.49%"
+            },
+            "tipo_pre": "limpio",
+            "resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 53/47% · MC totales μ=9.7 (F5 5.5) vs 8.0 → over 65% · F5→over · preferir F5 (bullpen)",
+            "tipo_pick": "underdog"
+          },
+          "elo": {
+            "ok": true,
+            "activo": true,
+            "peso_elo": 0.4,
+            "elo_away": 1535.7,
+            "elo_home": 1499.2,
+            "adj_pitcher_away": 30.8,
+            "adj_pitcher_home": -13.72,
+            "elo_adj_away": 1566.5,
+            "elo_adj_home": 1485.5,
+            "prob_elo_away": 58.13,
+            "prob_elo_home": 41.87,
+            "prob_modelo_away": 53.6,
+            "prob_modelo_home": 46.4,
+            "prob_fusion_away": 55.41,
+            "prob_fusion_home": 44.59,
+            "fip_away": 3.1,
+            "fip_home": 4.69,
+            "resumen": "Elo 1536/1499 pitch +31/-14 → 58/42% · fusión 55/45%"
+          },
+          "mc_totales": {
+            "ok": true,
+            "n": 800,
+            "lambda_away": 5.35,
+            "lambda_home": 4.37,
+            "mu_total": 9.72,
+            "mu_f5": 5.52,
+            "p10": 6.0,
+            "p50": 10.0,
+            "p90": 13.0,
+            "linea_total": 8.0,
+            "linea_f5": 4.5,
+            "linea_fuente": "mercado",
+            "linea_es_default": false,
+            "p_over": 64.6,
+            "p_under": 22.4,
+            "p_over_f5": 65.2,
+            "p_under_f5": 34.8,
+            "señal": "over",
+            "señal_f5": "over",
+            "preferir_f5": true,
+            "resumen": "MC totales μ=9.7 (F5 5.5) vs 8.0 → over 65% · F5→over · preferir F5 (bullpen)"
+          },
+          "preferir_f5": true,
+          "total_linea": 8.0,
+          "lineas_total": {
+            "linea": 8.0,
+            "over_american": null,
+            "over_decimal": null,
+            "under_american": null,
+            "under_decimal": null,
+            "casa": "draftkings",
+            "fuente": "espn"
+          },
+          "odds_congelada": 2.59,
+          "lineas_fuente_inicial": "draftkings",
+          "linea_movimiento_pct": 0.0,
+          "cuota_retry": true
+        }
+      ],
       "resumen": {
         "jugadas": 0,
         "ganadas": 0,
@@ -257505,7 +258230,7 @@
     "accuracy_holdout": 0.538,
     "accuracy_xgb_train": 0.988,
     "accuracy_xgb_holdout": 0.508,
-    "ultimo_entreno": "2026-09-11T11:09:21.616003",
+    "ultimo_entreno": "2026-09-11T15:02:42.454263",
     "xgb": true
   },
   "calib_meta": {
@@ -257569,6 +258294,6 @@
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-11T12:26:45.839546Z"
+    "actualizado_en": "2026-09-11T12:30:11.245387Z"
   }
 }
