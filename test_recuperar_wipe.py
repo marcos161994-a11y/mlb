@@ -95,6 +95,27 @@ def test_proteger_escritura_respeta_wipe_confirmado():
     assert fechas_con_historial(out) == set()
 
 
+def test_snapshot_render_solo_latest_compacto(tmp_path, monkeypatch):
+    from memoria_fusion import escribir_snapshot, mejor_snapshot, fechas_con_historial
+
+    monkeypatch.setenv("RENDER", "true")
+    m = {
+        "capital_inicial": 100,
+        "dias": [
+            {"fecha": "2026-08-15", "predicciones": [{"game_id": "1"}]},
+        ],
+    }
+    p = escribir_snapshot(tmp_path, m, keep=5)
+    assert p is not None and p.exists()
+    assert p.name == "latest.json"
+    raw = p.read_text(encoding="utf-8")
+    assert "\n  " not in raw
+    assert not list((tmp_path / "memoria_snapshots").glob("mem_*.json"))
+    best = mejor_snapshot(tmp_path)
+    assert best is not None
+    assert fechas_con_historial(best) == {"2026-08-15"}
+
+
 def test_snapshot_y_mejor(tmp_path):
     from memoria_fusion import escribir_snapshot, mejor_snapshot, fechas_con_historial
 
