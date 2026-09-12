@@ -5,6 +5,18 @@ from __future__ import annotations
 from pathlib import Path
 
 
+def test_guardar_cache_no_pisa_historial_vacio():
+    html = Path(__file__).resolve().parent.joinpath("QuantumMLB.html").read_text(
+        encoding="utf-8"
+    )
+    assert "function cacheTieneHistorial" in html
+    assert "Boot vacío post-crash no debe pisar" in html
+    assert "if (!cacheTieneHistorial(state))" in html
+    assert "s.ver && s.ver !== PANEL_VER" in html
+    assert "if (!bootConHist && historialPintado)" in html
+    assert "State vacío post-crash" in html
+
+
 def test_pintar_predicciones_dias_orden_declarado_antes():
     html = Path(__file__).resolve().parent.joinpath("QuantumMLB.html").read_text(
         encoding="utf-8"

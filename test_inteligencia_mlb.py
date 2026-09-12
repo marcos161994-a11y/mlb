@@ -70,6 +70,16 @@ def test_clasificar_tipo_pick():
     )
 
 
+def test_mc_sims_efectivos_cap_render(monkeypatch):
+    monkeypatch.delenv("RENDER", raising=False)
+    assert intel.mc_sims_efectivos({"mc_sims": 800}) == 800
+    assert intel.mc_sims_efectivos({"mc_sims": 100}) == 100
+    monkeypatch.setenv("RENDER", "true")
+    assert intel.mc_sims_efectivos({"mc_sims": 800}) == 250
+    assert intel.mc_sims_efectivos({"mc_sims": 100}) == 100
+    assert intel.mc_sims_efectivos({}) == 250
+
+
 def test_monte_carlo_determinista():
     mc1 = intel.monte_carlo_probs(1580, 1500, home_adv=24, n=400, seed=7)
     mc2 = intel.monte_carlo_probs(1580, 1500, home_adv=24, n=400, seed=7)

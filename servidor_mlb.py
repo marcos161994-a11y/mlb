@@ -8,6 +8,7 @@ Cada juego se evalúa y bloquea el stake configurado automáticamente 1 hora ANT
 from __future__ import annotations
 
 import copy
+import gc
 import hashlib
 import json
 import os
@@ -107,6 +108,24 @@ _JUEGOS_PANEL_CACHE_PATH = DATA_DIR / "juegos_panel_cache.json"
 _JUEGOS_PANEL_DISK_MAX_AGE_SEC = 20 * 60
 
 
+def _en_render() -> bool:
+    return bool(os.environ.get("RENDER"))
+
+
+def _json_dumps_memoria(obj: Any) -> str:
+    """Compacto en Render: indent=2 duplica el pico al serializar ~9 MB."""
+    indent = None if _en_render() else 2
+    return json.dumps(obj, indent=indent, ensure_ascii=False)
+
+
+def _escribir_json_atomico(path: Path, obj: Any) -> None:
+    """Escribe JSON y reemplaza: un OOM a mitad no deja el archivo a 0 bytes."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(_json_dumps_memoria(obj), encoding="utf-8")
+    tmp.replace(path)
+
+
 def _invalidar_cache_memoria() -> None:
     global _memoria_cache, _memoria_cache_digest
     _memoria_cache = None
@@ -142,11 +161,7 @@ def _escribir_memoria_backup(final: dict) -> None:
     try:
         prev = _cargar_json_memoria(MEMORIA_BACKUP_PATH)
         to_write, _ = _proteger_escritura(prev, final, permitir_wipe=False)
-        MEMORIA_BACKUP_PATH.parent.mkdir(parents=True, exist_ok=True)
-        tmp = MEMORIA_BACKUP_PATH.with_suffix(".json.tmp")
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(to_write, f, indent=2, ensure_ascii=False)
-        tmp.replace(MEMORIA_BACKUP_PATH)
+        _escribir_json_atomico(MEMORIA_BACKUP_PATH, to_write)
     except Exception as e:
         print(f"[GUARDAR] backup: {e}")
 
@@ -228,10 +243,7 @@ def _intentar_recuperar_wipe(*, force: bool = False) -> bool:
     else:
         return False
 
-    MEMORIA_PATH.parent.mkdir(parents=True, exist_ok=True)
-    MEMORIA_PATH.write_text(
-        json.dumps(merged, indent=2, ensure_ascii=False), encoding="utf-8"
-    )
+    _escribir_json_atomico(MEMORIA_PATH, merged)
     try:
         _escribir_memoria_backup(merged)
     except Exception:
@@ -258,9 +270,7 @@ def _inicializar_datos_persistencia() -> None:
         if origen.exists() and not MEMORIA_PATH.exists():
             try:
                 bundled = json.loads(origen.read_text(encoding="utf-8"))
-                MEMORIA_PATH.write_text(
-                    json.dumps(bundled, indent=2, ensure_ascii=False), encoding="utf-8"
-                )
+                _escribir_json_atomico(MEMORIA_PATH, bundled)
                 print(f"[CLOUD] Memoria copiada a {MEMORIA_PATH}")
             except Exception as e:
                 print(f"[CLOUD] No se pudo copiar memoria: {e}")
@@ -550,30 +560,32 @@ def guardar_memoria(memoria: dict, *, permitir_wipe: bool = False) -> None:
                 f"[GUARDAR] Candado anti-wipe: se salvaron fechas "
                 f"{meta.get('fechas_salvadas')}"
             )
-        MEMORIA_PATH.parent.mkdir(parents=True, exist_ok=True)
-        with open(MEMORIA_PATH, "w", encoding="utf-8") as f:
-            print(
-                f"[GUARDAR] Guardando memoria. Capital: {float(final.get('capital') or 0):.2f}, "
-                f"Día: {final.get('dia_actual')} · "
-                f"fechas={sorted(_fechas_con_historial(final))}"
-            )
-            json.dump(final, f, indent=2, ensure_ascii=False)
+        print(
+            f"[GUARDAR] Guardando memoria. Capital: {float(final.get('capital') or 0):.2f}, "
+            f"Día: {final.get('dia_actual')} · "
+            f"fechas={sorted(_fechas_con_historial(final))}"
+        )
+        _escribir_json_atomico(MEMORIA_PATH, final)
         _escribir_memoria_backup(final)
         try:
-            _escribir_snapshot(DATA_DIR, final)
+            _escribir_snapshot(DATA_DIR, final, keep=4 if _en_render() else 12)
         except Exception as e:
             print(f"[GUARDAR] snapshot: {e}")
-        js_path = DATA_DIR / "memoria_dashboard.js"
-        js_path.write_text(
-            f"const datosMemoria = {json.dumps(_memoria_para_panel(final), ensure_ascii=False)};",
-            encoding="utf-8",
-        )
+        # En Render el panel usa /api/panel-boot; el .js duplica 1–2 MB de RAM.
+        if not _en_render():
+            js_path = DATA_DIR / "memoria_dashboard.js"
+            js_path.write_text(
+                f"const datosMemoria = {json.dumps(_memoria_para_panel(final), ensure_ascii=False)};",
+                encoding="utf-8",
+            )
         global _memoria_cache, _memoria_cache_digest
         _memoria_cache = final
         _memoria_cache_digest = _digest_memoria_archivo(MEMORIA_PATH)
         if final is not memoria:
             memoria.clear()
             memoria.update(final)
+        if _en_render():
+            gc.collect()
 
 
 def tz_experimento() -> ZoneInfo:
@@ -4893,6 +4905,10 @@ def _cron_externo_en_fondo() -> None:
             pass
     finally:
         _cron_externo_activo = False
+        try:
+            gc.collect()
+        except Exception:
+            pass
 
 
 @app.get("/api/auto-bloqueo-externo")
