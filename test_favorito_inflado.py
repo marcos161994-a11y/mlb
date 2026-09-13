@@ -100,4 +100,4 @@ def test_config_favorito_inflado_activo():
     assert float(fi.get("umbral_prob") or 0) == 60.0
     assert float(fi.get("min_edge_pct") or 0) == 18.0
     assert (cfg.get("estrategia") or {}).get("papel_respeta_favorito_inflado") is False
-    assert float((cfg.get("estrategia") or {}).get("min_prob_stats") or 0) == 58.0
+    assert "min_prob_stats" not in (cfg.get("estrategia") or {})
