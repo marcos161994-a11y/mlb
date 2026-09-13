@@ -280356,18 +280356,18 @@
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 167,
-    "muestras_reales": 167,
+    "muestras": 337,
+    "muestras_reales": 337,
     "muestras_sinteticas": 0,
     "ratio_features_reales": 1.0,
     "entreno_bloqueado": false,
     "schema": 4,
-    "mensaje": "Reentrenado con 167 muestras (167 reales, RF acc 99.4%, RF holdout 61.8%, XGB acc 99.4%, XGB holdout 50.0%)",
-    "accuracy_train": 0.994,
-    "accuracy_holdout": 0.618,
-    "accuracy_xgb_train": 0.994,
-    "accuracy_xgb_holdout": 0.5,
-    "ultimo_entreno": "2026-09-13T05:49:55.957952",
+    "mensaje": "Reentrenado con 337 muestras (337 reales, RF acc 99.1%, RF holdout 48.5%, XGB acc 98.2%, XGB holdout 54.4%)",
+    "accuracy_train": 0.991,
+    "accuracy_holdout": 0.485,
+    "accuracy_xgb_train": 0.982,
+    "accuracy_xgb_holdout": 0.544,
+    "ultimo_entreno": "2026-09-13T10:45:29.293150",
     "xgb": true
   },
   "calib_meta": {
@@ -280428,6 +280428,6 @@
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-13T06:57:35.516847Z"
+    "actualizado_en": "2026-09-13T08:28:20.496817Z"
   }
 }
