@@ -250928,9 +250928,9 @@
           "pitcher_away_id": 700712,
           "pitcher_home_id": 674841,
           "inicio_juego": "2026-09-12T16:05:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -3.0,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-12T12:34:46.605853-04:00",
@@ -251653,7 +251653,9 @@
             "fuente": "espn"
           },
           "odds_congelada": 2.05,
-          "lineas_fuente_inicial": "draftkings"
+          "lineas_fuente_inicial": "draftkings",
+          "marcador_final": "Los Angeles Angels 5 - Washington Nationals 6",
+          "liquidado_en": "2026-09-12T19:34:12.375472-04:00"
         },
         {
           "game_id": "823170",
@@ -280190,7 +280192,7 @@
     "accuracy_holdout": 0.493,
     "accuracy_xgb_train": 0.979,
     "accuracy_xgb_holdout": 0.552,
-    "ultimo_entreno": "2026-09-12T23:02:04.057949",
+    "ultimo_entreno": "2026-09-12T23:34:27.085142",
     "xgb": true
   },
   "calib_meta": {
@@ -280254,6 +280256,6 @@
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-12T20:29:11.557767Z"
+    "actualizado_en": "2026-09-12T23:32:58.079573Z"
   }
 }
