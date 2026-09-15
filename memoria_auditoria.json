@@ -268010,9 +268010,9 @@
           "pitcher_away_id": 675512,
           "pitcher_home_id": 667755,
           "inicio_juego": "2026-09-14T19:07:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -3.0,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-14T18:07:08.299445-04:00",
@@ -268724,7 +268724,9 @@
           "odds_congelada": 1.671,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 0.0,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "Detroit Tigers 6 - Toronto Blue Jays 5",
+          "liquidado_en": "2026-09-15T02:57:39.428624-04:00"
         },
         {
           "game_id": "823575",
@@ -268743,9 +268745,9 @@
           "pitcher_away_id": 687064,
           "pitcher_home_id": 804636,
           "inicio_juego": "2026-09-14T19:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -3.0,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-14T18:10:28.092470-04:00",
@@ -269409,7 +269411,9 @@
           "odds_congelada": 1.763,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 0.0,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "Baltimore Orioles 2 - New York Mets 1",
+          "liquidado_en": "2026-09-15T02:57:39.505853-04:00"
         },
         {
           "game_id": "823656",
@@ -269428,9 +269432,9 @@
           "pitcher_away_id": 701542,
           "pitcher_home_id": 665152,
           "inicio_juego": "2026-09-14T19:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 1.9,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-14T18:40:21.185748-04:00",
@@ -270133,7 +270137,9 @@
           "odds_congelada": 1.552,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 5.22,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "New York Yankees 8 - Minnesota Twins 3",
+          "liquidado_en": "2026-09-15T02:57:39.999390-04:00"
         },
         {
           "game_id": "824629",
@@ -270152,9 +270158,9 @@
           "pitcher_away_id": 625643,
           "pitcher_home_id": 656849,
           "inicio_juego": "2026-09-14T19:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.21,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-14T18:40:32.897339-04:00",
@@ -270875,7 +270881,9 @@
           "odds_congelada": 1.735,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 0.0,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "Atlanta Braves 3 - Chicago Cubs 7",
+          "liquidado_en": "2026-09-15T02:57:40.000314-04:00"
         },
         {
           "game_id": "823006",
@@ -270894,9 +270902,9 @@
           "pitcher_away_id": 694738,
           "pitcher_home_id": 687273,
           "inicio_juego": "2026-09-14T19:45:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 1.8,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-14T18:45:06.987835-04:00",
@@ -271613,7 +271621,9 @@
           "odds_congelada": 1.595,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 0.25,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "San Francisco Giants 1 - St. Louis Cardinals 2",
+          "liquidado_en": "2026-09-15T02:57:40.000703-04:00"
         },
         {
           "game_id": "824308",
@@ -271632,9 +271642,9 @@
           "pitcher_away_id": 663554,
           "pitcher_home_id": 608372,
           "inicio_juego": "2026-09-14T20:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 1.45,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-14T19:29:25.290069-04:00",
@@ -272395,7 +272405,9 @@
           "odds_congelada": 1.483,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 0.0,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "San Diego Padres 8 - Colorado Rockies 7",
+          "liquidado_en": "2026-09-15T02:57:40.001503-04:00"
         },
         {
           "game_id": "823981",
@@ -272414,9 +272426,9 @@
           "pitcher_away_id": 807739,
           "pitcher_home_id": 672282,
           "inicio_juego": "2026-09-14T21:38:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 4.11,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-14T19:29:25.504846-04:00",
@@ -273170,7 +273182,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-09-14T23:29:26.414158Z"
+          "whatsapp_enviado_en": "2026-09-14T23:29:26.414158Z",
+          "marcador_final": "Seattle Mariners 4 - Los Angeles Angels 6",
+          "liquidado_en": "2026-09-15T02:57:40.002786-04:00"
         },
         {
           "game_id": "825034",
@@ -273189,9 +273203,9 @@
           "pitcher_away_id": 645261,
           "pitcher_home_id": 669203,
           "inicio_juego": "2026-09-14T21:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.0,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-14T19:29:26.415639-04:00",
@@ -273899,7 +273913,9 @@
             "fuente": "espn"
           },
           "odds_congelada": 1.667,
-          "lineas_fuente_inicial": "draftkings"
+          "lineas_fuente_inicial": "draftkings",
+          "marcador_final": "Miami Marlins 7 - Arizona Diamondbacks 8",
+          "liquidado_en": "2026-09-15T02:57:40.005039-04:00"
         }
       ],
       "resumen": {
@@ -293248,6 +293264,220 @@
         "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 69/31% · MC totales μ=10.3 (F5 5.7) vs ",
         "preferir_f5": true
       }
+    },
+    {
+      "id": "lec-fallo_postmortem-823575-1789455459",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-09-14",
+      "game_id": "823575",
+      "visitante": "Baltimore Orioles",
+      "home": "New York Mets",
+      "pick": "New York Mets ML",
+      "probPick": 58.2,
+      "edge": 1.5,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Baltimore Orioles 2 - New York Mets 1",
+      "patron": "edge_falso",
+      "leccion": "Exigir edge >= 6% contra cuota real; edge bajo no basta. · Capas: bullpen,park_umpire,monte_carlo,mc_totales",
+      "motivo": "Heurística post-fallo (edge_falso)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-15T06:57:39.998421Z",
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "over",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1491/1508 pitch -9/-16 → 45/55% · fusión 42/58%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 42/58% · MC totales μ=10.5 (F5 5.7) vs ",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-acierto_refuerzo-823656-1789455459",
+      "tipo": "acierto_refuerzo",
+      "fecha": "2026-09-14",
+      "game_id": "823656",
+      "visitante": "New York Yankees",
+      "home": "Minnesota Twins",
+      "pick": "New York Yankees ML",
+      "probPick": 60.7,
+      "edge": -0.5,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "New York Yankees 8 - Minnesota Twins 3",
+      "patron": "retry_cuota_ok",
+      "leccion": "Cuota llegó en retry T-45/T-30 y el pick acertó; priorizar refresh.",
+      "motivo": "retry cuota + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-15T06:57:39.999802Z",
+      "con_dinero": false,
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "over",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1559/1470 pitch +1/-26 → 63/37% · fusión 60/40%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 61/39% · MC totales μ=11.1 (F5 6.2) vs ",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-acierto_refuerzo-823006-1789455460",
+      "tipo": "acierto_refuerzo",
+      "fecha": "2026-09-14",
+      "game_id": "823006",
+      "visitante": "San Francisco Giants",
+      "home": "St. Louis Cardinals",
+      "pick": "St. Louis Cardinals ML",
+      "probPick": 60.3,
+      "edge": -2.2,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "San Francisco Giants 1 - St. Louis Cardinals 2",
+      "patron": "retry_cuota_ok",
+      "leccion": "Cuota llegó en retry T-45/T-30 y el pick acertó; priorizar refresh.",
+      "motivo": "retry cuota + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-15T06:57:40.001049Z",
+      "con_dinero": false,
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "neutro",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1472/1476 pitch +13/+5 → 47/53% · fusión 37/63%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 40/60% · MC totales μ=9.3 (F5 5.3) vs 8",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-acierto_refuerzo-824308-1789455460",
+      "tipo": "acierto_refuerzo",
+      "fecha": "2026-09-14",
+      "game_id": "824308",
+      "visitante": "San Diego Padres",
+      "home": "Colorado Rockies",
+      "pick": "San Diego Padres ML",
+      "probPick": 68.4,
+      "edge": 1.0,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "San Diego Padres 8 - Colorado Rockies 7",
+      "patron": "retry_cuota_ok",
+      "leccion": "Cuota llegó en retry T-45/T-30 y el pick acertó; priorizar refresh.",
+      "motivo": "retry cuota + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-15T06:57:40.001850Z",
+      "con_dinero": false,
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "over",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1569/1403 pitch +17/-34 → 75/25% · fusión 68/32%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 68/32% · MC totales μ=12.5 (F5 7.1) vs ",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-oportunidad_perdida-824308-1789455460",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-09-14",
+      "game_id": "824308",
+      "visitante": "San Diego Padres",
+      "home": "Colorado Rockies",
+      "pick": "San Diego Padres ML",
+      "probPick": 68.4,
+      "edge": 1.0,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "San Diego Padres 8 - Colorado Rockies 7",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-15T06:57:40.002155Z"
+    },
+    {
+      "id": "lec-acierto_refuerzo-823981-1789455460",
+      "tipo": "acierto_refuerzo",
+      "fecha": "2026-09-14",
+      "game_id": "823981",
+      "visitante": "Seattle Mariners",
+      "home": "Los Angeles Angels",
+      "pick": "Los Angeles Angels ML",
+      "probPick": 58.6,
+      "edge": 16.4,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Seattle Mariners 4 - Los Angeles Angels 6",
+      "patron": "underdog_valor",
+      "leccion": "Underdog con edge moderado y prob 58-62% funcionó; mantener filtro.",
+      "motivo": "underdog valor + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-15T06:57:40.003070Z",
+      "con_dinero": false,
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "over",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1490/1437 pitch -28/+33 → 45/55% · fusión 37/63%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 41/59% · MC totales μ=9.6 (F5 5.3) vs 8",
+        "preferir_f5": false
+      }
+    },
+    {
+      "id": "lec-oportunidad_perdida-823981-1789455460",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-09-14",
+      "game_id": "823981",
+      "visitante": "Seattle Mariners",
+      "home": "Los Angeles Angels",
+      "pick": "Los Angeles Angels ML",
+      "probPick": 58.6,
+      "edge": 16.4,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Seattle Mariners 4 - Los Angeles Angels 6",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-15T06:57:40.003356Z"
     }
   ],
   "mente_stats": {
@@ -293258,21 +293488,21 @@
         "fallos": 5
       },
       "PASAR": {
-        "n": 213,
+        "n": 215,
         "evito_fallo": 80,
-        "oportunidad_perdida": 133
+        "oportunidad_perdida": 135
       },
       "ESPERAR": {
-        "n": 124,
-        "aciertos": 66,
-        "fallos": 58
+        "n": 127,
+        "aciertos": 68,
+        "fallos": 59
       }
     },
     "patrones": {
       "scratch": {
-        "n": 101.5,
+        "n": 104.5,
         "pasar_ok": 39.0,
-        "pasar_miss": 62.5,
+        "pasar_miss": 65.5,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
@@ -293284,9 +293514,9 @@
         "apostar_fail": 0.0
       },
       "humanos": {
-        "n": 304.0,
-        "pasar_ok": 115.5,
-        "pasar_miss": 168.5,
+        "n": 309.0,
+        "pasar_ok": 116.5,
+        "pasar_miss": 172.5,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
       },
@@ -293298,30 +293528,30 @@
         "apostar_fail": 0.0
       },
       "edge_bajo": {
-        "n": 246.5,
-        "pasar_ok": 96.5,
-        "pasar_miss": 150.0,
+        "n": 250.5,
+        "pasar_ok": 97.5,
+        "pasar_miss": 153.0,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
       "favorito_alto": {
-        "n": 133.0,
+        "n": 136.0,
         "pasar_ok": 42.0,
-        "pasar_miss": 78.0,
+        "pasar_miss": 81.0,
         "apostar_ok": 3.0,
         "apostar_fail": 10.0
       },
       "favorito_inflado": {
-        "n": 117.0,
+        "n": 120.0,
         "pasar_ok": 37.0,
-        "pasar_miss": 67.0,
+        "pasar_miss": 70.0,
         "apostar_ok": 3.0,
         "apostar_fail": 10.0
       },
       "mc_over": {
-        "n": 250.0,
-        "pasar_ok": 100.0,
-        "pasar_miss": 127.0,
+        "n": 254.0,
+        "pasar_ok": 101.0,
+        "pasar_miss": 130.0,
         "apostar_ok": 12.0,
         "apostar_fail": 11.0
       },
@@ -293333,9 +293563,9 @@
         "apostar_fail": 0.0
       },
       "preferir_f5": {
-        "n": 249.5,
-        "pasar_ok": 97.5,
-        "pasar_miss": 132.0,
+        "n": 253.5,
+        "pasar_ok": 98.5,
+        "pasar_miss": 135.0,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
       },
@@ -293361,16 +293591,16 @@
         "apostar_fail": 0.0
       },
       "linea_tarde": {
-        "n": 107.0,
-        "pasar_ok": 50.0,
-        "pasar_miss": 54.0,
+        "n": 111.0,
+        "pasar_ok": 51.0,
+        "pasar_miss": 57.0,
         "apostar_ok": 3.0,
         "apostar_fail": 0.0
       },
       "underdog_valor": {
-        "n": 7.0,
+        "n": 8.0,
         "pasar_ok": 1.0,
-        "pasar_miss": 3.0,
+        "pasar_miss": 4.0,
         "apostar_ok": 3.0,
         "apostar_fail": 0.0
       },
@@ -293746,85 +293976,93 @@
       "824708:acierto",
       "823171:acierto",
       "824386:fallo",
-      "824465:acierto"
+      "824465:acierto",
+      "823575:fallo",
+      "823656:acierto",
+      "823006:acierto",
+      "824308:acierto",
+      "823981:acierto"
     ],
-    "actualizado_en": "2026-09-15T01:52:43.835942Z"
+    "actualizado_en": "2026-09-15T06:57:40.003609Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 176,
-    "muestras_reales": 175,
+    "muestras": 351,
+    "muestras_reales": 350,
     "muestras_sinteticas": 1,
-    "ratio_features_reales": 0.994,
+    "ratio_features_reales": 0.997,
     "entreno_bloqueado": false,
     "schema": 4,
-    "mensaje": "Reentrenado con 176 muestras (175 reales, RF acc 100.0%, RF holdout 50.0%, XGB acc 99.4%, XGB holdout 58.3%)",
-    "accuracy_train": 1.0,
-    "accuracy_holdout": 0.5,
-    "accuracy_xgb_train": 0.994,
-    "accuracy_xgb_holdout": 0.583,
-    "ultimo_entreno": "2026-09-15T01:53:00.047913",
+    "mensaje": "Reentrenado con 351 muestras (350 reales, RF acc 98.6%, RF holdout 53.5%, XGB acc 98.6%, XGB holdout 50.7%)",
+    "accuracy_train": 0.986,
+    "accuracy_holdout": 0.535,
+    "accuracy_xgb_train": 0.986,
+    "accuracy_xgb_holdout": 0.507,
+    "ultimo_entreno": "2026-09-15T06:57:54.799235",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 176,
+    "muestras": 351,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
         "ok": true,
-        "muestras": 75,
+        "muestras": 81,
         "metodo": "isotonic"
       },
       "underdog": {
-        "ok": false,
-        "muestras": 6
+        "ok": true,
+        "muestras": 80,
+        "metodo": "isotonic"
       },
       "scratch": {
         "ok": true,
-        "muestras": 53,
+        "muestras": 114,
         "metodo": "isotonic"
       },
       "limpio": {
         "ok": true,
-        "muestras": 42,
+        "muestras": 76,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 176 muestras (ECE≈0.03) · 3 tipos",
+    "mensaje": "Calibrado isotonic con 351 muestras (ECE≈0.01) · 4 tipos",
     "por_segmento": {
       "prob_alta": {
         "ok": true,
-        "muestras": 107,
+        "muestras": 108,
         "metodo": "isotonic"
       },
       "underdog_cuota": {
-        "ok": false,
-        "muestras": 6
+        "ok": true,
+        "muestras": 44,
+        "metodo": "isotonic"
       },
       "mc_over": {
         "ok": true,
-        "muestras": 40,
+        "muestras": 146,
         "metodo": "isotonic"
       },
       "entorno_f5": {
         "ok": true,
-        "muestras": 17,
+        "muestras": 38,
         "metodo": "isotonic"
       },
       "general": {
-        "ok": false,
-        "muestras": 6
+        "ok": true,
+        "muestras": 15,
+        "metodo": "isotonic"
       }
     },
-    "ece": 0.026
+    "ece": 0.014
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-15T00:05:30.140750Z",
+    "actualizado_en": "2026-09-15T06:56:26.404856Z",
     "token_guardado": true
   }
 }
