@@ -293987,18 +293987,18 @@
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 181,
-    "muestras_reales": 180,
+    "muestras": 351,
+    "muestras_reales": 350,
     "muestras_sinteticas": 1,
-    "ratio_features_reales": 0.994,
+    "ratio_features_reales": 0.997,
     "entreno_bloqueado": false,
     "schema": 4,
-    "mensaje": "Reentrenado con 181 muestras (180 reales, RF acc 100.0%, RF holdout 59.5%, XGB acc 99.4%, XGB holdout 59.5%)",
-    "accuracy_train": 1.0,
-    "accuracy_holdout": 0.595,
-    "accuracy_xgb_train": 0.994,
-    "accuracy_xgb_holdout": 0.595,
-    "ultimo_entreno": "2026-09-15T17:18:55.800211",
+    "mensaje": "Reentrenado con 351 muestras (350 reales, RF acc 98.6%, RF holdout 53.5%, XGB acc 98.6%, XGB holdout 50.7%)",
+    "accuracy_train": 0.986,
+    "accuracy_holdout": 0.535,
+    "accuracy_xgb_train": 0.986,
+    "accuracy_xgb_holdout": 0.507,
+    "ultimo_entreno": "2026-09-15T20:19:25.067490",
     "xgb": true
   },
   "calib_meta": {
@@ -294062,7 +294062,7 @@
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-15T13:04:06.602337Z",
+    "actualizado_en": "2026-09-15T17:50:19.961243Z",
     "token_guardado": true
   }
 }
