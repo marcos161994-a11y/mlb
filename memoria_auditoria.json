@@ -2,7 +2,7 @@
   "modo": "simulacion",
   "capital": 100.68,
   "capital_inicial": 100.0,
-  "dia_actual": 31,
+  "dia_actual": 32,
   "dias_totales": 200,
   "stake_por_juego": 5.0,
   "experimento_activo": true,
@@ -266590,9 +266590,9 @@
           "pitcher_away_id": 656794,
           "pitcher_home_id": 668909,
           "inicio_juego": "2026-09-14T18:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -3.0,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-14T17:40:09.940442-04:00",
@@ -267272,7 +267272,9 @@
           "odds_congelada": 1.763,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 0.0,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "Chicago White Sox 7 - Cleveland Guardians 3",
+          "liquidado_en": "2026-09-14T21:52:43.438611-04:00"
         },
         {
           "game_id": "824465",
@@ -267291,9 +267293,9 @@
           "pitcher_away_id": 669373,
           "pitcher_home_id": 666157,
           "inicio_juego": "2026-09-14T18:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 1.31,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-14T17:40:21.651745-04:00",
@@ -267987,7 +267989,9 @@
           "odds_congelada": 1.437,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 0.0,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "Los Angeles Dodgers 4 - Cincinnati Reds 1",
+          "liquidado_en": "2026-09-14T21:52:43.835233-04:00"
         },
         {
           "game_id": "822765",
@@ -273898,6 +273902,22 @@
           "lineas_fuente_inicial": "draftkings"
         }
       ],
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
+    },
+    {
+      "dia": 32,
+      "fecha": "2026-09-15",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
       "resumen": {
         "jugadas": 0,
         "ganadas": 0,
@@ -293159,6 +293179,75 @@
         "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 54/46% · MC totales μ=10.0 (F5 5.7) vs ",
         "preferir_f5": false
       }
+    },
+    {
+      "id": "lec-fallo_postmortem-824386-1789437163",
+      "tipo": "fallo_postmortem",
+      "fecha": "2026-09-14",
+      "game_id": "824386",
+      "visitante": "Chicago White Sox",
+      "home": "Cleveland Guardians",
+      "pick": "Cleveland Guardians ML",
+      "probPick": 58.6,
+      "edge": 1.9,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Chicago White Sox 7 - Cleveland Guardians 3",
+      "patron": "edge_falso",
+      "leccion": "Exigir edge >= 6% contra cuota real; edge bajo no basta. · Capas: bullpen,park_umpire,monte_carlo,mc_totales",
+      "motivo": "Heurística post-fallo (edge_falso)",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-15T01:52:43.834328Z",
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "under",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1465/1501 pitch +37/+20 → 44/56% · fusión 40/60%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 41/59% · MC totales μ=8.0 (F5 4.5) vs 8",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-acierto_refuerzo-824465-1789437163",
+      "tipo": "acierto_refuerzo",
+      "fecha": "2026-09-14",
+      "game_id": "824465",
+      "visitante": "Los Angeles Dodgers",
+      "home": "Cincinnati Reds",
+      "pick": "Los Angeles Dodgers ML",
+      "probPick": 68.5,
+      "edge": -1.1,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Los Angeles Dodgers 4 - Cincinnati Reds 1",
+      "patron": "retry_cuota_ok",
+      "leccion": "Cuota llegó en retry T-45/T-30 y el pick acertó; priorizar refresh.",
+      "motivo": "retry cuota + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-15T01:52:43.835656Z",
+      "con_dinero": false,
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "over",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1547/1461 pitch +45/-40 → 70/30% · fusión 69/31%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 69/31% · MC totales μ=10.3 (F5 5.7) vs ",
+        "preferir_f5": true
+      }
     }
   ],
   "mente_stats": {
@@ -293174,9 +293263,9 @@
         "oportunidad_perdida": 133
       },
       "ESPERAR": {
-        "n": 122,
-        "aciertos": 65,
-        "fallos": 57
+        "n": 124,
+        "aciertos": 66,
+        "fallos": 58
       }
     },
     "patrones": {
@@ -293195,9 +293284,9 @@
         "apostar_fail": 0.0
       },
       "humanos": {
-        "n": 302.0,
-        "pasar_ok": 114.5,
-        "pasar_miss": 167.5,
+        "n": 304.0,
+        "pasar_ok": 115.5,
+        "pasar_miss": 168.5,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
       },
@@ -293209,44 +293298,44 @@
         "apostar_fail": 0.0
       },
       "edge_bajo": {
-        "n": 244.5,
-        "pasar_ok": 95.5,
-        "pasar_miss": 149.0,
+        "n": 246.5,
+        "pasar_ok": 96.5,
+        "pasar_miss": 150.0,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
       "favorito_alto": {
-        "n": 132.0,
+        "n": 133.0,
         "pasar_ok": 42.0,
-        "pasar_miss": 77.0,
+        "pasar_miss": 78.0,
         "apostar_ok": 3.0,
         "apostar_fail": 10.0
       },
       "favorito_inflado": {
-        "n": 116.0,
+        "n": 117.0,
         "pasar_ok": 37.0,
-        "pasar_miss": 66.0,
+        "pasar_miss": 67.0,
         "apostar_ok": 3.0,
         "apostar_fail": 10.0
       },
       "mc_over": {
-        "n": 249.0,
+        "n": 250.0,
         "pasar_ok": 100.0,
-        "pasar_miss": 126.0,
+        "pasar_miss": 127.0,
         "apostar_ok": 12.0,
         "apostar_fail": 11.0
       },
       "mc_under": {
-        "n": 11.5,
-        "pasar_ok": 4.5,
+        "n": 12.5,
+        "pasar_ok": 5.5,
         "pasar_miss": 7.0,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
       "preferir_f5": {
-        "n": 247.5,
-        "pasar_ok": 96.5,
-        "pasar_miss": 131.0,
+        "n": 249.5,
+        "pasar_ok": 97.5,
+        "pasar_miss": 132.0,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
       },
@@ -293272,9 +293361,9 @@
         "apostar_fail": 0.0
       },
       "linea_tarde": {
-        "n": 105.0,
-        "pasar_ok": 49.0,
-        "pasar_miss": 53.0,
+        "n": 107.0,
+        "pasar_ok": 50.0,
+        "pasar_miss": 54.0,
         "apostar_ok": 3.0,
         "apostar_fail": 0.0
       },
@@ -293655,34 +293744,36 @@
       "823658:fallo",
       "823008:acierto",
       "824708:acierto",
-      "823171:acierto"
+      "823171:acierto",
+      "824386:fallo",
+      "824465:acierto"
     ],
-    "actualizado_en": "2026-09-14T05:08:38.128863Z"
+    "actualizado_en": "2026-09-15T01:52:43.835942Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 344,
-    "muestras_reales": 343,
+    "muestras": 176,
+    "muestras_reales": 175,
     "muestras_sinteticas": 1,
-    "ratio_features_reales": 0.997,
+    "ratio_features_reales": 0.994,
     "entreno_bloqueado": false,
     "schema": 4,
-    "mensaje": "Reentrenado con 344 muestras (343 reales, RF acc 99.1%, RF holdout 49.3%, XGB acc 98.8%, XGB holdout 50.7%)",
-    "accuracy_train": 0.991,
-    "accuracy_holdout": 0.493,
-    "accuracy_xgb_train": 0.988,
-    "accuracy_xgb_holdout": 0.507,
-    "ultimo_entreno": "2026-09-14T23:28:34.397584",
+    "mensaje": "Reentrenado con 176 muestras (175 reales, RF acc 100.0%, RF holdout 50.0%, XGB acc 99.4%, XGB holdout 58.3%)",
+    "accuracy_train": 1.0,
+    "accuracy_holdout": 0.5,
+    "accuracy_xgb_train": 0.994,
+    "accuracy_xgb_holdout": 0.583,
+    "ultimo_entreno": "2026-09-15T01:53:00.047913",
     "xgb": true
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 174,
+    "muestras": 176,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
         "ok": true,
-        "muestras": 74,
+        "muestras": 75,
         "metodo": "isotonic"
       },
       "underdog": {
@@ -293696,15 +293787,15 @@
       },
       "limpio": {
         "ok": true,
-        "muestras": 41,
+        "muestras": 42,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 174 muestras (ECE≈0.02) · 3 tipos",
+    "mensaje": "Calibrado isotonic con 176 muestras (ECE≈0.03) · 3 tipos",
     "por_segmento": {
       "prob_alta": {
         "ok": true,
-        "muestras": 106,
+        "muestras": 107,
         "metodo": "isotonic"
       },
       "underdog_cuota": {
@@ -293718,7 +293809,7 @@
       },
       "entorno_f5": {
         "ok": true,
-        "muestras": 16,
+        "muestras": 17,
         "metodo": "isotonic"
       },
       "general": {
@@ -293726,14 +293817,14 @@
         "muestras": 6
       }
     },
-    "ece": 0.021
+    "ece": 0.026
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-14T21:45:07.097145Z",
+    "actualizado_en": "2026-09-15T00:05:30.140750Z",
     "token_guardado": true
   }
 }
