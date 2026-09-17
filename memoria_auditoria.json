@@ -297040,9 +297040,9 @@
           "pitcher_away_id": 680736,
           "pitcher_home_id": 663903,
           "inicio_juego": "2026-09-17T12:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -3.0,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-17T11:13:20.567077-04:00",
@@ -297748,7 +297748,9 @@
           "odds_congelada": 2.36,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 1.27,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "Los Angeles Dodgers 8 - Cincinnati Reds 2",
+          "liquidado_en": "2026-09-17T15:25:08.274306-04:00"
         },
         {
           "game_id": "822924",
@@ -349644,7 +349646,7 @@
     "accuracy_holdout": 0.569,
     "accuracy_xgb_train": 0.978,
     "accuracy_xgb_holdout": 0.653,
-    "ultimo_entreno": "2026-09-17T15:12:42.566834",
+    "ultimo_entreno": "2026-09-17T19:25:16.180781",
     "xgb": true
   },
   "calib_meta": {
@@ -349708,6 +349710,6 @@
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-17T14:32:42.168443Z"
+    "actualizado_en": "2026-09-17T19:24:40.587115Z"
   }
 }
