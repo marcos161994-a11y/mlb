@@ -8,10 +8,17 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import sys
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+
+
+def _json_memoria(memoria: dict) -> str:
+    """En Render el indent=2 duplica el pico al serializar ~9 MB."""
+    indent = None if os.environ.get("RENDER") else 2
+    return json.dumps(memoria, ensure_ascii=False, indent=indent)
 
 
 def contar_historial(memoria: dict) -> tuple[int, int]:
@@ -259,11 +266,12 @@ def escribir_snapshot(data_dir: Path, memoria: dict, *, keep: int = 12) -> Path 
     stamp = datetime.now().strftime("%Y%m%dT%H%M%SZ")
     n_fechas = len(fechas_con_historial(memoria))
     path = folder / f"mem_{stamp}_{n_fechas}d.json"
-    path.write_text(json.dumps(memoria, ensure_ascii=False, indent=2), encoding="utf-8")
-    # También un "latest" fácil de encontrar
-    (folder / "latest.json").write_text(
-        json.dumps(memoria, ensure_ascii=False, indent=2), encoding="utf-8"
-    )
+    payload = _json_memoria(memoria)
+    # Una sola serialización; en Render solo latest (el datado ×12 dispara disco+RAM).
+    latest = folder / "latest.json"
+    if not os.environ.get("RENDER"):
+        path.write_text(payload, encoding="utf-8")
+    latest.write_text(payload, encoding="utf-8")
     archivos = sorted(
         [p for p in folder.glob("mem_*.json") if p.is_file()],
         key=lambda p: p.stat().st_mtime,
@@ -274,7 +282,7 @@ def escribir_snapshot(data_dir: Path, memoria: dict, *, keep: int = 12) -> Path 
             viejo.unlink()
         except OSError:
             pass
-    return path
+    return path if path.exists() else latest
 
 
 def listar_snapshots(data_dir: Path) -> list[Path]:

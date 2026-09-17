@@ -733,8 +733,19 @@ function pintarEstadoSeguro(data, motivo) {
     return estadoOk || tienePreds;
 }
 
+function cacheTieneHistorial(state) {
+    const dias = (state && state.memoria && state.memoria.dias) || [];
+    return dias.some(d => ((d.predicciones || []).length > 0) || ((d.apuestas || []).length > 0));
+}
+
 function guardarCacheEstado(state) {
     try {
+        if (!state || !state.memoria) return;
+        // Boot vacío post-crash no debe pisar un historial bueno en el celular
+        if (!cacheTieneHistorial(state)) {
+            const prev = leerCacheEstado();
+            if (prev && cacheTieneHistorial(prev)) return;
+        }
         const slim = {
             ts: Date.now(),
             ver: PANEL_VER,
@@ -768,6 +779,7 @@ function leerCacheEstado() {
         if (!raw) return null;
         const s = JSON.parse(raw);
         if (!s || !s.memoria) return null;
+        if (s.ver && s.ver !== PANEL_VER) return null;
         // Cache válida 48 h (historial no debe “desaparecer” al despertar)
         if (s.ts && Date.now() - s.ts > 48 * 3600 * 1000) return null;
         return s;
@@ -1072,6 +1084,10 @@ async function cargarEstado() {
         clearTimeout(bootTimer);
         if (h) aplicarHealthRapido(h);
         if (bootRes.ok && bootRes.boot && bootRes.boot.memoria) {
+            const bootConHist = cacheTieneHistorial(bootRes.boot);
+            if (!bootConHist && historialPintado) {
+                // Servidor despertando / wipe temporal: no borrar lo que ya se ve
+            } else {
             bootOk = true;
             guardarCacheEstado(bootRes.boot);
             pintarEstadoSeguro(bootRes.boot, 'boot');
@@ -1082,6 +1098,7 @@ async function cargarEstado() {
                 contenedor.innerHTML =
                     '<p style="color:#00ff88">✓ Historial cargado · trayendo juegos…</p>' +
                     '<p style="margin:10px 0"><button type="button" onclick="reintentarAhora()">↻ Reintentar ahora</button></p>';
+            }
             }
         } else if (!bootRes.ok) {
             const bm = String(bootRes.err && (bootRes.err.message || bootRes.err));
@@ -1156,6 +1173,9 @@ async function cargarEstado() {
 
         if (sRes.status === 'fulfilled' && sRes.value) {
             const state = sRes.value;
+            if (!cacheTieneHistorial(state) && historialPintado) {
+                // State vacío post-crash: no tapar el historial ya pintado
+            } else {
             wakeIntentos = 0;
             cancelarReintento();
             guardarCacheEstado(state);
@@ -1164,6 +1184,7 @@ async function cargarEstado() {
             if ((state.games || []).length) {
                 try { pintarJuegos(state.games || []); } catch (_) {}
                 juegosOk = true;
+            }
             }
         } else if (sRes.status === 'rejected') {
             lastErr = String(sRes.reason && (sRes.reason.message || sRes.reason)) || lastErr;

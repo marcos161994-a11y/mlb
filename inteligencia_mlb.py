@@ -14,11 +14,27 @@ No inventa cuotas ni mueve dinero solo: ajusta probabilidades y metadatos.
 from __future__ import annotations
 
 import math
+import os
 import random
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import requests
+
+# Render free ~512 MB: 800 sims × juegos × (ML + totales) dispara RSS.
+_MC_SIMS_RENDER_MAX = 250
+
+
+def mc_sims_efectivos(intel_cfg: dict | None = None, default: int = 800) -> int:
+    """Sims Monte Carlo: en Render se tapa a 250 para no OOM."""
+    try:
+        n = int((intel_cfg or {}).get("mc_sims") or default)
+    except (TypeError, ValueError):
+        n = default
+    n = max(50, n)
+    if os.environ.get("RENDER"):
+        n = min(n, _MC_SIMS_RENDER_MAX)
+    return n
 
 _session = requests.Session()
 _bullpen_cache: dict[str, dict[str, Any]] = {}
@@ -781,7 +797,7 @@ def proyectar_totales_juego(
     except (TypeError, ValueError):
         pass
 
-    n_mc = int(intel_cfg.get("mc_sims") or 800)
+    n_mc = mc_sims_efectivos(intel_cfg)
     seed = 42
     try:
         seed = int(juego.get("id") or 0) % 100000
@@ -883,7 +899,7 @@ def enriquecer_probs(
         except (TypeError, ValueError):
             eh, ea = 1500.0, 1500.0
         home_adv = float((cfg.get("elo") or {}).get("home_adv") or 24)
-        n_mc = int(intel_cfg.get("mc_sims") or 800)
+        n_mc = mc_sims_efectivos(intel_cfg)
         seed = None
         try:
             seed = int(juego.get("id") or 0) % 100000
