@@ -314162,9 +314162,9 @@
           "pitcher_away_id": 695549,
           "pitcher_home_id": 680732,
           "inicio_juego": "2026-09-19T14:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.21,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-19T13:10:10.141512-04:00",
@@ -314897,7 +314897,9 @@
           "odds_congelada": 1.735,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 0.0,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "Detroit Tigers 1 - Chicago White Sox 3",
+          "liquidado_en": "2026-09-19T17:23:31.208118-04:00"
         },
         {
           "game_id": "824788",
@@ -397555,13 +397557,13 @@
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 368,
-    "muestras_reales": 367,
+    "muestras": 198,
+    "muestras_reales": 197,
     "muestras_sinteticas": 1,
-    "ratio_features_reales": 0.997,
+    "ratio_features_reales": 0.995,
     "entreno_bloqueado": false,
     "schema": 4,
-    "mensaje": "Reentrenado con 368 muestras (367 reales, RF acc 99.2%, RF holdout 60.8%, XGB acc 97.8%, XGB holdout 63.5%)",
+    "mensaje": "Entreno omitido en Render (anti-OOM); se mantiene el modelo en disco",
     "accuracy_train": 0.992,
     "accuracy_holdout": 0.608,
     "accuracy_xgb_train": 0.978,
@@ -397571,31 +397573,30 @@
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 368,
+    "muestras": 198,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
         "ok": true,
-        "muestras": 90,
+        "muestras": 85,
         "metodo": "isotonic"
       },
       "underdog": {
-        "ok": true,
-        "muestras": 81,
-        "metodo": "isotonic"
+        "ok": false,
+        "muestras": 7
       },
       "scratch": {
         "ok": true,
-        "muestras": 120,
+        "muestras": 62,
         "metodo": "isotonic"
       },
       "limpio": {
         "ok": true,
-        "muestras": 77,
+        "muestras": 44,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 368 muestras (ECE≈0.01) · 4 tipos",
+    "mensaje": "Calibrado isotonic con 198 muestras (ECE≈0.02) · 3 tipos",
     "por_segmento": {
       "prob_alta": {
         "ok": true,
@@ -397603,33 +397604,31 @@
         "metodo": "isotonic"
       },
       "underdog_cuota": {
-        "ok": true,
-        "muestras": 45,
-        "metodo": "isotonic"
+        "ok": false,
+        "muestras": 8
       },
       "mc_over": {
         "ok": true,
-        "muestras": 147,
+        "muestras": 43,
         "metodo": "isotonic"
       },
       "entorno_f5": {
         "ok": true,
-        "muestras": 38,
+        "muestras": 18,
         "metodo": "isotonic"
       },
       "general": {
-        "ok": true,
-        "muestras": 15,
-        "metodo": "isotonic"
+        "ok": false,
+        "muestras": 6
       }
     },
-    "ece": 0.011
+    "ece": 0.016
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-19T19:45:10.489802Z"
+    "actualizado_en": "2026-09-19T20:29:38.462447Z"
   }
 }
