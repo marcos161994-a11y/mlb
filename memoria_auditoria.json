@@ -314918,9 +314918,9 @@
           "pitcher_away_id": 688107,
           "pitcher_home_id": 669432,
           "inicio_juego": "2026-09-19T16:05:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "fallo",
+          "profit": -3.0,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-19T14:55:59.230860-04:00",
@@ -315654,7 +315654,9 @@
           "odds_congelada": 1.917,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": -0.83,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "Milwaukee Brewers 1 - Baltimore Orioles 0",
+          "liquidado_en": "2026-09-19T19:22:41.250785-04:00"
         },
         {
           "game_id": "822921",
@@ -315673,9 +315675,9 @@
           "pitcher_away_id": 678394,
           "pitcher_home_id": 642547,
           "inicio_juego": "2026-09-19T16:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 1.99,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-19T14:55:59.443057-04:00",
@@ -316425,7 +316427,9 @@
           "odds_congelada": 1.662,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 0.0,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "Boston Red Sox 1 - Tampa Bay Rays 2",
+          "liquidado_en": "2026-09-19T19:22:41.263726-04:00"
         },
         {
           "game_id": "823571",
@@ -397003,6 +397007,61 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-09-19T04:59:45.716184Z"
+    },
+    {
+      "id": "lec-acierto_refuerzo-822921-1789860161",
+      "tipo": "acierto_refuerzo",
+      "fecha": "2026-09-19",
+      "game_id": "822921",
+      "visitante": "Boston Red Sox",
+      "home": "Tampa Bay Rays",
+      "pick": "Tampa Bay Rays ML",
+      "probPick": 58.2,
+      "edge": -2.0,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Boston Red Sox 1 - Tampa Bay Rays 2",
+      "patron": "retry_cuota_ok",
+      "leccion": "Cuota llegó en retry T-45/T-30 y el pick acertó; priorizar refresh.",
+      "motivo": "retry cuota + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-19T23:22:41.264648Z",
+      "con_dinero": false,
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "over",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1537/1569 pitch +1/-6 → 43/57% · fusión 40/60%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 42/58% · MC totales μ=9.2 (F5 5.0) vs 7",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-oportunidad_perdida-822921-1789860161",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-09-19",
+      "game_id": "822921",
+      "visitante": "Boston Red Sox",
+      "home": "Tampa Bay Rays",
+      "pick": "Tampa Bay Rays ML",
+      "probPick": 58.2,
+      "edge": -2.0,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Boston Red Sox 1 - Tampa Bay Rays 2",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-19T23:22:41.350345Z"
     }
   ],
   "mente_stats": {
@@ -397013,9 +397072,9 @@
         "fallos": 5
       },
       "PASAR": {
-        "n": 233,
+        "n": 234,
         "evito_fallo": 92,
-        "oportunidad_perdida": 141
+        "oportunidad_perdida": 142
       },
       "ESPERAR": {
         "n": 154,
@@ -397039,9 +397098,9 @@
         "apostar_fail": 0.0
       },
       "humanos": {
-        "n": 344.0,
+        "n": 345.0,
         "pasar_ok": 137.5,
-        "pasar_miss": 186.5,
+        "pasar_miss": 187.5,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
       },
@@ -397053,9 +397112,9 @@
         "apostar_fail": 0.0
       },
       "edge_bajo": {
-        "n": 279.5,
+        "n": 280.5,
         "pasar_ok": 115.5,
-        "pasar_miss": 164.0,
+        "pasar_miss": 165.0,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
@@ -397074,9 +397133,9 @@
         "apostar_fail": 10.0
       },
       "mc_over": {
-        "n": 275.0,
+        "n": 276.0,
         "pasar_ok": 114.0,
-        "pasar_miss": 138.0,
+        "pasar_miss": 139.0,
         "apostar_ok": 12.0,
         "apostar_fail": 11.0
       },
@@ -397088,9 +397147,9 @@
         "apostar_fail": 0.0
       },
       "preferir_f5": {
-        "n": 276.5,
+        "n": 277.5,
         "pasar_ok": 116.5,
-        "pasar_miss": 140.0,
+        "pasar_miss": 141.0,
         "apostar_ok": 9.0,
         "apostar_fail": 11.0
       },
@@ -397116,9 +397175,9 @@
         "apostar_fail": 0.0
       },
       "linea_tarde": {
-        "n": 144.0,
+        "n": 145.0,
         "pasar_ok": 70.0,
-        "pasar_miss": 71.0,
+        "pasar_miss": 72.0,
         "apostar_ok": 3.0,
         "apostar_fail": 0.0
       },
@@ -397551,16 +397610,17 @@
       "822923:fallo",
       "823572:fallo",
       "823252:acierto",
-      "823898:acierto"
+      "823898:acierto",
+      "822921:acierto"
     ],
-    "actualizado_en": "2026-09-19T04:59:22.408166Z"
+    "actualizado_en": "2026-09-19T23:22:41.350849Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 198,
-    "muestras_reales": 197,
+    "muestras": 369,
+    "muestras_reales": 368,
     "muestras_sinteticas": 1,
-    "ratio_features_reales": 0.995,
+    "ratio_features_reales": 0.997,
     "entreno_bloqueado": false,
     "schema": 4,
     "mensaje": "Entreno omitido en Render (anti-OOM); se mantiene el modelo en disco",
@@ -397573,30 +397633,31 @@
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 198,
+    "muestras": 369,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
         "ok": true,
-        "muestras": 85,
+        "muestras": 90,
         "metodo": "isotonic"
       },
       "underdog": {
-        "ok": false,
-        "muestras": 7
+        "ok": true,
+        "muestras": 81,
+        "metodo": "isotonic"
       },
       "scratch": {
         "ok": true,
-        "muestras": 62,
+        "muestras": 120,
         "metodo": "isotonic"
       },
       "limpio": {
         "ok": true,
-        "muestras": 44,
+        "muestras": 78,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 198 muestras (ECE≈0.02) · 3 tipos",
+    "mensaje": "Calibrado isotonic con 369 muestras (ECE≈0.01) · 4 tipos",
     "por_segmento": {
       "prob_alta": {
         "ok": true,
@@ -397604,31 +397665,33 @@
         "metodo": "isotonic"
       },
       "underdog_cuota": {
-        "ok": false,
-        "muestras": 8
+        "ok": true,
+        "muestras": 45,
+        "metodo": "isotonic"
       },
       "mc_over": {
         "ok": true,
-        "muestras": 43,
+        "muestras": 148,
         "metodo": "isotonic"
       },
       "entorno_f5": {
         "ok": true,
-        "muestras": 18,
+        "muestras": 38,
         "metodo": "isotonic"
       },
       "general": {
-        "ok": false,
-        "muestras": 6
+        "ok": true,
+        "muestras": 15,
+        "metodo": "isotonic"
       }
     },
-    "ece": 0.016
+    "ece": 0.009
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-19T20:29:38.462447Z"
+    "actualizado_en": "2026-09-19T23:21:32.856583Z"
   }
 }
