@@ -461,6 +461,13 @@ def auto_entrenar_ml(memoria: dict, min_muestras: int = 5) -> dict:
         meta["mensaje"] = "Modelo ya entrenado con el historial actual"
         return meta
 
+    if os.environ.get("RENDER") and _modelo_path().exists():
+        meta["ok"] = True
+        meta["mensaje"] = "Entreno omitido en Render (anti-OOM); se mantiene el modelo en disco"
+        memoria["ml_meta"] = meta
+        print(f"[ML] {meta['mensaje']}")
+        return meta
+
     modelo = entrenar_modelo_rf(datos)
     if not modelo or _scaler is None:
         meta["mensaje"] = "Error al entrenar"

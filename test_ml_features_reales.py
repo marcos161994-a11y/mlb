@@ -134,6 +134,19 @@ def test_auto_entrenar_permite_suficientes_reales(monkeypatch, tmp_path):
     assert meta.get("ok") is True
 
 
+def test_auto_entrenar_omite_en_render_si_hay_modelo(monkeypatch, tmp_path):
+    monkeypatch.setenv("RENDER", "true")
+    modelo = tmp_path / "modelo_rf_mlb.pkl"
+    modelo.write_bytes(b"dummy")
+    monkeypatch.setattr(ml, "_modelo_path", lambda: modelo)
+    mem = _memoria_liquidada(con_features=True, n=16)
+    mem["ml_meta"] = {"ok": True, "muestras": 1, "schema": ml.FEATURE_SCHEMA_VERSION}
+    meta = ml.auto_entrenar_ml(mem, min_muestras=5)
+    assert meta["ok"] is True
+    assert "anti-OOM" in meta["mensaje"]
+    assert meta["entreno_bloqueado"] is False
+
+
 def test_config_ml_aprendizaje_presente():
     cfg = json.loads(Path("config_experimento.json").read_text(encoding="utf-8"))
     ap = cfg.get("aprendizaje") or {}
