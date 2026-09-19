@@ -22,11 +22,12 @@ from typing import Any
 import requests
 
 # Render free ~512 MB: 800 sims × juegos × (ML + totales) dispara RSS.
-_MC_SIMS_RENDER_MAX = 250
+# 250 (PR #91) no bastó; el idle ya va ~310 MB.
+_MC_SIMS_RENDER_MAX = 80
 
 
 def mc_sims_efectivos(intel_cfg: dict | None = None, default: int = 800) -> int:
-    """Sims Monte Carlo: en Render se tapa a 250 para no OOM."""
+    """Sims Monte Carlo: en Render se tapa a 80 para no OOM."""
     try:
         n = int((intel_cfg or {}).get("mc_sims") or default)
     except (TypeError, ValueError):
@@ -35,6 +36,11 @@ def mc_sims_efectivos(intel_cfg: dict | None = None, default: int = 800) -> int:
     if os.environ.get("RENDER"):
         n = min(n, _MC_SIMS_RENDER_MAX)
     return n
+
+
+def limpiar_caches_inteligencia() -> None:
+    """Suelta caches de red/bullpen tras el cron (Render)."""
+    _bullpen_cache.clear()
 
 _session = requests.Session()
 _bullpen_cache: dict[str, dict[str, Any]] = {}
@@ -660,28 +666,30 @@ def monte_carlo_totales(
     lam_a_f5 = lam_a * _FRAC_F5
     lam_h_f5 = lam_h * _FRAC_F5
 
-    totals: list[int] = []
-    totals_f5: list[int] = []
+    # Sin listas de n sims: solo contadores (el pico de RAM era ordenar 2×800 ints × juegos).
+    sum_t = sum_f5 = 0
+    n_over = n_under = n_over_f5 = n_under_f5 = 0
     for _ in range(n_eff):
-        ra, rh = _poisson(rng, lam_a), _poisson(rng, lam_h)
-        totals.append(ra + rh)
-        totals_f5.append(_poisson(rng, lam_a_f5) + _poisson(rng, lam_h_f5))
+        tot = _poisson(rng, lam_a) + _poisson(rng, lam_h)
+        tot_f5 = _poisson(rng, lam_a_f5) + _poisson(rng, lam_h_f5)
+        sum_t += tot
+        sum_f5 += tot_f5
+        if tot > linea_total:
+            n_over += 1
+        elif tot < linea_total:
+            n_under += 1
+        if tot_f5 > linea_f5:
+            n_over_f5 += 1
+        elif tot_f5 < linea_f5:
+            n_under_f5 += 1
 
-    totals.sort()
-    totals_f5.sort()
-
-    def _pct(xs: list[int], q: float) -> float:
-        if not xs:
-            return 0.0
-        i = min(len(xs) - 1, max(0, int(q * (len(xs) - 1))))
-        return float(xs[i])
-
-    mu = sum(totals) / n_eff
-    mu_f5 = sum(totals_f5) / n_eff
-    p_over = sum(1 for t in totals if t > linea_total) / n_eff
-    p_under = sum(1 for t in totals if t < linea_total) / n_eff
-    p_over_f5 = sum(1 for t in totals_f5 if t > linea_f5) / n_eff
-    p_under_f5 = sum(1 for t in totals_f5 if t < linea_f5) / n_eff
+    mu = sum_t / n_eff
+    mu_f5 = sum_f5 / n_eff
+    p_over = n_over / n_eff
+    p_under = n_under / n_eff
+    p_over_f5 = n_over_f5 / n_eff
+    p_under_f5 = n_under_f5 / n_eff
+    sd = math.sqrt(max(mu, 0.1))
 
     señal = _señal_umbral(p_over, p_under, umbral_señal)
     señal_f5 = _señal_umbral(p_over_f5, p_under_f5, umbral_señal)
@@ -697,9 +705,9 @@ def monte_carlo_totales(
         "lambda_home": round(lam_h, 2),
         "mu_total": round(mu, 2),
         "mu_f5": round(mu_f5, 2),
-        "p10": _pct(totals, 0.10),
-        "p50": _pct(totals, 0.50),
-        "p90": _pct(totals, 0.90),
+        "p10": round(max(0.0, mu - 1.28 * sd), 1),
+        "p50": round(mu, 1),
+        "p90": round(mu + 1.28 * sd, 1),
         "linea_total": float(linea_total),
         "linea_f5": float(linea_f5),
         "linea_fuente": "default" if linea_es_default else "mercado",

@@ -126,6 +126,28 @@ def test_escribir_json_atomico_no_deja_vacio(tmp_path):
     assert not dest.with_name("mem.json.tmp").exists()
 
 
+def test_import_repo_omite_si_cron_activo(monkeypatch):
+    monkeypatch.setattr(srv, "_cron_externo_activo", True)
+    monkeypatch.setattr(srv, "_verificar_cron_secreto", lambda secret=None: None)
+    out = srv.api_importar_aprendizaje_repo()
+    assert out["ok"] is True
+    assert out["omitido"] == "cron_activo"
+
+
+def test_import_auto_throttle_render(monkeypatch):
+    monkeypatch.setenv("RENDER", "true")
+    srv._import_auto_ok_ts = time.monotonic()
+    assert srv._intentar_import_aprendizaje_repo_automatico() is None
+
+
+def test_cloud_cron_sin_import_paralelo():
+    from pathlib import Path
+
+    yml = Path(".github/workflows/cloud-cron.yml").read_text(encoding="utf-8")
+    assert "auto-bloqueo-externo" in yml
+    assert "importar-aprendizaje-repo" not in yml
+
+
 def test_cron_fondo_libera_ram():
     import inspect
 

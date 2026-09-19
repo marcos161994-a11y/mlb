@@ -97,6 +97,8 @@ _wipe_check_ts: float = 0.0
 _WIPE_CHECK_INTERVAL_SEC = 300.0
 _ultimo_ml_train_ts: float = 0.0
 _ML_TRAIN_MIN_INTERVAL_SEC = 3600.0
+_import_auto_ok_ts: float = 0.0
+_IMPORT_AUTO_TTL_SEC = 6 * 3600.0
 
 MLB_SCHEDULE = "https://statsapi.mlb.com/api/v1/schedule"
 scheduler = BackgroundScheduler()
@@ -110,6 +112,16 @@ _JUEGOS_PANEL_DISK_MAX_AGE_SEC = 20 * 60
 
 def _en_render() -> bool:
     return bool(os.environ.get("RENDER"))
+
+
+def _mc_sims_health(cfg: dict) -> int:
+    try:
+        from inteligencia_mlb import mc_sims_efectivos
+
+        intel = cfg.get("inteligencia") if isinstance(cfg.get("inteligencia"), dict) else {}
+        return mc_sims_efectivos(intel)
+    except Exception:
+        return int((cfg.get("inteligencia") or {}).get("mc_sims") or 800)
 
 
 def _json_dumps_memoria(obj: Any) -> str:
@@ -1564,7 +1576,9 @@ def _liquidar_dia_con_juegos(memoria: dict, dia: dict, juegos: list) -> int:
         actualizar_resumen(memoria)
         global _ultimo_ml_train_ts
         ahora_ml = time.monotonic()
-        if ahora_ml - _ultimo_ml_train_ts >= _ML_TRAIN_MIN_INTERVAL_SEC:
+        if ahora_ml - _ultimo_ml_train_ts >= (
+            6 * 3600.0 if _en_render() else _ML_TRAIN_MIN_INTERVAL_SEC
+        ):
             auto_entrenar_ml(memoria)
             try:
                 from calibracion import entrenar_calibrador
@@ -3687,15 +3701,16 @@ def api_panel_boot():
         _intentar_recuperar_wipe()
     except Exception:
         pass
-    # Auto-import aprendizaje si el disco va detrás del backup del repo
-    try:
-        threading.Thread(
-            target=_intentar_import_aprendizaje_repo_automatico,
-            daemon=True,
-            name="import-aprendizaje-boot",
-        ).start()
-    except Exception as e:
-        print(f"[IMPORT-AUTO] thread: {e}")
+    # En Render el import 9 MB + ML en boot pisa el cron y dispara OOM.
+    if not _en_render() and not _cron_externo_activo:
+        try:
+            threading.Thread(
+                target=_intentar_import_aprendizaje_repo_automatico,
+                daemon=True,
+                name="import-aprendizaje-boot",
+            ).start()
+        except Exception as e:
+            print(f"[IMPORT-AUTO] thread: {e}")
     memoria = cargar_memoria()
     fecha_hoy = fecha_str()
     dia = dia_por_fecha(memoria, fecha_hoy) or dia_operativo(memoria)
@@ -4100,6 +4115,7 @@ def api_health():
             "peso_consenso": float((cfg.get("inteligencia") or {}).get("peso_consenso") or 0.10),
             "peso_mc": float((cfg.get("inteligencia") or {}).get("peso_mc") or 0.22),
             "mc_sims": int((cfg.get("inteligencia") or {}).get("mc_sims") or 800),
+            "mc_sims_efectivos": _mc_sims_health(cfg),
             "monte_carlo_totales": bool(
                 (cfg.get("inteligencia") or {}).get("monte_carlo_totales", True)
             ),
@@ -4870,6 +4886,12 @@ def ejecutar_trabajo_cron_externo() -> dict:
         import_meta = _intentar_import_aprendizaje_repo_automatico()
     except Exception as e:
         print(f"[CRON] import aprendizaje: {e}")
+    try:
+        from inteligencia_mlb import limpiar_caches_inteligencia
+
+        limpiar_caches_inteligencia()
+    except Exception:
+        pass
     return {
         "ok": True,
         "mensaje": "Auto-bloqueo ejecutado",
@@ -5007,6 +5029,9 @@ def _intentar_import_aprendizaje_repo_automatico() -> dict | None:
     Si el disco tiene menos lecciones que memoria_auditoria.json del repo, importa.
     Idempotente — no requiere CRON_SECRET (solo compara counts locales).
     """
+    global _import_auto_ok_ts
+    if _en_render() and (time.monotonic() - _import_auto_ok_ts) < _IMPORT_AUTO_TTL_SEC:
+        return None
     origen = BASE_DIR / "memoria_auditoria.json"
     if not origen.exists():
         return None
@@ -5034,6 +5059,7 @@ def _intentar_import_aprendizaje_repo_automatico() -> dict | None:
     )
     # Ya sincronizado
     if n_disk >= n_bundle - 2 and n_disk_preds >= n_bundle_preds - 2:
+        _import_auto_ok_ts = time.monotonic()
         return None
     print(
         f"[IMPORT-AUTO] disco lecciones={n_disk} preds_liq={n_disk_preds} "
@@ -5118,6 +5144,12 @@ def api_importar_aprendizaje_repo(secret: str | None = None):
     Requiere CRON_SECRET.
     """
     _verificar_cron_secreto(secret)
+    if _cron_externo_activo:
+        return {
+            "ok": True,
+            "omitido": "cron_activo",
+            "mensaje": "Import omitido: el cron ya corre (anti-OOM)",
+        }
     origen = BASE_DIR / "memoria_auditoria.json"
     if not origen.exists():
         raise HTTPException(status_code=404, detail="No hay memoria_auditoria.json en el servidor")
