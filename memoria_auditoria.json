@@ -325326,9 +325326,9 @@
           "pitcher_away_id": 650911,
           "pitcher_home_id": 804636,
           "inicio_juego": "2026-09-20T13:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 1.88,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-20T12:10:07.622720-04:00",
@@ -326031,7 +326031,9 @@
           "odds_congelada": 1.637,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": -0.73,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "Philadelphia Phillies 7 - New York Mets 2",
+          "liquidado_en": "2026-09-20T16:42:30.611383-04:00"
         },
         {
           "game_id": "823329",
@@ -326050,9 +326052,9 @@
           "pitcher_away_id": 608379,
           "pitcher_home_id": 669199,
           "inicio_juego": "2026-09-20T13:35:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.5,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-20T12:35:10.630214-04:00",
@@ -326750,7 +326752,9 @@
           "odds_congelada": 1.833,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 0.0,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "Kansas City Royals 3 - Pittsburgh Pirates 4",
+          "liquidado_en": "2026-09-20T16:42:30.704515-04:00"
         },
         {
           "game_id": "824462",
@@ -326769,9 +326773,9 @@
           "pitcher_away_id": 656849,
           "pitcher_home_id": 695076,
           "inicio_juego": "2026-09-20T13:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 1.84,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-20T12:40:17.128870-04:00",
@@ -327485,7 +327489,9 @@
           "odds_congelada": 1.613,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 0.0,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "Chicago Cubs 9 - Cincinnati Reds 1",
+          "liquidado_en": "2026-09-20T16:42:30.706579-04:00"
         },
         {
           "game_id": "824381",
@@ -328187,9 +328193,9 @@
           "pitcher_away_id": 663776,
           "pitcher_home_id": 643377,
           "inicio_juego": "2026-09-20T13:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 1.96,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-20T12:40:29.235860-04:00",
@@ -328926,7 +328932,9 @@
           "odds_congelada": 1.654,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 0.0,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "Boston Red Sox 1 - Tampa Bay Rays 5",
+          "liquidado_en": "2026-09-20T16:42:30.706871-04:00"
         },
         {
           "game_id": "824139",
@@ -330418,9 +330426,9 @@
           "pitcher_away_id": 663623,
           "pitcher_home_id": 687273,
           "inicio_juego": "2026-09-20T14:15:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 1.71,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-20T14:34:07.166760-04:00",
@@ -331137,7 +331145,9 @@
           "total_linea": null,
           "lineas_total": null,
           "odds_congelada": 1.57,
-          "lineas_fuente_inicial": "modelo"
+          "lineas_fuente_inicial": "modelo",
+          "marcador_final": "Washington Nationals 3 - St. Louis Cardinals 5",
+          "liquidado_en": "2026-09-20T16:55:20.710539-04:00"
         },
         {
           "game_id": "822844",
@@ -407730,108 +407740,178 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-09-20T06:38:56.653277Z"
+    },
+    {
+      "id": "lec-acierto_refuerzo-823329-1789936950",
+      "tipo": "acierto_refuerzo",
+      "fecha": "2026-09-20",
+      "game_id": "823329",
+      "visitante": "Kansas City Royals",
+      "home": "Pittsburgh Pirates",
+      "pick": "Pittsburgh Pirates ML",
+      "probPick": 64.4,
+      "edge": 9.8,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Kansas City Royals 3 - Pittsburgh Pirates 4",
+      "patron": "retry_cuota_ok",
+      "leccion": "Cuota llegó en retry T-45/T-30 y el pick acertó; priorizar refresh.",
+      "motivo": "retry cuota + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-20T20:42:30.705208Z",
+      "con_dinero": false,
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "over",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1440/1522 pitch -2/-9 → 36/64% · fusión 32/68%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 36/64% · MC totales μ=10.9 (F5 6.2) vs ",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-acierto_refuerzo-822922-1789936950",
+      "tipo": "acierto_refuerzo",
+      "fecha": "2026-09-20",
+      "game_id": "822922",
+      "visitante": "Boston Red Sox",
+      "home": "Tampa Bay Rays",
+      "pick": "Tampa Bay Rays ML",
+      "probPick": 63.4,
+      "edge": 2.9,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Boston Red Sox 1 - Tampa Bay Rays 5",
+      "patron": "retry_cuota_ok",
+      "leccion": "Cuota llegó en retry T-45/T-30 y el pick acertó; priorizar refresh.",
+      "motivo": "retry cuota + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-20T20:42:30.707108Z",
+      "con_dinero": false,
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "over",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1519/1572 pitch +10/+9 → 39/61% · fusión 34/66%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 37/63% · MC totales μ=9.1 (F5 5.4) vs 7",
+        "preferir_f5": true
+      }
     }
   ],
   "mente_stats": {
     "decisiones": {
       "APOSTAR": {
-        "n": 9,
-        "aciertos": 4,
-        "fallos": 5
+        "n": 18,
+        "aciertos": 8,
+        "fallos": 10
       },
       "PASAR": {
-        "n": 240,
-        "evito_fallo": 93,
-        "oportunidad_perdida": 147
+        "n": 439,
+        "evito_fallo": 167,
+        "oportunidad_perdida": 272
       },
       "ESPERAR": {
-        "n": 154,
-        "aciertos": 80,
-        "fallos": 74
+        "n": 271,
+        "aciertos": 141,
+        "fallos": 130
       }
     },
     "patrones": {
       "scratch": {
-        "n": 115.5,
-        "pasar_ok": 44.0,
-        "pasar_miss": 71.5,
+        "n": 210.0,
+        "pasar_ok": 80.0,
+        "pasar_miss": 130.0,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
       "starter_riesgo": {
-        "n": 5.0,
-        "pasar_ok": 2.0,
-        "pasar_miss": 3.0,
+        "n": 10.0,
+        "pasar_ok": 4.0,
+        "pasar_miss": 6.0,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
       "humanos": {
-        "n": 349.0,
-        "pasar_ok": 137.5,
-        "pasar_miss": 191.5,
-        "apostar_ok": 9.0,
-        "apostar_fail": 11.0
+        "n": 635.0,
+        "pasar_ok": 248.0,
+        "pasar_miss": 347.0,
+        "apostar_ok": 18.0,
+        "apostar_fail": 22.0
       },
       "sin_mercado": {
-        "n": 21.5,
-        "pasar_ok": 7.5,
-        "pasar_miss": 14.0,
+        "n": 43.0,
+        "pasar_ok": 15.0,
+        "pasar_miss": 28.0,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
       "edge_bajo": {
-        "n": 282.5,
-        "pasar_ok": 115.5,
-        "pasar_miss": 167.0,
+        "n": 516.0,
+        "pasar_ok": 207.0,
+        "pasar_miss": 309.0,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
       "favorito_alto": {
-        "n": 157.0,
-        "pasar_ok": 50.0,
-        "pasar_miss": 94.0,
-        "apostar_ok": 3.0,
-        "apostar_fail": 10.0
+        "n": 273.0,
+        "pasar_ok": 88.0,
+        "pasar_miss": 159.0,
+        "apostar_ok": 6.0,
+        "apostar_fail": 20.0
       },
       "favorito_inflado": {
-        "n": 141.0,
-        "pasar_ok": 45.0,
-        "pasar_miss": 83.0,
-        "apostar_ok": 3.0,
-        "apostar_fail": 10.0
+        "n": 241.0,
+        "pasar_ok": 78.0,
+        "pasar_miss": 137.0,
+        "apostar_ok": 6.0,
+        "apostar_fail": 20.0
       },
       "mc_over": {
-        "n": 281.0,
-        "pasar_ok": 114.0,
-        "pasar_miss": 144.0,
-        "apostar_ok": 12.0,
-        "apostar_fail": 11.0
+        "n": 517.0,
+        "pasar_ok": 209.0,
+        "pasar_miss": 262.0,
+        "apostar_ok": 24.0,
+        "apostar_fail": 22.0
       },
       "mc_under": {
-        "n": 14.5,
-        "pasar_ok": 7.5,
-        "pasar_miss": 7.0,
+        "n": 24.0,
+        "pasar_ok": 11.0,
+        "pasar_miss": 13.0,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
       "preferir_f5": {
-        "n": 283.5,
-        "pasar_ok": 117.5,
-        "pasar_miss": 146.0,
-        "apostar_ok": 9.0,
-        "apostar_fail": 11.0
+        "n": 521.0,
+        "pasar_ok": 209.0,
+        "pasar_miss": 272.0,
+        "apostar_ok": 18.0,
+        "apostar_fail": 22.0
       },
       "forma_fria": {
-        "n": 7.0,
-        "pasar_ok": 3.0,
-        "pasar_miss": 4.0,
+        "n": 14.0,
+        "pasar_ok": 6.0,
+        "pasar_miss": 8.0,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
       "pitcher_vs_rival_malo": {
-        "n": 32.0,
-        "pasar_ok": 17.5,
-        "pasar_miss": 14.5,
+        "n": 58.0,
+        "pasar_ok": 30.0,
+        "pasar_miss": 28.0,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
@@ -407843,17 +407923,17 @@
         "apostar_fail": 0.0
       },
       "linea_tarde": {
-        "n": 146.0,
-        "pasar_ok": 70.0,
-        "pasar_miss": 73.0,
-        "apostar_ok": 3.0,
+        "n": 240.0,
+        "pasar_ok": 116.0,
+        "pasar_miss": 118.0,
+        "apostar_ok": 6.0,
         "apostar_fail": 0.0
       },
       "underdog_valor": {
-        "n": 10.0,
-        "pasar_ok": 2.0,
-        "pasar_miss": 5.0,
-        "apostar_ok": 3.0,
+        "n": 16.0,
+        "pasar_ok": 3.0,
+        "pasar_miss": 7.0,
+        "apostar_ok": 6.0,
         "apostar_fail": 0.0
       },
       "limpio": {
@@ -407878,11 +407958,91 @@
       "forma_fria": -1,
       "pitcher_vs_rival_malo": 0,
       "linea_en_contra": 0,
-      "linea_tarde": 0,
-      "underdog_valor": -2,
+      "linea_tarde": 1,
+      "underdog_valor": -1,
       "limpio": 0
     },
     "vistos": [
+      "824711:fallo",
+      "822930:acierto",
+      "824873:acierto",
+      "823736:acierto",
+      "823659:acierto",
+      "823012:acierto",
+      "825036:acierto",
+      "824954:fallo",
+      "823173:fallo",
+      "824224:acierto",
+      "823496:fallo",
+      "824630:fallo",
+      "822768:acierto",
+      "822685:fallo",
+      "823170:fallo",
+      "824712:acierto",
+      "823657:fallo",
+      "823819:fallo",
+      "822927:acierto",
+      "823009:fallo",
+      "825035:fallo",
+      "824955:fallo",
+      "823737:acierto",
+      "824870:fallo",
+      "824225:acierto",
+      "822682:acierto",
+      "824869:fallo",
+      "823495:acierto",
+      "822764:acierto",
+      "822928:acierto",
+      "823815:fallo",
+      "823734:fallo",
+      "824628:fallo",
+      "824708:acierto",
+      "824952:fallo",
+      "825033:fallo",
+      "823171:acierto",
+      "823658:fallo",
+      "823008:acierto",
+      "824386:fallo",
+      "824465:acierto",
+      "822765:fallo",
+      "823575:fallo",
+      "823656:acierto",
+      "824629:acierto",
+      "823006:acierto",
+      "824308:acierto",
+      "823981:acierto",
+      "825034:acierto",
+      "824627:fallo",
+      "823654:acierto",
+      "823007:fallo",
+      "822849:acierto",
+      "824143:acierto",
+      "824307:fallo",
+      "823980:fallo",
+      "825030:fallo",
+      "824382:acierto",
+      "823655:fallo",
+      "824467:fallo",
+      "822924:acierto",
+      "824141:acierto",
+      "823331:acierto",
+      "824383:acierto",
+      "822923:fallo",
+      "823572:fallo",
+      "823252:acierto",
+      "823898:acierto",
+      "822921:acierto",
+      "823571:acierto",
+      "824380:acierto",
+      "823330:acierto",
+      "825029:fallo",
+      "823249:acierto",
+      "823899:acierto",
+      "823329:acierto",
+      "822922:acierto",
+      "822775:fallo",
+      "822941:acierto",
+      "824480:acierto",
       "824157:acierto",
       "824400:fallo",
       "823671:acierto",
@@ -408201,97 +408361,17 @@
       "823739:acierto",
       "823900:acierto",
       "824871:fallo",
-      "823088:fallo",
       "823499:acierto",
-      "824550:fallo",
-      "824631:fallo",
-      "822684:acierto",
-      "823498:fallo",
-      "822767:acierto",
-      "824711:fallo",
-      "822930:acierto",
-      "824873:acierto",
-      "823736:acierto",
-      "823659:acierto",
-      "823012:acierto",
-      "825036:acierto",
-      "824954:fallo",
-      "823173:fallo",
-      "824224:acierto",
-      "823496:fallo",
-      "824630:fallo",
-      "822768:acierto",
-      "822685:fallo",
-      "823170:fallo",
-      "824712:acierto",
-      "823657:fallo",
-      "823819:fallo",
-      "822927:acierto",
-      "823009:fallo",
-      "825035:fallo",
-      "824955:fallo",
-      "823737:acierto",
-      "824870:fallo",
-      "824225:acierto",
-      "822682:acierto",
-      "824869:fallo",
-      "823495:acierto",
-      "822764:acierto",
-      "822928:acierto",
-      "823815:fallo",
-      "823734:fallo",
-      "824628:fallo",
-      "824708:acierto",
-      "824952:fallo",
-      "825033:fallo",
-      "823171:acierto",
-      "823658:fallo",
-      "823008:acierto",
-      "824386:fallo",
-      "824465:acierto",
-      "822765:fallo",
-      "823575:fallo",
-      "823656:acierto",
-      "824629:acierto",
-      "823006:acierto",
-      "824308:acierto",
-      "823981:acierto",
-      "825034:acierto",
-      "824627:fallo",
-      "823654:acierto",
-      "823007:fallo",
-      "822849:acierto",
-      "824143:acierto",
-      "824307:fallo",
-      "823980:fallo",
-      "825030:fallo",
-      "824382:acierto",
-      "823655:fallo",
-      "824467:fallo",
-      "822924:acierto",
-      "824141:acierto",
-      "823331:acierto",
-      "824383:acierto",
-      "822923:fallo",
-      "823572:fallo",
-      "823252:acierto",
-      "823898:acierto",
-      "822921:acierto",
-      "823571:acierto",
-      "824380:acierto",
-      "823330:acierto",
-      "825029:fallo",
-      "823249:acierto",
-      "823899:acierto"
+      "822684:acierto"
     ],
-    "actualizado_en": "2026-09-20T06:38:56.653596Z"
+    "actualizado_en": "2026-09-20T20:55:42.106075Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 205,
-    "muestras_reales": 204,
+    "muestras": 377,
+    "muestras_reales": 376,
     "muestras_sinteticas": 1,
-    "ratio_features_reales": 0.995,
+    "ratio_features_reales": 0.997,
     "entreno_bloqueado": false,
     "schema": 4,
     "mensaje": "Entreno omitido en Render (anti-OOM); se mantiene el modelo en disco",
@@ -408304,62 +408384,65 @@
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 205,
+    "muestras": 377,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
         "ok": true,
-        "muestras": 88,
+        "muestras": 94,
         "metodo": "isotonic"
       },
       "underdog": {
-        "ok": false,
-        "muestras": 7
+        "ok": true,
+        "muestras": 81,
+        "metodo": "isotonic"
       },
       "scratch": {
         "ok": true,
-        "muestras": 63,
+        "muestras": 122,
         "metodo": "isotonic"
       },
       "limpio": {
         "ok": true,
-        "muestras": 47,
+        "muestras": 80,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 205 muestras (ECE≈0.01) · 3 tipos",
+    "mensaje": "Calibrado isotonic con 377 muestras (ECE≈0.01) · 4 tipos",
     "por_segmento": {
       "prob_alta": {
         "ok": true,
-        "muestras": 126,
+        "muestras": 128,
         "metodo": "isotonic"
       },
       "underdog_cuota": {
-        "ok": false,
-        "muestras": 9
+        "ok": true,
+        "muestras": 46,
+        "metodo": "isotonic"
       },
       "mc_over": {
         "ok": true,
-        "muestras": 45,
+        "muestras": 149,
         "metodo": "isotonic"
       },
       "entorno_f5": {
         "ok": true,
-        "muestras": 19,
+        "muestras": 39,
         "metodo": "isotonic"
       },
       "general": {
-        "ok": false,
-        "muestras": 6
+        "ok": true,
+        "muestras": 15,
+        "metodo": "isotonic"
       }
     },
-    "ece": 0.011
+    "ece": 0.01
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-20T19:56:49.780058Z"
+    "actualizado_en": "2026-09-20T20:41:36.106409Z"
   }
 }
