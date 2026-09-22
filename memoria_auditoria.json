@@ -2,7 +2,7 @@
   "modo": "simulacion",
   "capital": 100.68,
   "capital_inicial": 100.0,
-  "dia_actual": 38,
+  "dia_actual": 39,
   "dias_totales": 200,
   "stake_por_juego": 5.0,
   "experimento_activo": true,
@@ -335669,9 +335669,9 @@
           "pitcher_away_id": 702056,
           "pitcher_home_id": 669358,
           "inicio_juego": "2026-09-21T18:35:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.46,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-21T17:35:02.676574-04:00",
@@ -336381,7 +336381,9 @@
           "odds_congelada": 1.82,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 0.0,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "Toronto Blue Jays 3 - Baltimore Orioles 4",
+          "liquidado_en": "2026-09-21T22:19:39.070004-04:00"
         },
         {
           "game_id": "824221",
@@ -336400,9 +336402,9 @@
           "pitcher_away_id": 687792,
           "pitcher_home_id": 689981,
           "inicio_juego": "2026-09-21T18:40:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 1.85,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-21T17:40:02.773924-04:00",
@@ -337119,9 +337121,27 @@
           "odds_congelada": 1.617,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 0.0,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "Washington Nationals 2 - Detroit Tigers 9",
+          "liquidado_en": "2026-09-21T22:19:39.078966-04:00"
         }
       ],
+      "resumen": {
+        "jugadas": 0,
+        "ganadas": 0,
+        "perdidas": 0,
+        "pendientes": 0,
+        "profit_dia": 0,
+        "capital_arriesgado": 0,
+        "total_apostado": 0
+      }
+    },
+    {
+      "dia": 39,
+      "fecha": "2026-09-22",
+      "bloqueado_en": null,
+      "apuestas": [],
+      "predicciones": [],
       "resumen": {
         "jugadas": 0,
         "ganadas": 0,
@@ -410052,6 +410072,6 @@
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-21T21:55:55.420261Z"
+    "actualizado_en": "2026-09-22T02:19:15.566856Z"
   }
 }
