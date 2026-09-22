@@ -337159,9 +337159,9 @@
           "pitcher_away_id": 607259,
           "pitcher_home_id": 607074,
           "inicio_juego": "2026-09-22T13:05:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.27,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-22T12:14:53.063479-04:00",
@@ -337905,7 +337905,9 @@
           "odds_congelada": 1.758,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 0.0,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "Tampa Bay Rays 0 - New York Yankees 2",
+          "liquidado_en": "2026-09-22T15:12:47.187380-04:00"
         }
       ],
       "resumen": {
@@ -410838,6 +410840,6 @@
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-22T16:14:02.516277Z"
+    "actualizado_en": "2026-09-22T17:49:51.392412Z"
   }
 }
