@@ -359230,9 +359230,9 @@
           "pitcher_away_id": 814490,
           "pitcher_home_id": 669923,
           "inicio_juego": "2026-09-23T22:10:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.46,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-23T18:15:46.384904-04:00",
@@ -359973,7 +359973,9 @@
           "alerta_canal": "telegram",
           "whatsapp_enviado": true,
           "telegram_enviado": true,
-          "whatsapp_enviado_en": "2026-09-23T22:15:47.208745Z"
+          "whatsapp_enviado_en": "2026-09-23T22:15:47.208745Z",
+          "marcador_final": "Houston Astros 5 - Seattle Mariners 6",
+          "liquidado_en": "2026-09-24T04:39:15.156893-04:00"
         }
       ],
       "resumen": {
@@ -439886,6 +439888,61 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-09-24T05:25:06.933575Z"
+    },
+    {
+      "id": "lec-acierto_refuerzo-823086-1790239155",
+      "tipo": "acierto_refuerzo",
+      "fecha": "2026-09-23",
+      "game_id": "823086",
+      "visitante": "Houston Astros",
+      "home": "Seattle Mariners",
+      "pick": "Seattle Mariners ML",
+      "probPick": 73.5,
+      "edge": 18.6,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Houston Astros 5 - Seattle Mariners 6",
+      "patron": "refuerzo_capas",
+      "leccion": "Acierto con capas bullpen,park_umpire,monte_carlo; contexto alineado.",
+      "motivo": "inteligencia + acierto",
+      "confianza": 3,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-24T08:39:15.162487Z",
+      "con_dinero": false,
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "over",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1482/1488 pitch -37/+10 → 39/61% · fusión 38/62%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 40/60% · MC totales μ=11.0 (F5 6.0) vs ",
+        "preferir_f5": true
+      }
+    },
+    {
+      "id": "lec-oportunidad_perdida-823086-1790239155",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-09-23",
+      "game_id": "823086",
+      "visitante": "Houston Astros",
+      "home": "Seattle Mariners",
+      "pick": "Seattle Mariners ML",
+      "probPick": 73.5,
+      "edge": 18.6,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Houston Astros 5 - Seattle Mariners 6",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-24T08:39:15.164245Z"
     }
   ],
   "mente_stats": {
@@ -439896,9 +439953,9 @@
         "fallos": 10
       },
       "PASAR": {
-        "n": 468,
+        "n": 469,
         "evito_fallo": 181,
-        "oportunidad_perdida": 287
+        "oportunidad_perdida": 288
       },
       "ESPERAR": {
         "n": 298,
@@ -439943,9 +440000,9 @@
         "apostar_fail": 0.0
       },
       "favorito_alto": {
-        "n": 317.5,
+        "n": 318.5,
         "pasar_ok": 101.0,
-        "pasar_miss": 190.5,
+        "pasar_miss": 191.5,
         "apostar_ok": 6.0,
         "apostar_fail": 20.0
       },
@@ -439957,9 +440014,9 @@
         "apostar_fail": 20.0
       },
       "mc_over": {
-        "n": 558.0,
+        "n": 559.0,
         "pasar_ok": 226.0,
-        "pasar_miss": 286.0,
+        "pasar_miss": 287.0,
         "apostar_ok": 24.0,
         "apostar_fail": 22.0
       },
@@ -439971,9 +440028,9 @@
         "apostar_fail": 0.0
       },
       "preferir_f5": {
-        "n": 549.0,
+        "n": 550.0,
         "pasar_ok": 221.0,
-        "pasar_miss": 288.0,
+        "pasar_miss": 289.0,
         "apostar_ok": 18.0,
         "apostar_fail": 22.0
       },
@@ -440039,7 +440096,6 @@
       "limpio": 0
     },
     "vistos": [
-      "825030:fallo",
       "824382:acierto",
       "823655:fallo",
       "824467:fallo",
@@ -440438,14 +440494,15 @@
       "823654:acierto",
       "823007:fallo",
       "822849:acierto",
-      "824307:fallo"
+      "824307:fallo",
+      "823086:acierto"
     ],
-    "actualizado_en": "2026-09-24T05:25:06.931753Z"
+    "actualizado_en": "2026-09-24T08:39:15.167291Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 400,
-    "muestras_reales": 399,
+    "muestras": 401,
+    "muestras_reales": 400,
     "muestras_sinteticas": 1,
     "ratio_features_reales": 0.998,
     "entreno_bloqueado": false,
@@ -440460,12 +440517,12 @@
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 394,
+    "muestras": 401,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
         "ok": true,
-        "muestras": 98,
+        "muestras": 101,
         "metodo": "isotonic"
       },
       "underdog": {
@@ -440475,20 +440532,20 @@
       },
       "scratch": {
         "ok": true,
-        "muestras": 133,
+        "muestras": 134,
         "metodo": "isotonic"
       },
       "limpio": {
         "ok": true,
-        "muestras": 82,
+        "muestras": 85,
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 394 muestras (ECE≈0.01) · 4 tipos",
+    "mensaje": "Calibrado isotonic con 401 muestras (ECE≈0.01) · 4 tipos",
     "por_segmento": {
       "prob_alta": {
         "ok": true,
-        "muestras": 142,
+        "muestras": 146,
         "metodo": "isotonic"
       },
       "underdog_cuota": {
@@ -440498,7 +440555,7 @@
       },
       "mc_over": {
         "ok": true,
-        "muestras": 150,
+        "muestras": 153,
         "metodo": "isotonic"
       },
       "entorno_f5": {
@@ -440512,13 +440569,13 @@
         "metodo": "isotonic"
       }
     },
-    "ece": 0.005
+    "ece": 0.008
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-24T02:04:13.327197Z"
+    "actualizado_en": "2026-09-24T08:38:23.754893Z"
   }
 }
