@@ -360716,6 +360716,725 @@
           "lineas_total": null,
           "odds_congelada": 1.61,
           "lineas_fuente_inicial": "modelo"
+        },
+        {
+          "game_id": "823411",
+          "visitante": "Milwaukee Brewers",
+          "home": "Philadelphia Phillies",
+          "pick": "Milwaukee Brewers ML",
+          "odds": 2.13,
+          "odds_american": 113,
+          "edge": 7.0,
+          "probPick": 53.9,
+          "apostable": false,
+          "lineas_fuente": "draftkings",
+          "motivo_apuesta": "Prob. modelo bajo 58.0% · Lean débil · se muestra quién gana, no cuenta en precisión",
+          "pitcherAway": "Shane Drohan",
+          "pitcherHome": "Andrew Painter",
+          "pitcher_away_id": 675660,
+          "pitcher_home_id": 691725,
+          "inicio_juego": "2026-09-24T18:05:00-04:00",
+          "estado": "pendiente",
+          "resultado": null,
+          "profit": null,
+          "stake_virtual": 3.0,
+          "con_dinero": false,
+          "predicho_en": "2026-09-24T17:05:05.212705-04:00",
+          "congelado_en_gracia": false,
+          "valida_stats": false,
+          "invalida_tarde": false,
+          "confianza_baja": true,
+          "clima": {
+            "ok": false,
+            "fuente": "none",
+            "temp_f": null,
+            "viento_mph": null,
+            "humedad": null,
+            "run_env": 0.0,
+            "motivo": "429 Client Error: Too Many Requests for url: https://api.open-meteo.com/v1/forecast?latitude=39.9057&longitude=-75.1665&",
+            "estadio": "Citizens Bank Park",
+            "es_domo": false
+          },
+          "lesiones": {
+            "ok": true,
+            "fuente": "espn",
+            "motivo": "279 bajas indexadas",
+            "away": [
+              {
+                "jugador": "Brandon Woodruff",
+                "apellido": "woodruff",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Woodruff (shoulder) has extended his flat-ground throwing to 105 feet, and his readiness for mound work will be re-evaluated at the end of S",
+                "severidad": 5,
+                "equipo": "Milwaukee Brewers"
+              },
+              {
+                "jugador": "Brian Fitzpatrick",
+                "apellido": "fitzpatrick",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Fitzpatrick (elbow) underwent Tommy John surgery over the past week, Curt Hogg of the Milwaukee Journal Sentinel reports.",
+                "severidad": 5,
+                "equipo": "Milwaukee Brewers"
+              },
+              {
+                "jugador": "Quinn Priester",
+                "apellido": "priester",
+                "pos": "SP",
+                "status": "60-Day-IL",
+                "comentario": "Priester will undergo thoracic outlet compression surgery on Monday and is expected to be sidelined 8-to-10 months, Curt Hogg of the Milwauk",
+                "severidad": 5,
+                "equipo": "Milwaukee Brewers"
+              },
+              {
+                "jugador": "Angel Zerpa",
+                "apellido": "zerpa",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "The Brewers transferred Zerpa (elbow) to the 60-day injured list Sunday.",
+                "severidad": 5,
+                "equipo": "Milwaukee Brewers"
+              },
+              {
+                "jugador": "Bryse Wilson",
+                "apellido": "wilson",
+                "pos": "RP",
+                "status": "15-Day-IL",
+                "comentario": "The Brewers are expected to activate Wilson (back) from the 15-day injured list to have him start or pitch in bulk relief during Thursday's ",
+                "severidad": 4,
+                "equipo": "Milwaukee Brewers"
+              },
+              {
+                "jugador": "Grant Anderson",
+                "apellido": "anderson",
+                "pos": "RP",
+                "status": "15-Day-IL",
+                "comentario": "Anderson (biceps) will begin a rehab assignment Wednesday, Adam McCalvy of MLB.com reports.",
+                "severidad": 4,
+                "equipo": "Milwaukee Brewers"
+              }
+            ],
+            "home": [
+              {
+                "jugador": "Jesus Luzardo",
+                "apellido": "luzardo",
+                "pos": "SP",
+                "status": "15-Day-IL",
+                "comentario": "Luzardo (shoulder) threw a successful 30-pitch bullpen session Thursday, Matt Gelb of The Athletic reports.",
+                "severidad": 5,
+                "equipo": "Philadelphia Phillies"
+              },
+              {
+                "jugador": "Caleb Kilian",
+                "apellido": "kilian",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "The Phillies transferred Kilian (oblique) to the 60-day injured list Thursday, Todd Zolecki of MLB.com reports.",
+                "severidad": 5,
+                "equipo": "Philadelphia Phillies"
+              },
+              {
+                "jugador": "Felix Reyes",
+                "apellido": "reyes",
+                "pos": "LF",
+                "status": "60-Day-IL",
+                "comentario": "The Phillies optioned Reyes to Triple-A Lehigh Valley on Monday, Matt Gelb of The Athletic reports.",
+                "severidad": 5,
+                "equipo": "Philadelphia Phillies"
+              },
+              {
+                "jugador": "Brad Keller",
+                "apellido": "keller",
+                "pos": "RP",
+                "status": "60-Day-IL",
+                "comentario": "Keller underwent right elbow UCL reconstruction surgery with internal brace and flexor tendon repair Tuesday, Lochlahn March of The Philadel",
+                "severidad": 5,
+                "equipo": "Philadelphia Phillies"
+              },
+              {
+                "jugador": "Johan Rojas",
+                "apellido": "rojas",
+                "pos": "CF",
+                "status": "60-Day-IL",
+                "comentario": "Rojas (suspension) underwent surgery Friday to repair the UCL in his right elbow and will face an expected recovery timeline of 6-to-8 month",
+                "severidad": 5,
+                "equipo": "Philadelphia Phillies"
+              },
+              {
+                "jugador": "Adolis Garcia",
+                "apellido": "garcia",
+                "pos": "RF",
+                "status": "60-Day-IL",
+                "comentario": "The Phillies announced that Garcia underwent successful surgery Wednesday to repair a torn right lat, Lochlahn March of The Philadelphia Inq",
+                "severidad": 5,
+                "equipo": "Philadelphia Phillies"
+              },
+              {
+                "jugador": "Jonathan Bowlan",
+                "apellido": "bowlan",
+                "pos": "RP",
+                "status": "Day-To-Day",
+                "comentario": "Bowlan was diagnosed with a mild right groin strain Friday, Todd Zolecki of MLB.com reports.",
+                "severidad": 3,
+                "equipo": "Philadelphia Phillies"
+              }
+            ],
+            "resumen": "Milwaukee Brewers: Brandon Woodruff(SP/60-Day-IL), Brian Fitzpatrick(RP/60-Day-IL), Quinn Priester(SP/60-Day-IL), Angel Zerpa(RP/60-Day-IL) | Philadelphia Phillies: Jesus Luzardo(SP/15-Day-IL), Caleb Kilian(RP/60-Day-IL), Felix Reyes(LF/60-Day-IL), Brad Keller(RP/60-Day-IL)",
+            "ajuste_away": -2.9,
+            "ajuste_home": -3.25,
+            "starter_riesgo": false,
+            "starter_away_lesionado": false,
+            "starter_home_lesionado": false,
+            "alerta": ""
+          },
+          "scratch_lineup": {
+            "ok": true,
+            "lineup_confirmado": true,
+            "scratch_away": false,
+            "scratch_home": false,
+            "estrellas_fuera_away": [
+              {
+                "id": 683734,
+                "nombre": "Andrew Vaughn",
+                "ops": 0.834,
+                "pa": 331
+              },
+              {
+                "id": 694192,
+                "nombre": "Jackson Chourio",
+                "ops": 0.819,
+                "pa": 561
+              }
+            ],
+            "estrellas_fuera_home": [
+              {
+                "id": 656537,
+                "nombre": "Derek Hill",
+                "ops": 0.736,
+                "pa": 215
+              }
+            ],
+            "ajuste_away": -2.4,
+            "ajuste_home": 0.0,
+            "min_estrellas_fuera": 2,
+            "riesgo": true,
+            "alerta": "Estrellas out visitante: Andrew Vaughn, Jackson Chourio",
+            "resumen": "Estrellas out visitante: Andrew Vaughn, Jackson Chourio"
+          },
+          "factores_humanos": {
+            "ok": true,
+            "away": {
+              "ok": true,
+              "dias_descanso": 0.0,
+              "back_to_back": true,
+              "juegos_seguidos_visita": 8,
+              "cambio_zona": 0,
+              "fatiga_viaje": 0.75,
+              "ultimo_rival": "Philadelphia Phillies",
+              "ultimo_venue": "Citizens Bank Park",
+              "motivo": "B2B · descanso 0d · road×8 · fatiga 0.75"
+            },
+            "home": {
+              "ok": true,
+              "dias_descanso": 0.0,
+              "back_to_back": true,
+              "juegos_seguidos_visita": 0,
+              "cambio_zona": 0,
+              "fatiga_viaje": 0.35,
+              "ultimo_rival": "Milwaukee Brewers",
+              "ultimo_venue": "Citizens Bank Park",
+              "motivo": "B2B · descanso 0d"
+            },
+            "serie": {
+              "game_number": 3,
+              "games_in_series": 3,
+              "leverage": 1.0,
+              "rubber": true,
+              "day_night": "night"
+            },
+            "umpire": {
+              "ok": true,
+              "hp_nombre": "Dan Merzel",
+              "hp_id": 605670,
+              "sesgo_runs": 0.0,
+              "motivo": "HP Dan Merzel"
+            },
+            "ajuste_away": -1.65,
+            "ajuste_home": -0.49,
+            "sesgo_umpire_runs": 0.0,
+            "alertas": [
+              "Visita fatigada (B2B · descanso 0d · road×8 · fatiga 0.75)",
+              "Rubber match (3/3)"
+            ],
+            "resumen": "AWAY: B2B · descanso 0d · road×8 · fatiga 0.75 | HOME: B2B · descanso 0d | Serie 3/3 rubber | night | HP Dan Merzel",
+            "riesgo": true,
+            "features_away": {
+              "fatiga_viaje": 0.75,
+              "dias_descanso": 0.0,
+              "cambio_zona": 0.0,
+              "leverage_serie": 1.0,
+              "umpire_runs": 0.0
+            },
+            "features_home": {
+              "fatiga_viaje": 0.35,
+              "dias_descanso": 0.0,
+              "cambio_zona": 0.0,
+              "leverage_serie": 1.0,
+              "umpire_runs": 0.0
+            }
+          },
+          "historico_oficial": {
+            "ok": true,
+            "season": 2026,
+            "l10_away": {
+              "ok": true,
+              "wins": 7,
+              "losses": 3,
+              "pct": 0.7,
+              "marca": "7-3",
+              "streak_code": "W1",
+              "streak_type": "wins",
+              "streak_n": 1,
+              "forma": "buena"
+            },
+            "l10_home": {
+              "ok": true,
+              "wins": 5,
+              "losses": 5,
+              "pct": 0.5,
+              "marca": "5-5",
+              "streak_code": "L1",
+              "streak_type": "losses",
+              "streak_n": 1,
+              "forma": "neutra"
+            },
+            "pitcher_vs_rival_away": {
+              "ok": true,
+              "pitcher_id": 675660,
+              "pitcher": "Shane Drohan",
+              "rival_id": 143,
+              "gs": 1,
+              "ip": 5.0,
+              "era": 7.2,
+              "whip": 1.6,
+              "k": 7,
+              "bb": 0,
+              "hr": 1,
+              "ops_contra": 0.87,
+              "avg_contra": 0.348,
+              "calidad": "malo",
+              "motivo": "ERA 7.2 en 5.0 IP vs rival",
+              "fechas": [
+                "2026-06-13"
+              ],
+              "resumenes": [
+                "5.0 IP, 4 ER, 7 K, 0 BB"
+              ]
+            },
+            "pitcher_vs_rival_home": {
+              "ok": true,
+              "pitcher_id": 691725,
+              "pitcher": "Andrew Painter",
+              "rival_id": 158,
+              "gs": 1,
+              "ip": 5.0,
+              "era": 9.0,
+              "whip": 1.8,
+              "k": 3,
+              "bb": 3,
+              "hr": 1,
+              "ops_contra": 0.891,
+              "avg_contra": 0.3,
+              "calidad": "malo",
+              "motivo": "ERA 9.0 en 5.0 IP vs rival",
+              "fechas": [
+                "2026-06-12"
+              ],
+              "resumenes": [
+                "5.0 IP, 5 ER, 3 K, 3 BB"
+              ]
+            },
+            "alertas": [
+              "pvr_malo_away",
+              "pvr_malo_home"
+            ],
+            "riesgo": true,
+            "ajuste_away": -0.4,
+            "ajuste_home": -0.8,
+            "resumen": "L10 visita 7-3 · L10 local 5-5 · SP visita vs rival: ERA 7.2 en 5.0 IP vs rival · SP local vs rival: ERA 9.0 en 5.0 IP vs rival"
+          },
+          "ia_briefing": {
+            "ok": true,
+            "fase": "t60",
+            "creado_en": "2026-09-24T21:05:05.405902Z",
+            "alertas": [
+              "scratch",
+              "humanos",
+              "historico",
+              "pvr_malo_away",
+              "pvr_malo_home",
+              "tipo_scratch",
+              "mc_over"
+            ],
+            "resumen": "Pick Milwaukee Brewers ML @ 53.9% edge=7.0 · cuotas=draftkings · Elo 1562/1519 pitch +12/-17 → 57/43% · fusión 55/45% · Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 54/46% · MC totales μ=11.0 (F · alertas=scratch,humanos,historico,pvr_malo_away,pvr_malo_home,tipo_scratch,mc_over · AWAY: B2B · descanso 0",
+            "pilares": {
+              "modelo": {
+                "pick": "Milwaukee Brewers ML",
+                "prob": 53.9,
+                "edge": 7.0,
+                "odds": 2.13,
+                "fuente_cuotas": "draftkings",
+                "motivo": "Prob. modelo bajo 58.0%"
+              },
+              "clima": {
+                "ok": false,
+                "run_env": 0.0,
+                "motivo": "429 Client Error: Too Many Requests for url: https://api.open-meteo.com/v1/forecast?latitude=39.9057"
+              },
+              "lesiones": {
+                "ok": true,
+                "starter_riesgo": false,
+                "resumen": "Milwaukee Brewers: Brandon Woodruff(SP/60-Day-IL), Brian Fitzpatrick(RP/60-Day-IL), Quinn Priester(SP/60-Day-IL), Angel Zerpa(RP/60-Day-IL) "
+              },
+              "scratch": {
+                "ok": true,
+                "riesgo": true,
+                "resumen": "Estrellas out visitante: Andrew Vaughn, Jackson Chourio"
+              },
+              "humanos": {
+                "ok": true,
+                "riesgo": true,
+                "resumen": "AWAY: B2B · descanso 0d · road×8 · fatiga 0.75 | HOME: B2B · descanso 0d | Serie 3/3 rubber | night | HP Dan Merzel",
+                "fatiga_away": 0.75,
+                "fatiga_home": 0.35
+              },
+              "historico": {
+                "ok": true,
+                "riesgo": true,
+                "resumen": "L10 visita 7-3 · L10 local 5-5 · SP visita vs rival: ERA 7.2 en 5.0 IP vs rival · SP local vs rival: ERA 9.0 en 5.0 IP vs rival",
+                "l10_away": "7-3",
+                "l10_home": "5-5",
+                "pvr_away": "malo",
+                "pvr_home": "malo"
+              },
+              "elo": {
+                "ok": true,
+                "resumen": "Elo 1562/1519 pitch +12/-17 → 57/43% · fusión 55/45%",
+                "prob_elo_away": 56.98,
+                "prob_elo_home": 43.02,
+                "adj_pitcher_away": 12.04,
+                "adj_pitcher_home": -17.08,
+                "peso_elo": 0.4
+              },
+              "inteligencia": {
+                "ok": true,
+                "capas": [
+                  "bullpen",
+                  "park_umpire",
+                  "monte_carlo",
+                  "mc_totales",
+                  "consenso"
+                ],
+                "resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 54/46% · MC totales μ=11.0 (F5 5.9) vs 8.0 → over 81% · F5→over",
+                "tipo_pick": "scratch",
+                "consenso_n": 1,
+                "mc": "MC×80 → 55/45%",
+                "totales": {
+                  "ok": true,
+                  "mu": 11.01,
+                  "mu_f5": 5.88,
+                  "señal": "over",
+                  "señal_f5": "over",
+                  "preferir_f5": false,
+                  "resumen": "MC totales μ=11.0 (F5 5.9) vs 8.0 → over 81% · F5→over"
+                }
+              },
+              "pitchers": {
+                "away": "Shane Drohan",
+                "home": "Andrew Painter",
+                "fip": 3.77,
+                "fatiga_bullpen": 0.4
+              }
+            },
+            "lecciones_ids": [
+              "lec-acierto_refuerzo-824878-1790227506",
+              "lec-acierto_refuerzo-823086-1790239155",
+              "lec-fallo_postmortem-823655-1790227506",
+              "lec-fallo_postmortem-824625-1790227487",
+              "lec-acierto_refuerzo-822773-1790227506",
+              "lec-acierto_refuerzo-822924-1790227506"
+            ]
+          },
+          "ia_mente": null,
+          "ml_features": {
+            "era_pitcher": 4.26,
+            "whip_pitcher": 1.33,
+            "k9_pitcher": 9.05,
+            "woba_equipo": 0.338,
+            "ops_equipo": 0.741,
+            "win_pct_equipo": 0.627,
+            "es_local": 0.0,
+            "park_factor": 1.05,
+            "fatiga_bullpen": 0.4,
+            "matchup_zurdo_diestro": 1.100000000000001,
+            "edge_estadistico": 7.0,
+            "bb9_pitcher": 3.14,
+            "hr9_pitcher": 1.05,
+            "racha_equipo": 0.7,
+            "diferencia_run": 0.0,
+            "vs_pitcher_hand": 0.0,
+            "temp_f": 72.0,
+            "viento_mph": 5.0,
+            "run_env": 0.0,
+            "fip_pitcher": 3.77,
+            "xfip_pitcher": 3.18,
+            "k_pct_pitcher": 23.7,
+            "bb_pct_pitcher": 8.2,
+            "fatiga_viaje": 0.75,
+            "dias_descanso": 1.0,
+            "cambio_zona": 0.0,
+            "leverage_serie": 1.0,
+            "umpire_runs": 0.0
+          },
+          "tipo_pick": "scratch",
+          "inteligencia": {
+            "ok": true,
+            "capas": [
+              "bullpen",
+              "park_umpire",
+              "monte_carlo",
+              "mc_totales",
+              "consenso"
+            ],
+            "bullpen": {
+              "away": {
+                "ok": true,
+                "fatiga": 0.447,
+                "bullpen_index": 44.7,
+                "pitches_relevo": 145,
+                "pitches_l3d": 145,
+                "ip_relevo": 10.0,
+                "era_relevo_prom": null,
+                "relevistas": 5,
+                "juegos_analizados": 2,
+                "horas_desde": 21.0,
+                "relevistas_detalle": [
+                  {
+                    "nombre": "Colton Gordon",
+                    "pitches": 70,
+                    "ip": 5.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "DL Hall",
+                    "pitches": 36,
+                    "ip": 2.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Abner Uribe",
+                    "pitches": 14,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Kyle Harrison",
+                    "pitches": 14,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Trevor Megill",
+                    "pitches": 11,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  }
+                ],
+                "resumen": "Bullpen Milwaukee Brewers: 145 pitches L3D (5 brazos, 10.0 IP) · índice 45/100",
+                "nombre": "Milwaukee Brewers",
+                "game_pk": 823410
+              },
+              "home": {
+                "ok": true,
+                "fatiga": 0.311,
+                "bullpen_index": 31.1,
+                "pitches_relevo": 82,
+                "pitches_l3d": 82,
+                "ip_relevo": 6.3,
+                "era_relevo_prom": null,
+                "relevistas": 6,
+                "juegos_analizados": 2,
+                "horas_desde": 21.0,
+                "relevistas_detalle": [
+                  {
+                    "nombre": "Tanner Banks",
+                    "pitches": 25,
+                    "ip": 2.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Jhoan Duran",
+                    "pitches": 24,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Alex McFarlane",
+                    "pitches": 21,
+                    "ip": 1.7,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Max Lazar",
+                    "pitches": 10,
+                    "ip": 1.0,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "José Alvarado",
+                    "pitches": 1,
+                    "ip": 0.3,
+                    "era": 0.0,
+                    "apariciones": 1
+                  },
+                  {
+                    "nombre": "Tim Mayza",
+                    "pitches": 1,
+                    "ip": 0.3,
+                    "era": 0.0,
+                    "apariciones": 1
+                  }
+                ],
+                "resumen": "Bullpen Philadelphia Phillies: 82 pitches L3D (6 brazos, 6.3 IP) · índice 31/100",
+                "nombre": "Philadelphia Phillies",
+                "game_pk": 823410
+              },
+              "shift_hacia_away": -0.54
+            },
+            "park_umpire": {
+              "ok": true,
+              "adj_away": 0.14,
+              "adj_home": 0.22,
+              "park_factor": 1.05,
+              "sesgo_umpire": 0.0,
+              "resumen": "Park×1.05 ump +0.00 → 55/45%"
+            },
+            "monte_carlo": {
+              "ok": true,
+              "n": 80,
+              "prob_home": 45.0,
+              "prob_away": 55.0,
+              "resumen": "MC×80 → 55/45%"
+            },
+            "totales": {
+              "ok": true,
+              "n": 80,
+              "lambda_away": 5.63,
+              "lambda_home": 4.82,
+              "mu_total": 11.01,
+              "mu_f5": 5.88,
+              "p10": 6.8,
+              "p50": 11.0,
+              "p90": 15.3,
+              "linea_total": 8.0,
+              "linea_f5": 4.5,
+              "linea_fuente": "mercado",
+              "linea_es_default": false,
+              "p_over": 81.2,
+              "p_under": 10.0,
+              "p_over_f5": 65.0,
+              "p_under_f5": 35.0,
+              "señal": "over",
+              "señal_f5": "over",
+              "preferir_f5": false,
+              "resumen": "MC totales μ=11.0 (F5 5.9) vs 8.0 → over 81% · F5→over"
+            },
+            "consenso": {
+              "ok": true,
+              "n_fuentes": 1,
+              "fuentes": [
+                "draftkings"
+              ],
+              "dec_away": 2.13,
+              "dec_home": 1.73,
+              "prob_away": 44.82,
+              "prob_home": 55.18,
+              "vig_pct": 4.75,
+              "discrepancia_casas_pct": 0.0,
+              "resumen": "Consenso 1 casa(s) · fair 44.82/55.18% · vig 4.75%"
+            },
+            "tipo_pre": "limpio",
+            "resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 54/46% · MC totales μ=11.0 (F5 5.9) vs 8.0 → over 81% · F5→over",
+            "tipo_pick": "scratch"
+          },
+          "elo": {
+            "ok": true,
+            "activo": true,
+            "peso_elo": 0.4,
+            "elo_away": 1562.5,
+            "elo_home": 1518.8,
+            "adj_pitcher_away": 12.04,
+            "adj_pitcher_home": -17.08,
+            "elo_adj_away": 1574.5,
+            "elo_adj_home": 1501.7,
+            "prob_elo_away": 56.98,
+            "prob_elo_home": 43.02,
+            "prob_modelo_away": 54.4,
+            "prob_modelo_home": 45.6,
+            "prob_fusion_away": 55.43,
+            "prob_fusion_home": 44.57,
+            "fip_away": 3.77,
+            "fip_home": 4.81,
+            "resumen": "Elo 1562/1519 pitch +12/-17 → 57/43% · fusión 55/45%"
+          },
+          "mc_totales": {
+            "ok": true,
+            "n": 80,
+            "lambda_away": 5.63,
+            "lambda_home": 4.82,
+            "mu_total": 11.01,
+            "mu_f5": 5.88,
+            "p10": 6.8,
+            "p50": 11.0,
+            "p90": 15.3,
+            "linea_total": 8.0,
+            "linea_f5": 4.5,
+            "linea_fuente": "mercado",
+            "linea_es_default": false,
+            "p_over": 81.2,
+            "p_under": 10.0,
+            "p_over_f5": 65.0,
+            "p_under_f5": 35.0,
+            "señal": "over",
+            "señal_f5": "over",
+            "preferir_f5": false,
+            "resumen": "MC totales μ=11.0 (F5 5.9) vs 8.0 → over 81% · F5→over"
+          },
+          "preferir_f5": false,
+          "total_linea": 8.0,
+          "lineas_total": {
+            "linea": 8.0,
+            "over_american": null,
+            "over_decimal": null,
+            "under_american": null,
+            "under_decimal": null,
+            "casa": "draftkings",
+            "fuente": "espn"
+          },
+          "odds_congelada": 2.13,
+          "lineas_fuente_inicial": "draftkings",
+          "linea_movimiento_pct": 0.0,
+          "cuota_retry": true
         }
       ],
       "resumen": {
@@ -441294,6 +442013,6 @@
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-24T19:27:16.087827Z"
+    "actualizado_en": "2026-09-24T19:36:43.014175Z"
   }
 }
