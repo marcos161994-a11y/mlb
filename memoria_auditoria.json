@@ -349545,9 +349545,9 @@
           "pitcher_away_id": 687570,
           "pitcher_home_id": 702885,
           "inicio_juego": "2026-09-23T15:45:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 1.85,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-23T14:45:11.849893-04:00",
@@ -350259,7 +350259,9 @@
           "odds_congelada": 1.617,
           "lineas_fuente_inicial": "draftkings",
           "linea_movimiento_pct": 0.0,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "Minnesota Twins 4 - San Francisco Giants 2",
+          "liquidado_en": "2026-09-23T20:35:59.747369-04:00"
         },
         {
           "game_id": "824784",
@@ -433333,6 +433335,6 @@
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-23T21:25:33.888662Z"
+    "actualizado_en": "2026-09-24T00:34:59.934164Z"
   }
 }
