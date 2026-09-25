@@ -69,3 +69,14 @@ def test_carpeta_local_tiene_la_red():
     assert 'id="mente-red-svg"' in html
     assert "/api/mente-red" in html
     assert "function pintar" in html
+    assert "Mente.url" in html
+    atajo = Path("mente/Mente.url").read_text(encoding="utf-8")
+    assert "mlb-1-en7i.onrender.com/mente" in atajo
+    assert Path("mente/Abrir-mente.bat").exists()
+
+
+def test_servidor_expone_ruta_mente():
+    src = Path("servidor_mlb.py").read_text(encoding="utf-8")
+    assert '@app.get("/mente")' in src
+    assert "def panel_mente" in src
+    assert "def mente_acceso_directo" in src

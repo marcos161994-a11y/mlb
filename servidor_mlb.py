@@ -3368,6 +3368,31 @@ def panel():
     )
 
 
+_MENTE_NO_CACHE = {
+    "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+    "Pragma": "no-cache",
+    "Expires": "0",
+}
+
+
+@app.get("/mente")
+@app.get("/mente/")
+def panel_mente():
+    """Red neuronal solo en la PC (no va en el panel del celular)."""
+    return FileResponse(BASE_DIR / "mente" / "index.html", headers=_MENTE_NO_CACHE)
+
+
+@app.get("/mente/Mente.url")
+def mente_acceso_directo():
+    """Acceso directo de Windows para arrastrar al escritorio."""
+    return FileResponse(
+        BASE_DIR / "mente" / "Mente.url",
+        media_type="application/internet-shortcut",
+        filename="Mente.url",
+        headers=_MENTE_NO_CACHE,
+    )
+
+
 def obtener_juegos_para_panel(fecha: str, ligero: bool = False) -> list[dict]:
     """Cache corto para no recalcular ML en cada refresh del panel."""
     ahora = time.monotonic()
