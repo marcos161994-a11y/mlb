@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Mente · red neuronal</title>
+    <style>
+        :root {
+            --cyan: #00f2ff;
+            --gold: #ffbc00;
+            --green: #00ff88;
+            --red: #ff4466;
+            --muted: #8899aa;
+        }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            min-height: 100vh;
+            background: radial-gradient(ellipse at 50% 0%, #0b1c2c 0%, #050a0f 70%);
+            color: var(--cyan);
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            padding: 20px 16px 32px;
+        }
+        h1 { margin: 0 0 6px; font-size: 1.4rem; }
+        .badge { color: var(--gold); font-size: 0.85rem; font-weight: 600; }
+        .msg { color: var(--muted); font-size: 0.82rem; margin: 8px 0 12px; max-width: 720px; }
+        .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        #mente-red-svg { display: block; min-width: 880px; width: 100%; height: auto; }
+        .legend {
+            display: flex; flex-wrap: wrap; gap: 8px 14px;
+            font-size: 0.72rem; color: var(--muted); margin-top: 12px;
+        }
+        .legend i {
+            display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+            margin-right: 4px; vertical-align: middle;
+        }
+        button {
+            background: #111b27;
+            color: var(--cyan);
+            border: 1px solid rgba(0,242,255,0.4);
+            border-radius: 8px;
+            padding: 8px 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        @keyframes mente-pulse {
+            0%, 100% { opacity: 0.45; }
+            50% { opacity: 1; }
+        }
+        @keyframes mente-flow {
+            to { stroke-dashoffset: -24; }
+        }
+    </style>
+</head>
+<body>
+    <h1>🧠 Mente · red neuronal</h1>
+    <div class="badge" id="mente-red-badge">Abre este archivo en el navegador</div>
+    <p class="msg" id="mente-red-msg">Conectando con el motor para números vivos…</p>
+    <p><button type="button" onclick="cargar()">↻ Actualizar</button></p>
+    <div class="scroll">
+        <svg id="mente-red-svg" viewBox="0 0 900 640" role="img" aria-label="Red de la mente"></svg>
+    </div>
+    <div class="legend">
+        <span><i style="background:#00f2ff"></i>Sentidos</span>
+        <span><i style="background:#7aa2ff"></i>Cortex (stats/ML/Elo)</span>
+        <span><i style="background:#c084fc"></i>5 capas intel</span>
+        <span><i style="background:#ffbc00"></i>Mente (decide)</span>
+        <span><i style="background:#00ff88"></i>Salida</span>
+        <span><i style="background:#ff4466"></i>Aprende al liquidar</span>
+    </div>
+
+<script>
+const API = 'https://mlb-1-en7i.onrender.com';
+
+function colorCapa(capa, on) {
+    const map = {
+        sentidos: '#00f2ff',
+        cortex: '#7aa2ff',
+        intel: '#c084fc',
+        mente: '#ffbc00',
+        salida: '#00ff88',
+        loop: '#ff4466',
+    };
+    return on === false ? '#334455' : (map[capa] || '#8899aa');
+}
+
+function pintar(red) {
+    const svg = document.getElementById('mente-red-svg');
+    const msg = document.getElementById('mente-red-msg');
+    const badge = document.getElementById('mente-red-badge');
+    if (!red || !Array.isArray(red.nodos) || !red.nodos.length) {
+        msg.textContent = 'Sin datos de la red.';
+        return;
+    }
+    const wr = red.wr_alta && red.wr_alta.wr != null ? red.wr_alta.wr + '% ≥65%' : '';
+    badge.textContent = (red.modo || '') + (red.shadow ? ' · shadow' : '') + (wr ? ' · ' + wr : '');
+    msg.textContent = red.mensaje || '';
+    const nodos = red.nodos;
+    const by = {};
+    nodos.forEach(n => { by[n.id] = n; });
+    const NS = 'http://www.w3.org/2000/svg';
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    const defs = document.createElementNS(NS, 'defs');
+    defs.innerHTML =
+        '<filter id="mente-glow" x="-40%" y="-40%" width="180%" height="180%">' +
+        '<feGaussianBlur stdDeviation="2.2" result="b"/>' +
+        '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>';
+    svg.appendChild(defs);
+    (red.aristas || []).forEach(e => {
+        const a = by[e.from], b = by[e.to];
+        if (!a || !b) return;
+        const path = document.createElementNS(NS, 'path');
+        const mx = (a.x + b.x) / 2;
+        path.setAttribute('d', `M${a.x},${a.y} C${mx},${a.y} ${mx},${b.y} ${b.x},${b.y}`);
+        const on = a.on !== false && b.on !== false;
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke', e.loop ? 'rgba(255,68,102,0.55)' : (on ? 'rgba(0,242,255,0.28)' : 'rgba(80,90,100,0.2)'));
+        path.setAttribute('stroke-width', e.loop ? '1.6' : '1.2');
+        if (e.loop) {
+            path.setAttribute('stroke-dasharray', '5 5');
+            path.setAttribute('style', 'animation: mente-flow 1.6s linear infinite');
+        }
+        svg.appendChild(path);
+    });
+    nodos.forEach(n => {
+        const g = document.createElementNS(NS, 'g');
+        const col = colorCapa(n.capa, n.on);
+        const c = document.createElementNS(NS, 'circle');
+        c.setAttribute('cx', n.x);
+        c.setAttribute('cy', n.y);
+        c.setAttribute('r', n.kind === 'out' || n.kind === 'loop' ? 16 : 13);
+        c.setAttribute('fill', '#071018');
+        c.setAttribute('stroke', col);
+        c.setAttribute('stroke-width', '2');
+        c.setAttribute('filter', 'url(#mente-glow)');
+        if (n.on !== false) c.setAttribute('style', 'animation: mente-pulse 2.8s ease-in-out infinite');
+        const t = document.createElementNS(NS, 'text');
+        t.setAttribute('x', n.x);
+        t.setAttribute('y', n.y - 20);
+        t.setAttribute('text-anchor', 'middle');
+        t.setAttribute('fill', col);
+        t.setAttribute('font-size', '11');
+        t.setAttribute('font-weight', '700');
+        t.textContent = n.label;
+        const d = document.createElementNS(NS, 'text');
+        d.setAttribute('x', n.x);
+        d.setAttribute('y', n.y + 28);
+        d.setAttribute('text-anchor', 'middle');
+        d.setAttribute('fill', '#8899aa');
+        d.setAttribute('font-size', '9');
+        d.textContent = (n.detalle || '').slice(0, 28);
+        g.appendChild(c);
+        g.appendChild(t);
+        g.appendChild(d);
+        svg.appendChild(g);
+    });
+}
+
+async function cargar() {
+    const msg = document.getElementById('mente-red-msg');
+    msg.textContent = 'Conectando con el motor…';
+    try {
+        const r = await fetch(API + '/api/mente-red', { cache: 'no-store' });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        pintar(await r.json());
+    } catch (e) {
+        msg.textContent = 'No conectó con Render (' + (e.message || e) + '). Pulsa Actualizar cuando el servidor esté despierto.';
+    }
+}
+
+cargar();
+</script>
+</body>
+</html>
