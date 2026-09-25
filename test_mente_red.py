@@ -57,9 +57,15 @@ def test_nodo_apagado_si_flag_off():
     assert by["clima"]["on"] is False
 
 
-def test_html_tiene_svg_y_pintor():
+def test_panel_ya_no_tiene_la_red():
     html = Path("QuantumMLB.html").read_text(encoding="utf-8")
+    assert 'id="mente-red-svg"' not in html
+    assert "function pintarMenteRed" not in html
+    assert "mente-red-box" not in html
+
+
+def test_carpeta_local_tiene_la_red():
+    html = Path("mente/index.html").read_text(encoding="utf-8")
     assert 'id="mente-red-svg"' in html
-    assert "function pintarMenteRed" in html
-    assert "pintarMenteRed(data)" in html
-    assert "mente_red: state.mente_red" in html
+    assert "/api/mente-red" in html
+    assert "function pintar" in html

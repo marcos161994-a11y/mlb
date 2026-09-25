@@ -3676,9 +3676,6 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
             "shadow": bool((cfg.get("mente") or {}).get("shadow", False)),
             "stats": mente_stats_meta,
         },
-        "mente_red": _construir_mente_red_panel(
-            cfg, memoria, lecciones_meta, mente_stats_meta
-        ),
         "vigilancia": vigilancia,
         "perdidos_hoy": list((vigilancia or {}).get("perdidos") or [])[:8],
         "mente_errores": _resumen_mente_errores(cfg_ops),
@@ -3822,7 +3819,6 @@ def api_panel_boot():
             "modo": ((cfg.get("mente") or {}).get("modo") or "normal"),
             "shadow": bool((cfg.get("mente") or {}).get("shadow", False)),
         },
-        "mente_red": _construir_mente_red_panel(cfg, memoria),
     }
 
 
@@ -4504,6 +4500,29 @@ def api_historico_status():
         }
     except Exception as e:
         return {"ok": False, "activo": True, "motivo": str(e)[:120]}
+
+
+@app.get("/api/mente-red")
+def api_mente_red():
+    """Grafo de la mente para la carpeta local mente/index.html (no va en el panel)."""
+    cfg = cargar_config()
+    memoria = cargar_memoria()
+    lecciones_meta = None
+    mente_stats_meta = None
+    try:
+        from ia_lecciones import resumen_lecciones
+
+        lecciones_meta = resumen_lecciones(memoria)
+    except Exception:
+        pass
+    try:
+        from mente_aprendizaje import resumen_mente_stats
+
+        mente_stats_meta = resumen_mente_stats(memoria)
+    except Exception:
+        pass
+    red = _construir_mente_red_panel(cfg, memoria, lecciones_meta, mente_stats_meta)
+    return {"ok": bool(red.get("ok")), **red}
 
 
 @app.get("/api/mente-status")
