@@ -34,7 +34,7 @@
             display: inline-block; width: 8px; height: 8px; border-radius: 50%;
             margin-right: 4px; vertical-align: middle;
         }
-        button {
+        button, .btn {
             background: #111b27;
             color: var(--cyan);
             border: 1px solid rgba(0,242,255,0.4);
@@ -42,7 +42,10 @@
             padding: 8px 14px;
             font-weight: 700;
             cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
         }
+        .btn-gold { color: var(--gold); border-color: rgba(255,188,0,0.5); }
         @keyframes mente-pulse {
             0%, 100% { opacity: 0.45; }
             50% { opacity: 1; }
@@ -56,7 +59,11 @@
     <h1>🧠 Mente · red neuronal</h1>
     <div class="badge" id="mente-red-badge">Abre este archivo en el navegador</div>
     <p class="msg" id="mente-red-msg">Conectando con el motor para números vivos…</p>
-    <p><button type="button" onclick="cargar()">↻ Actualizar</button></p>
+    <p style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button type="button" onclick="cargar()">↻ Actualizar</button>
+        <a class="btn btn-gold" href="Mente.url" download="Mente.url">⬇ Icono para el escritorio</a>
+    </p>
+    <p class="msg">En Windows: pulsa <b>Icono para el escritorio</b> y mueve el archivo <b>Mente.url</b> al Desktop. O arrastra esta pestaña del navegador al escritorio.</p>
     <div class="scroll">
         <svg id="mente-red-svg" viewBox="0 0 900 640" role="img" aria-label="Red de la mente"></svg>
     </div>
