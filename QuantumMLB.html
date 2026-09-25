@@ -435,6 +435,44 @@
             border-radius: 4px;
             margin-left: 6px;
         }
+        .mente-red {
+            margin: 0 0 18px;
+            background: radial-gradient(ellipse at 50% 0%, #0b1c2c 0%, #050a0f 70%);
+            border: 1px solid rgba(0,242,255,0.35);
+            border-radius: 14px;
+            overflow: hidden;
+        }
+        .mente-red > summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 12px 14px;
+            color: var(--cyan);
+            font-weight: 700;
+            font-size: 0.92rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .mente-red > summary::-webkit-details-marker { display: none; }
+        .mente-red-body { padding: 0 10px 12px; }
+        .mente-red-msg { color: var(--muted); font-size: 0.75rem; margin: 0 4px 8px; }
+        .mente-red-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        #mente-red-svg { display: block; min-width: 880px; width: 100%; height: auto; }
+        .mente-red-legend {
+            display: flex; flex-wrap: wrap; gap: 8px 14px;
+            font-size: 0.68rem; color: var(--muted); margin-top: 8px; padding: 0 4px;
+        }
+        .mente-red-legend i {
+            display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+            margin-right: 4px; vertical-align: middle;
+        }
+        @keyframes mente-pulse {
+            0%, 100% { opacity: 0.45; }
+            50% { opacity: 1; }
+        }
+        @keyframes mente-flow {
+            to { stroke-dashoffset: -24; }
+        }
     </style>
 </head>
 <body>
@@ -483,6 +521,27 @@
             <button onclick="probarTelegram()">3) Probar</button>
         </div>
         <p id="tg-status" style="color:var(--muted);font-size:0.8rem;margin:0;">Estado: cargando…</p>
+    </div>
+</details>
+
+<details class="mente-red" id="mente-red-box" open>
+    <summary>
+        <span>🧠 Mente · red neuronal</span>
+        <span id="mente-red-badge" style="font-size:0.72rem;color:var(--gold);font-weight:600;"></span>
+    </summary>
+    <div class="mente-red-body">
+        <p class="mente-red-msg" id="mente-red-msg">Cargando cómo piensa la mente…</p>
+        <div class="mente-red-scroll">
+            <svg id="mente-red-svg" viewBox="0 0 900 640" role="img" aria-label="Red de la mente"></svg>
+        </div>
+        <div class="mente-red-legend">
+            <span><i style="background:#00f2ff"></i>Sentidos</span>
+            <span><i style="background:#7aa2ff"></i>Cortex (stats/ML/Elo)</span>
+            <span><i style="background:#c084fc"></i>5 capas intel</span>
+            <span><i style="background:#ffbc00"></i>Mente (decide)</span>
+            <span><i style="background:#00ff88"></i>Salida</span>
+            <span><i style="background:#ff4466"></i>Aprende al liquidar</span>
+        </div>
     </div>
 </details>
 
@@ -723,6 +782,7 @@ function pintarEstadoSeguro(data, motivo) {
         if (data && data.memoria) {
             pintarLecciones(data.lecciones || resumenLeccionesLocal(data.memoria), data.mente);
         }
+        pintarMenteRed(data);
     } catch (e) {
         console.warn('pintarLecciones', motivo || '', e);
     }
@@ -756,6 +816,7 @@ function guardarCacheEstado(state) {
             dia_hoy: state.dia_hoy,
             lecciones: state.lecciones,
             mente: state.mente,
+            mente_red: state.mente_red,
             games: state.games,
             favorables_hoy: state.favorables_hoy,
             oportunidades_valor_hoy: state.oportunidades_valor_hoy,
@@ -1570,6 +1631,95 @@ function htmlAyudaImportAprendizaje() {
         '<a href="https://github.com/marcos161994-a11y/mlb/actions/workflows/importar-aprendizaje.yml" ' +
         'target="_blank" rel="noopener" style="color:var(--cyan);">GitHub Action → Importar aprendizaje</a>' +
         '</p>';
+}
+
+function _menteRedColor(capa, on) {
+    const map = {
+        sentidos: '#00f2ff',
+        cortex: '#7aa2ff',
+        intel: '#c084fc',
+        mente: '#ffbc00',
+        salida: '#00ff88',
+        loop: '#ff4466',
+    };
+    const c = map[capa] || '#8899aa';
+    return on === false ? '#334455' : c;
+}
+
+function pintarMenteRed(data) {
+    const svg = document.getElementById('mente-red-svg');
+    const msg = document.getElementById('mente-red-msg');
+    const badge = document.getElementById('mente-red-badge');
+    if (!svg) return;
+    let red = data && data.mente_red;
+    if (!red || !Array.isArray(red.nodos) || !red.nodos.length) {
+        if (msg) msg.textContent = 'La red se arma al conectar con el motor…';
+        return;
+    }
+    if (badge) {
+        const wr = red.wr_alta && red.wr_alta.wr != null ? red.wr_alta.wr + '% ≥65%' : '';
+        badge.textContent = (red.modo || '') + (red.shadow ? ' · shadow' : '') + (wr ? ' · ' + wr : '');
+    }
+    if (msg) msg.textContent = red.mensaje || '';
+    const nodos = red.nodos;
+    const by = {};
+    nodos.forEach(n => { by[n.id] = n; });
+    const NS = 'http://www.w3.org/2000/svg';
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    const defs = document.createElementNS(NS, 'defs');
+    defs.innerHTML =
+        '<filter id="mente-glow" x="-40%" y="-40%" width="180%" height="180%">' +
+        '<feGaussianBlur stdDeviation="2.2" result="b"/>' +
+        '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>';
+    svg.appendChild(defs);
+    (red.aristas || []).forEach(e => {
+        const a = by[e.from], b = by[e.to];
+        if (!a || !b) return;
+        const path = document.createElementNS(NS, 'path');
+        const mx = (a.x + b.x) / 2;
+        path.setAttribute('d', `M${a.x},${a.y} C${mx},${a.y} ${mx},${b.y} ${b.x},${b.y}`);
+        const on = a.on !== false && b.on !== false;
+        path.setAttribute('fill', 'none');
+        path.setAttribute('stroke', e.loop ? 'rgba(255,68,102,0.55)' : (on ? 'rgba(0,242,255,0.28)' : 'rgba(80,90,100,0.2)'));
+        path.setAttribute('stroke-width', e.loop ? '1.6' : '1.2');
+        if (e.loop) {
+            path.setAttribute('stroke-dasharray', '5 5');
+            path.setAttribute('style', 'animation: mente-flow 1.6s linear infinite');
+        }
+        svg.appendChild(path);
+    });
+    nodos.forEach(n => {
+        const g = document.createElementNS(NS, 'g');
+        const col = _menteRedColor(n.capa, n.on);
+        const c = document.createElementNS(NS, 'circle');
+        c.setAttribute('cx', n.x);
+        c.setAttribute('cy', n.y);
+        c.setAttribute('r', n.kind === 'out' || n.kind === 'loop' ? 16 : 13);
+        c.setAttribute('fill', '#071018');
+        c.setAttribute('stroke', col);
+        c.setAttribute('stroke-width', '2');
+        c.setAttribute('filter', 'url(#mente-glow)');
+        if (n.on !== false) c.setAttribute('style', 'animation: mente-pulse 2.8s ease-in-out infinite');
+        const t = document.createElementNS(NS, 'text');
+        t.setAttribute('x', n.x);
+        t.setAttribute('y', n.y - 20);
+        t.setAttribute('text-anchor', 'middle');
+        t.setAttribute('fill', col);
+        t.setAttribute('font-size', '11');
+        t.setAttribute('font-weight', '700');
+        t.textContent = n.label;
+        const d = document.createElementNS(NS, 'text');
+        d.setAttribute('x', n.x);
+        d.setAttribute('y', n.y + 28);
+        d.setAttribute('text-anchor', 'middle');
+        d.setAttribute('fill', '#8899aa');
+        d.setAttribute('font-size', '9');
+        d.textContent = (n.detalle || '').slice(0, 28);
+        g.appendChild(c);
+        g.appendChild(t);
+        g.appendChild(d);
+        svg.appendChild(g);
+    });
 }
 
 function pintarLecciones(meta, mente) {

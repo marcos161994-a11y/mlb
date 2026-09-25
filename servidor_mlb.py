@@ -114,6 +114,27 @@ def _en_render() -> bool:
     return bool(os.environ.get("RENDER"))
 
 
+def _construir_mente_red_panel(
+    cfg: dict,
+    memoria: dict,
+    lecciones_meta: dict | None = None,
+    mente_stats_meta: dict | None = None,
+) -> dict:
+    try:
+        from mente_red import construir_mente_red
+
+        return construir_mente_red(
+            cfg,
+            memoria,
+            lecciones=lecciones_meta,
+            mente_stats=mente_stats_meta,
+            ml_meta=(memoria or {}).get("ml_meta") if isinstance(memoria, dict) else None,
+            mente_errores=_resumen_mente_errores(cfg) if "_resumen_mente_errores" in globals() else None,
+        )
+    except Exception as e:
+        return {"ok": False, "mensaje": str(e)[:120], "nodos": [], "aristas": []}
+
+
 def _mc_sims_health(cfg: dict) -> int:
     try:
         from inteligencia_mlb import mc_sims_efectivos
@@ -3655,6 +3676,9 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
             "shadow": bool((cfg.get("mente") or {}).get("shadow", False)),
             "stats": mente_stats_meta,
         },
+        "mente_red": _construir_mente_red_panel(
+            cfg, memoria, lecciones_meta, mente_stats_meta
+        ),
         "vigilancia": vigilancia,
         "perdidos_hoy": list((vigilancia or {}).get("perdidos") or [])[:8],
         "mente_errores": _resumen_mente_errores(cfg_ops),
@@ -3793,6 +3817,12 @@ def api_panel_boot():
         "games": games_boot,
         "minutos_antes_juego": cfg.get("minutos_antes_juego", 60),
         "perdidos_hoy": perdidos_hoy,
+        "mente": {
+            "activo": bool(cfg.get("usar_mente", True)),
+            "modo": ((cfg.get("mente") or {}).get("modo") or "normal"),
+            "shadow": bool((cfg.get("mente") or {}).get("shadow", False)),
+        },
+        "mente_red": _construir_mente_red_panel(cfg, memoria),
     }
 
 

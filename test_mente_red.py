@@ -1,0 +1,65 @@
+"""Red neuronal de la mente: nodos, aristas y payload del panel."""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+from mente_red import construir_mente_red
+
+
+def _mem():
+    return {
+        "ml_meta": {"muestras": 400, "mensaje": "ok"},
+        "lecciones": [{"id": "a"}, {"id": "b"}],
+        "dias": [
+            {
+                "fecha": "2026-09-20",
+                "predicciones": [
+                    {"resultado": "acierto", "probPick": 72},
+                    {"resultado": "fallo", "probPick": 52},
+                    {"resultado": "acierto", "probPick": 66},
+                ],
+            }
+        ],
+    }
+
+
+def test_red_tiene_capas_y_loop():
+    red = construir_mente_red(
+        {"usar_mente": True, "usar_ia_veto": True, "inteligencia": {"mc_sims": 80}},
+        _mem(),
+        lecciones={"total": 12},
+        mente_stats={"decisiones": {"APOSTAR": {"aciertos": 4, "fallos": 1}, "PASAR": {"evito_fallo": 2}}},
+    )
+    assert red["ok"] is True
+    ids = {n["id"] for n in red["nodos"]}
+    for nid in (
+        "mlb", "espn", "clima", "lesion", "scratch", "humanos", "l10",
+        "stats", "ml", "elo", "calib",
+        "consenso", "bullpen", "park", "tipo", "mc", "totales",
+        "brief", "reglas", "groq", "aprende", "ops",
+        "papel", "alta", "dinero", "liq", "lecs",
+    ):
+        assert nid in ids, nid
+    edges = {(e["from"], e["to"]) for e in red["aristas"]}
+    assert ("liq", "lecs") in edges
+    assert ("lecs", "aprende") in edges
+    assert ("aprende", "papel") in edges
+    assert red["wr_todos"]["n"] == 3
+    assert red["wr_alta"]["aciertos"] == 2
+    assert red["lecciones"] == 12
+
+
+def test_nodo_apagado_si_flag_off():
+    red = construir_mente_red({"usar_elo": False, "usar_clima": False}, _mem())
+    by = {n["id"]: n for n in red["nodos"]}
+    assert by["elo"]["on"] is False
+    assert by["clima"]["on"] is False
+
+
+def test_html_tiene_svg_y_pintor():
+    html = Path("QuantumMLB.html").read_text(encoding="utf-8")
+    assert 'id="mente-red-svg"' in html
+    assert "function pintarMenteRed" in html
+    assert "pintarMenteRed(data)" in html
+    assert "mente_red: state.mente_red" in html
