@@ -202,7 +202,7 @@
         <p class="msg" id="mente-red-msg">Estableciendo uplink con el motor…</p>
         <p class="actions">
             <button type="button" onclick="cargar()">↻ Recalibrar</button>
-            <button type="button" class="bitacora-btn" onclick="abrirBitacora()">◈ Bitácora</button>
+            <a class="btn bitacora-btn" id="link-resumen" href="https://mlb-1-en7i.onrender.com/diagrama/resumen">Leer resumen</a>
             <a class="btn btn-gold" href="Mente.url" download="Mente.url">⬇ Icono para el escritorio</a>
         </p>
         <p class="msg">En Windows: pulsa <b>Icono para el escritorio</b> y mueve <b>Mente.url</b> al Desktop.</p>
@@ -474,31 +474,16 @@ async function cargarBitacora() {
         p.textContent = e.resumen || '';
         const ef = document.createElement('p');
         ef.textContent = e.efecto ? 'Efecto: ' + e.efecto : '';
-        const files = document.createElement('p');
-        files.textContent = (e.archivos || []).length ? 'Archivos: ' + e.archivos.join(', ') : '';
         box.appendChild(tipo);
         box.appendChild(h);
         box.appendChild(p);
         if (e.efecto) box.appendChild(ef);
-        if ((e.archivos || []).length) box.appendChild(files);
-        (e.fuentes || []).forEach(u => {
-            const a = document.createElement('a');
-            a.href = u;
-            a.target = '_blank';
-            a.rel = 'noreferrer';
-            a.textContent = u.replace(/^https?:\/\//, '').slice(0, 72);
-            a.style.display = 'block';
-            a.style.fontSize = '0.7rem';
-            a.style.marginBottom = '4px';
-            box.appendChild(a);
-        });
         lista.appendChild(box);
     });
 }
 
 function abrirBitacora() {
-    document.getElementById('bitacora-panel').classList.add('abierto');
-    cargarBitacora();
+    location.href = 'https://mlb-1-en7i.onrender.com/diagrama/resumen';
 }
 
 function cerrarBitacora() {

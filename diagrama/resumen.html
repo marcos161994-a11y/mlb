@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Resumen · qué hizo la mente</title>
+    <style>
+        * { box-sizing: border-box; }
+        body {
+            margin: 0;
+            background: #f4f1ea;
+            color: #1c2430;
+            font-family: Georgia, "Segoe UI", serif;
+            line-height: 1.55;
+        }
+        main {
+            max-width: 720px;
+            margin: 0 auto;
+            padding: 36px 22px 64px;
+        }
+        .kicker {
+            font-family: "Segoe UI", sans-serif;
+            letter-spacing: 0.16em;
+            text-transform: uppercase;
+            font-size: 0.72rem;
+            color: #8a5a12;
+            margin: 0 0 8px;
+        }
+        h1 {
+            font-size: 2rem;
+            line-height: 1.15;
+            margin: 0 0 10px;
+        }
+        .lead {
+            font-size: 1.08rem;
+            color: #3d4654;
+            margin: 0 0 22px;
+        }
+        a.nav {
+            display: inline-block;
+            margin: 0 10px 18px 0;
+            font-family: "Segoe UI", sans-serif;
+            font-size: 0.92rem;
+            color: #0b4f6c;
+        }
+        article {
+            background: #fff;
+            border-radius: 12px;
+            padding: 18px 18px 14px;
+            margin: 0 0 14px;
+            box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+        }
+        .cuando {
+            font-family: "Segoe UI", sans-serif;
+            font-size: 0.78rem;
+            color: #8a5a12;
+            margin: 0 0 4px;
+        }
+        h2 {
+            font-size: 1.2rem;
+            margin: 0 0 8px;
+        }
+        p { margin: 0 0 8px; font-size: 1.05rem; }
+        .efecto {
+            font-family: "Segoe UI", sans-serif;
+            font-size: 0.95rem;
+            color: #245c38;
+        }
+        #estado {
+            font-family: "Segoe UI", sans-serif;
+            font-size: 0.85rem;
+            color: #667;
+        }
+    </style>
+</head>
+<body>
+<main>
+    <p class="kicker">Para leer, no para programar</p>
+    <h1>Qué hice en la mente</h1>
+    <p class="lead" id="estado">Resumen en palabras. Aquí no hay código.</p>
+    <a class="nav" href="/diagrama">Ver la red</a>
+    <div id="lista">
+        <article>
+            <p class="cuando">26 sep 2026 · Investigación</p>
+            <h2>Qué sí ayuda a acertar en MLB</h2>
+            <p>Revisé estudios y modelos públicos. En un día completo de juegos, lo normal es acertar cerca del 55 al 62%. Lo que más pesa es qué tan bueno es el equipo y, sobre todo, el pitcher abridor. El ERA de moda engaña: el FIP dice mejor cómo va a lanzar después. Un novato con pocas salidas también engaña. El viaje y el cansancio importan, pero menos que el abridor. Pasar del 75% solo es realista en los picks de alta convicción, no en los 10 o 15 juegos del día.</p>
+            <p class="efecto">Por eso no voy a perseguir el 75% en todo el slate. Voy a cuidar los picks fuertes y desconfiar del ERA de suerte.</p>
+        </article>
+        <article>
+            <p class="cuando">26 sep 2026 · Cambio</p>
+            <h2>El ERA de suerte ya no infla al pitcher</h2>
+            <p>Si un abridor tiene el ERA mucho mejor que su FIP, el modelo ahora lo baja: esa ventaja suele ser suerte. Si el ERA está peor que el FIP, lo sube un poco. Si el pitcher lleva pocos innings, su nota se acerca a un pitcher normal de liga, para no tratar a un novato como una estrella.</p>
+            <p class="efecto">Menos confianza ciega en un ERA bonito o en un brazo con tres o cuatro salidas.</p>
+        </article>
+        <article>
+            <p class="cuando">26 sep 2026 · Cambio</p>
+            <h2>Último juego de la serie</h2>
+            <p>Cuando es el último partido de la serie, la visita suele viajar después. El modelo le resta un poco. Si es el partido que define la serie, el equipo más fresco gana un empujón pequeño.</p>
+            <p class="efecto">Esos partidos de cierre ya no se tratan igual que un juego normal.</p>
+        </article>
+        <article>
+            <p class="cuando">26 sep 2026 · Cambio</p>
+            <h2>La mente pasa si el número fuerte no tiene pitcher</h2>
+            <p>Si el pick se ve muy seguro pero el abridor tiene un ERA de suerte, o si la convicción es alta y su FIP es claramente peor que el del rival, la mente no apuesta. Prefiere esperar.</p>
+            <p class="efecto">Menos “casi seguro” cuando el pitcheo no acompaña.</p>
+        </article>
+        <article>
+            <p class="cuando">26 sep 2026 · Cómo verlo</p>
+            <h2>Esta página es el resumen</h2>
+            <p>Cada vez que investigue o cambie algo, lo voy a dejar aquí en frases, no en código. Abre este resumen desde el navegador. No abras los archivos con el bloc de notas.</p>
+            <p class="efecto">En la carpeta Diagramma, abre Resumen o Abrir diagrama. Los dos llevan a esta página.</p>
+        </article>
+    </div>
+</main>
+<script>
+const API = 'https://mlb-1-en7i.onrender.com';
+const TIPO = { investigacion: 'Investigación', cambio: 'Cambio', dato: 'Nota' };
+
+function pintar(data) {
+    const ents = (data && data.entradas) || [];
+    if (!ents.length) return;
+    const lista = document.getElementById('lista');
+    lista.innerHTML = '';
+    document.getElementById('estado').textContent =
+        'Resumen en palabras. Actualizado ' + (data.actualizado || 'hoy') + '. Aquí no hay código.';
+    ents.forEach(e => {
+        const art = document.createElement('article');
+        const cuando = document.createElement('p');
+        cuando.className = 'cuando';
+        cuando.textContent = (e.fecha || '') + ' · ' + (TIPO[e.tipo] || 'Nota');
+        const h = document.createElement('h2');
+        h.textContent = e.titulo || 'Nota';
+        const p = document.createElement('p');
+        p.textContent = e.resumen || '';
+        art.appendChild(cuando);
+        art.appendChild(h);
+        art.appendChild(p);
+        if (e.efecto) {
+            const ef = document.createElement('p');
+            ef.className = 'efecto';
+            ef.textContent = e.efecto;
+            art.appendChild(ef);
+        }
+        lista.appendChild(art);
+    });
+}
+
+async function cargar() {
+    try {
+        const r = await fetch(API + '/api/mente-bitacora', { cache: 'no-store' });
+        if (r.ok) {
+            const data = await r.json();
+            if (data && data.entradas && data.entradas.length) {
+                pintar(data);
+                return;
+            }
+        }
+    } catch (e) { /* se queda el texto de la página */ }
+    try {
+        const r2 = await fetch('bitacora.json', { cache: 'no-store' });
+        if (r2.ok) pintar(await r2.json());
+    } catch (e2) { /* texto fijo */ }
+}
+cargar();
+</script>
+</body>
+</html>

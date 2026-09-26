@@ -1,8 +1,9 @@
-Pega estos archivos en tu carpeta del Escritorio llamada Diagramma
-(Escritorio → Diagramma). No hace falta el repo de GitHub.
+Para leer el resumen (sin código), abre uno de estos en el navegador:
 
-  Diagrama.url        → ábrelo para ver la red en vivo
-  index.html          → la misma red, desde esta carpeta
-  Abrir-diagrama.bat  → abre index.html
+  Resumen.url
+  Abrir-diagrama.bat
 
-Si el servidor está dormido, espera unos segundos y pulsa Actualizar.
+Los dos abren la página en Chrome o Edge. No abras los archivos con el Bloc de notas:
+ahí solo verías código.
+
+La red de la mente está en Diagrama.url

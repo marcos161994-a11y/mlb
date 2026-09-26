@@ -202,11 +202,11 @@
         <p class="msg" id="mente-red-msg">Estableciendo uplink con el motor…</p>
         <p class="actions">
             <button type="button" onclick="cargar()">↻ Recalibrar</button>
-            <button type="button" class="bitacora-btn" onclick="abrirBitacora()">◈ Bitácora</button>
+            <a class="btn bitacora-btn" id="link-resumen" href="resumen.html">Leer resumen</a>
             <a class="btn btn-gold" href="https://mlb-1-en7i.onrender.com/diagrama/carpeta.zip" download="Diagramma.zip">⬇ Bajar a Diagramma</a>
             <a class="btn" href="https://mlb-1-en7i.onrender.com/diagrama/Diagrama.url" download="Diagrama.url">⬇ Acceso directo</a>
         </p>
-        <p class="msg">Baja el ZIP y suéltalo en <b>Escritorio → Diagramma</b>. No uses el repo de la PC.</p>
+        <p class="msg">El resumen de lo que cambio está en <b>Leer resumen</b>. Ahí sale en frases, sin código. En la carpeta Diagramma abre <b>Resumen</b>, no los archivos con el Bloc de notas.</p>
         <div class="stage">
             <div class="scroll">
                 <svg id="mente-red-svg" viewBox="0 0 900 660" role="img" aria-label="Red neuronal de ciencia ficción"></svg>
@@ -475,32 +475,24 @@ async function cargarBitacora() {
         p.textContent = e.resumen || '';
         const ef = document.createElement('p');
         ef.textContent = e.efecto ? 'Efecto: ' + e.efecto : '';
-        const files = document.createElement('p');
-        files.textContent = (e.archivos || []).length ? 'Archivos: ' + e.archivos.join(', ') : '';
         box.appendChild(tipo);
         box.appendChild(h);
         box.appendChild(p);
         if (e.efecto) box.appendChild(ef);
-        if ((e.archivos || []).length) box.appendChild(files);
-        (e.fuentes || []).forEach(u => {
-            const a = document.createElement('a');
-            a.href = u;
-            a.target = '_blank';
-            a.rel = 'noreferrer';
-            a.textContent = u.replace(/^https?:\/\//, '').slice(0, 72);
-            a.style.display = 'block';
-            a.style.fontSize = '0.7rem';
-            a.style.marginBottom = '4px';
-            box.appendChild(a);
-        });
         lista.appendChild(box);
     });
 }
 
 function abrirBitacora() {
-    document.getElementById('bitacora-panel').classList.add('abierto');
-    cargarBitacora();
+    const link = document.getElementById('link-resumen');
+    if (link) link.click();
+    else location.href = 'resumen.html';
 }
+
+(function fijarResumen() {
+    const link = document.getElementById('link-resumen');
+    if (link && location.protocol !== 'file:') link.href = '/diagrama/resumen';
+})();
 
 function cerrarBitacora() {
     document.getElementById('bitacora-panel').classList.remove('abierto');

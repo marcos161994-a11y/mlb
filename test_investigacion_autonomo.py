@@ -121,5 +121,10 @@ def test_servidor_expone_bitacora():
     assert '@app.get("/api/mente-bitacora")' in src
     html = Path("diagrama/index.html").read_text(encoding="utf-8")
     assert "abrirBitacora" in html
-    assert "bitacora-panel" in html
+    assert "Leer resumen" in html
+    resumen = Path("diagrama/resumen.html").read_text(encoding="utf-8")
+    assert "Qué hice en la mente" in resumen
+    assert ".py" not in resumen
+    assert "diagrama/resumen" in Path("diagrama/Abrir-diagrama.bat").read_text(encoding="utf-8")
+    assert "diagrama/resumen" in Path("diagrama/Resumen.url").read_text(encoding="utf-8")
     assert Path("diagrama/bitacora.json").exists()

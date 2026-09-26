@@ -114,5 +114,6 @@ def test_servidor_expone_ruta_diagrama():
     src = Path("servidor_mlb.py").read_text(encoding="utf-8")
     assert '@app.get("/diagrama")' in src
     assert "def panel_diagrama" in src
+    assert "def panel_diagrama_resumen" in src
     assert "def diagrama_carpeta_zip" in src
     assert 'filename="Diagramma.zip"' in src

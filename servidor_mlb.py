@@ -3352,7 +3352,15 @@ _MENTE_NO_CACHE = {
 }
 
 
-_DIAGRAMA_ARCHIVOS = ("index.html", "Diagrama.url", "Abrir-diagrama.bat", "LEEME.txt", "bitacora.json")
+_DIAGRAMA_ARCHIVOS = (
+    "index.html",
+    "resumen.html",
+    "Diagrama.url",
+    "Resumen.url",
+    "Abrir-diagrama.bat",
+    "LEEME.txt",
+    "bitacora.json",
+)
 
 
 @app.get("/diagrama")
@@ -3360,6 +3368,12 @@ _DIAGRAMA_ARCHIVOS = ("index.html", "Diagrama.url", "Abrir-diagrama.bat", "LEEME
 def panel_diagrama():
     """Red neuronal en /diagrama (carpeta Diagramma del escritorio, no el repo)."""
     return FileResponse(BASE_DIR / "diagrama" / "index.html", headers=_MENTE_NO_CACHE)
+
+
+@app.get("/diagrama/resumen")
+def panel_diagrama_resumen():
+    """Resumen en español, sin código, de lo investigado y lo cambiado."""
+    return FileResponse(BASE_DIR / "diagrama" / "resumen.html", headers=_MENTE_NO_CACHE)
 
 
 @app.get("/diagrama/Diagrama.url")
