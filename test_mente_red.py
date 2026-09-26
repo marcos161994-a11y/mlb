@@ -82,6 +82,16 @@ def test_servidor_expone_ruta_mente():
     assert "def mente_acceso_directo" in src
 
 
+def test_diagrama_parece_ciencia_ficcion():
+    html = Path("diagrama/index.html").read_text(encoding="utf-8")
+    assert "sci-fi-hud" in html
+    assert "function hexPoints" in html
+    assert "neural-graph" in html
+    assert "hex-nodo" in html
+    assert "animateMotion" in html
+    assert "FALLBACK_RED" in html
+
+
 def test_carpeta_diagrama_para_el_escritorio():
     html = Path("diagrama/index.html").read_text(encoding="utf-8")
     assert 'id="mente-red-svg"' in html

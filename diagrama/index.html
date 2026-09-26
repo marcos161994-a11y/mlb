@@ -3,93 +3,243 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Diagrama · red neuronal</title>
+    <title>Núcleo Neural · Diagrama</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
     <style>
         :root {
-            --cyan: #00f2ff;
-            --gold: #ffbc00;
-            --green: #00ff88;
-            --red: #ff4466;
-            --muted: #8899aa;
+            --cyan: #4ef0ff;
+            --gold: #ffd166;
+            --green: #5dffb0;
+            --red: #ff4d7a;
+            --violet: #c084fc;
+            --blue: #7aa2ff;
+            --muted: #7f93a8;
         }
         * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            min-height: 100vh;
-            background: radial-gradient(ellipse at 50% 0%, #0b1c2c 0%, #050a0f 70%);
+        html, body { margin: 0; min-height: 100%; }
+        body.sci-fi-hud {
             color: var(--cyan);
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            padding: 20px 16px 32px;
+            font-family: 'Share Tech Mono', ui-monospace, monospace;
+            background:
+                radial-gradient(ellipse at 50% -10%, rgba(0, 90, 140, 0.35), transparent 46%),
+                radial-gradient(circle at 82% 28%, rgba(255, 80, 140, 0.12), transparent 28%),
+                radial-gradient(circle at 12% 80%, rgba(80, 40, 180, 0.18), transparent 26%),
+                linear-gradient(180deg, #02060f 0%, #050814 48%, #02030a 100%);
+            padding: 18px 16px 28px;
+            overflow-x: hidden;
         }
-        h1 { margin: 0 0 6px; font-size: 1.4rem; }
-        .badge { color: var(--gold); font-size: 0.85rem; font-weight: 600; }
-        .msg { color: var(--muted); font-size: 0.82rem; margin: 8px 0 12px; max-width: 720px; }
-        .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        #mente-red-svg { display: block; min-width: 880px; width: 100%; height: auto; }
-        .legend {
-            display: flex; flex-wrap: wrap; gap: 8px 14px;
-            font-size: 0.72rem; color: var(--muted); margin-top: 12px;
+        body.sci-fi-hud::before {
+            content: "";
+            pointer-events: none;
+            position: fixed; inset: 0;
+            background: repeating-linear-gradient(
+                to bottom,
+                rgba(78, 240, 255, 0.035) 0 1px,
+                transparent 1px 3px
+            );
+            mix-blend-mode: screen;
+            z-index: 4;
         }
-        .legend i {
-            display: inline-block; width: 8px; height: 8px; border-radius: 50%;
-            margin-right: 4px; vertical-align: middle;
+        .hud {
+            position: relative;
+            z-index: 2;
+            max-width: 1180px;
+            margin: 0 auto;
         }
+        .hud-top {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: flex-end;
+            flex-wrap: wrap;
+            margin-bottom: 10px;
+        }
+        .kicker {
+            letter-spacing: 0.28em;
+            font-size: 0.68rem;
+            color: var(--gold);
+            text-transform: uppercase;
+        }
+        h1 {
+            margin: 4px 0 0;
+            font-family: Orbitron, sans-serif;
+            font-size: clamp(1.15rem, 3vw, 1.8rem);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            text-shadow: 0 0 18px rgba(78, 240, 255, 0.55);
+        }
+        .badge {
+            color: var(--gold);
+            font-size: 0.78rem;
+        }
+        .msg { color: var(--muted); font-size: 0.78rem; margin: 8px 0 12px; max-width: 760px; }
+        .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
         button, .btn {
-            background: #111b27;
+            background: rgba(8, 18, 32, 0.75);
             color: var(--cyan);
-            border: 1px solid rgba(0,242,255,0.4);
-            border-radius: 8px;
+            border: 1px solid rgba(78, 240, 255, 0.45);
+            border-radius: 2px;
             padding: 8px 14px;
-            font-weight: 700;
+            font-family: Orbitron, sans-serif;
+            font-size: 0.68rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
             cursor: pointer;
             text-decoration: none;
             display: inline-block;
+            box-shadow: 0 0 12px rgba(78, 240, 255, 0.12);
         }
-        .btn-gold { color: var(--gold); border-color: rgba(255,188,0,0.5); }
+        .btn-gold { color: var(--gold); border-color: rgba(255, 209, 102, 0.5); }
+        .stage {
+            position: relative;
+            border: 1px solid rgba(78, 240, 255, 0.22);
+            background: linear-gradient(180deg, rgba(4, 12, 24, 0.72), rgba(2, 6, 14, 0.9));
+            box-shadow:
+                0 0 0 1px rgba(0, 0, 0, 0.6) inset,
+                0 0 40px rgba(78, 240, 255, 0.08);
+            overflow: hidden;
+        }
+        .stage::before, .stage::after {
+            content: "";
+            position: absolute;
+            width: 18px; height: 18px;
+            border: 2px solid var(--cyan);
+            z-index: 3;
+        }
+        .stage::before { top: 6px; left: 6px; border-right: 0; border-bottom: 0; }
+        .stage::after { bottom: 6px; right: 6px; border-left: 0; border-top: 0; }
+        .scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+        #mente-red-svg { display: block; min-width: 900px; width: 100%; height: auto; }
+        .legend {
+            display: flex; flex-wrap: wrap; gap: 8px 16px;
+            font-size: 0.7rem; color: var(--muted); margin-top: 12px;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+        .legend i {
+            display: inline-block; width: 9px; height: 9px;
+            clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+            margin-right: 5px; vertical-align: middle;
+            box-shadow: 0 0 8px currentColor;
+        }
         @keyframes mente-pulse {
-            0%, 100% { opacity: 0.45; }
+            0%, 100% { opacity: 0.55; }
             50% { opacity: 1; }
         }
-        @keyframes mente-flow {
-            to { stroke-dashoffset: -24; }
+        @keyframes mente-flow { to { stroke-dashoffset: -42; } }
+        @keyframes orbit-spin { to { transform: rotate(360deg); } }
+        @keyframes core-breathe {
+            0%, 100% { r: 26; opacity: 0.18; }
+            50% { r: 34; opacity: 0.38; }
         }
+        @keyframes flicker {
+            0%, 19%, 21%, 100% { opacity: 1; }
+            20% { opacity: 0.72; }
+        }
+        .blink { animation: flicker 4.8s steps(2) infinite; }
     </style>
 </head>
-<body>
-    <h1>🧠 Diagrama · red neuronal</h1>
-    <div class="badge" id="mente-red-badge">Carpeta Diagramma</div>
-    <p class="msg" id="mente-red-msg">Conectando con el motor para números vivos…</p>
-    <p style="display:flex;gap:8px;flex-wrap:wrap;">
-        <button type="button" onclick="cargar()">↻ Actualizar</button>
-        <a class="btn btn-gold" id="btn-zip" href="https://mlb-1-en7i.onrender.com/diagrama/carpeta.zip" download="Diagramma.zip">⬇ Bajar a la carpeta Diagramma</a>
-        <a class="btn" id="btn-url" href="https://mlb-1-en7i.onrender.com/diagrama/Diagrama.url" download="Diagrama.url">⬇ Solo el acceso directo</a>
-    </p>
-    <p class="msg">No uses el repo de GitHub. Baja el ZIP, ábrelo y copia los archivos a <b>Escritorio → Diagramma</b> (la carpeta vacía). Luego abre <b>Diagrama.url</b> o <b>index.html</b>.</p>
-    <div class="scroll">
-        <svg id="mente-red-svg" viewBox="0 0 900 640" role="img" aria-label="Red de la mente"></svg>
-    </div>
-    <div class="legend">
-        <span><i style="background:#00f2ff"></i>Sentidos</span>
-        <span><i style="background:#7aa2ff"></i>Cortex (stats/ML/Elo)</span>
-        <span><i style="background:#c084fc"></i>5 capas intel</span>
-        <span><i style="background:#ffbc00"></i>Mente (decide)</span>
-        <span><i style="background:#00ff88"></i>Salida</span>
-        <span><i style="background:#ff4466"></i>Aprende al liquidar</span>
+<body class="sci-fi-hud">
+    <div class="hud">
+        <div class="hud-top">
+            <div>
+                <div class="kicker blink">Neural core // enlace sináptico</div>
+                <h1>Diagrama · red de la mente</h1>
+            </div>
+            <div class="badge" id="mente-red-badge">INICIANDO NÚCLEO…</div>
+        </div>
+        <p class="msg" id="mente-red-msg">Estableciendo uplink con el motor…</p>
+        <p class="actions">
+            <button type="button" onclick="cargar()">↻ Recalibrar</button>
+            <a class="btn btn-gold" href="https://mlb-1-en7i.onrender.com/diagrama/carpeta.zip" download="Diagramma.zip">⬇ Bajar a Diagramma</a>
+            <a class="btn" href="https://mlb-1-en7i.onrender.com/diagrama/Diagrama.url" download="Diagrama.url">⬇ Acceso directo</a>
+        </p>
+        <p class="msg">Baja el ZIP y suéltalo en <b>Escritorio → Diagramma</b>. No uses el repo de la PC.</p>
+        <div class="stage">
+            <div class="scroll">
+                <svg id="mente-red-svg" viewBox="0 0 900 660" role="img" aria-label="Red neuronal de ciencia ficción"></svg>
+            </div>
+        </div>
+        <div class="legend">
+            <span><i style="background:#4ef0ff"></i>Sentidos</span>
+            <span><i style="background:#7aa2ff"></i>Cortex</span>
+            <span><i style="background:#c084fc"></i>Intel</span>
+            <span><i style="background:#ffd166"></i>Mente</span>
+            <span><i style="background:#5dffb0"></i>Salida</span>
+            <span><i style="background:#ff4d7a"></i>Loop de aprendizaje</span>
+        </div>
     </div>
 
 <script>
 const API = 'https://mlb-1-en7i.onrender.com';
+const FALLBACK_RED = {"ok":true,"titulo":"Mente · red de decisión","nodos":[{"id":"mlb","label":"MLB","x":70,"y":70,"capa":"sentidos","on":true,"detalle":"schedule + box","kind":"in"},{"id":"espn","label":"Cuotas","x":70,"y":140,"capa":"sentidos","on":true,"detalle":"ESPN/DK","kind":"in"},{"id":"clima","label":"Clima","x":70,"y":210,"capa":"sentidos","on":true,"detalle":"Open-Meteo","kind":"in"},{"id":"lesion","label":"Lesiones","x":70,"y":280,"capa":"sentidos","on":true,"detalle":"ESPN IL","kind":"in"},{"id":"scratch","label":"Scratch","x":70,"y":350,"capa":"sentidos","on":true,"detalle":"lineup SP","kind":"in"},{"id":"humanos","label":"Humanos","x":70,"y":420,"capa":"sentidos","on":true,"detalle":"viaje/umpire","kind":"in"},{"id":"l10","label":"L10 / PvR","x":70,"y":490,"capa":"sentidos","on":true,"detalle":"oficial MLB","kind":"in"},{"id":"stats","label":"Stats","x":250,"y":140,"capa":"cortex","on":true,"detalle":"fuerza + FIP","kind":"hidden"},{"id":"ml","label":"RF+XGB","x":250,"y":250,"capa":"cortex","on":true,"detalle":"RF+XGB listo","kind":"hidden"},{"id":"elo","label":"Elo","x":250,"y":360,"capa":"cortex","on":true,"detalle":"peso 0.4","kind":"hidden"},{"id":"calib","label":"Calibrar","x":250,"y":470,"capa":"cortex","on":true,"detalle":"por tipo pick","kind":"hidden"},{"id":"consenso","label":"Consenso","x":430,"y":80,"capa":"intel","on":true,"detalle":"odds justas","kind":"hidden"},{"id":"bullpen","label":"Bullpen","x":430,"y":160,"capa":"intel","on":true,"detalle":"fatiga relevo","kind":"hidden"},{"id":"park","label":"Park+Ump","x":430,"y":240,"capa":"intel","on":true,"detalle":"parque / zona","kind":"hidden"},{"id":"tipo","label":"Tipo pick","x":430,"y":320,"capa":"intel","on":true,"detalle":"fav / dog / scratch","kind":"hidden"},{"id":"mc","label":"Monte Carlo","x":430,"y":400,"capa":"intel","on":true,"detalle":"sims 80","kind":"hidden"},{"id":"totales","label":"Totales/F5","x":430,"y":480,"capa":"intel","on":true,"detalle":"señal O/U","kind":"hidden"},{"id":"brief","label":"Briefing","x":610,"y":120,"capa":"mente","on":true,"detalle":"7 pilares","kind":"hidden"},{"id":"reglas","label":"Reglas","x":610,"y":220,"capa":"mente","on":true,"detalle":"veto duro","kind":"hidden"},{"id":"groq","label":"Groq","x":610,"y":320,"capa":"mente","on":true,"detalle":"2º voto","kind":"hidden"},{"id":"aprende","label":"Aprendiz.","x":610,"y":420,"capa":"mente","on":true,"detalle":"APOSTAR 4✓/1✗","kind":"hidden"},{"id":"ops","label":"Errores","x":610,"y":520,"capa":"mente","on":true,"detalle":"ops","kind":"ops"},{"id":"papel","label":"Quién gana","x":820,"y":160,"capa":"salida","on":true,"detalle":"66.7% · 3 picks","kind":"out"},{"id":"alta","label":"Alta conv.","x":820,"y":280,"capa":"salida","on":true,"detalle":"100.0% · ≥65%","kind":"out"},{"id":"dinero","label":"Dinero","x":820,"y":400,"capa":"salida","on":true,"detalle":"PASAR evitó 2","kind":"out"},{"id":"liq","label":"Liquidar","x":500,"y":580,"capa":"loop","on":true,"detalle":"MLB final","kind":"loop"},{"id":"lecs","label":"Lecciones","x":250,"y":580,"capa":"loop","on":true,"detalle":"12 en memoria","kind":"loop"}],"aristas":[{"from":"mlb","to":"stats","loop":false},{"from":"espn","to":"stats","loop":false},{"from":"espn","to":"consenso","loop":false},{"from":"clima","to":"stats","loop":false},{"from":"lesion","to":"reglas","loop":false},{"from":"scratch","to":"reglas","loop":false},{"from":"scratch","to":"tipo","loop":false},{"from":"humanos","to":"park","loop":false},{"from":"humanos","to":"reglas","loop":false},{"from":"l10","to":"reglas","loop":false},{"from":"stats","to":"ml","loop":false},{"from":"ml","to":"elo","loop":false},{"from":"elo","to":"consenso","loop":false},{"from":"elo","to":"mc","loop":false},{"from":"consenso","to":"brief","loop":false},{"from":"bullpen","to":"brief","loop":false},{"from":"park","to":"brief","loop":false},{"from":"tipo","to":"calib","loop":false},{"from":"tipo","to":"brief","loop":false},{"from":"mc","to":"brief","loop":false},{"from":"totales","to":"brief","loop":false},{"from":"calib","to":"brief","loop":false},{"from":"brief","to":"reglas","loop":false},{"from":"reglas","to":"groq","loop":false},{"from":"groq","to":"aprende","loop":false},{"from":"aprende","to":"papel","loop":false},{"from":"aprende","to":"alta","loop":false},{"from":"aprende","to":"dinero","loop":false},{"from":"reglas","to":"dinero","loop":false},{"from":"ops","to":"reglas","loop":false},{"from":"papel","to":"liq","loop":true},{"from":"alta","to":"liq","loop":true},{"from":"dinero","to":"liq","loop":true},{"from":"liq","to":"lecs","loop":true},{"from":"lecs","to":"aprende","loop":true},{"from":"lecs","to":"ml","loop":true},{"from":"liq","to":"calib","loop":true}],"wr_todos":{"aciertos":2,"fallos":1,"n":3,"wr":66.7},"wr_alta":{"aciertos":2,"fallos":0,"n":2,"wr":100.0},"lecciones":12,"modo":"normal","shadow":false,"mensaje":"Aprende sola al liquidar (lecciones → veto + ML). El 75% solo vive en Alta convicción (≥65%), no en todo el slate."};
+const NS = 'http://www.w3.org/2000/svg';
 
 function colorCapa(capa, on) {
     const map = {
-        sentidos: '#00f2ff',
+        sentidos: '#4ef0ff',
         cortex: '#7aa2ff',
         intel: '#c084fc',
-        mente: '#ffbc00',
-        salida: '#00ff88',
-        loop: '#ff4466',
+        mente: '#ffd166',
+        salida: '#5dffb0',
+        loop: '#ff4d7a',
     };
-    return on === false ? '#334455' : (map[capa] || '#8899aa');
+    return on === false ? '#2a3340' : (map[capa] || '#7f93a8');
+}
+
+function hexPoints(cx, cy, r) {
+    const pts = [];
+    for (let i = 0; i < 6; i++) {
+        const a = -Math.PI / 2 + i * Math.PI / 3;
+        pts.push((cx + r * Math.cos(a)).toFixed(1) + ',' + (cy + r * Math.sin(a)).toFixed(1));
+    }
+    return pts.join(' ');
+}
+
+function el(name, attrs) {
+    const n = document.createElementNS(NS, name);
+    Object.entries(attrs || {}).forEach(([k, v]) => n.setAttribute(k, v));
+    return n;
+}
+
+function stars(svg) {
+    const g = el('g', { class: 'starfield', opacity: '0.7' });
+    for (let i = 0; i < 70; i++) {
+        const c = el('circle', {
+            cx: (20 + (i * 97) % 940).toFixed(1),
+            cy: (18 + (i * 53) % 690).toFixed(1),
+            r: i % 9 === 0 ? '1.4' : '0.7',
+            fill: i % 5 === 0 ? '#ffd166' : '#cfefff',
+            opacity: String(0.25 + (i % 7) * 0.08),
+        });
+        g.appendChild(c);
+    }
+    svg.appendChild(g);
+}
+
+function decks(svg) {
+    const layers = [
+        { x: 20, w: 120, title: 'SENSORS', sub: 'DECK 01', c: '#4ef0ff' },
+        { x: 190, w: 130, title: 'CORTEX', sub: 'DECK 02', c: '#7aa2ff' },
+        { x: 365, w: 130, title: 'INTEL', sub: 'DECK 03', c: '#c084fc' },
+        { x: 545, w: 130, title: 'MIND CORE', sub: 'DECK 04', c: '#ffd166' },
+        { x: 755, w: 125, title: 'OUTPUT', sub: 'DECK 05', c: '#5dffb0' },
+    ];
+    layers.forEach(L => {
+        const g = el('g', { class: 'deck' });
+        g.appendChild(el('rect', {
+            x: L.x, y: 28, width: L.w, height: 610, rx: '2',
+            fill: L.c, 'fill-opacity': '0.045',
+            stroke: L.c, 'stroke-opacity': '0.22',
+        }));
+        g.appendChild(el('text', {
+            x: L.x + 8, y: 20, fill: L.c, 'font-size': '9',
+            'font-family': 'Orbitron, sans-serif', 'letter-spacing': '1.6',
+        })).textContent = L.sub + '  //  ' + L.title;
+        svg.appendChild(g);
+    });
 }
 
 function pintar(red) {
@@ -101,78 +251,135 @@ function pintar(red) {
         return;
     }
     const wr = red.wr_alta && red.wr_alta.wr != null ? red.wr_alta.wr + '% ≥65%' : '';
-    badge.textContent = (red.modo || '') + (red.shadow ? ' · shadow' : '') + (wr ? ' · ' + wr : '');
+    badge.textContent = 'SYS.ONLINE · ' + (red.modo || 'normal') + (red.shadow ? ' · shadow' : '') + (wr ? ' · ' + wr : '');
     msg.textContent = red.mensaje || '';
     const nodos = red.nodos;
     const by = {};
     nodos.forEach(n => { by[n.id] = n; });
-    const NS = 'http://www.w3.org/2000/svg';
     while (svg.firstChild) svg.removeChild(svg.firstChild);
-    const defs = document.createElementNS(NS, 'defs');
+
+    const defs = el('defs', {});
     defs.innerHTML =
-        '<filter id="mente-glow" x="-40%" y="-40%" width="180%" height="180%">' +
-        '<feGaussianBlur stdDeviation="2.2" result="b"/>' +
-        '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>';
+        '<filter id="mente-glow" x="-60%" y="-60%" width="220%" height="220%">' +
+        '<feGaussianBlur stdDeviation="2.8" result="b"/>' +
+        '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>' +
+        '<filter id="beam-glow" x="-20%" y="-20%" width="140%" height="140%">' +
+        '<feGaussianBlur stdDeviation="3.4"/></filter>' +
+        '<radialGradient id="core-grad" cx="50%" cy="50%" r="50%">' +
+        '<stop offset="0%" stop-color="#fff6c8"/><stop offset="45%" stop-color="#ffd166"/>' +
+        '<stop offset="100%" stop-color="#ffd166" stop-opacity="0"/></radialGradient>' +
+        '<pattern id="hexgrid" width="28" height="24" patternUnits="userSpaceOnUse">' +
+        '<path d="M14 0 L28 8 L28 16 L14 24 L0 16 L0 8 Z" fill="none" stroke="rgba(78,240,255,0.07)" stroke-width="0.6"/>' +
+        '</pattern>';
     svg.appendChild(defs);
-    (red.aristas || []).forEach(e => {
+    svg.appendChild(el('rect', { x: 0, y: 0, width: 900, height: 660, fill: 'url(#hexgrid)' }));
+    stars(svg);
+    decks(svg);
+
+    const graph = el('g', { class: 'neural-graph' });
+    const core = by.brief;
+    if (core) {
+        graph.appendChild(el('circle', {
+            cx: core.x, cy: core.y, r: '30', fill: 'url(#core-grad)',
+            style: 'animation: mente-pulse 2.4s ease-in-out infinite',
+        }));
+    }
+    (red.aristas || []).forEach((e, i) => {
         const a = by[e.from], b = by[e.to];
         if (!a || !b) return;
-        const path = document.createElementNS(NS, 'path');
         const mx = (a.x + b.x) / 2;
-        path.setAttribute('d', `M${a.x},${a.y} C${mx},${a.y} ${mx},${b.y} ${b.x},${b.y}`);
+        const lift = e.loop ? 18 : ((i % 3) - 1) * 10;
+        const d = `M${a.x},${a.y} C${mx},${a.y + lift} ${mx},${b.y - lift} ${b.x},${b.y}`;
         const on = a.on !== false && b.on !== false;
-        path.setAttribute('fill', 'none');
-        path.setAttribute('stroke', e.loop ? 'rgba(255,68,102,0.55)' : (on ? 'rgba(0,242,255,0.28)' : 'rgba(80,90,100,0.2)'));
-        path.setAttribute('stroke-width', e.loop ? '1.6' : '1.2');
-        if (e.loop) {
-            path.setAttribute('stroke-dasharray', '5 5');
-            path.setAttribute('style', 'animation: mente-flow 1.6s linear infinite');
+        const stroke = e.loop ? 'rgba(255,77,122,0.7)' : (on ? 'rgba(78,240,255,0.55)' : 'rgba(80,90,100,0.22)');
+        const glow = el('path', { d, fill: 'none', stroke, 'stroke-width': e.loop ? '5' : '4', filter: 'url(#beam-glow)', opacity: on ? '0.55' : '0.15' });
+        const path = el('path', {
+            id: 'e-' + e.from + '-' + e.to + '-' + i,
+            d, fill: 'none', stroke,
+            'stroke-width': e.loop ? '1.7' : '1.15',
+            'stroke-dasharray': e.loop ? '7 6' : '3 10',
+            style: 'animation: mente-flow ' + (e.loop ? '1.2' : '2.4') + 's linear infinite',
+        });
+        graph.appendChild(glow);
+        graph.appendChild(path);
+        if (on) {
+            const pkt = el('circle', {
+                r: e.loop ? '3.2' : '2.4',
+                fill: e.loop ? '#ff4d7a' : '#e8ffff',
+                filter: 'url(#mente-glow)',
+            });
+            const motion = el('animateMotion', {
+                dur: (1.8 + (i % 5) * 0.35) + 's',
+                repeatCount: 'indefinite',
+                path: d,
+            });
+            pkt.appendChild(motion);
+            graph.appendChild(pkt);
         }
-        svg.appendChild(path);
     });
+
     nodos.forEach(n => {
-        const g = document.createElementNS(NS, 'g');
+        const g = el('g', { class: 'hex-nodo', transform: 'translate(0,0)' });
         const col = colorCapa(n.capa, n.on);
-        const c = document.createElementNS(NS, 'circle');
-        c.setAttribute('cx', n.x);
-        c.setAttribute('cy', n.y);
-        c.setAttribute('r', n.kind === 'out' || n.kind === 'loop' ? 16 : 13);
-        c.setAttribute('fill', '#071018');
-        c.setAttribute('stroke', col);
-        c.setAttribute('stroke-width', '2');
-        c.setAttribute('filter', 'url(#mente-glow)');
-        if (n.on !== false) c.setAttribute('style', 'animation: mente-pulse 2.8s ease-in-out infinite');
-        const t = document.createElementNS(NS, 'text');
-        t.setAttribute('x', n.x);
-        t.setAttribute('y', n.y - 20);
-        t.setAttribute('text-anchor', 'middle');
-        t.setAttribute('fill', col);
-        t.setAttribute('font-size', '11');
-        t.setAttribute('font-weight', '700');
-        t.textContent = n.label;
-        const d = document.createElementNS(NS, 'text');
-        d.setAttribute('x', n.x);
-        d.setAttribute('y', n.y + 28);
-        d.setAttribute('text-anchor', 'middle');
-        d.setAttribute('fill', '#8899aa');
-        d.setAttribute('font-size', '9');
+        const big = n.kind === 'out' || n.kind === 'loop' || n.id === 'brief';
+        const r = big ? 18 : 13;
+        g.appendChild(el('circle', {
+            cx: n.x, cy: n.y, r: String(r + 10),
+            fill: col, 'fill-opacity': n.on === false ? '0.04' : '0.10',
+        }));
+        const hex = el('polygon', {
+            points: hexPoints(n.x, n.y, r),
+            fill: '#061018',
+            stroke: col,
+            'stroke-width': big ? '2.2' : '1.6',
+            filter: 'url(#mente-glow)',
+        });
+        if (n.on !== false) hex.setAttribute('style', 'animation: mente-pulse 2.8s ease-in-out infinite');
+        g.appendChild(hex);
+        g.appendChild(el('circle', {
+            cx: n.x, cy: n.y, r: big ? '4.5' : '3',
+            fill: col, opacity: n.on === false ? '0.25' : '0.95',
+        }));
+        if (n.on !== false && (n.capa === 'mente' || n.capa === 'salida' || n.capa === 'loop')) {
+            const ring = el('circle', {
+                cx: n.x, cy: n.y, r: String(r + 6),
+                fill: 'none', stroke: col, 'stroke-width': '0.8',
+                'stroke-dasharray': '4 6', opacity: '0.7',
+            });
+            ring.setAttribute('style', 'transform-origin:' + n.x + 'px ' + n.y + 'px; animation: orbit-spin 8s linear infinite');
+            g.appendChild(ring);
+        }
+        const t = el('text', {
+            x: n.x, y: n.y - (r + 10),
+            'text-anchor': 'middle', fill: col,
+            'font-size': '10', 'font-weight': '700',
+            'font-family': 'Orbitron, sans-serif',
+            'letter-spacing': '0.2',
+        });
+        t.textContent = (n.label || '').toUpperCase();
+        const d = el('text', {
+            x: n.x, y: n.y + r + 14,
+            'text-anchor': 'middle', fill: '#7f93a8',
+            'font-size': '9',
+        });
         d.textContent = (n.detalle || '').slice(0, 28);
-        g.appendChild(c);
         g.appendChild(t);
         g.appendChild(d);
-        svg.appendChild(g);
+        graph.appendChild(g);
     });
+    svg.appendChild(graph);
 }
 
 async function cargar() {
     const msg = document.getElementById('mente-red-msg');
-    msg.textContent = 'Conectando con el motor…';
+    msg.textContent = 'Estableciendo uplink con el motor…';
     try {
         const r = await fetch(API + '/api/mente-red', { cache: 'no-store' });
         if (!r.ok) throw new Error('HTTP ' + r.status);
         pintar(await r.json());
     } catch (e) {
-        msg.textContent = 'No conectó con Render (' + (e.message || e) + '). Pulsa Actualizar cuando el servidor esté despierto.';
+        pintar(FALLBACK_RED);
+        msg.textContent = 'Modo local (Render dormido). Pulsa Recalibrar cuando despierte. ' + (e.message || e);
     }
 }
 
