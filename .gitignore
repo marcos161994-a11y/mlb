@@ -8,4 +8,5 @@ __pycache__/
 *.exe
 memoria_snapshots/
 taller/salida/
+taller/boveda_mental/
 memoria_auditoria_backup.json
