@@ -582,6 +582,18 @@ def _reglas_duras(
                 fuente="regla-local",
                 briefing=briefing,
             )
+        desc = juego.get("pitcherAwayDescanso" if lado == "away" else "pitcherHomeDescanso")
+        dias_sp = _flt((desc or {}).get("dias")) if isinstance(desc, dict) else None
+        if dias_sp is not None and dias_sp <= 3 and edge < 10:
+            return _pack(
+                "PASAR",
+                0,
+                [f"Abridor del pick con poco descanso ({dias_sp:.0f} días)"],
+                4,
+                ["descanso_corto"],
+                fuente="regla-local",
+                briefing=briefing,
+            )
 
     return None
 
