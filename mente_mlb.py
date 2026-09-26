@@ -582,6 +582,22 @@ def _reglas_duras(
                 fuente="regla-local",
                 briefing=briefing,
             )
+        try:
+            from mente_skills import aplicar_skills
+
+            pasar_skill, motivo_skill = aplicar_skills(juego)
+            if pasar_skill:
+                return _pack(
+                    "PASAR",
+                    0,
+                    [motivo_skill[:80]],
+                    4,
+                    ["humedad_alta"],
+                    fuente="skill",
+                    briefing=briefing,
+                )
+        except Exception:
+            pass
 
     return None
 
