@@ -7,4 +7,5 @@ __pycache__/
 *.pyc
 *.exe
 memoria_snapshots/
+taller/salida/
 memoria_auditoria_backup.json

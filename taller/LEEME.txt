@@ -1,0 +1,12 @@
+Taller en tu PC. Render no corre esto.
+
+1. Instala Python desde python.org (marca "Add python.exe to PATH").
+2. En esta carpeta, abre una ventana de comandos y escribe:
+   py -3 -m pip install -r requisitos.txt
+3. Crea una clave en https://console.groq.com y, en la misma ventana:
+   setx GROQ_API_KEY "tu_clave"
+4. Cierra y abre de nuevo. Doble clic en correr.bat.
+5. Lee salida\resumen.txt. Ahí está la investigación y la propuesta, en frases.
+
+Sin la clave, el resumen igual se escribe y la mente de Render no cambia.
+La propuesta no apuesta sola. Entra al servidor solo después de la prueba del historial.

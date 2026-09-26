@@ -78,6 +78,12 @@
     <p class="kicker">Para leer, no para programar</p>
     <h1>Qué hice en la mente</h1>
     <p class="lead" id="estado">Resumen en palabras. Aquí no hay código.</p>
+    <article id="reporte-evolucion">
+        <p class="cuando">Reporte de Auto-Evolución</p>
+        <h2 id="rep-habilidad">Habilidad adquirida hoy: Humedad alta</h2>
+        <p id="rep-motivo">Motivo: los fallos en estadios húmedos no miraban la humedad, aunque el clima ya la traía. Limitación detectada: Falta de análisis de física climática.</p>
+        <p class="efecto" id="rep-prueba">Prueba: en humedad de 70% o más, los picks válidos fueron 10 de 26 (38.5%) y el papel cerca de -30. En humedad media, 15 de 20 (75%). La mente deja de apostar ese spot si el margen es menor de 12. Eso quita un grupo que venía perdiendo.</p>
+    </article>
     <a class="nav" href="/diagrama">Ver la red</a>
     <div id="lista">
         <article>
@@ -145,6 +151,18 @@ function pintar(data) {
     });
 }
 
+async function cargarReporte() {
+    try {
+        const r = await fetch(API + '/api/mente-skills', { cache: 'no-store' });
+        if (!r.ok) return;
+        const d = await r.json();
+        if (!d || !d.habilidad) return;
+        document.getElementById('rep-habilidad').textContent = 'Habilidad adquirida hoy: ' + d.habilidad;
+        document.getElementById('rep-motivo').textContent = 'Motivo: ' + (d.motivo || '');
+        document.getElementById('rep-prueba').textContent = 'Prueba de éxito: ' + (d.prueba || '');
+    } catch (e) { /* se queda el texto de la página */ }
+}
+
 async function cargar() {
     try {
         const r = await fetch(API + '/api/mente-bitacora', { cache: 'no-store' });
@@ -162,6 +180,7 @@ async function cargar() {
     } catch (e2) { /* texto fijo */ }
 }
 cargar();
+cargarReporte();
 </script>
 </body>
 </html>

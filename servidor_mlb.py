@@ -1579,6 +1579,13 @@ def _liquidar_dia_con_juegos(memoria: dict, dia: dict, juegos: list) -> int:
                 )
             except Exception as e:
                 print(f"[LECCIONES] aviso: {e}")
+            if prediccion.get("resultado") == "fallo":
+                try:
+                    from mente_skills import reflexionar_fallo
+
+                    reflexionar_fallo(memoria, prediccion)
+                except Exception as e:
+                    print(f"[SKILLS] aviso: {e}")
     
     if cambios:
         print(f"[DEBUG LIQ DIA] Se realizaron {cambios} cambios para el día {dia['fecha']}. Recalculando y guardando.")
@@ -4578,6 +4585,17 @@ def api_mente_red():
         pass
     red = _construir_mente_red_panel(cfg, memoria, lecciones_meta, mente_stats_meta)
     return {"ok": bool(red.get("ok")), **red}
+
+
+@app.get("/api/mente-skills")
+def api_mente_skills():
+    """Reporte de auto-evolución: habilidad activa, motivo y prueba."""
+    try:
+        from mente_skills import reporte_auto_evolucion
+
+        return reporte_auto_evolucion(cargar_memoria())
+    except Exception as e:
+        return {"ok": False, "titulo": "Reporte de Auto-Evolución", "motivo": str(e)[:120]}
 
 
 @app.get("/api/mente-bitacora")
