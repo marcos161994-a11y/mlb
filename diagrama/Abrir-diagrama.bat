@@ -1,2 +1,2 @@
 @echo off
-start "" "%~dp0index.html"
+start "" "https://mlb-1-en7i.onrender.com/diagrama/resumen"

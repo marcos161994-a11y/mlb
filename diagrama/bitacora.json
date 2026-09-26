@@ -1,0 +1,82 @@
+{
+  "titulo": "Bitácora de la mente",
+  "actualizado": "2026-09-26",
+  "entradas": [
+    {
+      "id": "b-20260926-autonomo-1",
+      "fecha": "2026-09-26",
+      "tipo": "investigacion",
+      "titulo": "Qué sí mueve el acierto en MLB (investigación)",
+      "resumen": "Revisé papers y modelos públicos. El techo real de un moneyline en todo el slate está cerca de 55–62%. Win% / diferencial de carreras y el pitcheo inicial cargan la mayor parte del poder predictivo. FIP predice mejor el siguiente tramo que ERA. Sample chico de novatos engaña. Viaje, getaway y fatiga suman, pero menos que el SP. El 75% solo es realista en el subconjunto de alta convicción, no en 10–15 juegos diarios.",
+      "fuentes": [
+        "https://www.mdpi.com/1099-4300/24/2/288",
+        "https://github.com/prjackson17/mlb_predictor",
+        "https://datafield.dev/sports-betting-textbook/part-04/chapter-17/case-study-01.html",
+        "https://www.dailymlbpicks.com/model-methodology.html",
+        "https://atswins.ai/articles/recent-articles/mlb-moneyline-projection-model-for-accurate-fair-odds-and-betting-edges/",
+        "https://github.com/sv4u/mlb-predict"
+      ],
+      "archivos": [],
+      "efecto": "Guía: no perseguir 75% en todo el día; endurecer alta convicción y corregir suerte de ERA."
+    },
+    {
+      "id": "b-20260926-fip-suerte",
+      "fecha": "2026-09-26",
+      "tipo": "cambio",
+      "titulo": "Corrección FIP vs ERA y sample chico del pitcher",
+      "resumen": "El score del pitcher ahora resta si el ERA está muy por debajo del FIP (suerte) y suma si está por encima (mala suerte). Si el SP tiene pocos innings, su score se acerca a la media de liga para no sobrevalorar novatos.",
+      "fuentes": [
+        "https://datafield.dev/sports-betting-textbook/part-04/chapter-17/case-study-01.html"
+      ],
+      "archivos": [
+        "modelo_mlb.py"
+      ],
+      "efecto": "Menos confianza ciega en ERA de moda o en brazos con 3–4 salidas."
+    },
+    {
+      "id": "b-20260926-getaway",
+      "fecha": "2026-09-26",
+      "tipo": "cambio",
+      "titulo": "Getaway day y rubber match en factores humanos",
+      "resumen": "Último juego de serie: la visita pierde un micro-ajuste (casi siempre viaja después). En rubber match, el lado más fresco gana un empujón pequeño. No inventa motivación: solo calendario y fatiga ya medida.",
+      "fuentes": [
+        "https://github.com/ShamgarBN/mlb-bet-engine",
+        "https://github.com/sv4u/mlb-predict"
+      ],
+      "archivos": [
+        "factores_humanos.py"
+      ],
+      "efecto": "Penaliza spots de viaje/cierre de serie que el mercado a veces aplana."
+    },
+    {
+      "id": "b-20260926-veto-alta",
+      "fecha": "2026-09-26",
+      "tipo": "cambio",
+      "titulo": "Veto de la mente: suerte de ERA y alta convicción sin FIP",
+      "resumen": "Si el SP del pick tiene ERA ≥0.70 mejor que su FIP y el edge es corto, la mente pasa. Si el pick va ≥65% pero su FIP es claramente peor que el rival, también pasa. Protege el cubo donde sí se puede buscar 70–75%.",
+      "fuentes": [
+        "https://www.mdpi.com/1099-4300/24/2/288"
+      ],
+      "archivos": [
+        "mente_mlb.py"
+      ],
+      "efecto": "Menos 'alta convicción' falsa cuando el pitcheo no respalda el número."
+    },
+    {
+      "id": "b-20260926-bitacora-ui",
+      "fecha": "2026-09-26",
+      "tipo": "dato",
+      "titulo": "Icono Bitácora en la red neuronal",
+      "resumen": "En /diagrama (y /mente) hay un icono BITÁCORA. Ahí queda plasmada cada investigación y cada cambio de archivos principales. También es el nodo rojo Bitácora del grafo: pulsa el hexágono o el botón.",
+      "fuentes": [],
+      "archivos": [
+        "diagrama/index.html",
+        "mente/index.html",
+        "mente_bitacora.py",
+        "mente_red.py",
+        "servidor_mlb.py"
+      ],
+      "efecto": "Puedes entrar y ver qué se tocó y por qué, sin abrir el repo."
+    }
+  ]
+}

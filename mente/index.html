@@ -139,6 +139,55 @@
             20% { opacity: 0.72; }
         }
         .blink { animation: flicker 4.8s steps(2) infinite; }
+        .bitacora-btn { color: #ff4d7a; border-color: rgba(255,77,122,0.55); }
+        #bitacora-panel {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 20;
+            background: rgba(1, 4, 10, 0.72);
+        }
+        #bitacora-panel.abierto { display: block; }
+        .bitacora-sheet {
+            position: absolute;
+            top: 0; right: 0; bottom: 0;
+            width: min(520px, 100%);
+            overflow: auto;
+            background: linear-gradient(180deg, #07121d, #04080f);
+            border-left: 1px solid rgba(255, 77, 122, 0.35);
+            box-shadow: -16px 0 40px rgba(0,0,0,0.45);
+            padding: 22px 20px 32px;
+        }
+        .bitacora-sheet h2 {
+            font-family: Orbitron, sans-serif;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            font-size: 1rem;
+            margin: 0 0 8px;
+            color: #ff4d7a;
+        }
+        .bitacora-item {
+            border: 1px solid rgba(78, 240, 255, 0.16);
+            padding: 12px 12px 10px;
+            margin: 10px 0;
+            background: rgba(8, 16, 28, 0.7);
+        }
+        .bitacora-item .tipo {
+            font-size: 0.68rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: var(--gold);
+        }
+        .bitacora-item h3 {
+            margin: 4px 0 6px;
+            font-size: 0.92rem;
+            font-family: Orbitron, sans-serif;
+            color: #e8ffff;
+        }
+        .bitacora-item p { margin: 0 0 8px; color: var(--muted); font-size: 0.78rem; line-height: 1.45; }
+        .bitacora-item a { color: var(--cyan); }
+        .hex-nodo { cursor: default; }
+        .hex-nodo[data-id="log"] { cursor: pointer; }
     </style>
 </head>
 <body class="sci-fi-hud">
@@ -153,6 +202,7 @@
         <p class="msg" id="mente-red-msg">Estableciendo uplink con el motor…</p>
         <p class="actions">
             <button type="button" onclick="cargar()">↻ Recalibrar</button>
+            <a class="btn bitacora-btn" id="link-resumen" href="https://mlb-1-en7i.onrender.com/diagrama/resumen">Leer resumen</a>
             <a class="btn btn-gold" href="Mente.url" download="Mente.url">⬇ Icono para el escritorio</a>
         </p>
         <p class="msg">En Windows: pulsa <b>Icono para el escritorio</b> y mueve <b>Mente.url</b> al Desktop.</p>
@@ -168,6 +218,17 @@
             <span><i style="background:#ffd166"></i>Mente</span>
             <span><i style="background:#5dffb0"></i>Salida</span>
             <span><i style="background:#ff4d7a"></i>Loop de aprendizaje</span>
+        </div>
+    </div>
+    <div id="bitacora-panel" onclick="if(event.target===this)cerrarBitacora()">
+        <div class="bitacora-sheet">
+            <p class="actions">
+                <button type="button" onclick="cerrarBitacora()">✕ Cerrar</button>
+            </p>
+            <div class="kicker">Neural log // cambios e investigación</div>
+            <h2>Bitácora</h2>
+            <p class="msg" id="bitacora-meta">Cargando notas…</p>
+            <div id="bitacora-lista"></div>
         </div>
     </div>
 
@@ -318,7 +379,8 @@ function pintar(red) {
     });
 
     nodos.forEach(n => {
-        const g = el('g', { class: 'hex-nodo', transform: 'translate(0,0)' });
+        const g = el('g', { class: 'hex-nodo', transform: 'translate(0,0)', 'data-id': n.id });
+        if (n.id === 'log') g.addEventListener('click', abrirBitacora);
         const col = colorCapa(n.capa, n.on);
         const big = n.kind === 'out' || n.kind === 'loop' || n.id === 'brief';
         const r = big ? 18 : 13;
@@ -380,6 +442,52 @@ async function cargar() {
         pintar(FALLBACK_RED);
         msg.textContent = 'Modo local (Render dormido). Pulsa Recalibrar cuando despierte. ' + (e.message || e);
     }
+}
+
+async function cargarBitacora() {
+    const lista = document.getElementById('bitacora-lista');
+    const meta = document.getElementById('bitacora-meta');
+    lista.innerHTML = '';
+    let data = null;
+    try {
+        const r = await fetch(API + '/api/mente-bitacora', { cache: 'no-store' });
+        if (r.ok) data = await r.json();
+    } catch (e) { /* local */ }
+    if (!data || !Array.isArray(data.entradas) || !data.entradas.length) {
+        try {
+            const r2 = await fetch('bitacora.json', { cache: 'no-store' });
+            if (r2.ok) data = await r2.json();
+        } catch (e2) { /* nada */ }
+    }
+    const ents = (data && data.entradas) || [];
+    meta.textContent = (ents.length ? ents.length + ' notas' : 'Sin notas') +
+        (data && data.actualizado ? ' · act. ' + data.actualizado : '');
+    ents.forEach(e => {
+        const box = document.createElement('article');
+        box.className = 'bitacora-item';
+        const tipo = document.createElement('div');
+        tipo.className = 'tipo';
+        tipo.textContent = (e.fecha || '') + '  //  ' + (e.tipo || 'nota');
+        const h = document.createElement('h3');
+        h.textContent = e.titulo || 'Nota';
+        const p = document.createElement('p');
+        p.textContent = e.resumen || '';
+        const ef = document.createElement('p');
+        ef.textContent = e.efecto ? 'Efecto: ' + e.efecto : '';
+        box.appendChild(tipo);
+        box.appendChild(h);
+        box.appendChild(p);
+        if (e.efecto) box.appendChild(ef);
+        lista.appendChild(box);
+    });
+}
+
+function abrirBitacora() {
+    location.href = 'https://mlb-1-en7i.onrender.com/diagrama/resumen';
+}
+
+function cerrarBitacora() {
+    document.getElementById('bitacora-panel').classList.remove('abierto');
 }
 
 cargar();

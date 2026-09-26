@@ -544,6 +544,45 @@ def _reglas_duras(
     except Exception:
         pass
 
+    def _flt(v: Any) -> float | None:
+        try:
+            if v is None or v == "":
+                return None
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    if lado in ("away", "home"):
+        era_p = _flt(juego.get("pitcherAwayEra" if lado == "away" else "pitcherHomeEra"))
+        fip_p = _flt(juego.get("pitcherAwayFip" if lado == "away" else "pitcherHomeFip"))
+        fip_r = _flt(juego.get("pitcherHomeFip" if lado == "away" else "pitcherAwayFip"))
+        if era_p is not None and fip_p is not None and (fip_p - era_p) >= 0.70 and edge < 10:
+            return _pack(
+                "PASAR",
+                0,
+                [f"SP del pick con ERA de suerte (FIP {fip_p:.2f} vs ERA {era_p:.2f})"],
+                4,
+                ["suerte_fip"],
+                fuente="regla-local",
+                briefing=briefing,
+            )
+        if (
+            prob >= 65
+            and fip_p is not None
+            and fip_r is not None
+            and (fip_p - fip_r) >= 0.80
+            and edge < 12
+        ):
+            return _pack(
+                "PASAR",
+                0,
+                [f"Alta convicción sin ventaja de FIP ({fip_p:.2f} vs {fip_r:.2f})"],
+                4,
+                ["fip_en_contra"],
+                fuente="regla-local",
+                briefing=briefing,
+            )
+
     return None
 
 

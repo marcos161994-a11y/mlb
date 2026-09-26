@@ -50,6 +50,7 @@ def construir_mente_red(
     mente_stats: dict | None = None,
     ml_meta: dict | None = None,
     mente_errores: dict | None = None,
+    bitacora: dict | None = None,
 ) -> dict[str, Any]:
     """Grafo listo para pintar: nodos (x,y,capa) + aristas."""
     cfg = cfg if isinstance(cfg, dict) else {}
@@ -66,6 +67,8 @@ def construir_mente_red(
     wr_all = _wr_preds(memoria)
     wr_alta = _wr_preds(memoria, min_prob=65.0)
     n_lec = int(lec.get("total") or len((memoria or {}).get("lecciones") or []) or 0)
+    bit = bitacora if isinstance(bitacora, dict) else {}
+    n_log = int(bit.get("total") or len(bit.get("entradas") or []) or 0)
 
     def N(
         nid: str,
@@ -123,6 +126,7 @@ def construir_mente_red(
         # Loop
         N("liq", "Liquidar", 500, 580, "loop", detalle="MLB final", kind="loop"),
         N("lecs", "Lecciones", 250, 580, "loop", detalle=f"{n_lec} en memoria", kind="loop"),
+        N("log", "Bitácora", 820, 520, "loop", detalle=f"{n_log} notas", kind="loop"),
     ]
 
     def E(a: str, b: str, loop: bool = False) -> dict[str, Any]:
@@ -166,6 +170,8 @@ def construir_mente_red(
         E("lecs", "aprende", True),
         E("lecs", "ml", True),
         E("liq", "calib", True),
+        E("ops", "log"),
+        E("lecs", "log", True),
     ]
 
     return {
@@ -178,8 +184,10 @@ def construir_mente_red(
         "lecciones": n_lec,
         "modo": (mente_cfg.get("modo") or "normal"),
         "shadow": bool(mente_cfg.get("shadow", False)),
+        "bitacora": n_log,
         "mensaje": (
             "Aprende sola al liquidar (lecciones → veto + ML). "
-            "El 75% solo vive en Alta convicción (≥65%), no en todo el slate."
+            "El 75% solo vive en Alta convicción (≥65%), no en todo el slate. "
+            "Abre la bitácora para ver investigación y cambios."
         ),
     }
