@@ -75,9 +75,11 @@ def reporte_auto_evolucion(memoria: dict | None = None) -> dict[str, Any]:
             "En humedad media fueron 15 de 20 (75%). "
             "La mente deja de apostar ese spot si el margen es menor de 12."
         )
-    n_notas = 0
+    notas = []
     if isinstance(memoria, dict) and isinstance(memoria.get("skills_limitaciones"), list):
-        n_notas = len(memoria["skills_limitaciones"])
+        for item in memoria["skills_limitaciones"][-8:]:
+            if isinstance(item, dict) and item.get("texto"):
+                notas.append({"fecha": item.get("fecha"), "texto": str(item.get("texto"))[:180]})
     return {
         "ok": True,
         "titulo": "Reporte de Auto-Evolución",
@@ -88,7 +90,8 @@ def reporte_auto_evolucion(memoria: dict | None = None) -> dict[str, Any]:
         ),
         "prueba": prueba,
         "activa": True,
-        "notas_de_fallos": n_notas,
+        "notas_de_fallos": len(notas),
+        "limitaciones": notas,
         "actualizado": _ahora(),
     }
 
