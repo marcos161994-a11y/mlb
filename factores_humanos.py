@@ -166,6 +166,7 @@ def _perfil_equipo(
         "juegos_seguidos_visita": 0,
         "cambio_zona": 0,
         "fatiga_viaje": 0.0,
+        "juego_anterior_noche": False,
         "ultimo_rival": None,
         "ultimo_venue": None,
         "motivo": "",
@@ -260,6 +261,7 @@ def _perfil_equipo(
             "juegos_seguidos_visita": road if es_visitante else 0,
             "cambio_zona": int(cambio),
             "fatiga_viaje": fatiga,
+            "juego_anterior_noche": bool(last_dt.hour >= 22 or last_dt.hour <= 4),
             "ultimo_rival": rival,
             "ultimo_venue": venue,
             "motivo": " · ".join(partes) if partes else "fresco",
@@ -366,6 +368,11 @@ def analizar_factores_humanos(juego: dict[str, Any], timeout: float = 8.0) -> di
         ajuste_away += 0.35
     if home["dias_descanso"] >= 2:
         ajuste_home += 0.25
+    # Día después de un partido de noche: el cuerpo tiene menos horas.
+    if day_night == "day" and away.get("back_to_back") and away.get("juego_anterior_noche"):
+        ajuste_away -= 0.45
+    if day_night == "day" and home.get("back_to_back") and home.get("juego_anterior_noche"):
+        ajuste_home -= 0.30
     # Getaway / último de serie: la visita suele viajar después.
     if getaway:
         ajuste_away -= 0.28
@@ -389,6 +396,11 @@ def analizar_factores_humanos(juego: dict[str, Any], timeout: float = 8.0) -> di
         alertas.append(f"Rubber match ({serie_n}/{serie_tot})")
     elif getaway:
         alertas.append(f"Getaway day ({serie_n}/{serie_tot})")
+    if day_night == "day" and (
+        (away.get("back_to_back") and away.get("juego_anterior_noche"))
+        or (home.get("back_to_back") and home.get("juego_anterior_noche"))
+    ):
+        alertas.append("Día tras noche")
     if umpire.get("ok") and abs(sesgo_ump) >= 0.15:
         alertas.append(str(umpire.get("motivo")))
 

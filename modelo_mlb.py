@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import math
 import re
+from datetime import datetime
 from typing import Any, cast
 
 import requests
@@ -608,6 +609,90 @@ def score_pitcher(p: dict[str, Any]) -> float:
     return shrink_muestra_pitcher(crudo, p, liga)
 
 
+def ajuste_fatiga_starter(dias: float | None, pitches: float | None = None) -> float:
+    """Descanso corto del abridor resta. 4 días es la rotación normal.
+
+    3 o menos = short rest. 4 días con 105+ pitcheos = trabajó de más.
+    6 o más = día extra de descanso.
+    """
+    if dias is None:
+        return 0.0
+    try:
+        d = float(dias)
+    except (TypeError, ValueError):
+        return 0.0
+    try:
+        pit = float(pitches) if pitches is not None else 0.0
+    except (TypeError, ValueError):
+        pit = 0.0
+    adj = 0.0
+    if d <= 3:
+        adj -= 0.90
+    elif d == 4 and pit >= 105:
+        adj -= 0.40
+    elif d >= 6:
+        adj += 0.25
+    return round(max(-1.3, min(0.35, adj)), 2)
+
+
+def descanso_desde_salidas(salidas: list[dict[str, Any]], fecha_juego: datetime) -> dict[str, Any]:
+    """Días de descanso desde la última salida anterior al juego."""
+    mejor: tuple[datetime, dict[str, Any]] | None = None
+    for s in salidas or []:
+        raw = str((s or {}).get("date") or "")[:10]
+        if len(raw) < 10:
+            continue
+        try:
+            d = datetime.strptime(raw, "%Y-%m-%d")
+        except ValueError:
+            continue
+        if d.date() >= fecha_juego.date():
+            continue
+        if mejor is None or d > mejor[0]:
+            mejor = (d, s)
+    if not mejor:
+        return {"ok": False, "dias": None, "pitches": None}
+    dias = max(0, (fecha_juego.date() - mejor[0].date()).days - 1)
+    try:
+        pit = float(mejor[1]["pitches"]) if mejor[1].get("pitches") is not None else None
+    except (TypeError, ValueError):
+        pit = None
+    return {"ok": True, "dias": dias, "pitches": pit, "fecha": mejor[0].date().isoformat()}
+
+
+_salida_cache: dict[tuple[int, int], list[dict[str, Any]]] = {}
+
+
+def ultima_salida_starter(pitcher_id: int | None, season: int, fecha_juego: datetime) -> dict[str, Any]:
+    """Última apertura del SP (MLB StatsAPI). Si falla, no ajusta."""
+    vacio = {"ok": False, "dias": None, "pitches": None}
+    if not pitcher_id:
+        return vacio
+    key = (int(pitcher_id), int(season))
+    if key not in _salida_cache:
+        try:
+            r = _session.get(
+                f"https://statsapi.mlb.com/api/v1/people/{int(pitcher_id)}/stats",
+                params={"stats": "gameLog", "group": "pitching", "season": season},
+                timeout=8,
+            )
+            r.raise_for_status()
+            salidas: list[dict[str, Any]] = []
+            for block in r.json().get("stats") or []:
+                for sp in block.get("splits") or []:
+                    stat = sp.get("stat") or {}
+                    if not isinstance(stat, dict):
+                        continue
+                    pitches = stat.get("numberOfPitches")
+                    if pitches is None:
+                        pitches = stat.get("pitchesThrown")
+                    salidas.append({"date": sp.get("date"), "pitches": pitches})
+            _salida_cache[key] = salidas
+        except Exception:
+            return vacio
+    return descanso_desde_salidas(_salida_cache[key], fecha_juego)
+
+
 def score_ofensiva(team_id: int, season: int) -> float:
     b: dict[str, Any] = stats_bateo(team_id, season)
     rec_data = cargar_records(season).get(team_id, {"win_pct": 0.5, "pyth": 0.5})
@@ -868,6 +953,27 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
 
     f_away = fuerza_lado(away_id, home_id, p_away_id, p_home_id, season, False, ia_away, bias_aprendizaje, cfg)
     f_home = fuerza_lado(home_id, away_id, p_home_id, p_away_id, season, True, ia_home, bias_aprendizaje, cfg)
+
+    # Descanso del abridor: short rest y salida larga. Si la API falla, no toca la fuerza.
+    fecha_juego = None
+    raw_fecha = str(juego.get("inicio_juego") or juego.get("fecha") or "")
+    if len(raw_fecha) >= 10:
+        try:
+            fecha_juego = datetime.strptime(raw_fecha[:10], "%Y-%m-%d")
+        except ValueError:
+            fecha_juego = None
+    if fecha_juego is not None:
+        try:
+            rest_away = ultima_salida_starter(p_away_id, season, fecha_juego)
+            rest_home = ultima_salida_starter(p_home_id, season, fecha_juego)
+            if rest_away.get("ok"):
+                f_away = round(f_away + ajuste_fatiga_starter(rest_away.get("dias"), rest_away.get("pitches")), 2)
+                juego["pitcherAwayDescanso"] = rest_away
+            if rest_home.get("ok"):
+                f_home = round(f_home + ajuste_fatiga_starter(rest_home.get("dias"), rest_home.get("pitches")), 2)
+                juego["pitcherHomeDescanso"] = rest_home
+        except Exception:
+            pass
 
     # Clima Open-Meteo: inclina fuerzas según frío/calor/viento en el estadio local
     clima_info: dict[str, Any] = {"ok": False, "run_env": 0.0, "fuente": "off"}
