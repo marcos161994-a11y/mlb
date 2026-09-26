@@ -10,3 +10,10 @@ Taller en tu PC. Render no corre esto.
 
 Sin la clave, el resumen igual se escribe y la mente de Render no cambia.
 La propuesta no apuesta sola. Entra al servidor solo después de la prueba del historial.
+
+Para dejarlo automático en esta PC, doble clic en programar.bat.
+Eso crea dos tareas de Windows: 8:00 y 23:30. La computadora tiene que estar encendida.
+Cada pasada se guarda en boveda_mental\memoria.jsonl.
+Si Chroma está instalado, copia lo mismo en boveda_mental\chroma. El archivo de texto es el que vale.
+Ahí queda la propuesta, en frases. No se ejecuta ningún script nuevo.
+El archivo mente_mlb.py del servidor no se toca: ese sigue decidiendo las apuestas.
