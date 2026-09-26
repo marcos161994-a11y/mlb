@@ -80,3 +80,22 @@ def test_servidor_expone_ruta_mente():
     assert '@app.get("/mente")' in src
     assert "def panel_mente" in src
     assert "def mente_acceso_directo" in src
+
+
+def test_carpeta_diagrama_para_el_escritorio():
+    html = Path("diagrama/index.html").read_text(encoding="utf-8")
+    assert 'id="mente-red-svg"' in html
+    assert "/api/mente-red" in html
+    assert "Diagramma.zip" in html
+    atajo = Path("diagrama/Diagrama.url").read_text(encoding="utf-8")
+    assert "mlb-1-en7i.onrender.com/diagrama" in atajo
+    assert Path("diagrama/Abrir-diagrama.bat").exists()
+    assert Path("diagrama/LEEME.txt").exists()
+
+
+def test_servidor_expone_ruta_diagrama():
+    src = Path("servidor_mlb.py").read_text(encoding="utf-8")
+    assert '@app.get("/diagrama")' in src
+    assert "def panel_diagrama" in src
+    assert "def diagrama_carpeta_zip" in src
+    assert 'filename="Diagramma.zip"' in src

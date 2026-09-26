@@ -1,0 +1,8 @@
+Pega estos archivos en tu carpeta del Escritorio llamada Diagramma
+(Escritorio → Diagramma). No hace falta el repo de GitHub.
+
+  Diagrama.url        → ábrelo para ver la red en vivo
+  index.html          → la misma red, desde esta carpeta
+  Abrir-diagrama.bat  → abre index.html
+
+Si el servidor está dormido, espera unos segundos y pulsa Actualizar.
