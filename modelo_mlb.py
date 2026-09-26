@@ -286,7 +286,7 @@ def stats_pitcher(pitcher_id: int | None, season: int) -> dict[str, Any]:
         return {
             "era": 5.2, "whip": 1.45, "k9": 6.5, "bb9": 3.2, "hr9": 1.2,
             "fip": 5.0, "xfip": 5.0, "k_pct": 18.0, "bb_pct": 10.0,
-            "nombre": "TBD", "hand": "R", "metricas_fuente": "default",
+            "nombre": "TBD", "hand": "R", "metricas_fuente": "default", "ip": 0.0,
         }
     key = (pitcher_id, season)
     if key in _pitcher_cache:
@@ -349,7 +349,7 @@ def stats_pitcher(pitcher_id: int | None, season: int) -> dict[str, Any]:
         data = {
             "era": 5.2, "whip": 1.45, "k9": 6.5, "bb9": 3.2, "hr9": 1.2,
             "fip": 5.0, "xfip": 5.0, "k_pct": 18.0, "bb_pct": 10.0,
-            "nombre": "TBD", "hand": "R", "metricas_fuente": "error",
+            "nombre": "TBD", "hand": "R", "metricas_fuente": "error", "ip": 0.0,
         }
     _pitcher_cache[key] = data
     return data
@@ -537,8 +537,53 @@ def ajuste_matchup_zurdo_diestro(pitcher_hand: str, lineup_balance: float) -> fl
         return lineup_balance * 2.0  # Aumentado a 2.0 para mayor impacto
 
 
-def score_pitcher(p: dict[str, Any]) -> float:
-    """Mayor = mejor pitcheo. Prioriza FIP/xFIP/K%/BB% sobre ERA crudo."""
+_PITCHER_LIGA = {
+    "era": 4.50,
+    "whip": 1.35,
+    "k9": 7.5,
+    "bb9": 3.0,
+    "hr9": 1.0,
+    "fip": 4.20,
+    "xfip": 4.20,
+    "k_pct": 21.0,
+    "bb_pct": 8.0,
+    "ip": 80.0,
+}
+
+
+def ajuste_suerte_fip_era(p: dict[str, Any] | None) -> float:
+    """ERA mucho mejor que FIP = suerte (regresa). ERA peor = mala suerte (mejora).
+
+    FIP predice mejor el próximo tramo que ERA crudo (sabermetría / pitcher-driven models).
+    """
+    if not isinstance(p, dict):
+        return 0.0
+    try:
+        era = float(p.get("era") or 4.5)
+        fip = float(p.get("fip") if p.get("fip") is not None else era)
+    except (TypeError, ValueError):
+        return 0.0
+    gap = era - fip  # positivo = ERA peor que FIP (mala suerte)
+    if abs(gap) < 0.40:
+        return 0.0
+    return round(max(-1.4, min(1.4, gap * 1.15)), 2)
+
+
+def shrink_muestra_pitcher(score: float, p: dict[str, Any] | None, liga: float = 0.0) -> float:
+    """Pocos innings (novato / sample chico) se acercan a la media de liga."""
+    if not isinstance(p, dict):
+        return score
+    try:
+        ip = float(p.get("ip") or 0)
+    except (TypeError, ValueError):
+        ip = 0.0
+    if ip <= 0:
+        return score
+    w = max(0.35, min(1.0, ip / 55.0))
+    return round(liga + (score - liga) * w, 2)
+
+
+def _score_pitcher_crudo(p: dict[str, Any]) -> float:
     fip = float(p.get("fip") if p.get("fip") is not None else p.get("era") or 4.5)
     xfip = float(p.get("xfip") if p.get("xfip") is not None else fip)
     k_pct = float(p.get("k_pct") if p.get("k_pct") is not None else (float(p.get("k9") or 7.5) * 2.4))
@@ -553,6 +598,14 @@ def score_pitcher(p: dict[str, Any]) -> float:
         + bb_pct * COEF_BBPCT_PESO,
         2,
     )
+
+
+def score_pitcher(p: dict[str, Any]) -> float:
+    """Mayor = mejor pitcheo. Prioriza FIP/xFIP/K%/BB%, corrige suerte ERA y sample chico."""
+    crudo = _score_pitcher_crudo(p)
+    crudo = crudo + ajuste_suerte_fip_era(p)
+    liga = _score_pitcher_crudo(_PITCHER_LIGA)
+    return shrink_muestra_pitcher(crudo, p, liga)
 
 
 def score_ofensiva(team_id: int, season: int) -> float:

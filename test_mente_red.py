@@ -38,7 +38,7 @@ def test_red_tiene_capas_y_loop():
         "stats", "ml", "elo", "calib",
         "consenso", "bullpen", "park", "tipo", "mc", "totales",
         "brief", "reglas", "groq", "aprende", "ops",
-        "papel", "alta", "dinero", "liq", "lecs",
+        "papel", "alta", "dinero", "liq", "lecs", "log",
     ):
         assert nid in ids, nid
     edges = {(e["from"], e["to"]) for e in red["aristas"]}
@@ -48,6 +48,11 @@ def test_red_tiene_capas_y_loop():
     assert red["wr_todos"]["n"] == 3
     assert red["wr_alta"]["aciertos"] == 2
     assert red["lecciones"] == 12
+    assert red["bitacora"] == 0
+    con_log = construir_mente_red({}, _mem(), bitacora={"total": 5})
+    assert con_log["bitacora"] == 5
+    ids_log = {n["id"] for n in con_log["nodos"]}
+    assert "log" in ids_log
 
 
 def test_nodo_apagado_si_flag_off():
@@ -97,6 +102,8 @@ def test_carpeta_diagrama_para_el_escritorio():
     assert 'id="mente-red-svg"' in html
     assert "/api/mente-red" in html
     assert "Diagramma.zip" in html
+    assert "abrirBitacora" in html
+    assert Path("diagrama/bitacora.json").exists()
     atajo = Path("diagrama/Diagrama.url").read_text(encoding="utf-8")
     assert "mlb-1-en7i.onrender.com/diagrama" in atajo
     assert Path("diagrama/Abrir-diagrama.bat").exists()

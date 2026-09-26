@@ -347,6 +347,7 @@ def analizar_factores_humanos(juego: dict[str, Any], timeout: float = 8.0) -> di
     if serie_tot >= 3 and serie_n > 0:
         leverage = round(serie_n / float(serie_tot), 3)
     rubber = bool(serie_tot >= 3 and serie_n == serie_tot)
+    getaway = bool(serie_tot >= 2 and serie_n == serie_tot)
 
     umpire = _extraer_umpire(juego.get("officials"))
 
@@ -365,6 +366,15 @@ def analizar_factores_humanos(juego: dict[str, Any], timeout: float = 8.0) -> di
         ajuste_away += 0.35
     if home["dias_descanso"] >= 2:
         ajuste_home += 0.25
+    # Getaway / último de serie: la visita suele viajar después.
+    if getaway:
+        ajuste_away -= 0.28
+    # Rubber: el lado más fresco tiene un micro-edge de leverage.
+    if rubber:
+        if float(away.get("fatiga_viaje") or 0) + 0.05 < float(home.get("fatiga_viaje") or 0):
+            ajuste_away += 0.20
+        elif float(home.get("fatiga_viaje") or 0) + 0.05 < float(away.get("fatiga_viaje") or 0):
+            ajuste_home += 0.15
     # Umpire: entorno de carreras → favorece al peor pitcher implícitamente vía run env;
     # aplicamos micro-ajuste simétrico hacia el underdog ofensivo no modelado: neutro en ML pick.
     # Solo anotamos sesgo; el run_env humano va a features.
@@ -377,6 +387,8 @@ def analizar_factores_humanos(juego: dict[str, Any], timeout: float = 8.0) -> di
         alertas.append(f"Local fatigada ({home['motivo']})")
     if rubber:
         alertas.append(f"Rubber match ({serie_n}/{serie_tot})")
+    elif getaway:
+        alertas.append(f"Getaway day ({serie_n}/{serie_tot})")
     if umpire.get("ok") and abs(sesgo_ump) >= 0.15:
         alertas.append(str(umpire.get("motivo")))
 
@@ -403,6 +415,7 @@ def analizar_factores_humanos(juego: dict[str, Any], timeout: float = 8.0) -> di
             "games_in_series": serie_tot,
             "leverage": leverage,
             "rubber": rubber,
+            "getaway": getaway,
             "day_night": day_night or None,
         },
         "umpire": umpire,

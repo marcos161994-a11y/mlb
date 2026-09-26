@@ -125,6 +125,13 @@ def _construir_mente_red_panel(
     try:
         from mente_red import construir_mente_red
 
+        bitacora_meta = None
+        try:
+            from mente_bitacora import resumen_bitacora
+
+            bitacora_meta = resumen_bitacora()
+        except Exception:
+            bitacora_meta = None
         return construir_mente_red(
             cfg,
             memoria,
@@ -132,6 +139,7 @@ def _construir_mente_red_panel(
             mente_stats=mente_stats_meta,
             ml_meta=(memoria or {}).get("ml_meta") if isinstance(memoria, dict) else None,
             mente_errores=_resumen_mente_errores(cfg) if "_resumen_mente_errores" in globals() else None,
+            bitacora=bitacora_meta,
         )
     except Exception as e:
         return {"ok": False, "mensaje": str(e)[:120], "nodos": [], "aristas": []}
@@ -3377,7 +3385,7 @@ _MENTE_NO_CACHE = {
 }
 
 
-_DIAGRAMA_ARCHIVOS = ("index.html", "Diagrama.url", "Abrir-diagrama.bat", "LEEME.txt")
+_DIAGRAMA_ARCHIVOS = ("index.html", "Diagrama.url", "Abrir-diagrama.bat", "LEEME.txt", "bitacora.json")
 
 
 @app.get("/diagrama")
@@ -4589,6 +4597,17 @@ def api_mente_red():
         pass
     red = _construir_mente_red_panel(cfg, memoria, lecciones_meta, mente_stats_meta)
     return {"ok": bool(red.get("ok")), **red}
+
+
+@app.get("/api/mente-bitacora")
+def api_mente_bitacora():
+    """Investigación y cambios plasmados para verlos en /diagrama."""
+    try:
+        from mente_bitacora import resumen_bitacora
+
+        return resumen_bitacora()
+    except Exception as e:
+        return {"ok": False, "total": 0, "entradas": [], "motivo": str(e)[:120]}
 
 
 @app.get("/api/mente-status")
