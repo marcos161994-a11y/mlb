@@ -3,6 +3,35 @@
   "actualizado": "2026-09-26",
   "entradas": [
     {
+      "id": "b-20260926-descanso-starter",
+      "fecha": "2026-09-26",
+      "tipo": "cambio",
+      "titulo": "El abridor con poco descanso baja",
+      "resumen": "La rotación normal es cada 5 días (4 de descanso) y eso no se toca. Si el abridor vuelve con 3 días o menos, el modelo le resta. Si descansó lo normal pero lanzó 105 pitcheos o más, también baja un poco. Si lleva 6 días o más sin abrir, sube un poco. Si el pick depende de un abridor con poco descanso y el margen no es grande, la mente pasa.",
+      "fuentes": [
+        "https://www.dailymlbpicks.com/model-methodology.html"
+      ],
+      "archivos": [
+        "modelo_mlb.py",
+        "mente_mlb.py"
+      ],
+      "efecto": "Menos picks apoyados en un pitcher que abre cansado."
+    },
+    {
+      "id": "b-20260926-dia-tras-noche",
+      "fecha": "2026-09-26",
+      "tipo": "cambio",
+      "titulo": "Partido de día después de uno de noche",
+      "resumen": "Si el equipo jugó anoche y hoy juega de día, tiene menos horas para recuperarse. El modelo le resta, un poco más a la visita. Un partido de noche normal no lleva esa resta.",
+      "fuentes": [
+        "https://github.com/sv4u/mlb-predict"
+      ],
+      "archivos": [
+        "factores_humanos.py"
+      ],
+      "efecto": "Los matutinos después de un juego nocturno ya no se ven igual que un partido descansado."
+    },
+    {
       "id": "b-20260926-autonomo-1",
       "fecha": "2026-09-26",
       "tipo": "investigacion",

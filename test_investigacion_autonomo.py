@@ -8,7 +8,9 @@ from mente_bitacora import cargar_bitacora, resumen_bitacora
 from mente_mlb import mente_conclusion
 from modelo_mlb import (
     _score_pitcher_crudo,
+    ajuste_fatiga_starter,
     ajuste_suerte_fip_era,
+    descanso_desde_salidas,
     score_pitcher,
     shrink_muestra_pitcher,
 )
@@ -100,6 +102,75 @@ def test_mente_pasa_alta_conv_sin_fip():
     c = mente_conclusion(juego, CFG, {}, forzar=True, solo_local=True)
     assert c["decision"] == "PASAR"
     assert any("fip" in r.lower() for r in c["razones"])
+
+
+def test_fatiga_starter_short_rest_y_normal():
+    assert ajuste_fatiga_starter(3, 90) <= -0.8
+    assert ajuste_fatiga_starter(4, 98) == 0.0
+    assert ajuste_fatiga_starter(4, 110) < 0
+    assert ajuste_fatiga_starter(6, 90) > 0
+    fecha = datetime(2026, 9, 26)
+    info = descanso_desde_salidas(
+        [{"date": "2026-09-22", "pitches": 108}, {"date": "2026-09-27", "pitches": 80}],
+        fecha,
+    )
+    assert info["ok"] is True
+    assert info["dias"] == 3
+    assert info["pitches"] == 108
+
+
+def test_dia_tras_noche_penaliza_visita():
+    fecha = datetime(2026, 8, 12, 17, 0, tzinfo=timezone.utc)
+    prev = {
+        "gameDate": "2026-08-11T23:10:00Z",
+        "officialDate": "2026-08-11",
+        "venue": {"name": "Yankee Stadium"},
+        "teams": {
+            "away": {"team": {"id": 119, "name": "Dodgers"}},
+            "home": {"team": {"id": 147, "name": "Yankees"}},
+        },
+    }
+    fh._team_sched_cache[f"119:{fecha.strftime('%Y-%m-%d')}"] = [prev]
+    fh._team_sched_cache[f"147:{fecha.strftime('%Y-%m-%d')}"] = []
+    dia = analizar_factores_humanos(
+        {
+            "away_id": 119,
+            "home_id": 147,
+            "inicio_juego": fecha.isoformat(),
+            "day_night": "day",
+            "officials": [],
+        }
+    )
+    assert dia["away"]["juego_anterior_noche"] is True
+    assert dia["away"]["back_to_back"] is True
+    assert any("Día tras noche" in a for a in dia["alertas"])
+    noche = analizar_factores_humanos(
+        {
+            "away_id": 119,
+            "home_id": 147,
+            "inicio_juego": fecha.isoformat(),
+            "day_night": "night",
+            "officials": [],
+        }
+    )
+    assert dia["ajuste_away"] < noche["ajuste_away"]
+
+
+def test_mente_pasa_descanso_corto():
+    juego = {
+        "id": "short-rest",
+        "visitante": "Away",
+        "home": "Home",
+        "pick": "Home ML",
+        "probPick": 61,
+        "edge": 7.0,
+        "odds": 1.90,
+        "lineas_fuente": "draftkings",
+        "pitcherHomeDescanso": {"ok": True, "dias": 3, "pitches": 102},
+    }
+    c = mente_conclusion(juego, CFG, {}, forzar=True, solo_local=True)
+    assert c["decision"] == "PASAR"
+    assert any("descanso" in r.lower() for r in c["razones"])
 
 
 def test_bitacora_tiene_investigacion_y_cambios():
