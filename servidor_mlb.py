@@ -10,10 +10,12 @@ from __future__ import annotations
 import copy
 import gc
 import hashlib
+import io
 import json
 import os
 import threading
 import time
+import zipfile
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -27,7 +29,7 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, RedirectResponse, Response
 from lineas_betmgm import aplicar_lineas_a_juegos
 from lineas_betmgm import normalizar_nombre_equipo as norm_nombre
 from memoria_fusion import (
@@ -3340,6 +3342,45 @@ _MENTE_NO_CACHE = {
     "Pragma": "no-cache",
     "Expires": "0",
 }
+
+
+_DIAGRAMA_ARCHIVOS = ("index.html", "Diagrama.url", "Abrir-diagrama.bat", "LEEME.txt")
+
+
+@app.get("/diagrama")
+@app.get("/diagrama/")
+def panel_diagrama():
+    """Red neuronal en /diagrama (carpeta Diagramma del escritorio, no el repo)."""
+    return FileResponse(BASE_DIR / "diagrama" / "index.html", headers=_MENTE_NO_CACHE)
+
+
+@app.get("/diagrama/Diagrama.url")
+def diagrama_acceso_directo():
+    """Acceso directo de Windows para soltar en Escritorio\\Diagramma."""
+    return FileResponse(
+        BASE_DIR / "diagrama" / "Diagrama.url",
+        media_type="application/internet-shortcut",
+        filename="Diagrama.url",
+        headers=_MENTE_NO_CACHE,
+    )
+
+
+@app.get("/diagrama/carpeta.zip")
+def diagrama_carpeta_zip():
+    """ZIP con los archivos para pegar en Escritorio\\Diagramma (sin repo)."""
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
+        for name in _DIAGRAMA_ARCHIVOS:
+            path = BASE_DIR / "diagrama" / name
+            zf.write(path, name)
+    return Response(
+        content=buf.getvalue(),
+        media_type="application/zip",
+        headers={
+            **_MENTE_NO_CACHE,
+            "Content-Disposition": 'attachment; filename="Diagramma.zip"',
+        },
+    )
 
 
 @app.get("/mente")
