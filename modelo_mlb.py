@@ -176,7 +176,7 @@ def obtener_ajuste_ia(equipo: str, rival: str, stats_e: dict, p_e: dict, p_r: di
     Inyecta 'Inteligencia Contextual' analizando factores externos vía Gemini 1.5 Pro.
     """
     global _vertex_initialized
-    if not HAS_VERTEX or not cfg.get("usar_ia", True):
+    if not HAS_VERTEX or not cfg.get("usar_ia", False):
         return 0.0
     
     key = f"{equipo}_{rival}"
