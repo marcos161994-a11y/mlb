@@ -387538,9 +387538,9 @@
           "pitcher_away_id": 640455,
           "pitcher_home_id": 687792,
           "inicio_juego": "2026-09-27T13:05:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 2.95,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-27T12:51:51.391688-04:00",
@@ -388269,7 +388269,9 @@
           "total_linea": null,
           "lineas_total": null,
           "odds_congelada": 1.984,
-          "lineas_fuente_inicial": "modelo"
+          "lineas_fuente_inicial": "modelo",
+          "marcador_final": "New York Mets 4 - Washington Nationals 6",
+          "liquidado_en": "2026-09-27T16:55:19.365233-04:00"
         },
         {
           "game_id": "823490",
@@ -515731,6 +515733,26 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-09-27T04:41:36.071946Z"
+    },
+    {
+      "id": "lec-oportunidad_perdida-822679-1790542519",
+      "tipo": "oportunidad_perdida",
+      "fecha": "2026-09-27",
+      "game_id": "822679",
+      "visitante": "New York Mets",
+      "home": "Washington Nationals",
+      "pick": "Washington Nationals ML",
+      "probPick": 50.4,
+      "edge": 0,
+      "lineas_fuente": "modelo",
+      "marcador_final": "New York Mets 4 - Washington Nationals 6",
+      "patron": "oportunidad_perdida",
+      "leccion": "PASAR/ESPERAR canceló dinero y el pick ganó; calibrar veto en spots parecidos.",
+      "motivo": "mente bloqueó dinero + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-27T20:55:19.371262Z"
     }
   ],
   "mente_stats": {
@@ -515741,9 +515763,9 @@
         "fallos": 30
       },
       "PASAR": {
-        "n": 1652,
+        "n": 1653,
         "evito_fallo": 647,
-        "oportunidad_perdida": 1005
+        "oportunidad_perdida": 1006
       },
       "ESPERAR": {
         "n": 1154,
@@ -515753,9 +515775,9 @@
     },
     "patrones": {
       "scratch": {
-        "n": 830.0,
+        "n": 830.5,
         "pasar_ok": 313.0,
-        "pasar_miss": 517.0,
+        "pasar_miss": 517.5,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
@@ -515767,23 +515789,23 @@
         "apostar_fail": 0.0
       },
       "humanos": {
-        "n": 2438.5,
+        "n": 2439.0,
         "pasar_ok": 961.0,
-        "pasar_miss": 1357.5,
+        "pasar_miss": 1358.0,
         "apostar_ok": 54.0,
         "apostar_fail": 66.0
       },
       "sin_mercado": {
-        "n": 142.0,
+        "n": 142.5,
         "pasar_ok": 52.0,
-        "pasar_miss": 90.0,
+        "pasar_miss": 90.5,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
       "edge_bajo": {
-        "n": 1993.0,
+        "n": 1993.5,
         "pasar_ok": 804.0,
-        "pasar_miss": 1189.0,
+        "pasar_miss": 1189.5,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
@@ -515802,9 +515824,9 @@
         "apostar_fail": 60.0
       },
       "mc_over": {
-        "n": 2039.5,
+        "n": 2040.0,
         "pasar_ok": 827.0,
-        "pasar_miss": 1074.5,
+        "pasar_miss": 1075.0,
         "apostar_ok": 72.0,
         "apostar_fail": 66.0
       },
@@ -515816,9 +515838,9 @@
         "apostar_fail": 0.0
       },
       "preferir_f5": {
-        "n": 2023.5,
+        "n": 2024.0,
         "pasar_ok": 824.0,
-        "pasar_miss": 1079.5,
+        "pasar_miss": 1080.0,
         "apostar_ok": 54.0,
         "apostar_fail": 66.0
       },
@@ -515884,7 +515906,6 @@
       "limpio": 1
     },
     "vistos": [
-      "825041:acierto",
       "823260:fallo",
       "824964:acierto",
       "823097:fallo",
@@ -516283,14 +516304,15 @@
       "824949:fallo",
       "823083:acierto",
       "823407:acierto",
-      "823245:fallo"
+      "823245:fallo",
+      "822679:acierto"
     ],
-    "actualizado_en": "2026-09-27T04:41:36.074510Z"
+    "actualizado_en": "2026-09-27T20:55:19.376098Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 513,
-    "muestras_reales": 508,
+    "muestras": 515,
+    "muestras_reales": 510,
     "muestras_sinteticas": 5,
     "ratio_features_reales": 0.99,
     "entreno_bloqueado": false,
@@ -516305,22 +516327,22 @@
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 511,
+    "muestras": 515,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
         "ok": true,
-        "muestras": 117,
+        "muestras": 118,
         "metodo": "isotonic"
       },
       "underdog": {
         "ok": true,
-        "muestras": 119,
+        "muestras": 120,
         "metodo": "isotonic"
       },
       "scratch": {
         "ok": true,
-        "muestras": 158,
+        "muestras": 160,
         "metodo": "isotonic"
       },
       "limpio": {
@@ -516329,21 +516351,21 @@
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 511 muestras (ECE≈0.02) · 4 tipos",
+    "mensaje": "Calibrado isotonic con 515 muestras (ECE≈0.02) · 4 tipos",
     "por_segmento": {
       "prob_alta": {
         "ok": true,
-        "muestras": 160,
+        "muestras": 161,
         "metodo": "isotonic"
       },
       "underdog_cuota": {
         "ok": true,
-        "muestras": 73,
+        "muestras": 74,
         "metodo": "isotonic"
       },
       "mc_over": {
         "ok": true,
-        "muestras": 200,
+        "muestras": 202,
         "metodo": "isotonic"
       },
       "entorno_f5": {
@@ -516364,6 +516386,6 @@
   "telegram": {
     "bot_token": "8605392094:AAGvcIUl7OwDM5ugQswJKE6jJ1BRX22ls8Y",
     "chat_id": "5423229687",
-    "actualizado_en": "2026-09-27T18:40:51.344460Z"
+    "actualizado_en": "2026-09-27T20:54:14.682594Z"
   }
 }
