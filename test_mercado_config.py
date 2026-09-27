@@ -20,7 +20,8 @@ def test_config_mercado_activo():
     assert "pinnacle" in books or "fanduel" in books
     retries = lineas.get("minutos_retry_cuotas") or []
     assert 45 in retries and 30 in retries
-    assert (cfg.get("telegram") or {}).get("solo_apostables") is True
+    assert "telegram" not in cfg
+    assert "whatsapp" not in cfg
 
 
 def test_mercado_requiere_cuotas():

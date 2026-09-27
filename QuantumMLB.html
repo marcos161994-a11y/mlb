@@ -461,30 +461,8 @@
     <p class="meta-line" id="vigilancia-status" style="color:#8899aa;"></p>
     <p class="meta-line" id="mente-errores-status" style="color:#8899aa;"></p>
     <p class="meta-line" id="historial-sello" style="color:#8899aa;font-weight:700;"></p>
-    <p class="meta-line" id="telegram-banner" style="color:#ffbc00;"></p>
     <p class="meta-line" id="proximo-bloqueo"></p>
 </div>
-
-<details class="rendimiento" id="telegram-setup" open>
-    <summary>📱 Telegram — avisos T-60 (obligatorio para alertas)</summary>
-    <div class="rendimiento-body" style="display:flex;flex-direction:column;gap:8px;">
-        <p style="color:var(--muted);font-size:0.85rem;margin:0;">
-            <b>1.</b> Telegram → busca <code>@BotFather</code> → <code>/newbot</code> o <code>/token</code> → copia el token<br/>
-            <b>2.</b> Pégalo abajo → <b>Guardar token</b><br/>
-            <b>3.</b> Abre <b>tu bot</b> → escribe <code>hola</code> → <b>Vincular</b> → <b>Probar</b><br/>
-            <b>4.</b> (Anti-wipe) En Render → Environment pon <code>TELEGRAM_BOT_TOKEN</code> y <code>TELEGRAM_CHAT_ID</code>
-            para que un redeploy no borre las alertas. La mente de errores también intenta restaurar sola desde env/memoria.
-        </p>
-        <input id="tg-token" type="password" autocomplete="off" placeholder="Token BotFather (123456:AA...)"
-            style="width:100%;padding:10px;border-radius:8px;border:1px solid #333;background:#111;color:#eee;font-size:0.9rem;" />
-        <div style="display:flex;gap:8px;flex-wrap:wrap;">
-            <button onclick="guardarTokenTelegram()">1) Guardar token</button>
-            <button onclick="vincularTelegram()">2) Vincular</button>
-            <button onclick="probarTelegram()">3) Probar</button>
-        </div>
-        <p id="tg-status" style="color:var(--muted);font-size:0.8rem;margin:0;">Estado: cargando…</p>
-    </div>
-</details>
 
 <div class="aviso" id="aviso-real">
     <details>
@@ -763,8 +741,6 @@ function guardarCacheEstado(state) {
             config: state.config,
             vigilancia: state.vigilancia,
             mente_errores: state.mente_errores,
-            telegram: state.telegram,
-            alertas: state.alertas,
             lineas: state.lineas,
             fecha_hoy: state.fecha_hoy,
         };
@@ -856,95 +832,6 @@ async function cargarHistorialFallback(signal) {
         return true;
     } catch (e) {
         return false;
-    }
-}
-
-async function guardarTokenTelegram() {
-    const token = (document.getElementById('tg-token').value || '').trim();
-    const st = document.getElementById('tg-status');
-    st.dataset.busy = '1';
-    if (!token || token.indexOf(':') < 0) {
-        st.style.color = '#ff4466';
-        st.textContent = 'Token inválido. Debe verse como 123456:AA... (lo da @BotFather)';
-        delete st.dataset.busy;
-        return;
-    }
-    st.textContent = 'Guardando...';
-    try {
-        const r = await fetch(API + '/api/telegram-guardar-token', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({ token }),
-        });
-        const d = await r.json();
-        if (!r.ok || !d.ok) {
-            st.style.color = '#ff4466';
-            st.textContent = d.motivo || d.detail || ('Error ' + r.status);
-            delete st.dataset.busy;
-            return;
-        }
-        st.style.color = 'var(--green)';
-        st.textContent = 'Token OK · bot ' + (d.bot || '') + ' · ahora escribe hola a ese bot y pulsa Vincular';
-        document.getElementById('tg-token').value = '';
-        toast('Token guardado');
-        delete st.dataset.busy;
-    } catch (e) {
-        st.style.color = '#ff4466';
-        st.textContent = String(e.message || e);
-        delete st.dataset.busy;
-    }
-}
-
-async function vincularTelegram() {
-    const st = document.getElementById('tg-status');
-    st.dataset.busy = '1';
-    st.textContent = 'Vinculando...';
-    try {
-        const r = await fetch(API + '/api/telegram-vincular', { cache: 'no-store' });
-        const d = await r.json();
-        if (!d.ok) {
-            st.style.color = '#ffaa00';
-            st.textContent = d.motivo || d.ayuda || 'No vinculado';
-            delete st.dataset.busy;
-            return;
-        }
-        st.style.color = 'var(--green)';
-        st.textContent = 'Vinculado · chat ' + d.chat_id + (d.confirmacion_enviada ? ' · mensaje enviado' : '');
-        toast('Telegram vinculado');
-        delete st.dataset.busy;
-        cargarEstado();
-    } catch (e) {
-        st.style.color = '#ff4466';
-        st.textContent = String(e.message || e);
-        delete st.dataset.busy;
-    }
-}
-
-async function probarTelegram() {
-    const st = document.getElementById('tg-status');
-    st.dataset.busy = '1';
-    st.textContent = 'Enviando prueba...';
-    try {
-        const r = await fetch(API + '/api/telegram-test', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: '{}',
-        });
-        const d = await r.json();
-        if (!d.ok && !d.enviado) {
-            st.style.color = '#ff4466';
-            st.textContent = d.motivo || d.detalle || 'No se envió';
-            delete st.dataset.busy;
-            return;
-        }
-        st.style.color = 'var(--green)';
-        st.textContent = 'Prueba enviada. Mira Telegram.';
-        toast('Mensaje de prueba enviado');
-        delete st.dataset.busy;
-    } catch (e) {
-        st.style.color = '#ff4466';
-        st.textContent = String(e.message || e);
-        delete st.dataset.busy;
     }
 }
 
@@ -1455,29 +1342,6 @@ function pintarEstado(data) {
         } else {
             hs.style.color = '#ff4466';
             hs.textContent = '✗ ' + (seal.mensaje || 'Historial en peligro');
-        }
-    }
-
-    const tb = document.getElementById('telegram-banner');
-    const tg = data.telegram || (data.alertas && data.alertas.telegram) || {};
-    const stTg = document.getElementById('tg-status');
-    if (tb) {
-        if (tg.ok) {
-            tb.style.color = '#00ff88';
-            tb.textContent = '✓ Telegram listo · avisos T-60 activos'
-                + (tg.bot || tg.user ? (' · ' + (tg.bot || tg.user)) : '');
-        } else {
-            tb.style.color = '#ffbc00';
-            tb.textContent = '⚠ Telegram pendiente · ' + (tg.motivo || tg.setup || 'pega token de @BotFather arriba');
-        }
-    }
-    if (stTg && !stTg.dataset.busy) {
-        if (tg.ok) {
-            stTg.style.color = 'var(--green)';
-            stTg.textContent = 'Listo · ' + (tg.motivo || 'bot vinculado');
-        } else {
-            stTg.style.color = '#ffbc00';
-            stTg.textContent = (tg.motivo || 'Pendiente') + (tg.setup ? (' · ' + tg.setup) : '');
         }
     }
 

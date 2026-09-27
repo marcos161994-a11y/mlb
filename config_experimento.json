@@ -152,30 +152,8 @@
   "mente_errores": {
     "activo": true,
     "auto_remediar": true,
-    "notificar": true,
+    "notificar": false,
     "cooldown_alerta_min": 360
-  },
-
-  "whatsapp": {
-    "activo": false,
-    "proveedor": "callmebot",
-    "phone": "",
-    "apikey": "",
-    "solo_apostables": true,
-    "incluir_mente": true
-  },
-
-  "telegram": {
-    "activo": true,
-    "bot_token": "",
-    "chat_id": "",
-    "user": "",
-    "solo_apostables": true,
-    "incluir_mente": true
-  },
-
-  "alertas": {
-    "canal": "telegram"
   },
 
   "groq": {
