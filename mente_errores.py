@@ -1,15 +1,13 @@
 """
 Mente de errores — director operativo de la aplicación (no decide apuestas).
 
-Detecta fallos recurrentes (Telegram caído,
-T-60 sin congelar, juegos perdidos por sueño Render, shadow accidental)
-y aplica remediaciones seguras:
+Detecta fallos recurrentes (T-60 sin congelar, juegos perdidos por sueño
+Render, shadow accidental) y aplica remediaciones seguras:
   - forzar proveedor ESPN + fallback internet
   - respetar overrides de líneas
   - apagar shadow de la mente de picks
   - forzar registro T-60 al despertar
   - registrar incidentes en DATA_DIR
-  - avisar por Telegram con cooldown (opcional)
   - integridad memoria / backup local / panel HTML
   - errores reportados desde el navegador (Safari iOS)
 
@@ -43,7 +41,6 @@ ACCION_FORZAR_ESPN = "forzar_espn"
 ACCION_ACTIVAR_FALLBACK = "activar_fallback_internet"
 ACCION_APAGAR_SHADOW = "apagar_shadow"
 ACCION_RESPETAR_CIRCUITO = "respetar_circuito"
-ACCION_RESTAURAR_TELEGRAM = "restaurar_telegram"
 ACCION_FORZAR_REGISTRO_T60 = "forzar_registro_t60"
 ACCION_RESTAURAR_HISTORIAL = "restaurar_historial"
 ACCION_NOTIFICAR = "notificar"
@@ -244,26 +241,6 @@ def _incidentes_recientes_dedup(estado: dict[str, Any], limite: int = 5) -> list
     return out
 
 
-def _cooldown_ok(estado: dict, clave: str, minutos: int) -> bool:
-    cds = estado.get("cooldowns") if isinstance(estado.get("cooldowns"), dict) else {}
-    raw = cds.get(clave)
-    if not raw:
-        return True
-    try:
-        prev = datetime.fromisoformat(str(raw).replace("Z", ""))
-    except ValueError:
-        return True
-    return _ahora() >= prev + timedelta(minutes=max(1, minutos))
-
-
-def _marcar_cooldown(estado: dict, clave: str) -> None:
-    cds = estado.setdefault("cooldowns", {})
-    if not isinstance(cds, dict):
-        cds = {}
-        estado["cooldowns"] = cds
-    cds[clave] = _iso()
-
-
 def registrar_error_runtime(origen: str, mensaje: str, codigo: str = "runtime") -> dict:
     """Registra un error capturado en cron/servidor (sin remediación completa)."""
     estado = _leer_estado()
@@ -378,32 +355,6 @@ def diagnosticar(
                 "acciones": [ACCION_APAGAR_SHADOW, ACCION_NOTIFICAR],
             }
         )
-
-    tg = cfg.get("telegram") if isinstance(cfg.get("telegram"), dict) else {}
-    if bool(tg.get("activo", True)):
-        try:
-            from whatsapp_alerta import telegram_disponible
-
-            st_tg = telegram_disponible(cfg) or {}
-            # telegram_disponible usa "ok" (no "listo")
-            if not st_tg.get("ok"):
-                hallazgos.append(
-                    {
-                        "codigo": "telegram_no_listo",
-                        "severidad": "alta",
-                        "mensaje": (
-                            "Telegram caído tras wipe/redeploy: "
-                            f"{st_tg.get('motivo') or 'falta token/chat'}"
-                        )[:180],
-                        "acciones": [
-                            ACCION_RESTAURAR_TELEGRAM,
-                            ACCION_REGISTRAR,
-                            ACCION_NOTIFICAR,
-                        ],
-                    }
-                )
-        except Exception:
-            pass
 
     # Historial wipeado en Render (días del backup del repo que el disco ya no tiene)
     try:
@@ -606,31 +557,6 @@ def _aplicar_acciones(
                 hechas.append(acc)
             elif acc == ACCION_RESPETAR_CIRCUITO:
                 hechas.append(acc)
-            elif acc == ACCION_RESTAURAR_TELEGRAM:
-                try:
-                    from whatsapp_alerta import sincronizar_telegram_persistencia
-
-                    mem = None
-                    try:
-                        # Evita import circular duro: el caller puede inyectar
-                        mem = cfg.get("_memoria_ref")
-                    except Exception:
-                        mem = None
-                    sync = sincronizar_telegram_persistencia(cfg, mem)
-                    if sync.get("ok"):
-                        hechas.append(acc)
-                        h["mensaje"] = (
-                            f"Telegram restaurado desde {sync.get('fuente')}"
-                        )[:160]
-                        h["severidad"] = "baja"
-                    else:
-                        hechas.append(acc)
-                        h["mensaje"] = (
-                            (sync.get("motivo") or h.get("mensaje") or "")[:160]
-                        )
-                except Exception as e:
-                    hechas.append(acc)
-                    h["mensaje"] = f"Restore Telegram falló: {e}"[:160]
             elif acc == ACCION_RESTAURAR_HISTORIAL:
                 try:
                     from servidor_mlb import _intentar_recuperar_wipe
@@ -708,59 +634,8 @@ def _notificar_si_cabe(
     *,
     solo_codigos: set[str] | None = None,
 ) -> dict[str, Any] | None:
-    if not opts.get("notificar"):
-        return None
-    criticos = [
-        a
-        for a in aplicadas
-        if a.get("severidad") == "alta"
-        and ACCION_NOTIFICAR in (a.get("acciones") or [])
-        and (solo_codigos is None or str(a.get("codigo") or "") in solo_codigos)
-    ]
-    if not criticos:
-        return None
-    # Un mensaje agrupado; cooldown por el código más grave
-    codigo = str(criticos[0].get("codigo") or "ops")
-    clave = f"alerta:{codigo}"
-    # Vigilancia / picks perdidos: avisar más seguido (Render free duerme)
-    mins = int(opts.get("cooldown_alerta_min") or DEFAULT_COOLDOWN_ALERTA_MIN)
-    for a in criticos:
-        try:
-            cm = int((a.get("meta") or {}).get("cooldown_min") or 0)
-        except (TypeError, ValueError):
-            cm = 0
-        # hallazgo puede traer cooldown_min en el propio dict (no solo meta)
-        try:
-            # recuperar del hallazgo original vía aplicadas no tiene cooldown;
-            # usar defaults por código
-            pass
-        except Exception:
-            pass
-        if a.get("codigo") == "vigilancia_t60":
-            mins = min(mins, 45)
-        elif a.get("codigo") == "juegos_sin_pick_perdidos":
-            mins = min(mins, 120)
-        elif a.get("codigo") == "historial_wipeado":
-            mins = min(mins, 60)
-    if not _cooldown_ok(estado, clave, mins):
-        return {"omitido": True, "motivo": "cooldown", "codigo": codigo}
-    lineas = []
-    for a in criticos[:4]:
-        lineas.append(f"• {a.get('codigo')}: {(a.get('mensaje') or '')[:120]}")
-    texto = (
-        "🛠 MENTE ERRORES Quantum MLB\n"
-        + "\n".join(lineas)
-        + "\nRemediación: ESPN/fallback/shadow/registro T-60 si aplica."
-        + "\nSi Render free duerme: cron externo cada 5 min a /api/health o /api/cron."
-    )
-    try:
-        from whatsapp_alerta import enviar_alerta
-
-        res = enviar_alerta(texto, cfg, forzar=True)
-        _marcar_cooldown(estado, clave)
-        return {"ok": bool((res or {}).get("ok")), "resultado": res, "codigo": codigo}
-    except Exception as e:
-        return {"ok": False, "error": str(e)[:120], "codigo": codigo}
+    """Los incidentes quedan en mente_errores.json. No hay canal externo."""
+    return None
 
 
 def ejecutar_ciclo(
@@ -787,27 +662,6 @@ def ejecutar_ciclo(
     cfg_eff = aplicar_overrides_config(dict(cfg))
     if memoria is not None:
         cfg_eff["_memoria_ref"] = memoria
-        if isinstance(memoria.get("telegram"), dict):
-            cfg_eff["_memoria_telegram"] = memoria["telegram"]
-
-    # Siempre intenta reescribir disco desde env/memoria (anti wipe Render)
-    telegram_ok_tras = False
-    sync_info: dict[str, Any] = {}
-    try:
-        from whatsapp_alerta import sincronizar_telegram_persistencia
-
-        sync_info = sincronizar_telegram_persistencia(cfg_eff, memoria) or {}
-        if sync_info.get("ok") and (
-            sync_info.get("wrote_token")
-            or sync_info.get("wrote_chat")
-            or sync_info.get("memoria_actualizada")
-        ):
-            telegram_ok_tras = True
-        elif sync_info.get("ok"):
-            # Ya estaba sano; no marcar como "restaurado" para no spam de saves
-            telegram_ok_tras = False
-    except Exception:
-        pass
 
     estado = _leer_estado()
     hallazgos = diagnosticar(
@@ -831,27 +685,6 @@ def ejecutar_ciclo(
         if hallazgos
         else []
     )
-
-    # Si se restauró Telegram en acciones, re-evaluar y bajar el hallazgo
-    if any(
-        ACCION_RESTAURAR_TELEGRAM in (a.get("acciones") or []) for a in aplicadas
-    ):
-        try:
-            from whatsapp_alerta import telegram_disponible
-
-            st = telegram_disponible(cfg_eff) or {}
-            telegram_ok_tras = bool(st.get("ok")) or telegram_ok_tras
-            if telegram_ok_tras:
-                hallazgos = [h for h in hallazgos if h.get("codigo") != "telegram_no_listo"]
-                for a in aplicadas:
-                    if a.get("codigo") == "telegram_no_listo":
-                        a["severidad"] = "baja"
-                        a["mensaje"] = "Telegram restaurado tras wipe/redeploy"
-        except Exception:
-            pass
-    elif sync_info.get("ok"):
-        # Ya listo vía env/memoria/disco: no reportar falso positivo
-        hallazgos = [h for h in hallazgos if h.get("codigo") != "telegram_no_listo"]
 
     # Si se restauró historial, re-evaluar y no dejar el panel en "alerta" eterna
     if any(ACCION_RESTAURAR_HISTORIAL in (a.get("acciones") or []) for a in aplicadas):
@@ -883,10 +716,7 @@ def ejecutar_ciclo(
         else None
     )
 
-    if telegram_ok_tras and not hallazgos:
-        msg_final = "Mente errores OK · Telegram restaurado"
-    else:
-        msg_final = _mensaje_resumen(hallazgos, aplicadas, nuevos=nuevos, repetidos=repetidos)
+    msg_final = _mensaje_resumen(hallazgos, aplicadas, nuevos=nuevos, repetidos=repetidos)
 
     resumen = {
         "ok": True,
@@ -900,8 +730,6 @@ def ejecutar_ciclo(
         "nivel": _nivel_desde(hallazgos, nuevos),
         "mensaje": msg_final,
         "notificacion": aviso,
-        "telegram_restaurado": telegram_ok_tras,
-        "memoria_telegram_dirty": bool(sync_info.get("memoria_actualizada")),
     }
     estado["ultimo_ciclo"] = {
         "hora": resumen["hora"],
@@ -910,7 +738,6 @@ def ejecutar_ciclo(
         "n_hallazgos": len(hallazgos),
         "n_hallazgos_nuevos": len(nuevos),
         "n_acciones": len(aplicadas),
-        "telegram_restaurado": telegram_ok_tras,
     }
     _guardar_estado(estado)
     print(f"[MENTE-ERRORES] {resumen['mensaje']}")

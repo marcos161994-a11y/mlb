@@ -71,19 +71,6 @@ from mente_errores import (
     registrar_error_cliente,
 )
 from mente_integridad import verificar_panel_html
-from whatsapp_alerta import (
-    notificar_pick_t60,
-    whatsapp_disponible,
-    telegram_disponible,
-    alerta_disponible,
-    formatear_mensaje_pick,
-    enviar_whatsapp,
-    enviar_telegram,
-    enviar_alerta,
-    vincular_telegram_chat,
-    restaurar_telegram_desde_memoria,
-    telegram_a_memoria,
-)
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
@@ -325,37 +312,6 @@ def _inicializar_datos_persistencia() -> None:
             if src.exists() and not dst.exists():
                 dst.write_bytes(src.read_bytes())
                 print(f"[CLOUD] Modelo ML copiado a {dst}")
-    try:
-        mem = cargar_memoria()
-        from whatsapp_alerta import sincronizar_telegram_persistencia
-
-        r = sincronizar_telegram_persistencia(_cfg_con_telegram_memoria(), mem)
-        if r.get("tiene_token") and r.get("tiene_chat"):
-            guardar_memoria(mem)
-            print(f"[TELEGRAM] Sync persistencia OK ({r.get('fuente')}): {r}")
-        elif r.get("restored_token") or r.get("restored_chat"):
-            print(f"[TELEGRAM] Sync parcial: {r}")
-        else:
-            r2 = restaurar_telegram_desde_memoria(mem)
-            if r2.get("ok"):
-                print(f"[TELEGRAM] Restaurado desde memoria: {r2}")
-            else:
-                print(f"[TELEGRAM] Sin credenciales aún: {r.get('motivo') or r2}")
-    except Exception as e:
-        print(f"[TELEGRAM] restore: {e}")
-
-
-def _cfg_con_telegram_memoria(cfg: dict | None = None) -> dict:
-    """Inyecta telegram guardado en memoria para status/envío."""
-    cfg = dict(cfg or cargar_config())
-    try:
-        mem = cargar_memoria()
-        tg = mem.get("telegram") if isinstance(mem.get("telegram"), dict) else {}
-        if tg:
-            cfg["_memoria_telegram"] = tg
-    except Exception:
-        pass
-    return cfg
 
 
 def _verificar_cron_secreto(secret: str | None) -> None:
@@ -2009,18 +1965,15 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
             else:
                 pred["valida_stats"] = True
                 pred["invalida_tarde"] = False
-            # Mente local para el aviso (sin Groq) + WhatsApp del equipo elegido
             try:
-                cfg_wa = _cfg_con_telegram_memoria(cfg)
-                if cfg_wa.get("usar_mente", True) and not isinstance(pred.get("ia_mente"), dict):
+                if cfg.get("usar_mente", True) and not isinstance(pred.get("ia_mente"), dict):
                     mente_t60 = mente_conclusion(
-                        juego, cfg_wa, memoria, forzar=True, solo_local=True
+                        juego, cfg, memoria, forzar=True, solo_local=True
                     )
                     pred["ia_mente"] = mente_t60
                     juego["ia_mente"] = mente_t60
-                notificar_pick_t60(juego, pred, cfg_wa, fase="t60")
             except Exception as e:
-                print(f"[WHATSAPP] aviso T-60: {e}")
+                print(f"[MENTE] aviso T-60: {e}")
             nuevas += 1
             ya.add(gid)
 
@@ -2650,11 +2603,6 @@ def _bloquear_juego_locked(
         juego["ia_mente"] = mente
         if pred_existente is not None:
             pred_existente["ia_mente"] = mente
-            # Si el paper se congeló sin WhatsApp (Render dormido), avisar ahora
-            try:
-                notificar_pick_t60(juego, pred_existente, _cfg_con_telegram_memoria(cfg), fase="bloqueo")
-            except Exception as e:
-                print(f"[WHATSAPP] aviso bloqueo: {e}")
         if not mente.get("autoriza_dinero"):
             motivo_m = (
                 f"MENTE {mente.get('decision')}: "
@@ -3653,18 +3601,16 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
         print(f"[MENTE-APRENDIZAJE] aviso estado: {e}")
 
     vigilancia = vigilancia_t60(juegos, memoria, cfg)
-    cfg_ops = _cfg_con_telegram_memoria(cfg)
+    cfg_ops = cfg
     # En panel ligero el cron ya corre mente/T-60; no bloquear la UI 10–20s
     if not ligero:
         try:
-            me_out = ejecutar_ciclo_mente_errores(
+            ejecutar_ciclo_mente_errores(
                 cfg_ops,
                 vigilancia=vigilancia,
                 lineas_meta=_lineas_meta_cache if isinstance(_lineas_meta_cache, dict) else None,
                 memoria=memoria,
             )
-            if me_out.get("telegram_restaurado") or me_out.get("memoria_telegram_dirty"):
-                guardar_memoria(memoria)
         except Exception as e:
             print(f"[MENTE-ERRORES] aviso estado: {e}")
             try:
@@ -3742,14 +3688,12 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
         "perdidos_hoy": list((vigilancia or {}).get("perdidos") or [])[:8],
         "mente_errores": _resumen_mente_errores(cfg_ops),
         "historial_sello": _resumen_sello(memoria),
-        "telegram": telegram_disponible(cfg_ops),
-        "alertas": alerta_disponible(cfg_ops),
     }
 
 
 @app.get("/api/historial-status")
 def api_historial_status():
-    """Sello rápido: ¿el historial está sano? (para ti / cron / Telegram)."""
+    """Sello rápido: ¿el historial está sano?"""
     try:
         _intentar_recuperar_wipe()
     except Exception:
@@ -4139,10 +4083,7 @@ def api_health():
     mem_h = cargar_memoria()
     hist_fechas = sorted(_fechas_con_historial(mem_h))
     hist_ap, hist_pr = _contar_historial(mem_h)
-    cfg_ops = dict(cfg)
-    tg = mem_h.get("telegram") if isinstance(mem_h.get("telegram"), dict) else {}
-    if tg:
-        cfg_ops["_memoria_telegram"] = tg
+    cfg_ops = cfg
     rss_mb: float | None = None
     try:
         import resource
@@ -4248,9 +4189,6 @@ def api_health():
         },
         "mente_errores": _resumen_mente_errores(cfg_ops),
         "vigilancia_cron_min": 5,
-        "whatsapp": whatsapp_disponible(cfg_ops),
-        "telegram": telegram_disponible(cfg_ops),
-        "alertas": alerta_disponible(cfg_ops),
         "xgboost": {
             "activo": bool(cfg.get("usar_xgboost", True)),
         },
@@ -4301,7 +4239,7 @@ def api_mente_errores_ciclo(secret: str | None = None, forzar: bool = False):
     """Fuerza un ciclo de diagnóstico + remediación (opcional CRON_SECRET)."""
     if secret:
         _verificar_cron_secreto(secret)
-    cfg = _cfg_con_telegram_memoria()
+    cfg = cargar_config()
     mem = cargar_memoria()
     out = ejecutar_ciclo_mente_errores(
         cfg,
@@ -4310,8 +4248,6 @@ def api_mente_errores_ciclo(secret: str | None = None, forzar: bool = False):
         memoria=mem,
         forzar=forzar,
     )
-    if out.get("telegram_restaurado") or out.get("memoria_telegram_dirty"):
-        guardar_memoria(mem)
     return out
 
 
@@ -4652,223 +4588,6 @@ def api_mente_status():
         return {**base, "ok": False, "motivo": str(e)[:120]}
 
 
-@app.get("/api/whatsapp-status")
-def api_whatsapp_status():
-    """Estado de alertas WhatsApp (CallMeBot). Preferir Telegram si WhatsApp está lleno."""
-    cfg = cargar_config()
-    wa = cfg.get("whatsapp") if isinstance(cfg.get("whatsapp"), dict) else {}
-    disp = whatsapp_disponible(cfg)
-    return {
-        **disp,
-        "activo_config": bool(wa.get("activo", False)),
-        "proveedor": wa.get("proveedor") or "callmebot",
-        "solo_apostables": bool(wa.get("solo_apostables", False)),
-        "nota": "Si CallMeBot WhatsApp está lleno, usa /api/telegram-status",
-        "setup": (
-            "1) Agrega el bot CallMeBot en WhatsApp. "
-            "2) Envía: I allow callmebot to send me messages. "
-            "3) Pon phone+apikey en Render (WHATSAPP_PHONE, CALLMEBOT_APIKEY)."
-        ),
-    }
-
-
-@app.get("/api/telegram-status")
-def api_telegram_status():
-    """Estado de alertas Telegram (BotFather oficial)."""
-    cfg = _cfg_con_telegram_memoria()
-    tg = cfg.get("telegram") if isinstance(cfg.get("telegram"), dict) else {}
-    disp = telegram_disponible(cfg)
-    return {
-        **disp,
-        "activo_config": bool(tg.get("activo", True)),
-        "setup": disp.get("setup")
-        or (
-            "1) Panel → 📱 Telegram → pega token de @BotFather\n"
-            "2) Guardar token\n"
-            "3) Escribe hola a tu bot\n"
-            "4) Vincular\n"
-            "5) Probar"
-        ),
-    }
-
-
-@app.get("/api/telegram-vincular")
-def api_telegram_vincular():
-    """
-    Tras crear el bot y escribirle 'hola', esto guarda tu chat_id
-    y te manda un mensaje de confirmación.
-    """
-    cfg = _cfg_con_telegram_memoria()
-    res = vincular_telegram_chat(cfg)
-    if res.get("ok") and res.get("chat_id"):
-        try:
-            mem = cargar_memoria()
-            # token ya en disco; leerlo para memoria
-            from whatsapp_alerta import leer_bot_token_guardado
-
-            mem = telegram_a_memoria(
-                mem,
-                token=leer_bot_token_guardado(),
-                chat_id=str(res.get("chat_id")),
-                bot=str(res.get("usuario") or ""),
-            )
-            guardar_memoria(mem)
-        except Exception as e:
-            print(f"[TELEGRAM] no se pudo persistir en memoria: {e}")
-    return res
-
-
-@app.get("/api/telegram-guardar-token")
-def api_telegram_guardar_token(token: str = "", secret: str = ""):
-    """
-    Guarda el token del bot en disco + memoria.
-    GET con ?secret= solo si CRON_SECRET está definido (automatizaciones).
-    Preferir POST desde el panel (sin secret).
-    """
-    from whatsapp_alerta import configurar_bot_token
-
-    esperado = os.environ.get("CRON_SECRET", "").strip()
-    if esperado:
-        _verificar_cron_secreto(secret or None)
-    res = configurar_bot_token(token, cargar_config())
-    if res.get("ok") and res.get("bot_token"):
-        try:
-            mem = cargar_memoria()
-            mem = telegram_a_memoria(mem, token=str(res["bot_token"]), bot=str(res.get("bot") or ""))
-            guardar_memoria(mem)
-            res.pop("bot_token", None)
-        except Exception as e:
-            print(f"[TELEGRAM] persist memoria: {e}")
-            res.pop("bot_token", None)
-    else:
-        res.pop("bot_token", None)
-    return res
-
-
-@app.post("/api/telegram-guardar-token")
-async def api_telegram_guardar_token_post(request: Request):
-    """JSON: {"token":"123:AA..."}. Sin CRON_SECRET: el token ya es la credencial."""
-    from whatsapp_alerta import configurar_bot_token
-
-    body = {}
-    try:
-        body = await request.json()
-    except Exception:
-        body = {}
-    res = configurar_bot_token(str((body or {}).get("token") or ""), cargar_config())
-    if res.get("ok") and res.get("bot_token"):
-        try:
-            mem = cargar_memoria()
-            mem = telegram_a_memoria(mem, token=str(res["bot_token"]), bot=str(res.get("bot") or ""))
-            guardar_memoria(mem)
-        except Exception as e:
-            print(f"[TELEGRAM] persist memoria: {e}")
-    res.pop("bot_token", None)
-    return res
-
-
-@app.get("/api/alertas-status")
-def api_alertas_status():
-    """Canal de alerta activo (Telegram preferido, WhatsApp fallback)."""
-    cfg = _cfg_con_telegram_memoria()
-    return alerta_disponible(cfg)
-
-@app.post("/api/whatsapp-test")
-async def api_whatsapp_test(request: Request):
-    """Envía un mensaje de prueba por WhatsApp."""
-    cfg = cargar_config()
-    disp = whatsapp_disponible(cfg)
-    if not disp.get("ok"):
-        return {**disp, "enviado": False}
-    body = {}
-    try:
-        body = await request.json()
-    except Exception:
-        body = {}
-    texto = str((body or {}).get("texto") or "").strip()
-    if not texto:
-        texto = formatear_mensaje_pick(
-            {
-                "visitante": "Away Test",
-                "home": "Home Test",
-                "pick": "Home Test ML",
-                "probPick": 61,
-                "edge": 8.0,
-                "odds": 1.95,
-                "odds_american": -105,
-                "hora_inicio_txt": "07:05 PM",
-                "ia_mente": {"decision": "APOSTAR", "confianza": 4, "razones": ["Prueba WhatsApp"]},
-            },
-            cfg=cfg,
-            fase="test",
-        )
-    res = enviar_whatsapp(texto, cfg, forzar=True)
-    return {**res, "enviado": bool(res.get("ok")), "preview": texto[:200]}
-
-
-@app.post("/api/telegram-test")
-async def api_telegram_test(request: Request):
-    """Envía un mensaje de prueba por Telegram."""
-    cfg = _cfg_con_telegram_memoria()
-    disp = telegram_disponible(cfg)
-    if not disp.get("ok"):
-        return {**disp, "enviado": False}
-    body = {}
-    try:
-        body = await request.json()
-    except Exception:
-        body = {}
-    texto = str((body or {}).get("texto") or "").strip()
-    if not texto:
-        texto = formatear_mensaje_pick(
-            {
-                "visitante": "Away Test",
-                "home": "Home Test",
-                "pick": "Home Test ML",
-                "probPick": 61,
-                "edge": 8.0,
-                "odds": 1.95,
-                "odds_american": -105,
-                "hora_inicio_txt": "07:05 PM",
-                "ia_mente": {"decision": "APOSTAR", "confianza": 4, "razones": ["Prueba Telegram"]},
-            },
-            cfg=cfg,
-            fase="test",
-        )
-    res = enviar_telegram(texto, cfg, forzar=True)
-    return {**res, "enviado": bool(res.get("ok")), "preview": texto[:200]}
-
-
-@app.post("/api/alerta-test")
-async def api_alerta_test(request: Request):
-    """Prueba el canal activo (Telegram o WhatsApp)."""
-    cfg = _cfg_con_telegram_memoria()
-    disp = alerta_disponible(cfg)
-    if not disp.get("ok"):
-        return {**disp, "enviado": False}
-    body = {}
-    try:
-        body = await request.json()
-    except Exception:
-        body = {}
-    texto = str((body or {}).get("texto") or "").strip() or formatear_mensaje_pick(
-        {
-            "visitante": "Away Test",
-            "home": "Home Test",
-            "pick": "Home Test ML",
-            "probPick": 61,
-            "edge": 8.0,
-            "odds": 1.95,
-            "hora_inicio_txt": "07:05 PM",
-            "ia_mente": {"decision": "APOSTAR", "confianza": 4, "razones": ["Prueba alerta"]},
-        },
-        cfg=cfg,
-        fase="test",
-    )
-    res = enviar_alerta(texto, cfg, forzar=True)
-    return {**res, "enviado": bool(res.get("ok")), "preview": texto[:200]}
-
-
 @app.get("/api/calib-status")
 def api_calib_status():
     """Estado del calibrador de probabilidades."""
@@ -4959,7 +4678,7 @@ def ejecutar_trabajo_cron_externo() -> dict:
     sincronizar_experimento_a_hoy()
     reparar_odds_papel(cargar_memoria())
     rellenar_predicciones_recientes(cargar_memoria(), dias_atras=7)
-    cfg_cron = _cfg_con_telegram_memoria()
+    cfg_cron = cargar_config()
     cuotas_pre = precalentar_cuotas_mercado(cfg_cron)
     if _mercado_requiere_cuotas(cfg_cron) and not cuotas_pre.get("ok"):
         try:
@@ -4981,7 +4700,7 @@ def ejecutar_trabajo_cron_externo() -> dict:
     resultado = bloquear_apuestas_del_dia(forzar=False)
     liquidar_todo(cargar_memoria())
     memoria = cargar_memoria()
-    cfg = _cfg_con_telegram_memoria()
+    cfg = cargar_config()
     # Vigilancia real (antes el cron pasaba vigilancia=None → mente ciega al sueño)
     vigilancia: dict = {}
     try:
@@ -5006,8 +4725,6 @@ def ejecutar_trabajo_cron_externo() -> dict:
             lineas_meta=_lineas_meta_cache if isinstance(_lineas_meta_cache, dict) else None,
             memoria=memoria,
         )
-        if mente_err.get("telegram_restaurado") or mente_err.get("memoria_telegram_dirty"):
-            guardar_memoria(memoria)
     except Exception as e:
         print(f"[MENTE-ERRORES] ciclo cron: {e}")
         try:
@@ -5043,7 +4760,6 @@ def ejecutar_trabajo_cron_externo() -> dict:
             "nivel": (mente_err or {}).get("nivel"),
             "mensaje": (mente_err or {}).get("mensaje"),
             "n_hallazgos": len((mente_err or {}).get("hallazgos") or []),
-            "telegram_restaurado": (mente_err or {}).get("telegram_restaurado"),
         },
     }
 
