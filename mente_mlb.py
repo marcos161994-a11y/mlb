@@ -368,6 +368,7 @@ def _reglas_duras(
     briefing: dict,
     modo: dict,
     cfg: dict | None = None,
+    memoria: dict | None = None,
 ) -> dict[str, Any] | None:
     """
     Si dispara, devuelve conclusión inmediata (sin Groq).
@@ -585,14 +586,15 @@ def _reglas_duras(
         try:
             from mente_skills import aplicar_skills
 
-            pasar_skill, motivo_skill = aplicar_skills(juego)
+            pasar_skill, motivo_skill = aplicar_skills(juego, memoria)
             if pasar_skill:
+                codigo = "humedad_alta" if "humedad" in motivo_skill.lower() else "ficha"
                 return _pack(
                     "PASAR",
                     0,
                     [motivo_skill[:80]],
                     4,
-                    ["humedad_alta"],
+                    [codigo],
                     fuente="skill",
                     briefing=briefing,
                 )
@@ -935,7 +937,7 @@ def mente_conclusion(
     except Exception:
         pass
 
-    dura = _reglas_duras(juego, briefing, modo, cfg)
+    dura = _reglas_duras(juego, briefing, modo, cfg, memoria)
     if dura:
         out = dura
     else:

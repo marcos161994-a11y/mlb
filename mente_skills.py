@@ -92,8 +92,35 @@ def reporte_auto_evolucion(memoria: dict | None = None) -> dict[str, Any]:
         "activa": True,
         "notas_de_fallos": len(notas),
         "limitaciones": notas,
+        "fichas": _fichas_publicas(memoria),
         "actualizado": _ahora(),
     }
+
+
+def _fichas_publicas(memoria: dict | None) -> list[dict[str, Any]]:
+    try:
+        from mente_fichas import auditar_fichas
+
+        audit = auditar_fichas(memoria)
+    except Exception:
+        return []
+    out = []
+    for ficha in audit.get("fichas") or []:
+        out.append(
+            {
+                "id": ficha["id"],
+                "nombre": ficha["nombre"],
+                "n": ficha["n"],
+                "aciertos": ficha["aciertos"],
+                "wr": ficha["wr"],
+                "profit": ficha["profit"],
+                "resto_wr": ficha["resto_wr"],
+                "clv_en_contra": ficha["clv_en_contra"],
+                "clv_n": ficha["clv_n"],
+                "activa": ficha["activa"],
+            }
+        )
+    return out
 
 
 def guardar_reporte(memoria: dict | None = None) -> dict[str, Any]:
@@ -103,6 +130,14 @@ def guardar_reporte(memoria: dict | None = None) -> dict[str, Any]:
     return data
 
 
-def aplicar_skills(juego: dict) -> tuple[bool, str]:
-    """Las habilidades activas. Hoy: humedad."""
-    return debe_pasar_por_humedad(juego)
+def aplicar_skills(juego: dict, memoria: dict | None = None) -> tuple[bool, str]:
+    """Humedad, y cualquier ficha que el historial haya puesto en rojo."""
+    ok, msg = debe_pasar_por_humedad(juego)
+    if ok:
+        return ok, msg
+    try:
+        from mente_fichas import debe_pasar_por_ficha
+
+        return debe_pasar_por_ficha(juego, memoria)
+    except Exception:
+        return False, ""
