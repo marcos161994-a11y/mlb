@@ -71,6 +71,32 @@
             font-size: 0.85rem;
             color: #667;
         }
+        .ficha {
+            border-top: 1px solid #ece6da;
+            padding: 10px 0 2px;
+        }
+        .ficha h3 {
+            font-size: 1.02rem;
+            margin: 0 0 2px;
+        }
+        .ficha .cuentas {
+            font-family: "Segoe UI", sans-serif;
+            font-size: 0.9rem;
+            color: #3d4654;
+            margin: 0 0 4px;
+        }
+        .marca {
+            font-family: "Segoe UI", sans-serif;
+            font-size: 0.72rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            border-radius: 999px;
+            padding: 2px 8px;
+            margin-left: 6px;
+            vertical-align: 2px;
+        }
+        .marca.roja { background: #f6d7d2; color: #8c2f1c; }
+        .marca.gris { background: #e8e5dd; color: #5a5f68; }
     </style>
 </head>
 <body>
@@ -83,6 +109,12 @@
         <h2 id="rep-habilidad">Habilidad adquirida hoy: Humedad alta</h2>
         <p id="rep-motivo">Motivo: los fallos en estadios húmedos no miraban la humedad, aunque el clima ya la traía. Limitación detectada: Falta de análisis de física climática.</p>
         <p class="efecto" id="rep-prueba">Prueba: en humedad de 70% o más, los picks válidos fueron 10 de 26 (38.5%) y el papel cerca de -30. En humedad media, 15 de 20 (75%). La mente deja de apostar ese spot si el margen es menor de 12. Eso quita un grupo que venía perdiendo.</p>
+    </article>
+    <article id="bloque-fichas" hidden>
+        <p class="cuando">Fichas de aprendizaje</p>
+        <h2>Situaciones que la mente está contando</h2>
+        <p id="fichas-base">Cada ficha lleva su propia cuenta. Solo bloquea un pick cuando ese grupo viene perdiendo frente al resto.</p>
+        <div id="fichas-lista"></div>
     </article>
     <a class="nav" href="/diagrama">Ver la red</a>
     <div id="lista">
@@ -160,7 +192,45 @@ async function cargarReporte() {
         document.getElementById('rep-habilidad').textContent = 'Habilidad adquirida hoy: ' + d.habilidad;
         document.getElementById('rep-motivo').textContent = 'Motivo: ' + (d.motivo || '');
         document.getElementById('rep-prueba').textContent = 'Prueba de éxito: ' + (d.prueba || '');
+        pintarFichas(d);
     } catch (e) { /* se queda el texto de la página */ }
+}
+
+function pintarFichas(d) {
+    const fichas = (d && d.fichas) || [];
+    if (!fichas.length) return;
+    const base = (d && d.fichas_base) || {};
+    const bloque = document.getElementById('bloque-fichas');
+    const lista = document.getElementById('fichas-lista');
+    lista.innerHTML = '';
+    if (base.n) {
+        document.getElementById('fichas-base').textContent =
+            'De todos los picks cerrados van ' + base.aciertos + ' de ' + base.n +
+            ' (' + base.wr + '%). Cada ficha se compara con eso y solo bloquea si viene perdiendo.';
+    }
+    fichas.forEach(f => {
+        const div = document.createElement('div');
+        div.className = 'ficha';
+        const h = document.createElement('h3');
+        h.textContent = f.nombre;
+        const marca = document.createElement('span');
+        marca.className = 'marca ' + (f.activa ? 'roja' : 'gris');
+        marca.textContent = f.activa ? 'Bloquea' : 'Solo observa';
+        h.appendChild(marca);
+        const cuentas = document.createElement('p');
+        cuentas.className = 'cuentas';
+        cuentas.textContent = f.n
+            ? f.aciertos + ' de ' + f.n + ' (' + f.wr + '%), papel ' + f.profit +
+              '. El resto va en ' + f.resto_wr + '%.'
+            : 'Todavía sin juegos guardados en esta situación.';
+        const texto = document.createElement('p');
+        texto.textContent = f.texto || '';
+        div.appendChild(h);
+        div.appendChild(cuentas);
+        div.appendChild(texto);
+        lista.appendChild(div);
+    });
+    bloque.hidden = false;
 }
 
 async function cargar() {
