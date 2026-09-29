@@ -92,8 +92,19 @@ def reporte_auto_evolucion(memoria: dict | None = None) -> dict[str, Any]:
         "notas_de_fallos": len(notas),
         "limitaciones": notas,
         "fichas": _fichas_publicas(memoria),
+        "fichas_base": _base_fichas(memoria),
         "actualizado": _ahora(),
     }
+
+
+def _base_fichas(memoria: dict | None) -> dict[str, Any]:
+    """Cuenta de todos los picks cerrados, para comparar contra cada ficha."""
+    try:
+        from mente_fichas import auditar_fichas
+
+        return auditar_fichas(memoria).get("base") or {}
+    except Exception:
+        return {}
 
 
 def _fichas_publicas(memoria: dict | None) -> list[dict[str, Any]]:
@@ -109,6 +120,7 @@ def _fichas_publicas(memoria: dict | None) -> list[dict[str, Any]]:
             {
                 "id": ficha["id"],
                 "nombre": ficha["nombre"],
+                "texto": ficha["texto"],
                 "n": ficha["n"],
                 "aciertos": ficha["aciertos"],
                 "wr": ficha["wr"],
