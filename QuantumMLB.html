@@ -662,6 +662,8 @@
         <button onclick="liquidar()">Actualizar resultados</button>
         <button onclick="procesarExperiencias()">Procesar lecciones</button>
         <button class="warn" onclick="reiniciar()">Reiniciar experimento</button>
+        <button type="button" onclick="configurarClave()">Clave de operaciones</button>
+        <p id="clave-status" style="color:#8899aa;font-size:0.82rem;margin:8px 0 0;"></p>
     </div>
 </details>
 
@@ -717,6 +719,112 @@ const ES_NUBE = API.includes('onrender.com') || API.includes('render.com');
 const REFRESH_MS = ES_NUBE ? 45000 : 8000;
 const CACHE_KEY = 'qmlb_last_state_v2';
 const PANEL_VER = '2026-09-29-dias-por-mes';
+const SECRET_KEY = 'qmlb_cron_secret';
+
+function leerSecretoCron() {
+    try { return (localStorage.getItem(SECRET_KEY) || '').trim(); }
+    catch (_) { return ''; }
+}
+
+function guardarSecretoCron(valor) {
+    try {
+        const v = (valor || '').trim();
+        if (v) localStorage.setItem(SECRET_KEY, v);
+        else localStorage.removeItem(SECRET_KEY);
+    } catch (_) { /* Safari privado */ }
+    actualizarEstadoClave();
+}
+
+function actualizarEstadoClave() {
+    const el = document.getElementById('clave-status');
+    if (!el) return;
+    el.textContent = leerSecretoCron()
+        ? 'Clave guardada en este navegador. No viaja en la URL.'
+        : 'Sin clave: los botones de operaciones la pedirán una vez.';
+}
+
+function configurarClave() {
+    if (leerSecretoCron()) {
+        const modo = prompt(
+            'Ya hay una clave guardada en este navegador.\n' +
+            'Escribe NUEVA para cambiarla, BORRAR para quitarla, o cancela.'
+        );
+        if (modo == null) return;
+        const m = modo.trim().toUpperCase();
+        if (m === 'BORRAR') {
+            guardarSecretoCron('');
+            toast('Clave borrada de este navegador');
+            return;
+        }
+        if (m !== 'NUEVA') {
+            toast('Sin cambios');
+            return;
+        }
+    }
+    const typed = prompt(
+        'Pega el CRON_SECRET (el mismo valor que en Render).\n' +
+        'Solo se guarda en este navegador.'
+    );
+    if (typed == null) return;
+    const v = typed.trim();
+    if (!v) {
+        toast('No se guardó ninguna clave');
+        return;
+    }
+    guardarSecretoCron(v);
+    toast('Clave guardada en este navegador');
+}
+
+function pedirSecretoCron() {
+    const ya = leerSecretoCron();
+    if (ya) return ya;
+    const typed = prompt(
+        'Esta acción cambia la banca o la memoria.\n' +
+        'Pega el CRON_SECRET. Se guarda solo en este navegador.'
+    );
+    if (typed == null) return '';
+    const v = typed.trim();
+    if (!v) return '';
+    guardarSecretoCron(v);
+    return v;
+}
+
+function headersCron() {
+    const s = leerSecretoCron();
+    return s ? { 'X-Cron-Secret': s } : {};
+}
+
+function mensajeErrorApi(d, status) {
+    if (d && typeof d.detail === 'string') return d.detail;
+    if (d && Array.isArray(d.detail) && d.detail[0] && d.detail[0].msg) return d.detail[0].msg;
+    if (status === 503) return 'CRON_SECRET no configurado en el servidor';
+    if (status === 403) return 'CRON_SECRET inválido';
+    return '';
+}
+
+async function fetchProtegido(path, options) {
+    let secret = pedirSecretoCron();
+    if (!secret) {
+        const err = new Error('Cancelado: falta CRON_SECRET');
+        err.cancelado = true;
+        throw err;
+    }
+    const opts = Object.assign({ method: 'POST', cache: 'no-store' }, options || {});
+    opts.headers = Object.assign({}, opts.headers || {}, { 'X-Cron-Secret': secret });
+    let r = await fetch(API + path, opts);
+    if (r.status === 403) {
+        guardarSecretoCron('');
+        secret = pedirSecretoCron();
+        if (!secret) {
+            const err = new Error('CRON_SECRET rechazado');
+            err.cancelado = true;
+            throw err;
+        }
+        opts.headers['X-Cron-Secret'] = secret;
+        r = await fetch(API + path, opts);
+    }
+    return r;
+}
 let cargandoEstado = false;
 let cargandoBoot = false;
 let cargandoJuegos = false;
@@ -1146,7 +1254,11 @@ async function cargarEstado() {
         const healthP = fetch(API + '/api/health', { cache: 'no-store', signal: bootCtrl.signal })
             .then(r => (r.ok ? r.json() : null))
             .catch(() => null);
-        const bootP = fetch(API + '/api/panel-boot', { cache: 'no-store', signal: bootCtrl.signal })
+        const bootP = fetch(API + '/api/panel-boot', {
+            cache: 'no-store',
+            signal: bootCtrl.signal,
+            headers: headersCron(),
+        })
             .then(async r => {
                 if (r.status === 502 || r.status === 503) throw new Error('Servidor respondió ' + r.status);
                 if (!r.ok) return null;
@@ -2212,40 +2324,39 @@ function pintarJuegos(juegos) {
 
 async function bloquearHoy() {
     try {
-        const r = await fetch(API + '/api/bloquear-hoy', { method: 'POST' });
-        const d = await r.json();
+        const r = await fetchProtegido('/api/bloquear-hoy', { method: 'POST' });
+        const d = await r.json().catch(() => ({}));
         if (!r.ok) {
-            const msg = typeof d.detail === 'string' ? d.detail : (d.detail?.[0]?.msg || d.motivo || 'Error');
-            throw new Error(msg);
+            throw new Error(mensajeErrorApi(d, r.status) || d.motivo || 'Error');
         }
         toast(`Dinero: ${d.apuestas_nuevas || 0} · Predicciones: ${d.predicciones_nuevas || 0} · Programados: ${d.programados || '?'}`);
         cargarEstado();
     } catch (e) {
-        toast(e.message || 'No se pudo bloquear');
+        toast((e && e.message) || 'No se pudo bloquear');
     }
 }
 
 async function liquidar() {
     try {
-        const r = await fetch(API + '/api/liquidar', { method: 'POST' });
-        const d = await r.json();
+        const r = await fetchProtegido('/api/liquidar', { method: 'POST' });
+        const d = await r.json().catch(() => ({}));
         if (!r.ok) {
-            throw new Error(d.detail || d.motivo || ('Error ' + r.status));
+            throw new Error(mensajeErrorApi(d, r.status) || d.motivo || ('Error ' + r.status));
         }
         toast(`${d.liquidaciones || 0} juegos liquidados · Banca $${Number(d.capital ?? 0).toFixed(2)}`);
         cargarEstado();
     } catch (e) {
-        toast(e.message || 'No se pudo liquidar');
-        reportarErrorPanel('liquidar', e && (e.message || e));
+        toast((e && e.message) || 'No se pudo liquidar');
+        if (!(e && e.cancelado)) reportarErrorPanel('liquidar', e && (e.message || e));
     }
 }
 
 async function procesarExperiencias() {
     try {
-        const r = await fetch(API + '/api/procesar-experiencias?forzar=1', { method: 'POST' });
-        const d = await r.json();
-        if (!d.ok) {
-            toast(d.motivo || 'No se pudieron procesar experiencias');
+        const r = await fetchProtegido('/api/procesar-experiencias?forzar=1', { method: 'POST' });
+        const d = await r.json().catch(() => ({}));
+        if (!r.ok || !d.ok) {
+            toast(mensajeErrorApi(d, r.status) || d.motivo || 'No se pudieron procesar experiencias');
             return;
         }
         const por = d.por_patron || {};
@@ -2253,7 +2364,7 @@ async function procesarExperiencias() {
         toast(`Lecciones +${d.nuevas || 0} · total ${d.lecciones?.total || 0}` + (bits ? ' · ' + bits : ''));
         cargarEstado();
     } catch (e) {
-        toast(e.message || 'Error procesando experiencias');
+        toast((e && e.message) || 'Error procesando experiencias');
     }
 }
 
@@ -2268,16 +2379,21 @@ async function reiniciar() {
         toast('Reinicio cancelado · historial intacto');
         return;
     }
-    const res = await fetch(API + '/api/reiniciar?confirm=BORRAR', { method: 'POST' });
-    if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        toast(err.detail || 'Reinicio bloqueado');
-        return;
+    try {
+        const res = await fetchProtegido('/api/reiniciar?confirm=BORRAR', { method: 'POST' });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            toast(mensajeErrorApi(err, res.status) || 'Reinicio bloqueado');
+            return;
+        }
+        toast('Experimento reiniciado');
+        cargarEstado();
+    } catch (e) {
+        toast((e && e.message) || 'Reinicio bloqueado');
     }
-    toast('Experimento reiniciado');
-    cargarEstado();
 }
 
+actualizarEstadoClave();
 cargarEstado();
 setInterval(cargarEstado, REFRESH_MS);
 // Safari iOS congela timers en segundo plano: al volver, reintenta YA
