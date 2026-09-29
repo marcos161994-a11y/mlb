@@ -35,6 +35,63 @@ def cuotas_pinnacle(juego: dict[str, Any]) -> tuple[float | None, float | None]:
     return None, None
 
 
+def _mediana(valores: list[float]) -> float:
+    ordenados = sorted(valores)
+    medio = len(ordenados) // 2
+    if len(ordenados) % 2:
+        return ordenados[medio]
+    return (ordenados[medio - 1] + ordenados[medio]) / 2.0
+
+
+def _dos_lados(juego: dict[str, Any]) -> tuple[float | None, float | None]:
+    try:
+        away = float(juego.get("odds_away_decimal") or 0)
+        home = float(juego.get("odds_home_decimal") or 0)
+    except (TypeError, ValueError):
+        return None, None
+    if away > 1.0 and home > 1.0:
+        return away, home
+    return None, None
+
+
+def cuotas_cierre(juego: dict[str, Any]) -> tuple[float | None, float | None, str]:
+    """Cierre de referencia para medir el CLV.
+
+    Pinnacle si aparece; si no, la mediana de las casas disponibles; y si solo
+    hay una casa (hoy ESPN publica únicamente DraftKings), el precio de esa
+    misma casa antes del juego. Sin vigorish, comparar la entrada contra ese
+    cierre mide si la línea se movió a favor o en contra.
+    """
+    away, home = cuotas_pinnacle(juego)
+    if away and home:
+        return away, home, "pinnacle"
+    libros = juego.get("lineas_libros") if isinstance(juego.get("lineas_libros"), list) else []
+    aways: list[float] = []
+    homes: list[float] = []
+    casas: list[str] = []
+    for b in libros:
+        if not isinstance(b, dict):
+            continue
+        try:
+            a = float(b.get("away") or 0)
+            h = float(b.get("home") or 0)
+        except (TypeError, ValueError):
+            continue
+        if a > 1.0 and h > 1.0:
+            aways.append(a)
+            homes.append(h)
+            casas.append(str(b.get("casa") or "casa"))
+    if len(aways) >= 2:
+        return _mediana(aways), _mediana(homes), f"mediana_{len(aways)}_casas"
+    if len(aways) == 1:
+        return aways[0], homes[0], f"casa_unica_{casas[0]}"
+    away, home = _dos_lados(juego)
+    if away and home:
+        casa = str(juego.get("lineas_fuente") or "casa")
+        return away, home, f"casa_unica_{casa}"
+    return None, None, "sin_cierre"
+
+
 def cuota_pick_decimal(
     pick: str,
     visitante: str,
@@ -97,9 +154,10 @@ def actualizar_clv_registro(
     """
     if not isinstance(reg, dict) or not isinstance(juego, dict):
         return False
-    away, home = cuotas_pinnacle(juego)
+    away, home, fuente_cierre = cuotas_cierre(juego)
     if not away or not home:
         return False
+    reg["clv_fuente"] = fuente_cierre
     pick = reg.get("pick") or juego.get("pick") or ""
     visitante = reg.get("visitante") or juego.get("visitante") or ""
     home_name = reg.get("home") or juego.get("home") or ""
