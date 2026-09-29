@@ -5,18 +5,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Resumen · qué hizo la mente</title>
     <style>
+        :root {
+            --ink: #17202b;
+            --muted: #68717c;
+            --paper: #f5f2ea;
+            --card: #fff;
+            --line: #e4ded2;
+            --blue: #0b607f;
+            --green: #28643e;
+            --amber: #8a5a12;
+            --red: #9b3825;
+        }
         * { box-sizing: border-box; }
+        html { scroll-behavior: smooth; }
         body {
             margin: 0;
-            background: #f4f1ea;
-            color: #1c2430;
-            font-family: Georgia, "Segoe UI", serif;
-            line-height: 1.55;
+            background: var(--paper);
+            color: var(--ink);
+            font-family: "Segoe UI", system-ui, sans-serif;
+            line-height: 1.45;
         }
         main {
-            max-width: 720px;
+            max-width: 760px;
             margin: 0 auto;
-            padding: 36px 22px 64px;
+            padding: 24px 16px 56px;
         }
         .kicker {
             font-family: "Segoe UI", sans-serif;
@@ -27,63 +39,117 @@
             margin: 0 0 8px;
         }
         h1 {
-            font-size: 2rem;
+            font-family: Georgia, serif;
+            font-size: 1.8rem;
             line-height: 1.15;
-            margin: 0 0 10px;
+            margin: 0 0 5px;
         }
         .lead {
-            font-size: 1.08rem;
-            color: #3d4654;
-            margin: 0 0 22px;
+            font-size: 0.9rem;
+            color: var(--muted);
+            margin: 0 0 12px;
         }
         a.nav {
-            display: inline-block;
-            margin: 0 10px 18px 0;
-            font-family: "Segoe UI", sans-serif;
-            font-size: 0.92rem;
-            color: #0b4f6c;
+            display: block;
+            padding: 8px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            background: rgba(255,255,255,0.78);
+            text-align: center;
+            text-decoration: none;
+            font-size: 0.76rem;
+            font-weight: 700;
+            color: var(--blue);
+        }
+        .nav-row {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            padding: 7px 0;
+            margin-bottom: 8px;
+            background: rgba(245,242,234,0.94);
+            backdrop-filter: blur(10px);
         }
         article {
-            background: #fff;
-            border-radius: 12px;
-            padding: 18px 18px 14px;
-            margin: 0 0 14px;
-            box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+            background: var(--card);
+            border: 1px solid var(--line);
+            border-radius: 11px;
+            padding: 13px;
+            margin: 0 0 9px;
         }
         .cuando {
             font-family: "Segoe UI", sans-serif;
             font-size: 0.78rem;
-            color: #8a5a12;
+            color: var(--amber);
             margin: 0 0 4px;
         }
-        h2 {
-            font-size: 1.2rem;
-            margin: 0 0 8px;
-        }
-        p { margin: 0 0 8px; font-size: 1.05rem; }
+        h2 { font-size: 1.05rem; margin: 0 0 6px; }
+        p { margin: 0 0 7px; font-size: 0.9rem; }
         .efecto {
-            font-family: "Segoe UI", sans-serif;
-            font-size: 0.95rem;
-            color: #245c38;
+            font-size: 0.82rem;
+            color: var(--green);
         }
         #estado {
             font-family: "Segoe UI", sans-serif;
             font-size: 0.85rem;
-            color: #667;
+            color: var(--muted);
+        }
+        .section-label {
+            margin: 16px 2px 7px;
+            color: var(--muted);
+            font-size: 0.72rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+        #reporte-evolucion {
+            border-left: 4px solid var(--amber);
+        }
+        #bloque-fichas > h2 { margin-bottom: 2px; }
+        #fichas-lista {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 7px;
+            margin-top: 10px;
         }
         .ficha {
-            border-top: 1px solid #ece6da;
-            padding: 10px 0 2px;
+            border: 1px solid var(--line);
+            border-radius: 9px;
+            padding: 9px;
+            background: #fbfaf7;
         }
         .ficha h3 {
-            font-size: 1.02rem;
-            margin: 0 0 2px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.88rem;
+            margin: 0 0 7px;
         }
         .ficha .cuentas {
-            font-family: "Segoe UI", sans-serif;
-            font-size: 0.9rem;
-            color: #3d4654;
-            margin: 0 0 4px;
+            font-size: 0.77rem;
+            color: var(--muted);
+            margin: 5px 0 0;
+        }
+        .ficha-metricas {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 4px;
+        }
+        .ficha-metrica {
+            padding: 5px 3px;
+            border-radius: 6px;
+            background: #f1ede4;
+            text-align: center;
+        }
+        .ficha-metrica b { display: block; font-size: 0.82rem; }
+        .ficha-metrica span {
+            display: block;
+            color: var(--muted);
+            font-size: 0.58rem;
+            text-transform: uppercase;
         }
         .marca {
             font-family: "Segoe UI", sans-serif;
@@ -92,11 +158,46 @@
             text-transform: uppercase;
             border-radius: 999px;
             padding: 2px 8px;
-            margin-left: 6px;
-            vertical-align: 2px;
+            flex: 0 0 auto;
         }
         .marca.roja { background: #f6d7d2; color: #8c2f1c; }
         .marca.gris { background: #e8e5dd; color: #5a5f68; }
+        .entrada {
+            margin-bottom: 7px;
+            border: 1px solid var(--line);
+            border-radius: 9px;
+            background: var(--card);
+            overflow: hidden;
+        }
+        .entrada > summary {
+            list-style: none;
+            cursor: pointer;
+            padding: 10px 12px;
+        }
+        .entrada > summary::-webkit-details-marker { display: none; }
+        .entrada > summary::after {
+            content: '+';
+            float: right;
+            color: var(--blue);
+            font-weight: 700;
+        }
+        .entrada[open] > summary::after { content: '−'; }
+        .entrada-titulo { display: block; padding-right: 22px; font-weight: 700; font-size: 0.88rem; }
+        .entrada-cuando { color: var(--amber); font-size: 0.68rem; }
+        .entrada-body { padding: 0 12px 10px; }
+        @media (min-width: 520px) {
+            #fichas-lista { grid-template-columns: 1fr 1fr; }
+        }
+        @media (max-width: 519px) {
+            main { padding: 14px 9px 40px; }
+            h1 { font-size: 1.45rem; }
+            .kicker { font-size: 0.62rem; }
+            article { padding: 11px; }
+            #reporte-evolucion #rep-motivo { display: none; }
+            #reporte-evolucion #rep-prueba { margin: 0; }
+            .nav-row { padding-top: 4px; }
+            a.nav { font-size: 0.68rem; padding: 7px 3px; }
+        }
     </style>
 </head>
 <body>
@@ -104,6 +205,12 @@
     <p class="kicker">Para leer, no para programar</p>
     <h1>Qué hice en la mente</h1>
     <p class="lead" id="estado">Resumen en palabras. Aquí no hay código.</p>
+    <nav class="nav-row" aria-label="Navegación rápida">
+        <a class="nav" href="#reporte-evolucion">Estado</a>
+        <a class="nav" href="#bloque-fichas">Fichas</a>
+        <a class="nav" href="#bitacora">Bitácora</a>
+        <a class="nav" href="/diagrama">Red</a>
+    </nav>
     <article id="reporte-evolucion">
         <p class="cuando">Reporte de Auto-Evolución</p>
         <h2 id="rep-habilidad">Dato en observación: Humedad alta</h2>
@@ -116,7 +223,7 @@
         <p id="fichas-base">Cada ficha lleva su propia cuenta. Solo bloquea un pick cuando ese grupo viene perdiendo frente al resto.</p>
         <div id="fichas-lista"></div>
     </article>
-    <a class="nav" href="/diagrama">Ver la red</a>
+    <p class="section-label" id="bitacora">Bitácora de cambios</p>
     <div id="lista">
         <article>
             <p class="cuando">26 sep 2026 · Investigación</p>
@@ -154,6 +261,34 @@
 const API = 'https://mlb-1-en7i.onrender.com';
 const TIPO = { investigacion: 'Investigación', cambio: 'Cambio', dato: 'Nota' };
 
+function compactarFallback() {
+    const lista = document.getElementById('lista');
+    [...lista.querySelectorAll(':scope > article')].forEach((articulo, i) => {
+        const detalle = document.createElement('details');
+        detalle.className = 'entrada';
+        detalle.open = i === 0;
+        const cabecera = document.createElement('summary');
+        const cuandoViejo = articulo.querySelector('.cuando');
+        const tituloViejo = articulo.querySelector('h2');
+        const cuando = document.createElement('span');
+        cuando.className = 'entrada-cuando';
+        cuando.textContent = cuandoViejo ? cuandoViejo.textContent : 'Nota';
+        const titulo = document.createElement('span');
+        titulo.className = 'entrada-titulo';
+        titulo.textContent = tituloViejo ? tituloViejo.textContent : 'Nota';
+        cabecera.appendChild(cuando);
+        cabecera.appendChild(titulo);
+        const cuerpo = document.createElement('div');
+        cuerpo.className = 'entrada-body';
+        [...articulo.children].forEach(nodo => {
+            if (nodo !== cuandoViejo && nodo !== tituloViejo) cuerpo.appendChild(nodo);
+        });
+        detalle.appendChild(cabecera);
+        detalle.appendChild(cuerpo);
+        articulo.replaceWith(detalle);
+    });
+}
+
 function pintar(data) {
     const ents = (data && data.entradas) || [];
     if (!ents.length) return;
@@ -161,24 +296,32 @@ function pintar(data) {
     lista.innerHTML = '';
     document.getElementById('estado').textContent =
         'Resumen en palabras. Actualizado ' + (data.actualizado || 'hoy') + '. Aquí no hay código.';
-    ents.forEach(e => {
-        const art = document.createElement('article');
-        const cuando = document.createElement('p');
-        cuando.className = 'cuando';
+    ents.forEach((e, i) => {
+        const art = document.createElement('details');
+        art.className = 'entrada';
+        art.open = i === 0;
+        const cabecera = document.createElement('summary');
+        const cuando = document.createElement('span');
+        cuando.className = 'entrada-cuando';
         cuando.textContent = (e.fecha || '') + ' · ' + (TIPO[e.tipo] || 'Nota');
-        const h = document.createElement('h2');
+        const h = document.createElement('span');
+        h.className = 'entrada-titulo';
         h.textContent = e.titulo || 'Nota';
+        cabecera.appendChild(cuando);
+        cabecera.appendChild(h);
+        const cuerpo = document.createElement('div');
+        cuerpo.className = 'entrada-body';
         const p = document.createElement('p');
         p.textContent = e.resumen || '';
-        art.appendChild(cuando);
-        art.appendChild(h);
-        art.appendChild(p);
+        cuerpo.appendChild(p);
         if (e.efecto) {
             const ef = document.createElement('p');
             ef.className = 'efecto';
             ef.textContent = e.efecto;
-            art.appendChild(ef);
+            cuerpo.appendChild(ef);
         }
+        art.appendChild(cabecera);
+        art.appendChild(cuerpo);
         lista.appendChild(art);
     });
 }
@@ -218,11 +361,27 @@ function pintarFichas(d) {
         marca.className = 'marca ' + (f.activa ? 'roja' : 'gris');
         marca.textContent = f.activa ? 'Bloquea' : 'Solo observa';
         h.appendChild(marca);
+        const metricas = document.createElement('div');
+        metricas.className = 'ficha-metricas';
+        [
+            ['Casos', f.n || 0],
+            ['Acierto', f.wr == null ? '—' : f.wr + '%'],
+            ['Papel', f.profit > 0 ? '+' + f.profit : f.profit]
+        ].forEach(([etiqueta, valor]) => {
+            const metrica = document.createElement('div');
+            metrica.className = 'ficha-metrica';
+            const numero = document.createElement('b');
+            numero.textContent = valor;
+            const nombre = document.createElement('span');
+            nombre.textContent = etiqueta;
+            metrica.appendChild(numero);
+            metrica.appendChild(nombre);
+            metricas.appendChild(metrica);
+        });
         const cuentas = document.createElement('p');
         cuentas.className = 'cuentas';
         let linea = f.n
-            ? f.aciertos + ' de ' + f.n + ' (' + f.wr + '%), papel ' + f.profit +
-              '. El resto va en ' + f.resto_wr + '%.'
+            ? 'El resto va en ' + f.resto_wr + '%.'
             : 'Todavía sin juegos guardados en esta situación.';
         if (f.clv_n) {
             linea += ' El cierre se movió en contra en ' + f.clv_en_contra + ' de ' + f.clv_n + '.';
@@ -231,6 +390,7 @@ function pintarFichas(d) {
         const texto = document.createElement('p');
         texto.textContent = f.texto || '';
         div.appendChild(h);
+        div.appendChild(metricas);
         div.appendChild(cuentas);
         div.appendChild(texto);
         lista.appendChild(div);
@@ -254,6 +414,7 @@ async function cargar() {
         if (r2.ok) pintar(await r2.json());
     } catch (e2) { /* texto fijo */ }
 }
+compactarFallback();
 cargar();
 cargarReporte();
 </script>
