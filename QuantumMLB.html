@@ -716,7 +716,7 @@ const API = (!window.location.origin || window.location.protocol === 'file:')
 const ES_NUBE = API.includes('onrender.com') || API.includes('render.com');
 const REFRESH_MS = ES_NUBE ? 45000 : 8000;
 const CACHE_KEY = 'qmlb_last_state_v2';
-const PANEL_VER = '2026-09-29-lista-dias-oculta';
+const PANEL_VER = '2026-09-29-dias-por-mes';
 let cargandoEstado = false;
 let cargandoBoot = false;
 let cargandoJuegos = false;
@@ -1045,6 +1045,7 @@ const picksUi = {
     papel: true,
     predHistorial: false,
     predDias: {},
+    predMeses: {},
 };
 
 function wirePicksDesplegables() {
@@ -1080,6 +1081,26 @@ function togglePredDia(diaNum) {
         toggle.textContent = '▼';
         picksUi.predDias[diaNum] = false;
     }
+}
+
+function togglePredMes(mesClave) {
+    const contenido = document.getElementById(`pred-mes-content-${mesClave}`);
+    const toggle = document.getElementById(`pred-mes-toggle-${mesClave}`);
+    if (!contenido || !toggle) return;
+    const abrir = contenido.style.display === 'none';
+    contenido.style.display = abrir ? 'block' : 'none';
+    toggle.textContent = abrir ? '▲' : '▼';
+    picksUi.predMeses[mesClave] = abrir;
+}
+
+const MESES_ES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+    'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+function nombreMes(mesClave) {
+    const [anio, mes] = String(mesClave).split('-');
+    const nom = MESES_ES[Number(mes) - 1];
+    if (!nom) return mesClave;
+    return nom.charAt(0).toUpperCase() + nom.slice(1) + ' ' + anio;
 }
 
 function fmtMoney(n) {
@@ -1841,6 +1862,8 @@ function pintarPredicciones(memoria, plSplit, ctx) {
 
     let hayFilas = false;
     let diaIdx = 0;
+    // Los días se agrupan por mes en desplegables para no dejar una lista interminable.
+    const meses = new Map();
     for (const d of diasOrden) {
         const porJuego = new Map();
         (d.predicciones || []).forEach(p => {
@@ -1937,7 +1960,7 @@ function pintarPredicciones(memoria, plSplit, ctx) {
         const abierto = !!picksUi.predDias[d.dia];
         diaIdx += 1;
 
-        html += `<div style="margin-bottom:14px;padding:12px;background:var(--panel);border-radius:8px;border:1px solid var(--border);">
+        let bloqueDia = `<div style="margin-bottom:14px;padding:12px;background:var(--panel);border-radius:8px;border:1px solid var(--border);">
             <div style="font-weight:bold;color:var(--cyan);margin-bottom:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;" onclick="togglePredDia('${d.dia}')">
                 <span>Día ${d.dia} (${d.fecha}) — ${filas.length} juegos · ${resumenPapel} · dinero ${fmtMoney(netoDin)}</span>
                 <span id="pred-toggle-${d.dia}" style="font-size:1rem;">${abierto ? '▲' : '▼'}</span>
@@ -1985,7 +2008,7 @@ function pintarPredicciones(memoria, plSplit, ctx) {
             const pickTxt = f.sin_congelar
                 ? `<span style="color:#ffbc00;font-size:0.72rem">Sin congelar · ${f.motivo || 'T-60 perdido'}</span>`
                 : (nombrePick(f.pick) || '—');
-            html += `<tr style="border-bottom:1px solid rgba(255,255,255,0.04)${f.sin_congelar ? ';opacity:0.85' : ''}">
+            bloqueDia += `<tr style="border-bottom:1px solid rgba(255,255,255,0.04)${f.sin_congelar ? ';opacity:0.85' : ''}">
                 <td style="padding:7px 4px">${f.visitante || '?'} @ ${f.home || '?'}</td>
                 <td style="padding:7px 4px;color:var(--cyan)">${pickTxt}${marc}</td>
                 <td style="padding:7px 4px;color:${resColor};font-weight:700">${resTxt}</td>
@@ -1995,7 +2018,34 @@ function pintarPredicciones(memoria, plSplit, ctx) {
             </tr>`;
         });
 
-        html += `</tbody></table></div></div>`;
+        bloqueDia += `</tbody></table></div></div>`;
+
+        const mesClave = String(d.fecha || '').slice(0, 7) || 'sin-fecha';
+        let mes = meses.get(mesClave);
+        if (!mes) {
+            mes = { dias: 0, g: 0, p: 0, neto: 0, din: 0, html: '' };
+            meses.set(mesClave, mes);
+        }
+        mes.dias += 1;
+        mes.g += gPapel;
+        mes.p += pPapel;
+        mes.neto += netoPapel;
+        mes.din += netoDin;
+        mes.html += bloqueDia;
+    }
+
+    // El mes más reciente queda abierto; los anteriores, plegados.
+    let esPrimerMes = true;
+    for (const [mesClave, mes] of meses) {
+        const abiertoMes = picksUi.predMeses[mesClave] ?? esPrimerMes;
+        esPrimerMes = false;
+        html += `<div style="margin-bottom:16px">
+            <div style="font-weight:bold;color:var(--gold);padding:10px 12px;background:rgba(255,188,0,0.07);border:1px solid rgba(255,188,0,0.3);border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;gap:8px" onclick="togglePredMes('${mesClave}')">
+                <span>${nombreMes(mesClave)} — ${mes.dias} día(s) · quién gana ${mes.g}✓/${mes.p}✗ · ${fmtMoney(mes.neto)} · dinero ${fmtMoney(mes.din)}</span>
+                <span id="pred-mes-toggle-${mesClave}" style="font-size:1rem">${abiertoMes ? '▲' : '▼'}</span>
+            </div>
+            <div id="pred-mes-content-${mesClave}" style="display:${abiertoMes ? 'block' : 'none'};margin-top:10px">${mes.html}</div>
+        </div>`;
     }
 
     lista.innerHTML = hayFilas ? html : '<p style="color:var(--muted)">Sin predicciones registradas aún.</p>';
