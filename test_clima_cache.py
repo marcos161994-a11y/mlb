@@ -49,7 +49,8 @@ def test_cache_en_disco_sobrevive_al_reinicio(monkeypatch):
         return _Resp(_bloque())
 
     monkeypatch.setattr(clima._session, "get", _get)
-    primero = clima.obtener_clima_estadio(147, "2026-09-29T18:05:00")
+    inicio = f"{clima._hoy().isoformat()}T18:05:00"
+    primero = clima.obtener_clima_estadio(147, inicio)
     assert primero["humedad"] == 75
     assert len(llamadas) == 1
 
@@ -57,9 +58,51 @@ def test_cache_en_disco_sobrevive_al_reinicio(monkeypatch):
     clima._clima_cache.clear()
     clima._dia_cache.clear()
     clima._cache_leido = False
-    segundo = clima.obtener_clima_estadio(147, "2026-09-29T18:05:00")
+    segundo = clima.obtener_clima_estadio(147, inicio)
     assert segundo["humedad"] == 75
     assert len(llamadas) == 1
+
+
+def test_la_cache_sigue_el_dia_de_puerto_rico(monkeypatch):
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    class _Reloj(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            fijo = datetime(2026, 9, 30, 0, 30, tzinfo=ZoneInfo("UTC"))
+            if tz is None:
+                return fijo.replace(tzinfo=None)
+            return fijo.astimezone(tz)
+
+    monkeypatch.setattr(clima, "datetime", _Reloj)
+    clima.CACHE_PATH.write_text(
+        json.dumps(
+            {
+                "entradas": {
+                    "147:2026-09-28T18": {
+                        "dia": "2026-09-28",
+                        "dato": {"ok": True, "humedad": 11, "fuente": "open-meteo"},
+                    },
+                    "147:2026-09-27T18": {
+                        "dia": "2026-09-27",
+                        "dato": {"ok": True, "humedad": 22, "fuente": "open-meteo"},
+                    },
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(
+        clima._session,
+        "get",
+        lambda *a, **k: (_ for _ in ()).throw(AssertionError("no debe salir a internet")),
+    )
+    ayer = clima.obtener_clima_estadio(147, "2026-09-28T18:05:00")
+    assert ayer["humedad"] == 11
+    viejo = clima.obtener_clima_estadio(147, "2026-09-27T18:05:00")
+    assert viejo.get("humedad") != 22
+    assert viejo["ok"] is False
 
 
 def test_cache_viejo_no_se_carga(monkeypatch):

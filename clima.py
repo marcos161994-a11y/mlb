@@ -19,6 +19,8 @@ import requests
 
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
 _session = requests.Session()
+# El día del experimento es el de Puerto Rico. Render está en UTC.
+TZ_PARTIDO = ZoneInfo("America/Puerto_Rico")
 _clima_cache: dict[str, dict[str, Any]] = {}
 _dia_cache: dict[str, str] = {}
 
@@ -80,9 +82,13 @@ def _cache_key(home_id: int, inicio_iso: str | None) -> str:
     return f"{home_id}:{hora}"
 
 
+def _hoy() -> date:
+    return datetime.now(TZ_PARTIDO).date()
+
+
 def _dia_de(inicio_iso: str | None) -> str:
     dia = (inicio_iso or "")[:10]
-    return dia if len(dia) == 10 else date.today().isoformat()
+    return dia if len(dia) == 10 else _hoy().isoformat()
 
 
 def _cargar_cache() -> None:
@@ -97,7 +103,7 @@ def _cargar_cache() -> None:
         return
     if not isinstance(crudo, dict):
         return
-    vivos = {(date.today() - timedelta(days=d)).isoformat() for d in (0, 1)}
+    vivos = {(_hoy() - timedelta(days=d)).isoformat() for d in (0, 1)}
     for clave, entrada in (crudo.get("entradas") or {}).items():
         if not isinstance(entrada, dict) or not isinstance(entrada.get("dato"), dict):
             continue

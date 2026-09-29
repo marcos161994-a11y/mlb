@@ -3,6 +3,18 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
+
+def test_fecha_oficial_no_usa_el_dia_utc():
+    from servidor_mlb import fecha_oficial_juego
+
+    inicio = datetime(2026, 9, 29, 20, 0, tzinfo=ZoneInfo("America/Puerto_Rico"))
+    # 8pm en la isla es ya el 30 en UTC. El día del juego sigue siendo el 29.
+    api = {"gameDate": "2026-09-30T00:00:00Z", "officialDate": "2026-09-29"}
+    assert fecha_oficial_juego(api, inicio) == "2026-09-29"
+    assert fecha_oficial_juego({"gameDate": "2026-09-30T00:00:00Z"}, inicio) == "2026-09-29"
 
 
 def test_guardar_prediccion_normaliza_game_id_str():

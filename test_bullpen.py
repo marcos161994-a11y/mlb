@@ -114,6 +114,56 @@ def test_el_presupuesto_corta_y_el_resto_sigue_despues(monkeypatch):
     assert segundo["faltan"] == 1
 
 
+def test_juego_completo_cuenta_cero_de_relevo(monkeypatch):
+    _responder(
+        monkeypatch,
+        {700: _boxscore(147, ["9.0"], 121, ["8.0", "1.0"])},
+        _schedule(700),
+    )
+    bullpen.refrescar()
+    assert bullpen.innings_relevo(147) == 0.0
+    assert bullpen.fatiga_bullpen(147) == 0.0
+    assert bullpen.innings_relevo(121) == 1.0
+
+
+def test_sin_lanzadores_no_inventa_cero(monkeypatch):
+    caja = _boxscore(147, ["9.0"], 121, ["5.0", "4.0"])
+    caja["teams"]["away"]["pitchers"] = []
+    _responder(monkeypatch, {700: caja}, _schedule(700))
+    bullpen.refrescar()
+    assert bullpen.innings_relevo(147) is None
+    assert bullpen.innings_relevo(121) == 4.0
+
+
+def test_el_dia_sigue_a_puerto_rico_aunque_utc_ya_cambio(monkeypatch):
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    class _Reloj(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            # 00:30 UTC del 30 sigue siendo 29 a las 8:30pm en Puerto Rico.
+            fijo = datetime(2026, 9, 30, 0, 30, tzinfo=ZoneInfo("UTC"))
+            if tz is None:
+                return fijo.replace(tzinfo=None)
+            return fijo.astimezone(tz)
+
+    vistos = []
+
+    def _get(url, params=None, timeout=None):
+        if "/schedule" in url:
+            vistos.append(params)
+            return _Resp({"dates": []})
+        raise AssertionError(url)
+
+    monkeypatch.setattr(bullpen, "datetime", _Reloj)
+    monkeypatch.setattr(bullpen._session, "get", _get)
+    bullpen.refrescar()
+    assert bullpen._estado["dia"] == "2026-09-29"
+    assert vistos[0]["startDate"] == "2026-09-26"
+    assert vistos[0]["endDate"] == "2026-09-28"
+
+
 def test_lo_leido_sobrevive_al_reinicio(monkeypatch):
     _responder(
         monkeypatch,
