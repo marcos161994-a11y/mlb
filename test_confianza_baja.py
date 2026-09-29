@@ -50,6 +50,10 @@ def test_limpiar_devuelve_leans_al_wr():
 
 
 def test_guardar_51_cuenta_en_wr(monkeypatch):
+    from datetime import datetime, timedelta
+    from zoneinfo import ZoneInfo
+
+    inicio = datetime.now(ZoneInfo("America/Puerto_Rico")) + timedelta(hours=5)
     monkeypatch.setattr(
         "servidor_mlb.cargar_config",
         lambda: {
@@ -73,7 +77,7 @@ def test_guardar_51_cuenta_en_wr(monkeypatch):
         "pick": "B ML",
         "probPick": 51.3,
         "odds": 1.9,
-        "inicio_juego": "2026-09-12T20:00:00-04:00",
+        "inicio_juego": inicio.isoformat(),
         "lineas_fuente": "draftkings",
         "edge": -1.4,
     }

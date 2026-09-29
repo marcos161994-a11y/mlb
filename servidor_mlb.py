@@ -698,6 +698,18 @@ def parse_inicio_juego(game_date: str) -> datetime:
     return dt.astimezone(tz_experimento())
 
 
+def fecha_oficial_juego(juego_api: dict, inicio: datetime) -> str:
+    """Día del partido en el calendario MLB, no el día UTC de gameDate.
+
+    Un juego de las 8pm en la isla sale como el día siguiente en UTC.
+    officialDate es el día que publicó MLB.
+    """
+    oficial = str((juego_api or {}).get("officialDate") or "").strip()
+    if len(oficial) == 10 and oficial[4] == "-" and oficial[7] == "-":
+        return oficial
+    return inicio.date().isoformat()
+
+
 def hora_bloqueo_para_inicio(inicio: datetime) -> datetime:
     mins = int(cargar_config().get("minutos_antes_juego", 60))
     return inicio - timedelta(minutes=mins)
@@ -1221,7 +1233,7 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
                     winner = home_name
             juegos.append({
                 "id": str(juego["gamePk"]),
-                "fecha": juego.get("gameDate", "").split("T")[0],
+                "fecha": fecha_oficial_juego(juego, inicio),
                 "estado": estado,
                 "visitante": visitante,
                 "away_id": away["team"]["id"],
