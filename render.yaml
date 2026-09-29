@@ -17,6 +17,8 @@ services:
         sync: false
       - key: GROQ_API_KEY
         sync: false
+      # Mismo valor en GitHub → Settings → Secrets → Actions → CRON_SECRET.
+      # Sin esta variable el servidor rechaza liquidar, bloquear, reiniciar e importar.
       - key: CRON_SECRET
         generateValue: true
       - key: DATA_DIR

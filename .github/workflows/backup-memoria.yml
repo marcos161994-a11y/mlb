@@ -31,20 +31,20 @@ jobs:
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::Falta CRON_SECRET en GitHub Secrets (mismo valor que Render)."
+            exit 1
+          fi
+
           curl -fsS --retry 4 --retry-delay 15 --max-time 120 \
             "https://mlb-1-en7i.onrender.com/api/health" >/dev/null
 
-          # Preferir endpoint dedicado; si aún no está desplegado, usar /api/state
-          if [ -n "$CRON_SECRET" ] && curl -fsS --max-time 120 \
+          echo "Fuente: /api/exportar-memoria"
+          # Header (preferido) y query (servidor anterior al deploy de auth).
+          curl -fsS --retry 3 --retry-delay 10 --max-time 120 \
+            -H "X-Cron-Secret: ${CRON_SECRET}" \
             "https://mlb-1-en7i.onrender.com/api/exportar-memoria?secret=${CRON_SECRET}" \
-            -o /tmp/memoria_live.json; then
-            echo "Fuente: /api/exportar-memoria"
-          else
-            echo "Fallback: /api/state"
-            curl -fsS --retry 3 --retry-delay 10 --max-time 180 \
-              "https://mlb-1-en7i.onrender.com/api/state" -o /tmp/state.json
-            python3 -c "import json,pathlib; s=json.load(open('/tmp/state.json')); pathlib.Path('/tmp/memoria_live.json').write_text(json.dumps(s['memoria'],ensure_ascii=False),encoding='utf-8')"
-          fi
+            -o /tmp/memoria_live.json
 
           python3 - <<'PY'
           import json, pathlib, sys

@@ -10,6 +10,7 @@ from __future__ import annotations
 import copy
 import gc
 import hashlib
+import hmac
 import io
 import json
 import os
@@ -19,7 +20,7 @@ import zipfile
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 from zoneinfo import ZoneInfo
 
 import requests
@@ -27,7 +28,7 @@ import uvicorn
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse, Response
 from lineas_betmgm import aplicar_lineas_a_juegos
@@ -314,10 +315,65 @@ def _inicializar_datos_persistencia() -> None:
                 print(f"[CLOUD] Modelo ML copiado a {dst}")
 
 
+def _cron_secret_configurado() -> str:
+    return os.environ.get("CRON_SECRET", "").strip()
+
+
+def _secreto_recibido(
+    secret: str | None = None,
+    x_cron_secret: str | None = None,
+    authorization: str | None = None,
+) -> str | None:
+    """Query ?secret=, header X-Cron-Secret o Authorization: Bearer."""
+    for candidato in (secret, x_cron_secret):
+        if candidato and str(candidato).strip():
+            return str(candidato).strip()
+    auth = (authorization or "").strip()
+    if len(auth) >= 7 and auth[:7].lower() == "bearer ":
+        token = auth[7:].strip()
+        if token:
+            return token
+    return None
+
+
 def _verificar_cron_secreto(secret: str | None) -> None:
-    esperado = os.environ.get("CRON_SECRET", "").strip()
-    if esperado and secret != esperado:
+    """Fail-closed: sin CRON_SECRET en el entorno, rechaza. No compara en claro."""
+    esperado = _cron_secret_configurado()
+    if not esperado:
+        raise HTTPException(
+            status_code=503,
+            detail="CRON_SECRET no configurado; operación rechazada",
+        )
+    recibido = (secret or "").strip()
+    if not hmac.compare_digest(recibido, esperado):
         raise HTTPException(status_code=403, detail="Cron secret inválido")
+
+
+def exigir_cron_secreto(
+    secret: str | None = None,
+    x_cron_secret: Annotated[str | None, Header()] = None,
+    authorization: Annotated[str | None, Header()] = None,
+) -> None:
+    """Dependencia de las rutas que mutan banca/memoria o exportan/importan."""
+    _verificar_cron_secreto(_secreto_recibido(secret, x_cron_secret, authorization))
+
+
+def _cron_autorizado(
+    secret: str | None = None,
+    x_cron_secret: str | None = None,
+    authorization: str | None = None,
+) -> bool:
+    """True solo con CRON_SECRET configurado y un secreto que coincide."""
+    esperado = _cron_secret_configurado()
+    if not esperado:
+        return False
+    recibido = _secreto_recibido(secret, x_cron_secret, authorization) or ""
+    return hmac.compare_digest(recibido, esperado)
+
+
+def _auth_cron() -> list:
+    """Lista nueva por ruta: no reutilizar el mismo Depends() en varios endpoints."""
+    return [Depends(exigir_cron_secreto)]
 
 
 def cargar_config() -> dict:
@@ -3277,13 +3333,36 @@ async def lifespan(app: FastAPI):
         pass
 
 
+# Orígenes del panel (mismo host) y del HTML abierto en local.
+# No usar "*" con credenciales: eso refleja cualquier origen.
+_CORS_ORIGIN_REGEX = (
+    r"https://[\w.-]+\.onrender\.com"
+    r"|http://(localhost|127\.0\.0\.1)(:\d+)?"
+)
+
+
+def _cors_allow_origins() -> list[str]:
+    """Lista explícita. `null` cubre QuantumMLB.html abierto como file://."""
+    origins = ["null"]
+    render_url = (os.environ.get("RENDER_EXTERNAL_URL") or "").strip().rstrip("/")
+    if render_url:
+        origins.append(render_url)
+    extra = os.environ.get("CORS_ORIGINS") or ""
+    for part in extra.split(","):
+        origin = part.strip().rstrip("/")
+        if origin and origin != "*" and origin not in origins:
+            origins.append(origin)
+    return origins
+
+
 app = FastAPI(title="Quantum MLB", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_cors_allow_origins(),
+    allow_origin_regex=_CORS_ORIGIN_REGEX,
+    allow_credentials=False,
+    allow_methods=["GET", "POST", "HEAD", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Cron-Secret"],
 )
 
 
@@ -3718,7 +3797,11 @@ def api_historial_status():
 
 
 @app.get("/api/panel-boot")
-def api_panel_boot():
+def api_panel_boot(
+    secret: str | None = None,
+    x_cron_secret: Annotated[str | None, Header()] = None,
+    authorization: Annotated[str | None, Header()] = None,
+):
     """Arranque del panel en <1s: historial+capital sin ML ni juegos.
 
     Evita que Safari iOS se quede en «Despertando…» mientras /api/state
@@ -3741,9 +3824,14 @@ def api_panel_boot():
     memoria = cargar_memoria()
     fecha_hoy = fecha_str()
     dia = dia_por_fecha(memoria, fecha_hoy) or dia_operativo(memoria)
-    # Liquidación rápida (solo marcadores MLB) para que el historial muestre ✓/✗ al abrir.
+    # Liquidar al abrir solo si el navegador ya guardó CRON_SECRET.
+    # Sin secreto el panel sigue siendo de lectura: el cron liquida.
     perdidos_hoy: list[dict] = []
-    if dia and any(p.get("estado") == "pendiente" for p in (dia.get("predicciones") or [])):
+    if (
+        _cron_autorizado(secret, x_cron_secret, authorization)
+        and dia
+        and any(p.get("estado") == "pendiente" for p in (dia.get("predicciones") or []))
+    ):
         try:
             n = liquidar_dia(memoria, dia)
             if n:
@@ -3921,11 +4009,18 @@ def api_juegos_hoy(fresh: bool = False):
 
 
 @app.get("/api/state")
-def api_state(liquidar: bool = False):
+def api_state(
+    liquidar: bool = False,
+    secret: str | None = None,
+    x_cron_secret: Annotated[str | None, Header()] = None,
+    authorization: Annotated[str | None, Header()] = None,
+):
     """Estado del panel (liviano). Por defecto no liquida: el cron ya lo hace.
 
-    ?liquidar=1 fuerza liquidación (botón Actualizar resultados / catch-up).
+    ?liquidar=1 fuerza liquidación y exige CRON_SECRET (fail-closed si falta).
     """
+    if liquidar:
+        _verificar_cron_secreto(_secreto_recibido(secret, x_cron_secret, authorization))
     return construir_estado_completo(liquidar=bool(liquidar), ligero=True)
 
 
@@ -3978,7 +4073,7 @@ def api_live_data():
     return api_juegos_hoy(fresh=False)
 
 
-@app.post("/api/bloquear-hoy")
+@app.post("/api/bloquear-hoy", dependencies=_auth_cron())
 def api_bloquear_hoy():
     """Fuerza el análisis y bloqueo inmediato de los juegos que tengan valor ahora mismo."""
     resultado = bloquear_apuestas_del_dia(forzar=True)
@@ -3987,7 +4082,7 @@ def api_bloquear_hoy():
     return resultado
 
 
-@app.post("/api/liquidar")
+@app.post("/api/liquidar", dependencies=_auth_cron())
 def api_liquidar():
     memoria = cargar_memoria()
     sincronizar_experimento_a_hoy(memoria)
@@ -3999,7 +4094,7 @@ def api_liquidar():
     }
 
 
-@app.post("/api/reiniciar")
+@app.post("/api/reiniciar", dependencies=_auth_cron())
 def api_reiniciar(confirm: str | None = None):
     """Reinicia el experimento. Requiere confirm=BORRAR para no borrar por accidente."""
     if (confirm or "").strip().upper() != "BORRAR":
@@ -4253,12 +4348,10 @@ def api_panel_health():
     return {"ok": bool(out.get("ok")), **out}
 
 
-@app.post("/api/mente-errores/ciclo")
-@app.get("/api/mente-errores/ciclo")
-def api_mente_errores_ciclo(secret: str | None = None, forzar: bool = False):
-    """Fuerza un ciclo de diagnóstico + remediación (opcional CRON_SECRET)."""
-    if secret:
-        _verificar_cron_secreto(secret)
+@app.post("/api/mente-errores/ciclo", dependencies=_auth_cron())
+@app.get("/api/mente-errores/ciclo", dependencies=_auth_cron())
+def api_mente_errores_ciclo(forzar: bool = False):
+    """Fuerza un ciclo de diagnóstico + remediación. Exige CRON_SECRET."""
     cfg = cargar_config()
     mem = cargar_memoria()
     out = ejecutar_ciclo_mente_errores(
@@ -4802,15 +4895,15 @@ def _cron_externo_en_fondo() -> None:
             pass
 
 
-@app.get("/api/auto-bloqueo-externo")
-@app.post("/api/auto-bloqueo-externo")
-def api_auto_bloqueo_externo(secret: str | None = None, en_fondo: bool = True):
+@app.get("/api/auto-bloqueo-externo", dependencies=_auth_cron())
+@app.post("/api/auto-bloqueo-externo", dependencies=_auth_cron())
+def api_auto_bloqueo_externo(en_fondo: bool = True):
     """
-    Para cron-job.org u otro servicio externo (cada 5-10 min).
+    Para GitHub Actions u otro cron externo (cada 5-10 min).
     Por defecto responde al instante y corre en segundo plano (en_fondo=1).
-    Opcional: ?secret=TU_CRON_SECRET (variable CRON_SECRET en Render).
+    Exige CRON_SECRET (header X-Cron-Secret, Bearer o ?secret=).
+    Sin la variable de entorno responde 503.
     """
-    _verificar_cron_secreto(secret)
     global _cron_externo_activo
     if en_fondo:
         with _cron_externo_lock:
@@ -4825,25 +4918,22 @@ def api_auto_bloqueo_externo(secret: str | None = None, en_fondo: bool = True):
         return {"ok": False, "error": str(e)}
 
 
-@app.get("/api/exportar-memoria")
-def api_exportar_memoria(secret: str | None = None):
-    """Descarga memoria_auditoria.json (backup). Requiere CRON_SECRET."""
-    _verificar_cron_secreto(secret)
+@app.get("/api/exportar-memoria", dependencies=_auth_cron())
+def api_exportar_memoria():
+    """Descarga memoria_auditoria.json (backup). Exige CRON_SECRET."""
     memoria = cargar_memoria()
     return memoria
 
 
-@app.post("/api/subir-memoria")
+@app.post("/api/subir-memoria", dependencies=_auth_cron())
 def api_subir_memoria(
     payload: dict,
-    secret: str | None = None,
     modo: str | None = None,
 ):
-    """Sube memoria_auditoria.json desde la PC local a Render (requiere CRON_SECRET).
+    """Sube memoria_auditoria.json desde la PC local a Render (exige CRON_SECRET).
 
     modo=fusionar (default, une días) | replace | aprendizaje (paper retroactivo)
     """
-    _verificar_cron_secreto(secret)
     if not isinstance(payload, dict) or "capital" not in payload:
         raise HTTPException(status_code=400, detail="JSON de memoria invalido")
     modo_n = (modo or "fusionar").lower()
@@ -4981,8 +5071,8 @@ def _ejecutar_import_aprendizaje(memoria: dict, dump: dict | None = None, *, exp
     }
 
 
-@app.post("/api/importar-aprendizaje")
-def api_importar_aprendizaje(payload: dict, secret: str | None = None):
+@app.post("/api/importar-aprendizaje", dependencies=_auth_cron())
+def api_importar_aprendizaje(payload: dict):
     """
     Plan 4: importa pasado para aprender (no infla WR del panel).
 
@@ -4990,9 +5080,8 @@ def api_importar_aprendizaje(payload: dict, secret: str | None = None):
       - dump completo de memoria, o
       - {"memoria": {...}} dump, o
       - {"experiencias": [ {...}, ... ]}
-    Requiere CRON_SECRET.
+    Exige CRON_SECRET.
     """
-    _verificar_cron_secreto(secret)
     if not isinstance(payload, dict):
         raise HTTPException(status_code=400, detail="JSON invalido")
 
@@ -5004,15 +5093,14 @@ def api_importar_aprendizaje(payload: dict, secret: str | None = None):
     return _ejecutar_import_aprendizaje(memoria, dump, experiencias=exp)
 
 
-@app.post("/api/importar-aprendizaje-repo")
-@app.get("/api/importar-aprendizaje-repo")
-def api_importar_aprendizaje_repo(secret: str | None = None):
+@app.post("/api/importar-aprendizaje-repo", dependencies=_auth_cron())
+@app.get("/api/importar-aprendizaje-repo", dependencies=_auth_cron())
+def api_importar_aprendizaje_repo():
     """
     Importa lecciones y preds retroactivos desde memoria_auditoria.json del repo.
     No sube capital ni infla WR del panel (solo aprendizaje + ML).
-    Requiere CRON_SECRET.
+    Exige CRON_SECRET.
     """
-    _verificar_cron_secreto(secret)
     if _cron_externo_activo:
         return {
             "ok": True,
@@ -5040,8 +5128,8 @@ def api_importar_aprendizaje_repo(secret: str | None = None):
     return out
 
 
-@app.post("/api/procesar-experiencias")
-@app.get("/api/procesar-experiencias")
+@app.post("/api/procesar-experiencias", dependencies=_auth_cron())
+@app.get("/api/procesar-experiencias", dependencies=_auth_cron())
 def api_procesar_experiencias(forzar: bool = False):
     """
     Escanea histórico: lecciones negativas + contadores de aprendizaje de la mente.
@@ -5073,10 +5161,9 @@ def api_procesar_experiencias(forzar: bool = False):
     }
 
 
-@app.post("/api/restaurar-backup")
-def api_restaurar_backup(secret: str | None = None):
+@app.post("/api/restaurar-backup", dependencies=_auth_cron())
+def api_restaurar_backup():
     """Fusiona el JSON del repo con el disco si faltan días (wipe o redeploy)."""
-    _verificar_cron_secreto(secret)
     origen = BASE_DIR / "memoria_auditoria.json"
     if not origen.exists():
         raise HTTPException(status_code=404, detail="No hay memoria_auditoria.json en el repo")
@@ -5128,7 +5215,7 @@ def api_restaurar_backup(secret: str | None = None):
     }
 
 
-@app.post("/api/avanzar-dia")
+@app.post("/api/avanzar-dia", dependencies=_auth_cron())
 def api_avanzar_dia():
     """Fuerza sincronización del experimento a la fecha real."""
     memoria = sincronizar_experimento_a_hoy()
