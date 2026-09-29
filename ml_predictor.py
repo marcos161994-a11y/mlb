@@ -373,6 +373,8 @@ def entrenar_modelo_xgb(datos_historicos: List[Dict[str, Any]]) -> Any:
         X_tr, X_te, y_tr, y_te = train_test_split(
             X, y, test_size=0.2, random_state=42, stratify=y
         )
+        # Scaler solo con el tren: el de producción ya vio todo el historial.
+        scaler_h = StandardScaler().fit(X_tr)
         xgb_tmp = XGBClassifier(
             n_estimators=100,
             max_depth=4,
@@ -386,8 +388,8 @@ def entrenar_modelo_xgb(datos_historicos: List[Dict[str, Any]]) -> Any:
             random_state=42,
             n_jobs=_ml_n_jobs(),
         )
-        xgb_tmp.fit(_scaler.transform(X_tr), y_tr)
-        acc_h = float(xgb_tmp.score(_scaler.transform(X_te), y_te))
+        xgb_tmp.fit(scaler_h.transform(X_tr), y_tr)
+        acc_h = float(xgb_tmp.score(scaler_h.transform(X_te), y_te))
         print(f"[ML] XGB holdout (20%): {acc_h:.3f}")
 
     with open(_modelo_xgb_path(), "wb") as f:
@@ -605,6 +607,80 @@ def cargar_modelo_xgb() -> Any:
         return None
 
 
+def _n_features_de(est: Any) -> Optional[int]:
+    """Ancho de entrada de un estimador ya ajustado, o None si no se puede leer."""
+    n = getattr(est, "n_features_in_", None)
+    if n is None:
+        return None
+    try:
+        return int(n)
+    except (TypeError, ValueError):
+        return None
+
+
+def _nombres_features_de(est: Any) -> Optional[List[str]]:
+    names = getattr(est, "feature_names_in_", None)
+    if names is None:
+        return None
+    try:
+        return [str(x) for x in list(names)]
+    except TypeError:
+        return None
+
+
+# Un aviso por combinación (modelo, anchos) para no inundar el log en cada partido.
+_avisos_schema: set[tuple] = set()
+
+
+def artefactos_alineados_con_schema(modelo: Any, scaler: Any, etiqueta: str) -> bool:
+    """
+    True solo si modelo y scaler tienen el ancho de FEATURE_COLUMNS (schema actual).
+    Si no, registra el desajuste y el caller debe omitir esa predicción.
+    """
+    esperado = len(FEATURE_COLUMNS)
+    n_modelo = _n_features_de(modelo)
+    n_scaler = _n_features_de(scaler)
+    nombres = _nombres_features_de(scaler)
+    nombres_ok = nombres is None or nombres == list(FEATURE_COLUMNS)
+    if n_modelo == esperado and n_scaler == esperado and nombres_ok:
+        return True
+
+    detalle = f"modelo={n_modelo}, scaler={n_scaler}, schema v{FEATURE_SCHEMA_VERSION}={esperado}"
+    if not nombres_ok:
+        detalle += ", nombres del scaler distintos de FEATURE_COLUMNS"
+    clave = (etiqueta, n_modelo, n_scaler, nombres_ok)
+    if clave not in _avisos_schema:
+        _avisos_schema.add(clave)
+        print(
+            f"[ML] {etiqueta} incompatible con el schema de features ({detalle}). "
+            "Se omite esta predicción y el ensemble renormaliza los pesos "
+            "entre los brazos que sí respondieron. "
+            "Reentrena RF y scaler juntos con entrenar_modelo.py."
+        )
+    return False
+
+
+def _predecir_con_scaler(modelo: Any, scaler: Any, features: Dict[str, Any], etiqueta: str) -> Optional[float]:
+    """Probabilidad 0-100. None si el par modelo/scaler no coincide con el schema."""
+    if modelo is None or scaler is None:
+        return None
+    if not artefactos_alineados_con_schema(modelo, scaler, etiqueta):
+        return None
+    try:
+        # Ancho del schema, no el del scaler: alinear al scaler era lo que
+        # alimentaba 28 columnas a un bosque de 16 y lanzaba el error.
+        X = _features_frame(features, len(FEATURE_COLUMNS))
+        try:
+            X_scaled = scaler.transform(X)
+        except ValueError:
+            X_scaled = scaler.transform(X.to_numpy(dtype=float))
+        prob = float(modelo.predict_proba(X_scaled)[0, 1]) * 100.0
+        return round(prob, 1)
+    except Exception as e:
+        print(f"[ML] Error prediciendo {etiqueta}: {e}")
+        return None
+
+
 def predecir_rf(features: Dict[str, Any]) -> Optional[float]:
     """Predice probabilidad de victoria usando Random Forest."""
     global _modelo_rf, _scaler
@@ -612,22 +688,7 @@ def predecir_rf(features: Dict[str, Any]) -> Optional[float]:
     if _modelo_rf is None:
         cargar_modelo_rf()
 
-    if _modelo_rf is None or _scaler is None:
-        return None
-
-    try:
-        n_exp = int(getattr(_scaler, "n_features_in_", len(FEATURE_COLUMNS)))
-        X = _features_frame(features, n_exp)
-        # Si el scaler se entrenó sin nombres, transformar por valores
-        try:
-            X_scaled = _scaler.transform(X)
-        except ValueError:
-            X_scaled = _scaler.transform(X.to_numpy(dtype=float))
-        prob = _modelo_rf.predict_proba(X_scaled)[0, 1] * 100
-        return round(prob, 1)
-    except Exception as e:
-        print(f"[ML] Error prediciendo RF (¿features nuevas?): {e}")
-        return None
+    return _predecir_con_scaler(_modelo_rf, _scaler, features, "Random Forest")
 
 
 def predecir_xgb(features: Dict[str, Any]) -> Optional[float]:
@@ -637,20 +698,7 @@ def predecir_xgb(features: Dict[str, Any]) -> Optional[float]:
         return None
     if _modelo_xgb is None:
         cargar_modelo_xgb()
-    if _modelo_xgb is None or _scaler is None:
-        return None
-    try:
-        n_exp = int(getattr(_scaler, "n_features_in_", len(FEATURE_COLUMNS)))
-        X = _features_frame(features, n_exp)
-        try:
-            X_scaled = _scaler.transform(X)
-        except ValueError:
-            X_scaled = _scaler.transform(X.to_numpy(dtype=float))
-        prob = float(_modelo_xgb.predict_proba(X_scaled)[0, 1]) * 100.0
-        return round(prob, 1)
-    except Exception as e:
-        print(f"[ML] Error prediciendo XGB: {e}")
-        return None
+    return _predecir_con_scaler(_modelo_xgb, _scaler, features, "XGBoost")
 
 
 def _resolver_pesos_ensemble(
@@ -658,8 +706,15 @@ def _resolver_pesos_ensemble(
     *,
     has_rf: bool,
     has_xgb: bool,
+    has_ia: bool = True,
 ) -> Dict[str, float]:
-    """Normaliza pesos; convierte `ml` legacy → rf/xgb."""
+    """
+    Reparte el peso de los brazos ausentes entre los que sí votan.
+
+    Un modelo que no respondió (pickle ausente, schema incompatible, sin XGB)
+    se pone a 0 y el resto se renormaliza, conservando la proporción configurada.
+    Así un XGB caído no deja su 0.35 entero en el estadístico y aplasta al RF.
+    """
     p = dict(pesos or {"estadistico": 0.4, "ml": 0.4, "ia": 0.2})
     if "ml" in p and "rf" not in p and "xgb" not in p:
         ml = float(p.pop("ml"))
@@ -668,8 +723,9 @@ def _resolver_pesos_ensemble(
             p["xgb"] = ml * 0.6
         elif has_xgb:
             p["xgb"] = ml
-        else:
+        elif has_rf:
             p["rf"] = ml
+        # Si no hay ningún modelo ML, el peso `ml` se descarta y se renormaliza.
     p.setdefault("estadistico", 0.4)
     p.setdefault("ia", 0.0)
     p.setdefault("rf", 0.0)
@@ -678,6 +734,8 @@ def _resolver_pesos_ensemble(
         p["rf"] = 0.0
     if not has_xgb:
         p["xgb"] = 0.0
+    if not has_ia:
+        p["ia"] = 0.0
     total = sum(float(v) for v in p.values())
     if total <= 0:
         return {"estadistico": 1.0, "rf": 0.0, "xgb": 0.0, "ia": 0.0}
@@ -696,25 +754,22 @@ def ensemble_prediction(
     """
     Combina estadístico + RF + XGBoost (+ IA opcional).
     `prob_ml` se trata como RF por compatibilidad.
+    Si un brazo viene en None, su peso se renormaliza entre los demás.
     """
     rf = prob_rf if prob_rf is not None else prob_ml
     xgb = prob_xgb
-    # Resolver con todos los brazos posibles del config; los ausentes se reasignan luego
     pesos_n = _resolver_pesos_ensemble(
         pesos,
-        has_rf=True,
-        has_xgb=True,
+        has_rf=rf is not None,
+        has_xgb=xgb is not None,
+        has_ia=prob_ia is not None,
     )
 
     est = float(prob_estadistico)
-    peso_rf = float(pesos_n.get("rf", 0)) if rf is not None else 0.0
-    peso_xgb = float(pesos_n.get("xgb", 0)) if xgb is not None else 0.0
-    peso_ia = float(pesos_n.get("ia", 0)) if prob_ia is not None else 0.0
+    peso_rf = float(pesos_n.get("rf", 0))
+    peso_xgb = float(pesos_n.get("xgb", 0))
+    peso_ia = float(pesos_n.get("ia", 0))
     peso_est = float(pesos_n.get("estadistico", 0))
-    # Pesos de brazos ausentes → estadístico
-    peso_est += float(pesos_n.get("rf", 0)) - peso_rf
-    peso_est += float(pesos_n.get("xgb", 0)) - peso_xgb
-    peso_est += float(pesos_n.get("ia", 0)) - peso_ia
 
     total = peso_est + peso_rf + peso_xgb + peso_ia
     if total <= 0:
