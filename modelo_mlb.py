@@ -448,8 +448,9 @@ def es_underdog_con_valor(cuota_decimal: float, prob_modelo: float, cfg: dict) -
         return False
     
     min_cuota = estrategia.get("min_cuota_underdog", 1.5)
-    
-    # Es underdog si la cuota es >= 1.5 (equivalente a +150 americano)
+
+    # Underdog si la cuota alcanza min_cuota_underdog (en config, 2.0 = +100).
+    # 1.50 decimal es -200 americano; +150 americano es 2.50, no 1.50.
     if cuota_decimal < min_cuota:
         return False
     
@@ -460,23 +461,37 @@ def es_underdog_con_valor(cuota_decimal: float, prob_modelo: float, cfg: dict) -
 
 def calcular_stake_dinamico(capital: float, edge: float, confianza: float, cfg: dict) -> float:
     """
-    Calcula el stake dinámicamente basándose en el bankroll (1-3% según confianza).
+    Stake entre min_stake_pct y max_stake_pct del bankroll actual.
+
+    Con gestión dinámica el rango porcentual manda. stake_por_juego queda
+    solo como unidad fija cuando esa gestión está apagada: usarlo de piso
+    en dólares (hoy $3) aplasta el 2–3% en una banca de ~$100 y, por debajo
+    de ese nivel, supera max_stake_pct. El mínimo es el porcentaje mínimo;
+    si ese piso queda por encima del techo, gana el techo. El resultado
+    nunca supera max_stake_pct del capital actual.
     """
-    estrategia = cfg.get("estrategia", {})
+    estrategia = cfg.get("estrategia") or {}
     if not estrategia.get("gestion_bankroll_dinamica", False):
-        return cfg.get("stake_por_juego", 5.0)
-    
-    min_pct = estrategia.get("min_stake_pct", 1.0) / 100.0
-    max_pct = estrategia.get("max_stake_pct", 3.0) / 100.0
-    
-    # Ajustar porcentaje según edge y confianza
-    # Edge más alto = mayor confianza = mayor porcentaje
-    edge_normalizado = min(max(edge - 5.0, 0) / 10.0, 1.0)  # Normalizar edge 5-15% a 0-1
-    pct = min_pct + (max_pct - min_pct) * edge_normalizado * confianza
-    
-    stake = capital * pct
-    stake_min = cfg.get("stake_por_juego", 5.0)
-    return max(stake, stake_min)
+        return float(cfg.get("stake_por_juego", 5.0))
+
+    min_pct = float(estrategia.get("min_stake_pct", 1.0)) / 100.0
+    max_pct = float(estrategia.get("max_stake_pct", 3.0)) / 100.0
+    if max_pct < 0:
+        max_pct = 0.0
+    # Piso porcentual por encima del techo: gana el techo.
+    if min_pct > max_pct:
+        min_pct = max_pct
+
+    capital = float(capital)
+    if capital <= 0 or max_pct <= 0:
+        return 0.0
+
+    # Edge 5–15% → 0–1. Confianza fuera de 0–1 no puede salir del rango.
+    edge_normalizado = min(max(float(edge) - 5.0, 0.0) / 10.0, 1.0)
+    confianza_n = min(max(float(confianza), 0.0), 1.0)
+    pct = min_pct + (max_pct - min_pct) * edge_normalizado * confianza_n
+    pct = min(max(pct, min_pct), max_pct)
+    return capital * pct
 
 
 def obtener_balance_lineup(team_id: int, season: int) -> float:
