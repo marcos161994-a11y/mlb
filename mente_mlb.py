@@ -588,13 +588,12 @@ def _reglas_duras(
 
             pasar_skill, motivo_skill = aplicar_skills(juego, memoria)
             if pasar_skill:
-                codigo = "humedad_alta" if "humedad" in motivo_skill.lower() else "ficha"
                 return _pack(
                     "PASAR",
                     0,
                     [motivo_skill[:80]],
                     4,
-                    [codigo],
+                    ["ficha"],
                     fuente="skill",
                     briefing=briefing,
                 )

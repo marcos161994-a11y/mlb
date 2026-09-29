@@ -16,7 +16,6 @@ from skills.humedad_pelota import (
     TEXTO_LIMITACION,
     auditar_humedad,
     clasificar_fallo,
-    debe_pasar_por_humedad,
 )
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -65,15 +64,15 @@ def reporte_auto_evolucion(memoria: dict | None = None) -> dict[str, Any]:
             f"({alta.get('wr')}%) y el papel {alta.get('profit'):+}. "
             f"En humedad media, {media.get('aciertos')} de {media.get('n')} "
             f"({media.get('wr')}%). "
-            "A partir de ahora la mente no apuesta ese spot si el margen es menor de 12. "
-            "Eso quita un grupo que venía perdiendo. No cambia solo el porcentaje de todo el día."
+            "La muestra tenía poca cobertura de clima, así que la humedad se observa "
+            "pero ya no bloquea apuestas."
         )
     else:
         prueba = (
             "En el historial guardado, con humedad de 70% o más los picks válidos "
             "fueron 10 de 26 (38.5%) y el papel cerca de -30. "
             "En humedad media fueron 15 de 20 (75%). "
-            "La mente deja de apostar ese spot si el margen es menor de 12."
+            "La humedad se sigue midiendo, pero ya no bloquea apuestas."
         )
     notas = []
     if isinstance(memoria, dict) and isinstance(memoria.get("skills_limitaciones"), list):
@@ -89,12 +88,23 @@ def reporte_auto_evolucion(memoria: dict | None = None) -> dict[str, Any]:
             "aunque el clima ya la traía. " + TEXTO_LIMITACION + "."
         ),
         "prueba": prueba,
-        "activa": True,
+        "activa": False,
         "notas_de_fallos": len(notas),
         "limitaciones": notas,
         "fichas": _fichas_publicas(memoria),
+        "fichas_base": _base_fichas(memoria),
         "actualizado": _ahora(),
     }
+
+
+def _base_fichas(memoria: dict | None) -> dict[str, Any]:
+    """Cuenta de todos los picks cerrados, para comparar contra cada ficha."""
+    try:
+        from mente_fichas import auditar_fichas
+
+        return auditar_fichas(memoria).get("base") or {}
+    except Exception:
+        return {}
 
 
 def _fichas_publicas(memoria: dict | None) -> list[dict[str, Any]]:
@@ -110,6 +120,7 @@ def _fichas_publicas(memoria: dict | None) -> list[dict[str, Any]]:
             {
                 "id": ficha["id"],
                 "nombre": ficha["nombre"],
+                "texto": ficha["texto"],
                 "n": ficha["n"],
                 "aciertos": ficha["aciertos"],
                 "wr": ficha["wr"],
@@ -131,10 +142,7 @@ def guardar_reporte(memoria: dict | None = None) -> dict[str, Any]:
 
 
 def aplicar_skills(juego: dict, memoria: dict | None = None) -> tuple[bool, str]:
-    """Humedad, y cualquier ficha que el historial haya puesto en rojo."""
-    ok, msg = debe_pasar_por_humedad(juego)
-    if ok:
-        return ok, msg
+    """Aplica únicamente fichas que el historial completo haya puesto en rojo."""
     try:
         from mente_fichas import debe_pasar_por_ficha
 

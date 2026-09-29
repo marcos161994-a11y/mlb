@@ -1,10 +1,11 @@
-"""Humedad alta en el estadio.
+"""Auditoría de humedad alta en el estadio.
 
 Open-Meteo ya mandaba la humedad y el modelo no la usaba para decidir.
 En los picks válidos ya liquidados, con humedad de 70% o más el quién-gana
 fue 10 de 26 (38.5%) y el papel perdió unos 30. Con humedad media fue 15 de 20.
 
-La habilidad no esconde el pick. Solo niega el dinero si el margen no es grande.
+La muestra histórica estaba incompleta por los cortes 429 de Open-Meteo.
+La humedad se conserva para observación y aprendizaje, pero no bloquea apuestas.
 """
 
 from __future__ import annotations
@@ -12,7 +13,6 @@ from __future__ import annotations
 from typing import Any
 
 UMBRAL_HUMEDAD = 70.0
-EDGE_MIN_PARA_SEGUIR = 12.0
 TEXTO_LIMITACION = "Limitación detectada: Falta de análisis de física climática"
 
 
@@ -30,17 +30,6 @@ def humedad_de(juego: dict | None) -> float | None:
         return None
     clima = juego.get("clima") if isinstance(juego.get("clima"), dict) else {}
     return _num(clima.get("humedad"))
-
-
-def debe_pasar_por_humedad(juego: dict | None) -> tuple[bool, str]:
-    """True si la apuesta debe pasar por humedad alta y margen corto."""
-    h = humedad_de(juego)
-    if h is None or h < UMBRAL_HUMEDAD:
-        return False, ""
-    edge = _num((juego or {}).get("edge")) or 0.0
-    if edge >= EDGE_MIN_PARA_SEGUIR:
-        return False, ""
-    return True, f"Humedad {h:.0f}%: este patrón viene perdiendo si el margen no es grande"
 
 
 def clasificar_fallo(pred: dict | None) -> str | None:
