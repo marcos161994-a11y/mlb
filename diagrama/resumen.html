@@ -219,10 +219,14 @@ function pintarFichas(d) {
         h.appendChild(marca);
         const cuentas = document.createElement('p');
         cuentas.className = 'cuentas';
-        cuentas.textContent = f.n
+        let linea = f.n
             ? f.aciertos + ' de ' + f.n + ' (' + f.wr + '%), papel ' + f.profit +
               '. El resto va en ' + f.resto_wr + '%.'
             : 'Todavía sin juegos guardados en esta situación.';
+        if (f.clv_n) {
+            linea += ' El cierre se movió en contra en ' + f.clv_en_contra + ' de ' + f.clv_n + '.';
+        }
+        cuentas.textContent = linea;
         const texto = document.createElement('p');
         texto.textContent = f.texto || '';
         div.appendChild(h);
