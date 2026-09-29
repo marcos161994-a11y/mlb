@@ -1,11 +1,11 @@
-"""Biblioteca de habilidades: humedad alta, reflexión y reporte."""
+"""Biblioteca de habilidades: humedad observada, reflexión y reporte."""
 
 import json
 from pathlib import Path
 
 from mente_mlb import mente_conclusion
-from mente_skills import reflexionar_fallo, reporte_auto_evolucion
-from skills.humedad_pelota import auditar_humedad, clasificar_fallo, debe_pasar_por_humedad
+from mente_skills import aplicar_skills, reflexionar_fallo, reporte_auto_evolucion
+from skills.humedad_pelota import auditar_humedad, clasificar_fallo
 
 
 CFG = {
@@ -15,16 +15,9 @@ CFG = {
 }
 
 
-def test_pasa_con_humedad_alta_y_margen_corto():
+def test_humedad_alta_no_bloquea_la_apuesta():
     juego = {"clima": {"ok": True, "humedad": 78}, "edge": 6}
-    ok, msg = debe_pasar_por_humedad(juego)
-    assert ok is True
-    assert "78" in msg
-
-
-def test_no_pasa_si_el_margen_es_grande_o_la_humedad_es_media():
-    assert debe_pasar_por_humedad({"clima": {"humedad": 82}, "edge": 14})[0] is False
-    assert debe_pasar_por_humedad({"clima": {"humedad": 55}, "edge": 4})[0] is False
+    assert aplicar_skills(juego, {}) == (False, "")
 
 
 def test_fallo_con_humedad_registra_la_limitacion():
@@ -67,7 +60,7 @@ def test_historial_real_tiene_el_grupo_humedo_en_rojo():
     assert audit["activar"] is True
 
 
-def test_mente_pasa_la_apuesta_en_humedad_alta():
+def test_mente_no_pasa_solo_por_humedad_alta():
     juego = {
         "id": "hum",
         "visitante": "Away",
@@ -80,15 +73,16 @@ def test_mente_pasa_la_apuesta_en_humedad_alta():
         "clima": {"ok": True, "humedad": 76, "run_env": 0.2},
     }
     c = mente_conclusion(juego, CFG, {}, forzar=True, solo_local=True)
-    assert c["decision"] == "PASAR"
-    assert any("humedad" in r.lower() for r in c["razones"])
+    assert c["decision"] != "PASAR"
+    assert not any("humedad" in r.lower() for r in c["razones"])
 
 
 def test_reporte_tiene_las_tres_lineas():
     rep = reporte_auto_evolucion()
     assert rep["habilidad"] == "Humedad alta"
+    assert rep["activa"] is False
     assert "física climática" in rep["motivo"]
-    assert "70%" in rep["prueba"]
+    assert "ya no bloquea" in rep["prueba"]
     html = Path("diagrama/resumen.html").read_text(encoding="utf-8")
     assert "Reporte de Auto-Evolución" in html
     src = Path("servidor_mlb.py").read_text(encoding="utf-8")
