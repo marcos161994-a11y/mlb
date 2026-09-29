@@ -178,6 +178,84 @@ def test_72_con_cuota_real_no_inventa_edge():
     assert abs(e - (71.8 - impl)) < 0.2
 
 
+def _evento_scoreboard(away, home, ml_away, ml_home, eid):
+    return {
+        "id": eid,
+        "competitions": [
+            {
+                "competitors": [
+                    {"homeAway": "away", "team": {"displayName": away}},
+                    {"homeAway": "home", "team": {"displayName": home}},
+                ],
+                "odds": [
+                    {
+                        "provider": {"name": "DraftKings"},
+                        "awayTeamOdds": {"moneyLine": ml_away},
+                        "homeTeamOdds": {"moneyLine": ml_home},
+                    }
+                ],
+            }
+        ],
+    }
+
+
+def test_scoreboard_no_cambia_de_dia_a_las_ocho_de_la_noche(monkeypatch):
+    """A las 8:30pm en la isla ya es el día siguiente en UTC (Render)."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+
+    from lineas_espn import _fetch_mapa_espn
+
+    class _Resp:
+        def __init__(self, payload):
+            self._payload = payload
+
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return self._payload
+
+    class _Reloj(datetime):
+        @classmethod
+        def now(cls, tz=None):
+            fijo = datetime(2026, 9, 30, 0, 30, tzinfo=ZoneInfo("UTC"))
+            if tz is None:
+                return fijo.replace(tzinfo=None)
+            return fijo.astimezone(tz)
+
+    por_fecha = {
+        "20260929": {"events": [_evento_scoreboard("New York Yankees", "Boston Red Sox", 150, -170, "hoy")]},
+        "20260930": {
+            "events": [
+                _evento_scoreboard("New York Yankees", "Boston Red Sox", -120, 100, "manana"),
+                _evento_scoreboard("New York Mets", "Philadelphia Phillies", -110, -110, "otro"),
+            ]
+        },
+        "20260928": {
+            "events": [_evento_scoreboard("Los Angeles Dodgers", "San Diego Padres", 130, -150, "ayer")]
+        },
+    }
+    pedidas = []
+
+    def _get(url, params=None, timeout=None):
+        fecha = str((params or {}).get("dates"))
+        pedidas.append(fecha)
+        return _Resp(por_fecha.get(fecha, {"events": []}))
+
+    monkeypatch.setattr("lineas_espn.datetime", _Reloj)
+    monkeypatch.setattr("lineas_espn.requests.get", _get)
+    mapa, _api, err = _fetch_mapa_espn(5)
+    assert err is None
+    assert pedidas[0] == "20260929"
+    yankees = buscar_lineas_partido(mapa, "New York Yankees", "Boston Red Sox")
+    mets = buscar_lineas_partido(mapa, "New York Mets", "Philadelphia Phillies")
+    dodgers = buscar_lineas_partido(mapa, "Los Angeles Dodgers", "San Diego Padres")
+    assert yankees["away"]["american"] == 150
+    assert mets is not None
+    assert dodgers["away"]["american"] == 130
+
+
 def test_espn_en_vivo_si_hay_red():
     from lineas_espn import obtener_lineas_espn
 

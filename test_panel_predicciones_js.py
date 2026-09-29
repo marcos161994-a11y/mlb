@@ -28,3 +28,13 @@ def test_pintar_predicciones_dias_orden_declarado_antes():
     idx_decl = body.find("const diasOrden")
     assert idx_decl != -1 and idx_use != -1
     assert idx_decl < idx_use, "diasOrden debe declararse antes del template HTML"
+
+
+def test_fmt_money_conserva_el_signo_de_las_perdidas():
+    html = Path(__file__).resolve().parent.joinpath("QuantumMLB.html").read_text(
+        encoding="utf-8"
+    )
+    inicio = html.find("function fmtMoney(n)")
+    assert inicio != -1
+    cuerpo = html[inicio : inicio + 280]
+    assert "x >= 0 ? '+' : '-'" in cuerpo

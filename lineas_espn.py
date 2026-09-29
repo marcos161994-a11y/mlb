@@ -12,6 +12,7 @@ import os
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import requests
 
@@ -23,6 +24,9 @@ from lineas_betmgm import (
 
 ESPN_HEADER = "https://site.web.api.espn.com/apis/v2/scoreboard/header"
 ESPN_SCOREBOARD = "https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard"
+# El experimento y la temporada se cuentan en Puerto Rico, no en UTC.
+# Render corre en UTC: a las 8pm de la isla ya es el día siguiente allá.
+TZ_PARTIDO = ZoneInfo("America/Puerto_Rico")
 _HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -392,10 +396,18 @@ def _aplicar_total_a_juego(juego: dict[str, Any], lineas: dict[str, Any]) -> boo
     return True
 
 
-def _fechas_scoreboard_espn() -> list[str]:
-    """Hoy y mañana (YYYYMMDD) para no perder juegos en borde de medianoche."""
-    hoy = datetime.now().date()
-    return [hoy.strftime("%Y%m%d"), (hoy + timedelta(days=1)).strftime("%Y%m%d")]
+def _fechas_scoreboard_espn(ahora: datetime | None = None) -> list[str]:
+    """Hoy, mañana y ayer en hora de Puerto Rico (YYYYMMDD).
+
+    Hoy va primero. Mañana cubre el borde de medianoche. Ayer queda al final
+    para los juegos de la costa oeste que siguen vivos pasada la medianoche.
+    """
+    ahora = ahora or datetime.now(TZ_PARTIDO)
+    if ahora.tzinfo is None:
+        ahora = ahora.replace(tzinfo=TZ_PARTIDO)
+    hoy = ahora.astimezone(TZ_PARTIDO).date()
+    dias = [hoy, hoy + timedelta(days=1), hoy - timedelta(days=1)]
+    return [d.strftime("%Y%m%d") for d in dias]
 
 
 def _fetch_mapa_espn(timeout: float) -> tuple[dict[tuple[str, str], dict[str, Any]], str, str | None]:
@@ -412,7 +424,11 @@ def _fetch_mapa_espn(timeout: float) -> tuple[dict[tuple[str, str], dict[str, An
             )
             r.raise_for_status()
             parcial = parsear_scoreboard_espn(r.json())
-            mapa.update(parcial)
+            # La serie se repite al día siguiente. Si mañana pisa a hoy, el
+            # partido de esta noche se queda con la cuota de mañana.
+            for clave, fila in parcial.items():
+                if clave not in mapa:
+                    mapa[clave] = fila
         except Exception as e:
             errores.append(f"scoreboard {fecha}: {e}"[:80])
     if mapa:

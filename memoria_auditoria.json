@@ -399113,9 +399113,9 @@
           "pitcher_away_id": 666200,
           "pitcher_home_id": 519242,
           "inicio_juego": "2026-09-29T14:00:00-04:00",
-          "estado": "pendiente",
-          "resultado": null,
-          "profit": null,
+          "estado": "liquidado",
+          "resultado": "acierto",
+          "profit": 1.56,
           "stake_virtual": 3.0,
           "con_dinero": false,
           "predicho_en": "2026-09-29T13:00:03.719559-04:00",
@@ -399831,7 +399831,9 @@
           "clv_entrada_en": "2026-09-29T17:00:03.918677",
           "clv_entrada_pct": -4.34,
           "linea_movimiento_pct": 0.0,
-          "cuota_retry": true
+          "cuota_retry": true,
+          "marcador_final": "Philadelphia Phillies 3 - Atlanta Braves 5",
+          "liquidado_en": "2026-09-29T17:35:40.230819-04:00"
         }
       ],
       "resumen": {
@@ -526582,6 +526584,41 @@
       "fuente": "heuristica",
       "modelo": null,
       "creada_en": "2026-09-28T00:40:53.860358Z"
+    },
+    {
+      "id": "lec-acierto_refuerzo-849845-1790717740",
+      "tipo": "acierto_refuerzo",
+      "fecha": "2026-09-29",
+      "game_id": "849845",
+      "visitante": "Philadelphia Phillies",
+      "home": "Atlanta Braves",
+      "pick": "Atlanta Braves ML",
+      "probPick": 58.6,
+      "edge": -7.1,
+      "lineas_fuente": "draftkings",
+      "marcador_final": "Philadelphia Phillies 3 - Atlanta Braves 5",
+      "patron": "retry_cuota_ok",
+      "leccion": "Cuota llegó en retry T-45/T-30 y el pick acertó; priorizar refresh.",
+      "motivo": "retry cuota + acierto",
+      "confianza": 4,
+      "fuente": "heuristica",
+      "modelo": null,
+      "creada_en": "2026-09-29T21:35:40.297398Z",
+      "con_dinero": false,
+      "capas": {
+        "capas": [
+          "bullpen",
+          "park_umpire",
+          "monte_carlo",
+          "mc_totales",
+          "consenso"
+        ],
+        "mc_senal": "neutro",
+        "elo_ok": true,
+        "elo_resumen": "Elo 1495/1510 pitch +40/+53 → 43/57% · fusión 42/58%",
+        "intel_resumen": "Intel[bullpen,park_umpire,monte_carlo,mc_totales,consenso] → 41/59% · MC totales μ=6.8 (F5 3.7) vs 6",
+        "preferir_f5": false
+      }
     }
   ],
   "mente_stats": {
@@ -526597,8 +526634,8 @@
         "oportunidad_perdida": 1379
       },
       "ESPERAR": {
-        "n": 1577,
-        "aciertos": 855,
+        "n": 1578,
+        "aciertos": 856,
         "fallos": 722
       }
     },
@@ -526632,9 +526669,9 @@
         "apostar_fail": 0.0
       },
       "edge_bajo": {
-        "n": 2731.5,
+        "n": 2732.5,
         "pasar_ok": 1097.0,
-        "pasar_miss": 1634.5,
+        "pasar_miss": 1635.5,
         "apostar_ok": 0.0,
         "apostar_fail": 0.0
       },
@@ -526695,9 +526732,9 @@
         "apostar_fail": 0.0
       },
       "linea_tarde": {
-        "n": 1515.0,
+        "n": 1516.0,
         "pasar_ok": 705.0,
-        "pasar_miss": 786.0,
+        "pasar_miss": 787.0,
         "apostar_ok": 24.0,
         "apostar_fail": 0.0
       },
@@ -526735,7 +526772,6 @@
       "limpio": 1
     },
     "vistos": [
-      "823585:fallo",
       "824881:fallo",
       "824556:fallo",
       "823016:fallo",
@@ -527134,14 +527170,15 @@
       "824217:fallo",
       "823246:acierto",
       "824542:acierto",
-      "823731:acierto"
+      "823731:acierto",
+      "849845:acierto"
     ],
-    "actualizado_en": "2026-09-28T05:55:58.353239Z"
+    "actualizado_en": "2026-09-29T21:35:40.304153Z"
   },
   "ml_meta": {
     "ok": true,
-    "muestras": 523,
-    "muestras_reales": 518,
+    "muestras": 524,
+    "muestras_reales": 519,
     "muestras_sinteticas": 5,
     "ratio_features_reales": 0.99,
     "entreno_bloqueado": false,
@@ -527156,12 +527193,12 @@
   },
   "calib_meta": {
     "ok": true,
-    "muestras": 523,
+    "muestras": 524,
     "metodo": "isotonic",
     "por_tipo": {
       "favorito_alto": {
         "ok": true,
-        "muestras": 119,
+        "muestras": 120,
         "metodo": "isotonic"
       },
       "underdog": {
@@ -527180,7 +527217,7 @@
         "metodo": "isotonic"
       }
     },
-    "mensaje": "Calibrado isotonic con 523 muestras (ECE≈0.02) · 4 tipos",
+    "mensaje": "Calibrado isotonic con 524 muestras (ECE≈0.02) · 4 tipos",
     "por_segmento": {
       "prob_alta": {
         "ok": true,
@@ -527204,11 +527241,11 @@
       },
       "general": {
         "ok": true,
-        "muestras": 25,
+        "muestras": 26,
         "metodo": "isotonic"
       }
     },
-    "ece": 0.025
+    "ece": 0.024
   },
   "experiencias_negativas_backfill_hecho": true,
   "lecciones_backfill_hecho": true,

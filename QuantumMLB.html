@@ -1212,8 +1212,10 @@ function nombreMes(mesClave) {
 }
 
 function fmtMoney(n) {
-    const s = n >= 0 ? '+' : '';
-    return s + '$' + Math.abs(n).toFixed(2);
+    const v = Number(n);
+    const x = Number.isFinite(v) ? v : 0;
+    const s = x >= 0 ? '+' : '-';
+    return s + '$' + Math.abs(x).toFixed(2);
 }
 
 function fmtAmer(a) {

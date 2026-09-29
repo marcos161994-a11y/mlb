@@ -17,11 +17,14 @@ import time
 from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
+from zoneinfo import ZoneInfo
 
 import requests
 
 API = "https://statsapi.mlb.com/api/v1"
 _session = requests.Session()
+# Misma fecha que el experimento. En Render (UTC) el día cambia a las 8pm de la isla.
+TZ_PARTIDO = ZoneInfo("America/Puerto_Rico")
 
 CACHE_PATH = Path(
     os.getenv("BULLPEN_CACHE_PATH", str(Path(__file__).resolve().parent / "bullpen_cache.json"))
@@ -41,7 +44,7 @@ _cache_leido = False
 
 
 def _hoy() -> str:
-    return date.today().isoformat()
+    return datetime.now(TZ_PARTIDO).date().isoformat()
 
 
 def _cargar() -> None:
@@ -129,7 +132,11 @@ def _relevo_del_juego(game_pk: int) -> dict[str, float]:
         bloque = equipos.get(lado) or {}
         team_id = ((bloque.get("team") or {}).get("id"))
         lanzadores = bloque.get("pitchers") or []
-        if not team_id or len(lanzadores) < 2:
+        if not team_id or not lanzadores:
+            continue
+        # Juego completo: el abridor tiró solo. El bullpen no gastó entradas.
+        if len(lanzadores) == 1:
+            out[str(team_id)] = 0.0
             continue
         jugadores = bloque.get("players") or {}
         total = 0.0
@@ -144,7 +151,7 @@ def _relevo_del_juego(game_pk: int) -> dict[str, float]:
 def refrescar(hasta: date | None = None, presupuesto_seg: float = PRESUPUESTO_SEG) -> dict[str, Any]:
     """Lee los boxscores que falten, sin pasarse del tiempo permitido."""
     _cargar()
-    hasta = hasta or date.today()
+    hasta = hasta or datetime.now(TZ_PARTIDO).date()
     if _estado["dia"] != _hoy():
         _estado["dia"] = _hoy()
         _estado["juegos"] = {}
