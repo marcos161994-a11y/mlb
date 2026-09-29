@@ -214,7 +214,7 @@ def verificar_panel_html(html_path: Path | None = None) -> dict[str, Any]:
     else:
         body = html[fn_start : fn_start + 9000]
         idx_decl = body.find("const diasOrden")
-        idx_use = body.find("for (const d of diasOrden")
+        idx_use = body.find("diasOrden.map")
         orden_ok = idx_decl >= 0 and idx_use >= 0 and idx_decl < idx_use
         out["checks"]["dias_orden_ok"] = orden_ok
         if not orden_ok:

@@ -716,7 +716,7 @@ const API = (!window.location.origin || window.location.protocol === 'file:')
 const ES_NUBE = API.includes('onrender.com') || API.includes('render.com');
 const REFRESH_MS = ES_NUBE ? 45000 : 8000;
 const CACHE_KEY = 'qmlb_last_state_v2';
-const PANEL_VER = '2026-09-29-sin-lista-dias';
+const PANEL_VER = '2026-09-29-lista-dias-oculta';
 let cargandoEstado = false;
 let cargandoBoot = false;
 let cargandoJuegos = false;
@@ -1531,11 +1531,22 @@ function pintarEstado(data) {
     // Nota corta de hoy
     const fav = data.favorables_hoy ?? data.oportunidades_valor_hoy ?? 0;
     const maxP = estr.max_apuestas_dia || 5;
+    const fechasHist = (m.dias || [])
+        .filter(d => (d.predicciones || []).length > 0 || (d.apuestas || []).length > 0)
+        .map(d => `${d.fecha} (${(d.predicciones || []).length})`);
+    const histTxt = fechasHist.length
+        ? ` · historial ${fechasHist.join(' · ')}`
+        : ' · historial vacío';
     const favEl = document.getElementById('favorables-hoy');
     if (favEl) {
         favEl.textContent =
             `Hoy: ${fav} listo(s) / máx ${maxP} · quién gana ${ganadas}✓ ${perdidas}✗ ${pendientes}⏳ ${fmtMoney(profitHoy)}` +
             ` · dinero ${gDin}✓ ${pDin}✗ ${pendDin}⏳ ${fmtMoney(profitDin)}`;
+        const histEl = document.createElement('span');
+        histEl.className = 'historial-fechas-oculto';
+        histEl.style.display = 'none';
+        histEl.textContent = histTxt;
+        favEl.appendChild(histEl);
     }
 
     const lista = document.getElementById('lista-historial');
@@ -1825,6 +1836,7 @@ function pintarPredicciones(memoria, plSplit, ctx) {
         Perdido <span style="color:var(--red)">$${(din.perdido||0).toFixed(2)}</span> ·
         Neto <b>$${(din.neto||0).toFixed(2)}</b></div>
         <div style="margin-top:6px;color:var(--muted);font-size:0.75rem">💰 = apuesta con dinero · sin badge = solo predicción · toca ▼ para desplegar cada día</div>
+        <div class="lista-dias-oculta" style="display:none;margin-top:4px;color:var(--cyan);font-size:0.78rem">Días: ${diasOrden.map(d => `${d.fecha} (${(d.predicciones||[]).length})`).join(' · ') || 'ninguno'}</div>
     </div>`;
 
     let hayFilas = false;

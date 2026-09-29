@@ -24,7 +24,7 @@ def test_pintar_predicciones_dias_orden_declarado_antes():
     start = html.find("function pintarPredicciones")
     assert start != -1
     body = html[start : start + 9000]
-    idx_use = body.find("for (const d of diasOrden")
+    idx_use = body.find("diasOrden.map")
     idx_decl = body.find("const diasOrden")
     assert idx_decl != -1 and idx_use != -1
-    assert idx_decl < idx_use, "diasOrden debe declararse antes de recorrerlo"
+    assert idx_decl < idx_use, "diasOrden debe declararse antes del template HTML"
