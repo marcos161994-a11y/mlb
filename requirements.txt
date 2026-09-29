@@ -1,8 +1,10 @@
-fastapi>=0.110.0
-uvicorn>=0.27.0
-requests>=2.31.0
-apscheduler>=3.10.0
-scikit-learn>=1.3.0
-numpy>=1.24.0
-pandas>=2.0.0
-xgboost>=2.0.0
+# Fijadas a las versiones que serializan modelo_rf_mlb.pkl,
+# scaler_rf_mlb.pkl y modelo_xgb_mlb.pkl (schema v4, 28 features).
+fastapi==0.142.0
+uvicorn==0.54.0
+requests==2.34.2
+apscheduler==3.11.3
+scikit-learn==1.9.1
+numpy==2.5.3
+pandas==3.0.6
+xgboost==3.4.1
