@@ -175,6 +175,7 @@ def test_refrescar_cuotas_pendientes_upgrade_modelo(tmp_path, monkeypatch):
     }
     monkeypatch.setattr(srv, "DATA_DIR", tmp_path)
     monkeypatch.setattr(srv, "MEMORIA_PATH", tmp_path / "memoria_auditoria.json")
+    monkeypatch.setattr(srv, "MEMORIA_BACKUP_PATH", tmp_path / "memoria_auditoria_backup.json")
     srv._invalidar_cache_memoria()
     srv.guardar_memoria(memoria)
 

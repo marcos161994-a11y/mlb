@@ -82,6 +82,15 @@ def test_peso_sintetica_reducido(monkeypatch, tmp_path):
     assert all(abs(d["_peso"] - 0.05) < 1e-9 for d in datos)
 
 
+def _aislar_modelos(monkeypatch, tmp_path: Path) -> None:
+    """RF, scaler y XGB se escriben en tmp. No vuelven a la raíz del repo."""
+    monkeypatch.setattr(ml, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(ml, "BASE_DIR", tmp_path)
+    monkeypatch.setattr(ml, "_modelo_path", lambda: tmp_path / "modelo_rf_mlb.pkl")
+    monkeypatch.setattr(ml, "_scaler_path", lambda: tmp_path / "scaler_rf_mlb.pkl")
+    monkeypatch.setattr(ml, "_modelo_xgb_path", lambda: tmp_path / "modelo_xgb_mlb.pkl")
+
+
 def test_auto_entrenar_bloqueado_pocas_reales(monkeypatch, tmp_path):
     cfg_path = tmp_path / "config_experimento.json"
     cfg_path.write_text(
@@ -96,8 +105,7 @@ def test_auto_entrenar_bloqueado_pocas_reales(monkeypatch, tmp_path):
         ),
         encoding="utf-8",
     )
-    monkeypatch.setattr(ml, "BASE_DIR", tmp_path)
-    monkeypatch.setattr(ml, "_modelo_path", lambda: tmp_path / "modelo_rf_mlb.pkl")
+    _aislar_modelos(monkeypatch, tmp_path)
 
     mem = _memoria_liquidada(con_features=False, n=12)
     meta = ml.auto_entrenar_ml(mem, min_muestras=5)
@@ -122,9 +130,7 @@ def test_auto_entrenar_permite_suficientes_reales(monkeypatch, tmp_path):
         ),
         encoding="utf-8",
     )
-    monkeypatch.setattr(ml, "BASE_DIR", tmp_path)
-    monkeypatch.setattr(ml, "_modelo_path", lambda: tmp_path / "no_existe.pkl")
-    monkeypatch.setattr(ml, "_modelo_xgb_path", lambda: tmp_path / "no_xgb.pkl")
+    _aislar_modelos(monkeypatch, tmp_path)
 
     mem = _memoria_liquidada(con_features=True, n=10)
     meta = ml.auto_entrenar_ml(mem, min_muestras=5)
@@ -136,9 +142,8 @@ def test_auto_entrenar_permite_suficientes_reales(monkeypatch, tmp_path):
 
 def test_auto_entrenar_omite_en_render_si_hay_modelo(monkeypatch, tmp_path):
     monkeypatch.setenv("RENDER", "true")
-    modelo = tmp_path / "modelo_rf_mlb.pkl"
-    modelo.write_bytes(b"dummy")
-    monkeypatch.setattr(ml, "_modelo_path", lambda: modelo)
+    _aislar_modelos(monkeypatch, tmp_path)
+    (tmp_path / "modelo_rf_mlb.pkl").write_bytes(b"dummy")
     mem = _memoria_liquidada(con_features=True, n=16)
     mem["ml_meta"] = {"ok": True, "muestras": 1, "schema": ml.FEATURE_SCHEMA_VERSION}
     meta = ml.auto_entrenar_ml(mem, min_muestras=5)
