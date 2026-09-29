@@ -1,6 +1,8 @@
 odds_api_key.txt
 espn_lineas_cache.json
 espn_scoreboard_cache.json
+clima_cache.json
+bullpen_cache.json
 openai_api_key.txt
 gcp_credentials.json
 __pycache__/

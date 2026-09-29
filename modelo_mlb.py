@@ -28,7 +28,7 @@ except ImportError:
     predecir_xgb = None  # type: ignore
 
 try:
-    from clima import obtener_clima_estadio, aplicar_clima_a_fuerzas
+    from clima import obtener_clima_estadio, aplicar_clima_a_fuerzas, precargar_clima_dia
     HAS_CLIMA = True
 except ImportError:
     HAS_CLIMA = False
@@ -1411,6 +1411,11 @@ def seleccionar_favorables_del_dia(juegos: list[dict[str, Any]], cfg: dict[str, 
 
 def evaluar_juegos(juegos: list[dict[str, Any]], cfg: dict[str, Any], bias_aprendizaje: float = 0.0) -> list[dict[str, Any]]:
     """Marca candidatos favorables y aplica tope diario sobre juegos PROGRAMADOS."""
+    if HAS_CLIMA and cfg.get("usar_clima", True):
+        try:
+            precargar_clima_dia(juegos)
+        except Exception as e:
+            print(f"[CLIMA] precarga falló: {str(e)[:80]}")
     for j in juegos:
         analizar_juego(j, cfg, bias_aprendizaje)
     juegos = seleccionar_favorables_del_dia(juegos, cfg)
