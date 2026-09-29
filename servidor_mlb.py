@@ -4072,6 +4072,25 @@ def api_predicciones():
     }
 
 
+def _estado_bullpen(cfg: dict) -> dict:
+    """Lo que ya se leyó de relevistas hoy. No sale a internet desde el health."""
+    activo = bool((cfg.get("estrategia") or {}).get("analizar_bullpen", False))
+    try:
+        from bullpen import resumen as resumen_bullpen
+
+        datos = resumen_bullpen()
+    except Exception:
+        return {"activo": activo, "ok": False}
+    return {
+        "activo": activo,
+        "ok": bool(datos.get("ok")),
+        "fuente": "statsapi",
+        "ventana_dias": datos.get("ventana_dias"),
+        "juegos_leidos": datos.get("juegos_leidos"),
+        "equipos": datos.get("equipos"),
+    }
+
+
 @app.get("/api/health")
 def api_health():
     """Ping para Render + cron externo (mantiene el servicio despierto en plan free).
@@ -4122,6 +4141,7 @@ def api_health():
         "calibracion": {
             "activo": bool(cfg.get("usar_calibracion", True)),
         },
+        "bullpen": _estado_bullpen(cfg),
         "pitcher_avanzado": {
             "activo": True,
             "metricas": ["fip", "xfip", "k_pct", "bb_pct"],

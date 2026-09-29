@@ -28,10 +28,16 @@ except ImportError:
     predecir_xgb = None  # type: ignore
 
 try:
-    from clima import obtener_clima_estadio, aplicar_clima_a_fuerzas
+    from clima import obtener_clima_estadio, aplicar_clima_a_fuerzas, precargar_clima_dia
     HAS_CLIMA = True
 except ImportError:
     HAS_CLIMA = False
+
+try:
+    from bullpen import fatiga_bullpen as fatiga_bullpen_real, refrescar as refrescar_bullpen
+    HAS_BULLPEN = True
+except ImportError:
+    HAS_BULLPEN = False
 
 try:
     from lesiones import analizar_lesiones_juego, cargar_reporte_lesiones
@@ -380,11 +386,19 @@ def stats_bateo(team_id: int, season: int) -> dict[str, Any]:
 
 def calcular_fatiga_bullpen(team_id: int, season: int) -> float:
     """
-    Estima la fatiga del bullpen basándose en el uso reciente.
-    Retorna un valor entre 0 (descansado) y 1 (muy fatigado).
-    
-    Mejorado: Analiza los últimos 5 juegos del equipo para estimar uso de bullpen.
+    Fatiga del bullpen entre 0 (descansado) y 1 (exprimido).
+
+    Primero se usan las entradas de relevo reales de los últimos días. Si esa
+    lectura todavía no está lista, se cae al estimado viejo por récord.
     """
+    if HAS_BULLPEN:
+        try:
+            real = fatiga_bullpen_real(int(team_id))
+            if real is not None:
+                return real
+        except Exception as e:
+            print(f"[BULLPEN] lectura real falló: {str(e)[:60]}")
+
     if team_id in _bullpen_fatigue_cache:
         return _bullpen_fatigue_cache[team_id]
     
@@ -1411,6 +1425,16 @@ def seleccionar_favorables_del_dia(juegos: list[dict[str, Any]], cfg: dict[str, 
 
 def evaluar_juegos(juegos: list[dict[str, Any]], cfg: dict[str, Any], bias_aprendizaje: float = 0.0) -> list[dict[str, Any]]:
     """Marca candidatos favorables y aplica tope diario sobre juegos PROGRAMADOS."""
+    if HAS_CLIMA and cfg.get("usar_clima", True):
+        try:
+            precargar_clima_dia(juegos)
+        except Exception as e:
+            print(f"[CLIMA] precarga falló: {str(e)[:80]}")
+    if HAS_BULLPEN and cfg.get("estrategia", {}).get("analizar_bullpen", False):
+        try:
+            refrescar_bullpen()
+        except Exception as e:
+            print(f"[BULLPEN] refresco falló: {str(e)[:80]}")
     for j in juegos:
         analizar_juego(j, cfg, bias_aprendizaje)
     juegos = seleccionar_favorables_del_dia(juegos, cfg)

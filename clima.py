@@ -7,7 +7,11 @@ y aporta features al ensemble ML.
 
 from __future__ import annotations
 
-from datetime import datetime
+import json
+import os
+import time
+from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Any
 from zoneinfo import ZoneInfo
 
@@ -16,6 +20,16 @@ import requests
 OPEN_METEO_URL = "https://api.open-meteo.com/v1/forecast"
 _session = requests.Session()
 _clima_cache: dict[str, dict[str, Any]] = {}
+_dia_cache: dict[str, str] = {}
+
+CACHE_PATH = Path(
+    os.getenv("CLIMA_CACHE_PATH", str(Path(__file__).resolve().parent / "clima_cache.json"))
+)
+# Open-Meteo corta con 429 si se le pide en ráfaga. Tras un corte esperamos
+# antes de volver a salir, y mientras tanto servimos lo último del día.
+PAUSA_TRAS_429_SEG = 900.0
+_pausa_hasta = 0.0
+_cache_leido = False
 
 # Domos / techado fijo: clima exterior no aplica
 DOMOS_FIJOS: set[int] = {
@@ -66,6 +80,208 @@ def _cache_key(home_id: int, inicio_iso: str | None) -> str:
     return f"{home_id}:{hora}"
 
 
+def _dia_de(inicio_iso: str | None) -> str:
+    dia = (inicio_iso or "")[:10]
+    return dia if len(dia) == 10 else date.today().isoformat()
+
+
+def _cargar_cache() -> None:
+    """El cache vive en disco porque Render reinicia el proceso varias veces al día."""
+    global _cache_leido
+    if _cache_leido:
+        return
+    _cache_leido = True
+    try:
+        crudo = json.loads(CACHE_PATH.read_text(encoding="utf-8"))
+    except Exception:
+        return
+    if not isinstance(crudo, dict):
+        return
+    vivos = {(date.today() - timedelta(days=d)).isoformat() for d in (0, 1)}
+    for clave, entrada in (crudo.get("entradas") or {}).items():
+        if not isinstance(entrada, dict) or not isinstance(entrada.get("dato"), dict):
+            continue
+        if entrada.get("dia") not in vivos:
+            continue
+        _clima_cache[str(clave)] = entrada["dato"]
+        _dia_cache[str(clave)] = str(entrada["dia"])
+
+
+def _guardar_cache() -> None:
+    entradas = {
+        clave: {"dia": _dia_cache.get(clave, ""), "dato": dato}
+        for clave, dato in _clima_cache.items()
+    }
+    tmp = CACHE_PATH.with_suffix(".tmp")
+    try:
+        tmp.write_text(
+            json.dumps({"entradas": entradas}, ensure_ascii=False), encoding="utf-8"
+        )
+        tmp.replace(CACHE_PATH)
+    except Exception:
+        try:
+            tmp.unlink()
+        except Exception:
+            pass
+
+
+def _recordar(clave: str, dia: str, dato: dict[str, Any]) -> None:
+    _clima_cache[clave] = dato
+    _dia_cache[clave] = dia
+    _guardar_cache()
+
+
+def _respaldo_del_dia(home_id: int, dia: str) -> dict[str, Any] | None:
+    """Último clima bueno de ese estadio hoy, para no quedar ciegos si la API corta."""
+    prefijo = f"{home_id}:"
+    mejor_clave = None
+    for clave, guardado in _dia_cache.items():
+        if guardado != dia or not clave.startswith(prefijo):
+            continue
+        if mejor_clave is None or clave > mejor_clave:
+            mejor_clave = clave
+    if mejor_clave is None:
+        return None
+    dato = dict(_clima_cache[mejor_clave])
+    dato["fuente"] = "open-meteo-cache"
+    return dato
+
+
+def _en_pausa() -> bool:
+    return time.time() < _pausa_hasta
+
+
+def _activar_pausa(err: Exception) -> bool:
+    """True si el error es un 429; entonces dejamos de pedir por un rato."""
+    global _pausa_hasta
+    codigo = getattr(getattr(err, "response", None), "status_code", None)
+    if codigo != 429 and "429" not in str(err):
+        return False
+    _pausa_hasta = time.time() + PAUSA_TRAS_429_SEG
+    return True
+
+
+def _horas_utc(inicio_iso: str | None) -> str | None:
+    if not inicio_iso:
+        return None
+    try:
+        dt = datetime.fromisoformat(inicio_iso.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=ZoneInfo("America/New_York"))
+    return dt.astimezone(ZoneInfo("UTC")).strftime("%Y-%m-%dT%H:00")
+
+
+def _params_base(hora_utc: str | None) -> dict[str, Any]:
+    params: dict[str, Any] = {
+        "current": "temperature_2m,relative_humidity_2m,wind_speed_10m",
+        "temperature_unit": "fahrenheit",
+        "wind_speed_unit": "mph",
+        "timezone": "UTC",
+    }
+    if hora_utc:
+        params["hourly"] = "temperature_2m,relative_humidity_2m,wind_speed_10m"
+        params["start_hour"] = hora_utc
+        params["end_hour"] = hora_utc
+    return params
+
+
+def _leer_medidas(data: dict[str, Any]) -> tuple[Any, Any, Any]:
+    hourly = data.get("hourly") or {}
+    if hourly.get("temperature_2m"):
+        return (
+            hourly["temperature_2m"][0],
+            (hourly.get("wind_speed_10m") or [None])[0],
+            (hourly.get("relative_humidity_2m") or [None])[0],
+        )
+    cur = data.get("current") or {}
+    return cur.get("temperature_2m"), cur.get("wind_speed_10m"), cur.get("relative_humidity_2m")
+
+
+def _armar(nombre: str, temp: Any, viento: Any, humedad: Any) -> dict[str, Any] | None:
+    if temp is None:
+        return None
+    run_env = calcular_run_env(float(temp), float(viento or 0.0))
+    return {
+        "ok": True,
+        "fuente": "open-meteo",
+        "temp_f": round(float(temp), 1),
+        "viento_mph": round(float(viento or 0.0), 1),
+        "humedad": int(humedad) if humedad is not None else None,
+        "run_env": run_env,
+        "motivo": _motivo_run_env(run_env, float(temp), float(viento or 0)),
+        "estadio": nombre,
+        "es_domo": False,
+    }
+
+
+def precargar_clima_dia(juegos: list[dict[str, Any]], timeout: float = 10.0) -> dict[str, int]:
+    """Una petición por hora de inicio en vez de una por juego.
+
+    Open-Meteo acepta varias coordenadas en la misma llamada, así que un slate
+    de 15 juegos se resuelve en dos o tres peticiones.
+    """
+    _cargar_cache()
+    resumen = {"pedidos": 0, "guardados": 0, "en_cache": 0, "pausado": 0}
+    por_hora: dict[str, list[tuple[str, str, int, float, float, str]]] = {}
+    vistos: set[str] = set()
+    for juego in juegos or []:
+        if not isinstance(juego, dict):
+            continue
+        home_id = juego.get("home_id")
+        if not home_id or int(home_id) in DOMOS_FIJOS:
+            continue
+        coords = COORDS_ESTADIO.get(int(home_id))
+        if not coords:
+            continue
+        inicio = juego.get("inicio_juego")
+        clave = _cache_key(int(home_id), inicio)
+        if clave in vistos:
+            continue
+        vistos.add(clave)
+        if clave in _clima_cache:
+            resumen["en_cache"] += 1
+            continue
+        hora = _horas_utc(inicio) or ""
+        lat, lon, nombre = coords
+        por_hora.setdefault(hora, []).append(
+            (clave, _dia_de(inicio), int(home_id), lat, lon, nombre)
+        )
+
+    for hora, pendientes in por_hora.items():
+        if _en_pausa():
+            resumen["pausado"] += len(pendientes)
+            continue
+        params = _params_base(hora or None)
+        params["latitude"] = ",".join(str(p[3]) for p in pendientes)
+        params["longitude"] = ",".join(str(p[4]) for p in pendientes)
+        resumen["pedidos"] += 1
+        try:
+            r = _session.get(OPEN_METEO_URL, params=params, timeout=timeout)
+            r.raise_for_status()
+            data = r.json()
+        except Exception as e:
+            if _activar_pausa(e):
+                print(f"[CLIMA] Open-Meteo 429 · pausa {int(PAUSA_TRAS_429_SEG / 60)} min")
+            else:
+                print(f"[CLIMA] lote falló: {str(e)[:80]}")
+            continue
+        bloques = data if isinstance(data, list) else [data]
+        for pendiente, bloque in zip(pendientes, bloques):
+            if not isinstance(bloque, dict):
+                continue
+            clave, dia, _home_id, _lat, _lon, nombre = pendiente
+            dato = _armar(nombre, *_leer_medidas(bloque))
+            if dato:
+                _clima_cache[clave] = dato
+                _dia_cache[clave] = dia
+                resumen["guardados"] += 1
+    if resumen["guardados"]:
+        _guardar_cache()
+    return resumen
+
+
 def obtener_clima_estadio(
     home_id: int | None,
     inicio_iso: str | None = None,
@@ -110,73 +326,40 @@ def obtener_clima_estadio(
 
     lat, lon, nombre = coords
     base["estadio"] = nombre
+    _cargar_cache()
     ck = _cache_key(int(home_id), inicio_iso)
+    dia = _dia_de(inicio_iso)
     if ck in _clima_cache:
         return dict(_clima_cache[ck])
 
-    try:
-        params: dict[str, Any] = {
-            "latitude": lat,
-            "longitude": lon,
-            "current": "temperature_2m,relative_humidity_2m,wind_speed_10m",
-            "temperature_unit": "fahrenheit",
-            "wind_speed_unit": "mph",
-            "timezone": "auto",
-        }
-        # Si tenemos hora de inicio, pedir hourly cercano
-        if inicio_iso:
-            try:
-                dt = datetime.fromisoformat(inicio_iso.replace("Z", "+00:00"))
-                if dt.tzinfo is None:
-                    dt = dt.replace(tzinfo=ZoneInfo("America/New_York"))
-                local = dt.astimezone(ZoneInfo("UTC"))
-                # Open-Meteo hourly: usar forecast current + hourly window
-                params["hourly"] = "temperature_2m,relative_humidity_2m,wind_speed_10m"
-                params["start_hour"] = local.strftime("%Y-%m-%dT%H:00")
-                params["end_hour"] = local.strftime("%Y-%m-%dT%H:00")
-            except Exception:
-                pass
+    def _sin_dato(motivo: str) -> dict[str, Any]:
+        respaldo = _respaldo_del_dia(int(home_id), dia)
+        if respaldo:
+            return respaldo
+        base["motivo"] = motivo
+        base["sin_dato"] = True
+        return base
 
+    if _en_pausa():
+        return _sin_dato("Open-Meteo en pausa tras 429")
+
+    try:
+        params = _params_base(_horas_utc(inicio_iso))
+        params["latitude"] = lat
+        params["longitude"] = lon
         r = _session.get(OPEN_METEO_URL, params=params, timeout=timeout)
         r.raise_for_status()
-        data = r.json()
-        temp = viento = humedad = None
-
-        hourly = data.get("hourly") or {}
-        if hourly.get("temperature_2m"):
-            temp = hourly["temperature_2m"][0]
-            viento = (hourly.get("wind_speed_10m") or [None])[0]
-            humedad = (hourly.get("relative_humidity_2m") or [None])[0]
-        else:
-            cur = data.get("current") or {}
-            temp = cur.get("temperature_2m")
-            viento = cur.get("wind_speed_10m")
-            humedad = cur.get("relative_humidity_2m")
-
-        if temp is None:
-            base["motivo"] = "Open-Meteo sin temperatura"
-            return base
-
-        run_env = calcular_run_env(float(temp), float(viento or 0.0))
-        out = {
-            "ok": True,
-            "fuente": "open-meteo",
-            "temp_f": round(float(temp), 1),
-            "viento_mph": round(float(viento or 0.0), 1),
-            "humedad": int(humedad) if humedad is not None else None,
-            "run_env": run_env,
-            "motivo": _motivo_run_env(run_env, float(temp), float(viento or 0)),
-            "estadio": nombre,
-            "es_domo": False,
-        }
-        _clima_cache[ck] = out
+        out = _armar(nombre, *_leer_medidas(r.json()))
+        if out is None:
+            return _sin_dato("Open-Meteo sin temperatura")
+        _recordar(ck, dia, out)
         return dict(out)
     except requests.Timeout:
-        base["motivo"] = "Timeout Open-Meteo"
-        return base
+        return _sin_dato("Timeout Open-Meteo")
     except Exception as e:
-        base["motivo"] = str(e)[:120]
-        return base
+        if _activar_pausa(e):
+            print(f"[CLIMA] Open-Meteo 429 · pausa {int(PAUSA_TRAS_429_SEG / 60)} min")
+        return _sin_dato(str(e)[:120])
 
 
 def calcular_run_env(temp_f: float, viento_mph: float) -> float:

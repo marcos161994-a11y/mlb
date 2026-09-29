@@ -217,6 +217,42 @@ def _ml_lado(odds: dict[str, Any], lado: str) -> int | None:
     return _ml_int((team or {}).get("moneyLine"))
 
 
+def _libros_scoreboard(odds_list: Any) -> list[dict[str, Any]]:
+    """Todas las casas que ESPN devuelve para el partido, no solo la primera.
+
+    Con una sola casa no hay consenso de mercado ni cierre con el que medir CLV.
+    """
+    libros: list[dict[str, Any]] = []
+    vistas: set[str] = set()
+    for odds in odds_list or []:
+        if not isinstance(odds, dict):
+            continue
+        ml_away, ml_home = _ml_from_scoreboard_odds(odds)
+        if ml_away is None or ml_home is None:
+            continue
+        dec_away = american_a_decimal(ml_away)
+        dec_home = american_a_decimal(ml_home)
+        if not dec_away or not dec_home:
+            continue
+        provider = ((odds.get("provider") or {}).get("name") or "DraftKings").strip()
+        casa = provider.lower().replace(" ", "") or "draftkings"
+        if casa in vistas:
+            continue
+        vistas.add(casa)
+        libros.append(
+            {
+                "casa": casa,
+                "provider": provider,
+                "away": float(dec_away),
+                "home": float(dec_home),
+                "ml_away": ml_away,
+                "ml_home": ml_home,
+                "odds": odds,
+            }
+        )
+    return libros
+
+
 def parsear_scoreboard_espn(payload: dict[str, Any]) -> dict[tuple[str, str], dict[str, Any]]:
     """Scoreboard por fecha: partidos alineados con el schedule oficial de MLB."""
     mapa: dict[tuple[str, str], dict[str, Any]] = {}
@@ -240,30 +276,31 @@ def parsear_scoreboard_espn(payload: dict[str, Any]) -> dict[tuple[str, str], di
         if not away_name or not home_name:
             continue
         odds_list = comp.get("odds") or []
-        if not odds_list or not isinstance(odds_list[0], dict):
+        libros = _libros_scoreboard(odds_list)
+        if not libros:
             continue
-        odds = odds_list[0]
-        ml_away, ml_home = _ml_from_scoreboard_odds(odds)
-        if ml_away is None or ml_home is None:
-            continue
-        provider = ((odds.get("provider") or {}).get("name") or "DraftKings").strip()
-        casa = provider.lower().replace(" ", "") or "draftkings"
+        principal = libros[0]
+        odds = principal["odds"]
+        casa = principal["casa"]
         ka, kh = normalizar_nombre_equipo(away_name), normalizar_nombre_equipo(home_name)
         fila: dict[str, Any] = {
             "away": {
-                "american": ml_away,
-                "decimal": american_a_decimal(ml_away),
+                "american": principal["ml_away"],
+                "decimal": principal["away"],
                 "casa": casa,
                 "lado": "away",
             },
             "home": {
-                "american": ml_home,
-                "decimal": american_a_decimal(ml_home),
+                "american": principal["ml_home"],
+                "decimal": principal["home"],
                 "casa": casa,
                 "lado": "home",
             },
-            "provider": provider,
+            "provider": principal["provider"],
             "espn_id": ev.get("id"),
+            "libros": [
+                {"casa": b["casa"], "away": b["away"], "home": b["home"]} for b in libros
+            ],
         }
         tot = _parse_total_espn(odds, casa)
         if tot:
@@ -318,6 +355,13 @@ def parsear_eventos_espn(payload: dict[str, Any]) -> dict[tuple[str, str], dict[
             },
             "provider": provider,
             "espn_id": ev.get("id"),
+            "libros": [
+                {
+                    "casa": casa,
+                    "away": float(american_a_decimal(ml_away)),
+                    "home": float(american_a_decimal(ml_home)),
+                }
+            ],
         }
         tot = _parse_total_espn(odds, casa)
         if tot:
@@ -468,7 +512,10 @@ def aplicar_lineas_espn(
                 juego["odds_home_decimal"] = home_l.get("decimal")
                 juego["lineas_fuente"] = away_l.get("casa") or home_l.get("casa") or "espn"
                 juego["lineas_betmgm"] = lineas
-                if not juego.get("lineas_libros"):
+                libros = lineas.get("libros") if isinstance(lineas.get("libros"), list) else []
+                if libros:
+                    juego["lineas_libros"] = [dict(b) for b in libros]
+                elif not juego.get("lineas_libros"):
                     juego["lineas_libros"] = [
                         {
                             "casa": juego["lineas_fuente"],
