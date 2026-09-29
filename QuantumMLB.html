@@ -1503,17 +1503,11 @@ function pintarEstado(data) {
     // Nota corta de hoy
     const fav = data.favorables_hoy ?? data.oportunidades_valor_hoy ?? 0;
     const maxP = estr.max_apuestas_dia || 5;
-    const fechasHist = (m.dias || [])
-        .filter(d => (d.predicciones || []).length > 0 || (d.apuestas || []).length > 0)
-        .map(d => `${d.fecha} (${(d.predicciones || []).length})`);
-    const histTxt = fechasHist.length
-        ? ` · historial ${fechasHist.join(' · ')}`
-        : ' · historial vacío';
     const favEl = document.getElementById('favorables-hoy');
     if (favEl) {
         favEl.textContent =
             `Hoy: ${fav} listo(s) / máx ${maxP} · quién gana ${ganadas}✓ ${perdidas}✗ ${pendientes}⏳ ${fmtMoney(profitHoy)}` +
-            ` · dinero ${gDin}✓ ${pDin}✗ ${pendDin}⏳ ${fmtMoney(profitDin)}` + histTxt;
+            ` · dinero ${gDin}✓ ${pDin}✗ ${pendDin}⏳ ${fmtMoney(profitDin)}`;
     }
 
     const lista = document.getElementById('lista-historial');
