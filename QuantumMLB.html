@@ -135,7 +135,7 @@
             top: 0;
             z-index: 20;
             display: grid;
-            grid-template-columns: repeat(4, 1fr);
+            grid-template-columns: repeat(5, 1fr);
             gap: 6px;
             padding: 7px;
             margin: 0 0 14px;
@@ -264,6 +264,73 @@
             margin-bottom: 20px;
         }
         .historial h3 { margin: 0 0 10px; font-size: 0.9rem; }
+        .resultados {
+            background: var(--panel);
+            border: 1px solid var(--cyan);
+            border-radius: 12px;
+            padding: 12px 12px 14px;
+            margin: 0 0 14px;
+        }
+        .resultados > summary {
+            list-style: none;
+            cursor: pointer;
+            color: var(--cyan);
+            font-size: 0.92rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            user-select: none;
+        }
+        .resultados > summary::-webkit-details-marker { display: none; }
+        .resultados > summary::after { content: ' ▼'; font-size: 0.75rem; }
+        .resultados[open] > summary::after { content: ' ▲'; }
+        .curva-leyenda, .curva-eje {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            font-size: 0.72rem;
+            color: var(--muted);
+        }
+        .curva-leyenda { margin: 10px 0 4px; }
+        .swatch {
+            display: inline-block;
+            width: 14px;
+            height: 3px;
+            margin-right: 4px;
+            vertical-align: middle;
+            border-radius: 2px;
+        }
+        .swatch.cyan { background: var(--cyan); }
+        .swatch.gold { background: var(--gold); }
+        .curva-svg { width: 100%; height: auto; display: block; }
+        .resultados-stats { margin: 10px 0 12px; }
+        .resultados-stats .stat-box .val { font-size: 0.92rem; }
+        .resultados h3 {
+            margin: 12px 0 6px;
+            font-size: 0.78rem;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+        }
+        .resultados-tabla {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.78rem;
+        }
+        .resultados-tabla th {
+            text-align: left;
+            color: var(--muted);
+            font-weight: 600;
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            padding: 4px 4px 6px;
+        }
+        .resultados-tabla td {
+            padding: 6px 4px;
+            border-top: 1px solid var(--border);
+        }
+        .resultados-tabla .num { text-align: right; font-variant-numeric: tabular-nums; }
+        .tabla-scroll { overflow-x: auto; }
         .leccion-fila {
             padding: 8px 0;
             border-bottom: 1px solid var(--border);
@@ -551,7 +618,7 @@
             .rend-card .wr { font-size: 1.05rem; }
             .rend-row { font-size: 0.68rem; }
             .quick-nav { margin-bottom: 9px; padding: 5px; gap: 3px; }
-            .quick-nav a { padding: 7px 2px; font-size: 0.63rem; }
+            .quick-nav a { padding: 7px 1px; font-size: 0.58rem; }
             .aviso { padding: 8px 10px; margin-bottom: 9px; font-size: 0.74rem; }
             .favorables-hoy { margin: 0 0 8px; font-size: 0.72rem; }
             .picks-hero { padding: 6px 8px 9px; margin-bottom: 10px; border-width: 1px; border-radius: 11px; }
@@ -572,6 +639,9 @@
             .operations { margin-bottom: 10px; padding: 8px 10px; }
             .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
             button { min-height: 40px; padding: 8px; font-size: 0.7rem; }
+            .resultados { padding: 10px; margin-bottom: 10px; border-radius: 11px; }
+            .resultados > summary { font-size: 0.78rem; }
+            .resultados-tabla { font-size: 0.72rem; }
             .historial { padding: 10px; margin-bottom: 0; border-radius: 9px; }
             .historial h3 { margin: 0; font-size: 0.75rem; }
             .grid-juegos { grid-template-columns: 1fr; gap: 8px; }
@@ -616,10 +686,18 @@
 
 <nav class="quick-nav" aria-label="Navegación rápida">
     <a href="#picks-hero">Picks</a>
+    <a href="#resultados">Resultados</a>
     <a href="#resumen-hoy">Hoy</a>
     <a href="#historiales">Historial</a>
     <a href="#juegos-hoy">Juegos</a>
 </nav>
+
+<details class="resultados" id="resultados" open>
+    <summary>Resultados del experimento</summary>
+    <div id="resultados-body">
+        <p class="meta-line">Cargando resultados…</p>
+    </div>
+</details>
 
 <div class="aviso" id="aviso-real">
     <details>
@@ -1230,6 +1308,14 @@ function esMomioEstimado(j) {
     return f === 'estimado';
 }
 
+function esSinMomioReal(j) {
+    if (!j) return false;
+    if (j.sin_momio_real) return true;
+    if (String(j.estado_registro || '').toLowerCase() === 'registrado sin apuesta') return true;
+    const f = String(j.fuente_momio || j.lineas_fuente || '').toLowerCase();
+    return f === 'sin_momio_real';
+}
+
 function payoutSiGana(stake, american) {
     const s = Number(stake);
     const o = Number(american);
@@ -1239,11 +1325,16 @@ function payoutSiGana(stake, american) {
 }
 
 function textoStakeOdds(j) {
+    if (esSinMomioReal(j)) {
+        const ref = j.odds_american != null ? ' · referencia ' + fmtAmer(j.odds_american) : '';
+        const stale = j.momio_stale ? ' · STALE, solo display' : '';
+        return 'Sin momio real, solo registrado' + ref + stale;
+    }
     const stake = Number(j.stake || stakeFijoPanel || 3);
     const amer = fmtAmer(j.odds_american);
     const casa = j.casa_momio || j.casa || j.fuente_momio || j.lineas_fuente || '';
     const origen = j.origen_momio || j.paso_momio || '';
-    const est = esMomioEstimado(j) ? ' · ESTIMADO' : (origen ? ' · ' + origen : '');
+    const est = esMomioEstimado(j) ? ' · estimado histórico' : (origen ? ' · ' + origen : '');
     const estado = j.estado_apuesta || j.estado;
     let cola = '';
     if (estado === 'push') {
@@ -1257,7 +1348,164 @@ function textoStakeOdds(j) {
     return 'Stake $' + stake.toFixed(2) + ' · ' + amer + (casa ? ' ' + casa : '') + est + cola;
 }
 
+function escHtml(s) {
+    return String(s ?? '').replace(/[&<>"']/g, c => (
+        { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+    ));
+}
+
+function fmtRoi(v) {
+    if (v == null || v === '' || !Number.isFinite(Number(v))) return '—';
+    const n = Number(v);
+    return (n > 0 ? '+' : '') + n.toFixed(1) + '%';
+}
+
+function clsPl(n) {
+    const x = Number(n);
+    if (!Number.isFinite(x) || x === 0) return '';
+    return x > 0 ? 'pos' : 'neg';
+}
+
+function curvaSvg(curva, inicial) {
+    const pts = (curva || []).map(p => Number(p.capital));
+    if (!pts.length) return '';
+    const w = 320;
+    const h = 128;
+    const padX = 8;
+    const padY = 10;
+    const min = Math.min(inicial, ...pts);
+    const max = Math.max(inicial, ...pts);
+    const margen = ((max - min) * 0.18) || 1;
+    const lo = min - margen;
+    const hi = max + margen;
+    const x = i => padX + (pts.length === 1 ? (w - 2 * padX) / 2 : i * (w - 2 * padX) / (pts.length - 1));
+    const y = v => padY + (hi - v) * (h - 2 * padY) / (hi - lo);
+    const linea = pts.map((v, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+    const cierre = `L${x(pts.length - 1).toFixed(1)},${(h - padY).toFixed(1)} L${x(0).toFixed(1)},${(h - padY).toFixed(1)} Z`;
+    const y0 = y(inicial).toFixed(1);
+    const ultimo = pts[pts.length - 1];
+    return `<svg class="curva-svg" viewBox="0 0 ${w} ${h}" role="img" aria-label="Curva de capital del experimento">
+        <title>Capital de $${inicial.toFixed(2)} a $${ultimo.toFixed(2)}</title>
+        <line x1="${padX}" y1="${y0}" x2="${w - padX}" y2="${y0}" stroke="#ffbc00" stroke-dasharray="4 3" stroke-width="1.2"/>
+        <path d="${linea} ${cierre}" fill="rgba(0,242,255,0.12)" stroke="none"></path>
+        <path d="${linea}" fill="none" stroke="#00f2ff" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>
+    </svg>`;
+}
+
+function filaTipo(row) {
+    const roi = row.roi_pct;
+    return `<tr>
+        <td>${escHtml(row.etiqueta || row.tipo || 'Sin tipo')}</td>
+        <td class="num">${escHtml(row.record || '0-0')}</td>
+        <td class="num">${row.n ? Number(row.win_rate || 0).toFixed(1) + '%' : '—'}</td>
+        <td class="num ${clsPl(row.profit)}">${fmtMoney(row.profit || 0)}</td>
+        <td class="num ${clsPl(roi)}">${fmtRoi(roi)}</td>
+    </tr>`;
+}
+
+function tarjetaFuente(row) {
+    const roi = row && row.roi_pct;
+    return `<div class="rend-card">
+        <h4>${escHtml(row.etiqueta || '')}</h4>
+        <div class="wr">${row.n ? Number(row.win_rate || 0).toFixed(1) + '%' : '—'}<span> · ${escHtml(row.record || '0-0')}</span></div>
+        <div class="rend-row"><span class="k">Apuestas</span><span class="v">${row.n || 0}</span></div>
+        <div class="rend-row"><span class="k">Profit</span><span class="v ${clsPl(row.profit)}">${fmtMoney(row.profit || 0)}</span></div>
+        <div class="rend-row"><span class="k">ROI</span><span class="v ${clsPl(roi)}">${fmtRoi(roi)}</span></div>
+    </div>`;
+}
+
+let cargandoResultados = false;
+
+function pintarResultados(data) {
+    const body = document.getElementById('resultados-body');
+    if (!body || !data) return;
+    const ini = Number(data.capital_inicial ?? 100);
+    const res = data.resumen || {};
+    const curva = Array.isArray(data.curva) ? data.curva : [];
+    const fechas = curva.filter(p => p && p.fecha);
+    const desde = fechas.length ? fechas[0].fecha : 'Inicio';
+    const hasta = fechas.length ? fechas[fechas.length - 1].fecha : '';
+    const racha = data.racha || {};
+    const dd = data.drawdown || {};
+    const tipos = Array.isArray(data.por_tipo) ? data.por_tipo : [];
+    const fuente = data.por_fuente || {};
+    const mente = data.mente || {};
+    const veredictos = Array.isArray(mente.veredictos) ? mente.veredictos : [];
+    const rachaCls = racha.tipo === 'ganada' ? 'pos' : (racha.tipo === 'perdida' ? 'neg' : '');
+    const ddTxt = (Number(dd.max_usd) || 0) > 0
+        ? '−$' + Number(dd.max_usd).toFixed(2) + ' · ' + Number(dd.max_pct || 0).toFixed(1) + '%'
+        : '$0.00';
+    const tablaTipos = tipos.length
+        ? `<div class="tabla-scroll"><table class="resultados-tabla">
+            <thead><tr><th>Tipo</th><th class="num">Récord</th><th class="num">Acierto</th><th class="num">Profit</th><th class="num">ROI</th></tr></thead>
+            <tbody>${tipos.map(filaTipo).join('')}</tbody>
+           </table></div>`
+        : '<p class="meta-line">Sin tipos todavía.</p>';
+    const sinDato = fuente.sin_dato && fuente.sin_dato.n ? tarjetaFuente(fuente.sin_dato) : '';
+    const bloqueMente = mente.disponible && veredictos.length
+        ? `<div class="rend-grid">${veredictos.map(v => tarjetaFuente({
+            etiqueta: v.etiqueta || v.decision,
+            n: v.n,
+            record: v.record,
+            win_rate: v.win_rate,
+            profit: v.profit,
+            roi_pct: v.roi_pct,
+        })).join('')}</div>
+           <p class="meta-line">Sobre predicciones liquidadas. PASAR no entra a la banca; el ROI usa el stake de papel.</p>`
+        : '<p class="meta-line">Sin veredicto de la mente en el historial.</p>';
+    body.innerHTML = `
+        <div class="curva-leyenda">
+            <span><i class="swatch cyan"></i> Capital ${fmtMoneyPlain(res.capital ?? ini)} · banca ${fmtRoi(res.roi_banca_pct)}</span>
+            <span><i class="swatch gold"></i> Salida ${fmtMoneyPlain(ini)}</span>
+        </div>
+        ${curvaSvg(curva, ini)}
+        <div class="curva-eje"><span>${escHtml(desde)}</span><span>${escHtml(hasta)}</span></div>
+        <div class="stats-row resultados-stats">
+            <div class="stat-box"><div class="label">ROI apostado</div><div class="val ${clsPl(res.roi_pct)}">${fmtRoi(res.roi_pct)}</div></div>
+            <div class="stat-box"><div class="label">Acierto</div><div class="val">${res.n ? Number(res.win_rate || 0).toFixed(1) + '%' : '—'}</div></div>
+            <div class="stat-box"><div class="label">Apuestas</div><div class="val">${res.n || 0}</div></div>
+            <div class="stat-box"><div class="label">Profit</div><div class="val ${clsPl(res.profit)}">${fmtMoney(res.profit || 0)}</div></div>
+            <div class="stat-box"><div class="label">Racha</div><div class="val ${rachaCls}">${escHtml(racha.texto || 'Sin racha')}</div></div>
+            <div class="stat-box"><div class="label">Drawdown máx.</div><div class="val ${(Number(dd.max_usd) || 0) > 0 ? 'neg' : ''}">${ddTxt}</div></div>
+        </div>
+        <h3>Por tipo de pick</h3>
+        ${tablaTipos}
+        <h3>Fuente de la cuota</h3>
+        <div class="rend-grid">
+            ${tarjetaFuente(fuente.real || { etiqueta: 'Casa real', n: 0, record: '0-0', profit: 0, roi_pct: null })}
+            ${tarjetaFuente(fuente.estimado || { etiqueta: 'Estimada', n: 0, record: '0-0', profit: 0, roi_pct: null })}
+            ${sinDato}
+        </div>
+        ${(fuente.estimado && fuente.estimado.n)
+            ? '<p class="meta-line">Estimada: solo dinero ya liquidado con precio de respaldo. Un precio estimado nuevo no se convierte en apuesta.</p>'
+            : '<p class="meta-line">Ninguna apuesta de dinero usa cuota estimada. Los picks sin momio real no entran a esta tarjeta ni al ROI.</p>'}
+        ${(Number(data.registrados_sin_apuesta) || 0)
+            ? `<p class="meta-line">${Number(data.registrados_sin_apuesta)} pick(s) sin momio real, solo registrados. No son apuestas y no entran al ROI.</p>`
+            : ''}
+        <h3>Veredicto de la mente</h3>
+        ${bloqueMente}
+    `;
+}
+
+async function cargarResultados() {
+    if (cargandoResultados) return;
+    cargandoResultados = true;
+    try {
+        const r = await fetch(API + '/api/resultados', { cache: 'no-store' });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        pintarResultados(await r.json());
+    } catch (_) {
+        const body = document.getElementById('resultados-body');
+        if (body && !body.querySelector('.curva-svg')) {
+            body.innerHTML = '<p class="meta-line">No se pudieron cargar los resultados.</p>';
+        }
+    } finally {
+        cargandoResultados = false;
+    }
+}
+
 async function cargarEstado() {
+    cargarResultados();
     if (cargandoEstado) return;
     cargandoEstado = true;
     cancelarReintento();
@@ -1531,7 +1779,7 @@ function pintarEstado(data) {
                 rendCard('📋 Quién gana', pred.aciertos, pred.fallos, pred.win_rate, pred.ganado, pred.perdido, pred.neto, pred.roi_pct) +
                 rendCard('💰 Cuota real', din.ganadas, din.perdidas, din.win_rate, din.ganado, din.perdido, din.neto, din.roi_pct) +
                 rendCard('📐 Momio estimado', est.ganadas, est.perdidas, est.win_rate, est.ganado, est.perdido, est.neto, est.roi_pct) +
-                `</div><p class="meta-line" style="margin-top:6px;color:var(--muted);font-size:0.75rem">El ROI de cuota real no mezcla apuestas con momio estimado (vig -110).</p>` + extra;
+                `</div><p class="meta-line" style="margin-top:6px;color:var(--muted);font-size:0.75rem">El ROI de cuota real no mezcla apuestas viejas con momio estimado. Un pick sin momio real no es apuesta y no entra al ROI.</p>` + extra;
         } else {
             statsContent.innerHTML = '<p class="meta-line">Sin datos suficientes todavía.</p>';
         }
@@ -1608,7 +1856,7 @@ function pintarEstado(data) {
     const retryTxt = Array.isArray(retries) ? retries.map(m => 'T-' + m).join('/') : 'T-45/T-30';
     document.getElementById('proximo-bloqueo').textContent = soloModelo
         ? `Bloqueo automático: ${mins} min antes de cada juego (solo papel)`
-        : `Bloqueo T-${mins} · retry cuotas ${retryTxt} · stake fijo ${stakeTxt} · casa real o estimado`;
+        : `Bloqueo T-${mins} · retry cuotas ${retryTxt} · stake fijo ${stakeTxt} · solo con momio real`;
 
     const ls = document.getElementById('lineas-status');
     const lin = data.lineas || {};
@@ -1697,7 +1945,7 @@ function pintarEstado(data) {
                 `El <strong>PICK</strong> es quién creemos que gana. ` +
                 `Dinero solo con borde verde (edge≥${minEdge}%). ` +
                 `Stake fijo ${stakeTxt} · máx ${estr.max_apuestas_dia || 4}/día. ` +
-                `Si ninguna casa cotiza, el momio es estimado (vig -110) y no entra al ROI de cuota real.`;
+                `Si ninguna casa cotiza, el pick queda sin momio real, solo registrado, y no entra al ROI.`;
         }
     }
 
@@ -1841,10 +2089,14 @@ function sinCuotaMercado(j) {
 }
 
 function textoCuota(j) {
+    if (esSinMomioReal(j)) {
+        const stale = j.momio_stale ? ' · STALE, solo display' : '';
+        return `<span class="cuota-estimada">Sin momio real, solo registrado ${fmtAmer(j.odds_american)}${stale}</span>`;
+    }
     if (esMomioEstimado(j)) {
         const pot = payoutSiGana(j.stake || stakeFijoPanel, j.odds_american);
         const potTxt = pot != null ? ` · si gana ${fmtMoney(pot)}` : '';
-        return `<span class="cuota-estimada">📐 Estimado ${fmtAmer(j.odds_american)} (vig -110)${potTxt}</span>`;
+        return `<span class="cuota-estimada">📐 Estimado histórico ${fmtAmer(j.odds_american)}${potTxt}</span>`;
     }
     if (sinCuotaMercado(j)) {
         return `<span class="cuota-estimada">📐 Cuota estimada (solo papel): ${j.odds || '—'}</span>`;
@@ -1880,18 +2132,21 @@ function pintarPicksHoy(juegos, data) {
     }
 
     const yaApostados = unicos.filter(j =>
-        j.estado_apuesta && j.estado_apuesta !== 'sin_bloquear'
+        j.estado_apuesta && j.estado_apuesta !== 'sin_bloquear' && !esSinMomioReal(j)
     );
     const yaReal = yaApostados.filter(j => !esMomioEstimado(j));
     const yaEst = yaApostados.filter(j => esMomioEstimado(j));
     const idsYa = new Set(yaApostados.map(j => j.id));
     const cupoRestante = Math.max(0, maxP - yaApostados.length);
     const apostablesNuevos = unicos
-        .filter(j => j.apostable && !esMomioEstimado(j) && !sinCuotaMercado(j) && (j.probPick || 0) >= minProb && !idsYa.has(j.id))
+        .filter(j => j.apostable && !esMomioEstimado(j) && !esSinMomioReal(j) && !sinCuotaMercado(j) && (j.probPick || 0) >= minProb && !idsYa.has(j.id))
         .sort((a, b) => (b.edge || 0) - (a.edge || 0))
         .slice(0, cupoRestante);
     const estimadosNuevos = unicos
-        .filter(j => j.apostable && esMomioEstimado(j) && !idsYa.has(j.id))
+        .filter(j => j.apostable && esMomioEstimado(j) && !esSinMomioReal(j) && !idsYa.has(j.id))
+        .sort((a, b) => (b.probPick || 0) - (a.probPick || 0));
+    const sinMomio = unicos
+        .filter(j => esSinMomioReal(j) && !idsYa.has(j.id))
         .sort((a, b) => (b.probPick || 0) - (a.probPick || 0));
 
     if (!unicos.length) {
@@ -1900,7 +2155,7 @@ function pintarPicksHoy(juegos, data) {
         return;
     }
 
-    sub.textContent = `${unicos.length} juegos hoy · ${yaReal.length} con casa · ${yaEst.length + estimadosNuevos.length} estimado · ${apostablesNuevos.length} con valor (máx. ${maxP}) · toca el título para abrir/cerrar.`;
+    sub.textContent = `${unicos.length} juegos hoy · ${yaReal.length} con casa · ${yaEst.length + estimadosNuevos.length} estimado histórico · ${sinMomio.length} sin momio real · ${apostablesNuevos.length} con valor (máx. ${maxP}) · toca el título para abrir/cerrar.`;
 
     let html = '';
     const conDinero = [...yaReal, ...apostablesNuevos];
@@ -1945,7 +2200,7 @@ function pintarPicksHoy(juegos, data) {
     if (conEstimado.length) {
         html += `<details class="picks-grupo papel" id="picks-grupo-estimado" open>
             <summary>
-                <span>📐 MOMIO ESTIMADO (${conEstimado.length})<span class="hint">vig -110 · no entra al ROI de casa</span></span>
+                <span>📐 Momio estimado histórico (${conEstimado.length})<span class="hint">dinero viejo · ya no se apuesta así</span></span>
                 <span class="chev" aria-hidden="true"></span>
             </summary>
             <div class="picks-grupo-body">`;
@@ -1962,7 +2217,27 @@ function pintarPicksHoy(juegos, data) {
         html += '</div></details>';
     }
 
-    const idsDinero = new Set([...conDinero, ...conEstimado].map(j => j.id));
+    if (sinMomio.length) {
+        html += `<details class="picks-grupo papel" id="picks-grupo-sin-momio" open>
+            <summary>
+                <span>Sin momio real, solo registrado (${sinMomio.length})<span class="hint">no es apuesta · no entra al ROI</span></span>
+                <span class="chev" aria-hidden="true"></span>
+            </summary>
+            <div class="picks-grupo-body">`;
+        sinMomio.forEach((j, i) => {
+            const eq = nombrePick(j.pick);
+            html += `<div class="pick-row no">
+                <div>
+                    <div class="pick-equipo" style="color:var(--gold)">${i + 1}. ${eq} <span class="pick-badge wait">SIN APUESTA</span></div>
+                    <div class="pick-meta">${j.visitante} @ ${j.home} · ${textoStakeOdds(j)}</div>
+                </div>
+                <div class="pick-prob" style="color:var(--gold)">${(j.probPick || 0).toFixed(0)}%</div>
+            </div>`;
+        });
+        html += '</div></details>';
+    }
+
+    const idsDinero = new Set([...conDinero, ...conEstimado, ...sinMomio].map(j => j.id));
     const soloPred = unicos
         .filter(j => (j.probPick || 0) > 0 && !idsDinero.has(j.id))
         .sort((a, b) => (b.probPick || 0) - (a.probPick || 0));

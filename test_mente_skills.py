@@ -95,8 +95,6 @@ def test_reporte_tiene_las_tres_lineas():
     assert rep["activa"] is False
     assert "física climática" in rep["motivo"]
     assert "ya no bloquea" in rep["prueba"]
-    html = Path("diagrama/resumen.html").read_text(encoding="utf-8")
-    assert "Reporte de Auto-Evolución" in html
     src = Path("servidor_mlb.py").read_text(encoding="utf-8")
     assert "reflexionar_fallo" in src
     assert "/api/mente-skills" in src

@@ -13,12 +13,10 @@ import copy
 import gc
 import hashlib
 import hmac
-import io
 import json
 import os
 import threading
 import time
-import zipfile
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timedelta
 from pathlib import Path
@@ -32,7 +30,7 @@ from apscheduler.triggers.cron import CronTrigger
 from apscheduler.triggers.date import DateTrigger
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, RedirectResponse, Response
+from fastapi.responses import FileResponse, RedirectResponse
 from lineas_betmgm import aplicar_lineas_a_juegos
 from lineas_betmgm import normalizar_nombre_equipo as norm_nombre
 from memoria_fusion import (
@@ -4252,59 +4250,6 @@ _MENTE_NO_CACHE = {
 }
 
 
-_DIAGRAMA_ARCHIVOS = (
-    "index.html",
-    "resumen.html",
-    "Diagrama.url",
-    "Resumen.url",
-    "Abrir-diagrama.bat",
-    "LEEME.txt",
-    "bitacora.json",
-)
-
-
-@app.get("/diagrama")
-@app.get("/diagrama/")
-def panel_diagrama():
-    """Red neuronal en /diagrama (carpeta Diagramma del escritorio, no el repo)."""
-    return FileResponse(BASE_DIR / "diagrama" / "index.html", headers=_MENTE_NO_CACHE)
-
-
-@app.get("/diagrama/resumen")
-def panel_diagrama_resumen():
-    """Resumen en español, sin código, de lo investigado y lo cambiado."""
-    return FileResponse(BASE_DIR / "diagrama" / "resumen.html", headers=_MENTE_NO_CACHE)
-
-
-@app.get("/diagrama/Diagrama.url")
-def diagrama_acceso_directo():
-    """Acceso directo de Windows para soltar en Escritorio\\Diagramma."""
-    return FileResponse(
-        BASE_DIR / "diagrama" / "Diagrama.url",
-        media_type="application/internet-shortcut",
-        filename="Diagrama.url",
-        headers=_MENTE_NO_CACHE,
-    )
-
-
-@app.get("/diagrama/carpeta.zip")
-def diagrama_carpeta_zip():
-    """ZIP con los archivos para pegar en Escritorio\\Diagramma (sin repo)."""
-    buf = io.BytesIO()
-    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zf:
-        for name in _DIAGRAMA_ARCHIVOS:
-            path = BASE_DIR / "diagrama" / name
-            zf.write(path, name)
-    return Response(
-        content=buf.getvalue(),
-        media_type="application/zip",
-        headers={
-            **_MENTE_NO_CACHE,
-            "Content-Disposition": 'attachment; filename="Diagramma.zip"',
-        },
-    )
-
-
 @app.get("/mente")
 @app.get("/mente/")
 def panel_mente():
@@ -5012,6 +4957,14 @@ def api_apuestas():
     }
 
 
+@app.get("/api/resultados")
+def api_resultados():
+    """Curva, ROI y cortes del experimento. Solo lectura: no liquida ni guarda."""
+    from resultados_mlb import calcular_resultados
+
+    return calcular_resultados(cargar_memoria())
+
+
 @app.get("/api/predicciones")
 def api_predicciones():
     """Predicciones del modelo (apostadas y no apostadas) del día actual e historial."""
@@ -5519,7 +5472,7 @@ def api_mente_skills():
 
 @app.get("/api/mente-bitacora")
 def api_mente_bitacora():
-    """Investigación y cambios plasmados para verlos en /diagrama."""
+    """Notas de investigación y cambios para la red en /mente."""
     try:
         from mente_bitacora import resumen_bitacora
 

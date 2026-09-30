@@ -17,6 +17,9 @@ from servidor_mlb import liquidar_apuesta, resumen_predicciones_y_dinero
 def test_pago_americano_ejemplos_del_dueno():
     assert profit_moneyline_americano(3, -150, "ganada") == pytest.approx(2.00)
     assert profit_moneyline_americano(3, 130, "ganada") == pytest.approx(3.90)
+    assert profit_moneyline_americano(3, 100, "ganada") == pytest.approx(3.00)
+    assert profit_moneyline_americano(3, -100, "ganada") == pytest.approx(3.00)
+    assert profit_moneyline_americano(3, -110, "ganada") == pytest.approx(2.73)
     assert profit_moneyline_americano(3, -150, "perdida") == pytest.approx(-3.00)
     assert profit_moneyline_americano(3, 130, "push") == pytest.approx(0.0)
     assert profit_moneyline_americano(3, -110, "void") == pytest.approx(0.0)
@@ -241,18 +244,19 @@ def test_si_todas_las_casas_fallan_se_estima_y_no_se_salta():
     assert "scoreboard" in motivos.lower() or "ESPN" in motivos
 
     aplicar_momio_estimado(juego, 60, 40, intentos=juego["momio_intentos"])
-    assert juego["fuente_momio"] == "estimado"
-    assert juego["paso_momio"] == "estimado"
-    assert juego["origen_momio"] == "estimado"
-    assert juego["lineas_fuente"] == "estimado"
+    assert juego["fuente_momio"] == "sin_momio_real"
+    assert juego["paso_momio"] == "sin_casa"
+    assert juego["origen_momio"] == "sin_momio_real"
+    assert juego["lineas_fuente"] == "sin_momio_real"
+    assert juego["estado_registro"] == "registrado sin apuesta"
     assert juego["odds_away_american"] == american_con_vig(60)
-    assert es_momio_estimado(juego)
+    assert es_momio_estimado(juego) is False
     juego["pick"] = "New York Yankees ML"
     juego["probPick"] = 60
     juego["apostable"] = True
     juego["odds_american"] = juego["odds_away_american"]
     juego["estado"] = "PROGRAMADO"
-    assert apostable_para_dinero(juego) is True
+    assert apostable_para_dinero(juego) is False
 
     reales = {
         "id": "real",
@@ -314,9 +318,10 @@ def test_panel_muestra_stake_momio_y_estimado():
     html = Path("QuantumMLB.html").read_text(encoding="utf-8")
     assert "function textoStakeOdds" in html
     assert "function payoutSiGana" in html
-    assert "MOMIO ESTIMADO" in html
+    assert "Sin momio real, solo registrado" in html
     assert "Cuota real" in html
     assert "apuesta_fija" in html
     assert "si gana" in html
     assert "origen_momio" in html
-    assert "no entra al ROI de cuota real" in html
+    assert "no entra al ROI" in html
+    assert "Estimada" in html
