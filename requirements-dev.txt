@@ -1,3 +1,5 @@
 # Dependencias de desarrollo y CI. Render sigue usando solo requirements.txt.
 -r requirements.txt
 pytest>=8.3
+# TestClient de Starlette 1.7 importa httpx2 (extra "full": httpx2>=2.0.0).
+httpx2>=2.0.0
