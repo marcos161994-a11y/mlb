@@ -112,9 +112,26 @@ def _unir_auditoria_momios(base: Any, extra: Any) -> dict | None:
         fetch = max(str(fa), str(fb))
     else:
         fetch = fa or fb
-    if not rechazos and not fetch:
+    fuentes: dict[str, dict[str, int]] = {}
+    for origen in (a.get("fuentes"), b.get("fuentes")):
+        if not isinstance(origen, dict):
+            continue
+        for nombre, raw in origen.items():
+            if not isinstance(raw, dict):
+                continue
+            bucket = fuentes.setdefault(str(nombre), {"ok": 0, "fallo": 0})
+            for clave in ("ok", "fallo"):
+                try:
+                    valor = int(raw.get(clave) or 0)
+                except (TypeError, ValueError):
+                    valor = 0
+                bucket[clave] = max(bucket[clave], valor)
+    if not rechazos and not fetch and not fuentes:
         return None
-    return {"ultimo_fetch_ok": fetch, "rechazos": rechazos[-300:]}
+    out: dict[str, Any] = {"ultimo_fetch_ok": fetch, "rechazos": rechazos[-300:]}
+    if fuentes:
+        out["fuentes"] = fuentes
+    return out
 
 
 def _mejor_pred(cur: dict | None, nuevo: dict) -> dict:
