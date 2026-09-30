@@ -1,4 +1,5 @@
-# Mantiene Quantum MLB en Render despierto, congela T-60 y liquida cada 5 min.
+# Mantiene Quantum MLB en Render despierto, congela en T-90/T-60/T-30/T-10 y liquida cada 5 min.
+# Primero despierta el servicio (reintentos) y luego llama al congelado, también con reintento.
 # Requiere: secret CRON_SECRET en GitHub (mismo valor que en Render).
 name: MLB Cloud Cron
 
@@ -15,7 +16,7 @@ env:
 jobs:
   ping-render:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Normalizar RENDER_URL
         run: |
@@ -24,8 +25,42 @@ jobs:
           echo "RENDER_URL=${url}" >> "$GITHUB_ENV"
           echo "Servicio: ${url}"
 
-      - name: Health (despierta Render)
-        run: curl -fsS --retry 3 --retry-delay 15 --max-time 120 "${RENDER_URL}/api/health"
+      - name: Despertar servicio (reintentos antes de congelar)
+        run: |
+          ok=0
+          for i in 1 2 3 4 5 6 7 8; do
+            echo "Calentamiento ${i}: ${RENDER_URL}/api/health"
+            if curl -fsS --retry 2 --retry-all-errors --retry-delay 5 --max-time 50 \
+                "${RENDER_URL}/api/health" -o /tmp/mlb-health.json; then
+              echo "Health OK intento ${i}"
+              ok=1
+              break
+            fi
+            echo "Servicio dormido o arrancando; espero 20s"
+            sleep 20
+          done
+          if [ "$ok" != "1" ]; then
+            echo "::error::mlb-1 no respondió tras el calentamiento"
+            exit 1
+          fi
+          python3 - <<'PY'
+          import json
+          d = json.load(open("/tmp/mlb-health.json", encoding="utf-8"))
+          c = d.get("congelacion") or {}
+          n = int(c.get("ventanas_perdidas") or 0)
+          print(
+              "ventanas_perdidas="
+              + str(n)
+              + " recuperadas="
+              + str(c.get("ventanas_recuperadas"))
+          )
+          if n:
+              print(
+                  "::warning::Congelación: "
+                  + str(n)
+                  + " partido(s) se quedaron sin pick antes del primer lanzamiento"
+              )
+          PY
 
       - name: Verificar cuotas de mercado
         env:
@@ -52,8 +87,24 @@ jobs:
             exit 1
           fi
           # Header (preferido) y query (servidor anterior al deploy de auth).
-          curl -fsS --max-time 60 \
-            -H "X-Cron-Secret: ${CRON_SECRET}" \
-            "${RENDER_URL}/api/auto-bloqueo-externo?secret=${CRON_SECRET}&en_fondo=1"
+          # Si el free todavía está despertando, se vuelve a calentar y se reintenta.
+          ok=0
+          for i in 1 2 3; do
+            if curl -fsS --retry 2 --retry-all-errors --retry-delay 5 --max-time 90 \
+              -H "X-Cron-Secret: ${CRON_SECRET}" \
+              "${RENDER_URL}/api/auto-bloqueo-externo?secret=${CRON_SECRET}&en_fondo=1"; then
+              echo "Congelado aceptado intento ${i}"
+              ok=1
+              break
+            fi
+            echo "Llamada de congelación falló (intento ${i}). Vuelvo a despertar."
+            curl -fsS --retry 2 --retry-all-errors --retry-delay 5 --max-time 50 \
+              "${RENDER_URL}/api/health" >/dev/null || true
+            sleep 15
+          done
+          if [ "$ok" != "1" ]; then
+            echo "::error::No se pudo llamar al congelado tras reintentos"
+            exit 1
+          fi
       # El import 9 MB + ML ya lo hace el cron al final si hace falta.
       # Pegarlo aquí en paralelo era el pico que tumba Render free (512 MB).
