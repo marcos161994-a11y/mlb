@@ -718,7 +718,7 @@ const API = (!window.location.origin || window.location.protocol === 'file:')
 const ES_NUBE = API.includes('onrender.com') || API.includes('render.com');
 const REFRESH_MS = ES_NUBE ? 45000 : 8000;
 const CACHE_KEY = 'qmlb_last_state_v2';
-const PANEL_VER = '2026-09-29-dias-por-mes';
+const PANEL_VER = '2026-09-30-apuesta-fija';
 const SECRET_KEY = 'qmlb_cron_secret';
 
 function leerSecretoCron() {
@@ -1223,6 +1223,40 @@ function fmtAmer(a) {
     return a > 0 ? '+' + a : String(a);
 }
 
+let stakeFijoPanel = 3;
+
+function esMomioEstimado(j) {
+    const f = String((j && (j.fuente_momio || j.lineas_fuente)) || '').toLowerCase();
+    return f === 'estimado';
+}
+
+function payoutSiGana(stake, american) {
+    const s = Number(stake);
+    const o = Number(american);
+    if (!s || !o || !Number.isFinite(s) || !Number.isFinite(o)) return null;
+    const profit = o < 0 ? s * 100 / Math.abs(o) : s * o / 100;
+    return Math.round(profit * 100) / 100;
+}
+
+function textoStakeOdds(j) {
+    const stake = Number(j.stake || stakeFijoPanel || 3);
+    const amer = fmtAmer(j.odds_american);
+    const casa = j.casa_momio || j.casa || j.fuente_momio || j.lineas_fuente || '';
+    const origen = j.origen_momio || j.paso_momio || '';
+    const est = esMomioEstimado(j) ? ' · ESTIMADO' : (origen ? ' · ' + origen : '');
+    const estado = j.estado_apuesta || j.estado;
+    let cola = '';
+    if (estado === 'push') {
+        cola = ' · PUSH stake devuelto';
+    } else if (j.profit != null && estado && estado !== 'pendiente' && estado !== 'sin_bloquear' && !j.solo_papel) {
+        cola = ' · P/L ' + fmtMoney(j.profit);
+    } else {
+        const pot = j.payout_si_gana != null ? Number(j.payout_si_gana) : payoutSiGana(stake, j.odds_american);
+        if (pot != null) cola = ' · si gana ' + fmtMoney(pot);
+    }
+    return 'Stake $' + stake.toFixed(2) + ' · ' + amer + (casa ? ' ' + casa : '') + est + cola;
+}
+
 async function cargarEstado() {
     if (cargandoEstado) return;
     cargandoEstado = true;
@@ -1457,7 +1491,8 @@ function pintarEstado(data) {
     document.getElementById('capital-display').textContent = '$' + Number(m.capital || 0).toFixed(2);
     document.getElementById('bm-disponible').textContent = '$' + Number(b.disponible ?? m.capital ?? 0).toFixed(2);
     document.getElementById('bm-enjuego').textContent = '$' + Number(b.en_juego_hoy || 0).toFixed(2);
-    document.getElementById('bm-stake').textContent = '$' + Number(m.stake_por_juego || 5).toFixed(0);
+    stakeFijoPanel = Number(cfg.apuesta_fija || b.apuesta_fija || 3) || 3;
+    document.getElementById('bm-stake').textContent = '$' + stakeFijoPanel.toFixed(0);
 
     // Stats: dos tarjetas claras (papel vs dinero)
     const split = data.pl_split || {};
@@ -1468,7 +1503,8 @@ function pintarEstado(data) {
     const statsContent = document.getElementById('stats-modelo-content');
     const ml = data.ml_meta || {};
     if (statsContent) {
-        if ((pred.total || 0) > 0 || (din.total || 0) > 0) {
+        const est = split.dinero_estimado || {};
+        if ((pred.total || 0) > 0 || (din.total || 0) > 0 || (est.total || 0) > 0) {
             let extra = '';
             if (div.alerta && div.mensaje) {
                 extra += `<p class="meta-line" style="margin-top:8px;color:#ffbc00;font-size:0.82rem">⚠ ${div.mensaje}</p>`;
@@ -1493,8 +1529,9 @@ function pintarEstado(data) {
             statsContent.innerHTML =
                 `<div class="rend-grid">` +
                 rendCard('📋 Quién gana', pred.aciertos, pred.fallos, pred.win_rate, pred.ganado, pred.perdido, pred.neto, pred.roi_pct) +
-                rendCard('💰 Dinero real', din.ganadas, din.perdidas, din.win_rate, din.ganado, din.perdido, din.neto, din.roi_pct) +
-                `</div>` + extra;
+                rendCard('💰 Cuota real', din.ganadas, din.perdidas, din.win_rate, din.ganado, din.perdido, din.neto, din.roi_pct) +
+                rendCard('📐 Momio estimado', est.ganadas, est.perdidas, est.win_rate, est.ganado, est.perdido, est.neto, est.roi_pct) +
+                `</div><p class="meta-line" style="margin-top:6px;color:var(--muted);font-size:0.75rem">El ROI de cuota real no mezcla apuestas con momio estimado (vig -110).</p>` + extra;
         } else {
             statsContent.innerHTML = '<p class="meta-line">Sin datos suficientes todavía.</p>';
         }
@@ -1554,11 +1591,11 @@ function pintarEstado(data) {
     }
 
     const mente = data.mente || cfg.mente || {};
-    const stakeTxt = '$' + Number(m.stake_por_juego || cfg.stake_por_juego || 3).toFixed(0);
+    const stakeTxt = '$' + Number(stakeFijoPanel || cfg.apuesta_fija || 3).toFixed(0);
     const minEdge = estr.min_edge_pct || 6;
     document.getElementById('modo-badge').textContent = soloModelo
         ? 'PAPEL · Solo stats+ML (sin mercado)'
-        : `MERCADO · ${stakeTxt}/pick · edge≥${minEdge}%`;
+        : `MERCADO · stake fijo ${stakeTxt} · edge≥${minEdge}%`;
     if (cfg.usar_mente !== false) {
         const modoM = (mente.modo || 'normal').toUpperCase();
         const shadowOn = mente.shadow === true || modoM === 'SHADOW';
@@ -1571,7 +1608,7 @@ function pintarEstado(data) {
     const retryTxt = Array.isArray(retries) ? retries.map(m => 'T-' + m).join('/') : 'T-45/T-30';
     document.getElementById('proximo-bloqueo').textContent = soloModelo
         ? `Bloqueo automático: ${mins} min antes de cada juego (solo papel)`
-        : `Bloqueo T-${mins} · retry cuotas ${retryTxt} · $ solo con 🏦 cuota casa + edge`;
+        : `Bloqueo T-${mins} · retry cuotas ${retryTxt} · stake fijo ${stakeTxt} · casa real o estimado`;
 
     const ls = document.getElementById('lineas-status');
     const lin = data.lineas || {};
@@ -1659,7 +1696,8 @@ function pintarEstado(data) {
             avisoBody.innerHTML =
                 `El <strong>PICK</strong> es quién creemos que gana. ` +
                 `Dinero solo con borde verde (edge≥${minEdge}%). ` +
-                `Stake ~${stakeTxt} · máx ${estr.max_apuestas_dia || 4}/día.`;
+                `Stake fijo ${stakeTxt} · máx ${estr.max_apuestas_dia || 4}/día. ` +
+                `Si ninguna casa cotiza, el momio es estimado (vig -110) y no entra al ROI de cuota real.`;
         }
     }
 
@@ -1715,7 +1753,7 @@ function pintarEstado(data) {
                 const color = ok ? 'var(--green)' : (a.estado === 'perdida' ? 'var(--red)' : 'var(--gold)');
                 const icon = ok ? '✓' : (a.estado === 'perdida' ? '✗' : '⏳');
                 html += '<div style="font-size:0.75rem;color:' + color + ';padding:4px 0 4px 10px">' + icon + ' ' + a.pick;
-                if (a.profit != null) html += ' — ' + fmtMoney(a.profit);
+                html += ' — ' + textoStakeOdds(a);
                 html += '</div>';
             });
             html += '</div>';
@@ -1803,12 +1841,23 @@ function sinCuotaMercado(j) {
 }
 
 function textoCuota(j) {
+    if (esMomioEstimado(j)) {
+        const pot = payoutSiGana(j.stake || stakeFijoPanel, j.odds_american);
+        const potTxt = pot != null ? ` · si gana ${fmtMoney(pot)}` : '';
+        return `<span class="cuota-estimada">📐 Estimado ${fmtAmer(j.odds_american)} (vig -110)${potTxt}</span>`;
+    }
     if (sinCuotaMercado(j)) {
         return `<span class="cuota-estimada">📐 Cuota estimada (solo papel): ${j.odds || '—'}</span>`;
     }
-    const src = (j.lineas_fuente || 'casa').toUpperCase();
-    const edgeTxt = j.edge ? ` · edge +${Number(j.edge).toFixed(1)}%` : '';
-    return `<span class="cuota-casa">🏦 Cuota ${src}: ${j.odds || '—'}${edgeTxt}</span>`;
+    const src = (j.casa_momio || j.fuente_momio || j.lineas_fuente || 'casa').toUpperCase();
+    const nEdge = Number(j.edge);
+    const edgeTxt = Number.isFinite(nEdge) && nEdge !== 0
+        ? ` · edge ${nEdge > 0 ? '+' : ''}${nEdge.toFixed(1)}%`
+        : '';
+    const pot = payoutSiGana(j.stake || stakeFijoPanel, j.odds_american);
+    const potTxt = pot != null ? ` · si gana ${fmtMoney(pot)}` : '';
+    const origen = j.origen_momio ? ` · ${j.origen_momio}` : '';
+    return `<span class="cuota-casa">🏦 ${src} ${fmtAmer(j.odds_american)}${potTxt}${edgeTxt}${origen}</span>`;
 }
 
 function pintarPicksHoy(juegos, data) {
@@ -1833,12 +1882,17 @@ function pintarPicksHoy(juegos, data) {
     const yaApostados = unicos.filter(j =>
         j.estado_apuesta && j.estado_apuesta !== 'sin_bloquear'
     );
+    const yaReal = yaApostados.filter(j => !esMomioEstimado(j));
+    const yaEst = yaApostados.filter(j => esMomioEstimado(j));
     const idsYa = new Set(yaApostados.map(j => j.id));
     const cupoRestante = Math.max(0, maxP - yaApostados.length);
     const apostablesNuevos = unicos
-        .filter(j => j.apostable && !sinCuotaMercado(j) && (j.probPick || 0) >= minProb && !idsYa.has(j.id))
+        .filter(j => j.apostable && !esMomioEstimado(j) && !sinCuotaMercado(j) && (j.probPick || 0) >= minProb && !idsYa.has(j.id))
         .sort((a, b) => (b.edge || 0) - (a.edge || 0))
         .slice(0, cupoRestante);
+    const estimadosNuevos = unicos
+        .filter(j => j.apostable && esMomioEstimado(j) && !idsYa.has(j.id))
+        .sort((a, b) => (b.probPick || 0) - (a.probPick || 0));
 
     if (!unicos.length) {
         sub.textContent = 'No hay juegos MLB hoy.';
@@ -1846,10 +1900,11 @@ function pintarPicksHoy(juegos, data) {
         return;
     }
 
-    sub.textContent = `${unicos.length} juegos hoy · ${yaApostados.length} apostados · ${apostablesNuevos.length} con valor vs cuota real (máx. ${maxP}) · toca el título para abrir/cerrar.`;
+    sub.textContent = `${unicos.length} juegos hoy · ${yaReal.length} con casa · ${yaEst.length + estimadosNuevos.length} estimado · ${apostablesNuevos.length} con valor (máx. ${maxP}) · toca el título para abrir/cerrar.`;
 
     let html = '';
-    const conDinero = [...yaApostados, ...apostablesNuevos];
+    const conDinero = [...yaReal, ...apostablesNuevos];
+    const conEstimado = [...yaEst, ...estimadosNuevos];
 
     if (conDinero.length) {
         html += `<details class="picks-grupo dinero" id="picks-grupo-dinero" ${picksUi.dinero ? 'open' : ''}>
@@ -1879,7 +1934,7 @@ function pintarPicksHoy(juegos, data) {
             html += `<div class="pick-row apostar ${hecho ? 'hecho' : ''}">
                 <div>
                     <div class="pick-equipo">${i + 1}. ${eq} ${badge}</div>
-                    <div class="pick-meta">${j.visitante} @ ${j.home} · ${j.hora_inicio_txt || '—'} · ${j.estado || ''}</div>
+                    <div class="pick-meta">${j.visitante} @ ${j.home} · ${j.hora_inicio_txt || '—'} · ${j.estado || ''}<br>${textoStakeOdds(j)}</div>
                 </div>
                 <div class="pick-prob">${(j.probPick || 0).toFixed(0)}%</div>
             </div>`;
@@ -1887,7 +1942,27 @@ function pintarPicksHoy(juegos, data) {
         html += '</div></details>';
     }
 
-    const idsDinero = new Set(conDinero.map(j => j.id));
+    if (conEstimado.length) {
+        html += `<details class="picks-grupo papel" id="picks-grupo-estimado" open>
+            <summary>
+                <span>📐 MOMIO ESTIMADO (${conEstimado.length})<span class="hint">vig -110 · no entra al ROI de casa</span></span>
+                <span class="chev" aria-hidden="true"></span>
+            </summary>
+            <div class="picks-grupo-body">`;
+        conEstimado.forEach((j, i) => {
+            const eq = nombrePick(j.pick);
+            html += `<div class="pick-row no">
+                <div>
+                    <div class="pick-equipo" style="color:var(--gold)">${i + 1}. ${eq} <span class="pick-badge wait">ESTIMADO</span></div>
+                    <div class="pick-meta">${j.visitante} @ ${j.home} · ${textoStakeOdds(j)}</div>
+                </div>
+                <div class="pick-prob" style="color:var(--gold)">${(j.probPick || 0).toFixed(0)}%</div>
+            </div>`;
+        });
+        html += '</div></details>';
+    }
+
+    const idsDinero = new Set([...conDinero, ...conEstimado].map(j => j.id));
     const soloPred = unicos
         .filter(j => (j.probPick || 0) > 0 && !idsDinero.has(j.id))
         .sort((a, b) => (b.probPick || 0) - (a.probPick || 0));
@@ -2021,6 +2096,13 @@ function pintarPredicciones(memoria, plSplit, ctx) {
             row.con_dinero = true;
             row.stake_dinero = a.stake;
             row.profit_dinero = a.profit;
+            row.odds_american = a.odds_american;
+            row.fuente_momio = a.fuente_momio;
+            row.casa = a.casa;
+            row.paso_momio = a.paso_momio;
+            row.origen_momio = a.origen_momio;
+            row.payout_si_gana = a.payout_si_gana;
+            row.estado_apuesta = a.estado;
             // Con dinero: mostrar el pick real de la apuesta
             if (a.pick) row.pick = a.pick;
             if (a.probPick != null) row.probPick = a.probPick;
@@ -2111,11 +2193,22 @@ function pintarPredicciones(memoria, plSplit, ctx) {
             let dinTxt = '—';
             let dinColor = 'var(--muted)';
             if (f.con_dinero) {
+                const precio = textoStakeOdds({
+                    stake: f.stake_dinero,
+                    odds_american: f.odds_american,
+                    fuente_momio: f.fuente_momio,
+                    casa: f.casa,
+                    paso_momio: f.paso_momio,
+                    origen_momio: f.origen_momio,
+                    payout_si_gana: f.payout_si_gana,
+                    profit: f.profit_dinero,
+                    estado: f.estado_apuesta,
+                });
                 if (f.profit_dinero != null) {
-                    dinTxt = `💰${fmtMoney(f.profit_dinero)}`;
+                    dinTxt = `💰${fmtMoney(f.profit_dinero)}<div style="font-size:0.68rem;color:var(--muted)">${precio}</div>`;
                     dinColor = f.profit_dinero >= 0 ? 'var(--green)' : 'var(--red)';
                 } else {
-                    dinTxt = '💰';
+                    dinTxt = `💰<div style="font-size:0.68rem;color:var(--muted)">${precio}</div>`;
                     dinColor = 'var(--gold)';
                 }
             }
@@ -2318,6 +2411,7 @@ function pintarJuegos(juegos) {
                 </details>
             </div>
             <div class="estado-apuesta ${j.estado_apuesta||''}">${apuestaTxt}</div>
+            ${(!papel && (j.apostable || (j.estado_apuesta && j.estado_apuesta !== 'sin_bloquear'))) ? `<div class="estado-apuesta">${textoStakeOdds(j)}</div>` : ''}
         </div>`;
     }).join('');
 }

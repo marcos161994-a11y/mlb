@@ -76,6 +76,27 @@ def test_apostar_heuristico_con_edge():
     assert 1.0 <= stake <= 5.0
 
 
+def test_momio_estimado_no_se_salta_por_falta_de_casa():
+    juego = {
+        "id": "t-est",
+        "visitante": "Away",
+        "home": "Home",
+        "pick": "Home ML",
+        "probPick": 61,
+        "edge": 0,
+        "odds": 1.83,
+        "odds_american": -120,
+        "lineas_fuente": "estimado",
+        "fuente_momio": "estimado",
+        "pitcherAway": "X",
+        "pitcherHome": "Y",
+    }
+    c = mente_conclusion(juego, CFG, {}, forzar=True, solo_local=True)
+    assert c["decision"] == "APOSTAR"
+    assert c["autoriza_dinero"] is True
+    assert any("estimado" in r.lower() for r in c["razones"])
+
+
 def test_scratch_del_rival_no_tumba_pick():
     """Estrellas out del rival no deben forzar PASAR (caso Angels vs Royals)."""
     juego = {

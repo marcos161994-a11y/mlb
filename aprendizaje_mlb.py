@@ -87,7 +87,7 @@ def peso_muestra_aprendizaje(reg: dict[str, Any] | None) -> float:
         return 0.0
     w = PESO_DINERO if reg.get("con_dinero") or reg.get("estado") in ("ganada", "perdida") else PESO_PAPEL
     fuente = str(reg.get("lineas_fuente") or "").lower()
-    if fuente in ("modelo", "", "none", "import"):
+    if fuente in ("modelo", "", "none", "import", "estimado"):
         w *= PESO_SIN_MERCADO
     return float(w)
 

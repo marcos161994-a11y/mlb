@@ -46,13 +46,19 @@ from memoria_fusion import (
 )
 from modelo_mlb import (
     evaluar_juegos,
-    calcular_stake_dinamico,
     cuota_desde_prob,
     edge_pct,
     fuente_es_mercado,
     bloqueado_favorito_inflado,
     tiene_cuota_mercado,
     apostable_con_mercado,
+    apostable_para_dinero,
+    es_momio_estimado,
+)
+from cadena_momios import (
+    apuesta_fija_dolares,
+    momio_del_pick,
+    profit_moneyline_americano,
 )
 from aprendizaje_mlb import calcular_movimiento_linea, peso_muestra_aprendizaje, bloqueado_linea_en_contra
 from clv_mlb import actualizar_clv_registro, resumen_clv_memoria
@@ -61,7 +67,6 @@ from ia_groq import ia_veto_disponible, modelo_groq, probar_conexion_groq, veto_
 from mente_mlb import (
     mente_conclusion,
     mente_disponible,
-    aplicar_stake_mente,
     generar_briefing_juego,
 )
 from mente_errores import (
@@ -463,6 +468,10 @@ _PRED_PANEL_KEYS = (
     "predicho_en",
     "liquidado_en",
     "lineas_fuente",
+    "fuente_momio",
+    "casa_momio",
+    "paso_momio",
+    "origen_momio",
     "linea_movimiento_pct",
     "cuota_retry",
     "clv_pct",
@@ -475,6 +484,12 @@ _APUESTA_PANEL_KEYS = (
     "pick",
     "odds",
     "odds_american",
+    "fuente_momio",
+    "casa",
+    "paso_momio",
+    "origen_momio",
+    "payout_si_gana",
+    "momio_fallos",
     "probPick",
     "estado",
     "profit",
@@ -514,6 +529,12 @@ _JUEGO_PANEL_KEYS = (
     "pitcherAway",
     "pitcherHome",
     "lineas_fuente",
+    "fuente_momio",
+    "casa_momio",
+    "paso_momio",
+    "origen_momio",
+    "payout_si_gana",
+    "momio_fallos",
     "pick_congelado",
     "linea_movimiento_pct",
     "bullpen_dia",
@@ -736,6 +757,7 @@ def resumen_banca(memoria: dict) -> dict:
         "en_juego_hoy": en_juego,
         "disponible": round(memoria["capital"] - en_juego, 2),
         "stake_por_juego": memoria["stake_por_juego"],
+        "apuesta_fija": apuesta_fija_dolares(cargar_config()),
     }
 
 
@@ -1337,18 +1359,18 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
         else:
             juegos, _lineas_meta_cache = aplicar_lineas_a_juegos(juegos, cfg)
             bias = calcular_bias_aprendizaje(memoria)
-            cfg_eval = cfg
-            # Si ESPN no trajo cuotas: estudio, no apostar.
-            if not (_lineas_meta_cache or {}).get("ok") and (cfg.get("estrategia") or {}).get(
-                "fallback_solo_modelo", True
-            ):
-                cfg_eval = {**cfg, "modo_solo_modelo": True}
+            # Sin casa no se apaga el dinero: el modelo estima con vig -110
+            # y esas apuestas quedan aparte del ROI de cuota real.
+            if not (_lineas_meta_cache or {}).get("ok"):
                 _lineas_meta_cache = {
                     **(_lineas_meta_cache or {}),
-                    "fallback_solo_modelo": True,
-                    "mensaje": "Sin cuota de casa ahora · estudio (no apostar). ESPN no disponible.",
+                    "fallback_estimado": True,
+                    "mensaje": (
+                        ((_lineas_meta_cache or {}).get("mensaje"))
+                        or "Sin cuota de casa · los picks siguen con momio estimado (vig -110)."
+                    ),
                 }
-            juegos = evaluar_juegos(juegos, cfg_eval, bias)
+            juegos = evaluar_juegos(juegos, cfg, bias)
     else:
         print(f"[INFO] Modo solo_resultados activo para {fecha or 'hoy'}. Saltando IA y Cuotas.")
         
@@ -1393,9 +1415,70 @@ def _revertir_liquidacion_prematura(apuesta: dict, juego: dict) -> bool:
     return True
 
 
+def _es_anulado(juego: dict) -> bool:
+    """Postpuesto, cancelado o suspendido: la casa devuelve el stake."""
+    return juego.get("estado") == "POSPUESTO"
+
+
+def _es_empate_final(juego: dict) -> bool:
+    if not _juego_finalizado(juego) or _ganador_oficial(juego):
+        return False
+    try:
+        return int(juego.get("scoreAway") or 0) == int(juego.get("scoreHome") or 0)
+    except (TypeError, ValueError):
+        return False
+
+
+def _profit_al_liquidar(apuesta: dict, stake: float, estado: str) -> float | None:
+    """Apuestas nuevas cobran el momio americano congelado. Las viejas no se reescriben."""
+    if apuesta.get("fuente_momio") is None:
+        odds = float(apuesta.get("odds") or 0)
+        if estado == "ganada":
+            if odds <= 1.0:
+                return None
+            return round(stake * (odds - 1), 2)
+        if estado == "perdida":
+            return round(-stake, 2)
+        if estado == "push":
+            return 0.0
+        return None
+    american = apuesta.get("odds_american")
+    try:
+        momio = int(american)
+    except (TypeError, ValueError):
+        momio = 0
+    if momio == 0:
+        print(
+            f"[LIQUIDACIÓN] {apuesta.get('pick')} sin momio americano congelado "
+            f"(fuente {apuesta.get('fuente_momio')}). No se inventa el pago."
+        )
+        return None
+    return profit_moneyline_americano(stake, momio, estado)
+
+
 def liquidar_apuesta(apuesta: dict, juego: dict, stake: float) -> bool:
     """Liquida si el juego finalizó. Devuelve True si hubo cambio."""
     if _revertir_liquidacion_prematura(apuesta, juego):
+        return True
+
+    # Push/void solo en apuestas del régimen nuevo. El historial ya liquidado no se toca.
+    if apuesta.get("fuente_momio") is not None and (_es_anulado(juego) or _es_empate_final(juego)):
+        if apuesta.get("estado") == "push" and apuesta.get("profit") == 0:
+            return False
+        stake_usada = float(apuesta.get("stake") or stake)
+        apuesta["estado"] = "push"
+        apuesta["profit"] = 0.0
+        apuesta["cierre"] = "void" if _es_anulado(juego) else "push"
+        apuesta["stake"] = stake_usada
+        apuesta["marcador_final"] = (
+            f"{juego.get('visitante')} {juego.get('scoreAway')} - "
+            f"{juego.get('home')} {juego.get('scoreHome')}"
+        )
+        apuesta["liquidado_en"] = datetime.now(tz_experimento()).isoformat()
+        print(
+            f"[MOTOR] Juego {juego.get('id')} {apuesta['cierre'].upper()} "
+            f"({apuesta.get('pick')}): stake devuelto"
+        )
         return True
 
     if not _juego_finalizado(juego):
@@ -1421,11 +1504,14 @@ def liquidar_apuesta(apuesta: dict, juego: dict, stake: float) -> bool:
         print(f"[DEBUG LIQ] Juego {juego['id']} ya liquidado con el mismo estado ({nuevo_estado}).")
         return False
 
+    stake_usada = float(apuesta.get("stake") if apuesta.get("stake") is not None else stake)
+    profit = _profit_al_liquidar(apuesta, stake_usada, nuevo_estado)
+    if profit is None:
+        return False
+
     apuesta["estado"] = nuevo_estado
-    if nuevo_estado == "ganada":
-        apuesta["profit"] = round(stake * (apuesta["odds"] - 1), 2)
-    else:
-        apuesta["profit"] = round(-stake, 2)
+    apuesta["stake"] = stake_usada
+    apuesta["profit"] = profit
 
     apuesta["marcador_final"] = nuevo_marcador
     print(f"[MOTOR] Juego {juego['id']} actualizado automáticamente: {nuevo_estado.upper()} ({apuesta['profit']:+.2f})")
@@ -1883,8 +1969,7 @@ def guardar_prediccion(
     if not odds or float(odds) <= 1.0:
         odds, odds_amer = cuota_desde_prob(prob)
 
-    # Apostable solo con cuota de casa. Un 72% sin mercado no es valor.
-    apostable_flag = apostable_con_mercado(juego)
+    apostable_flag = apostable_para_dinero(juego)
 
     # Briefing T-60 interno (para la mente). No se muestra en el panel.
     briefing = None
@@ -1912,11 +1997,16 @@ def guardar_prediccion(
             "home": juego["home"],
             "pick": juego["pick"],
             "odds": float(odds),
-            "odds_american": odds_amer if odds_amer is not None else 150,
+            "odds_american": odds_amer,
             "edge": 0 if not tiene_cuota_mercado(juego) else juego.get("edge", 0),
             "probPick": prob,
             "apostable": apostable_flag,
             "lineas_fuente": juego.get("lineas_fuente") or "modelo",
+            "fuente_momio": juego.get("fuente_momio"),
+            "casa_momio": juego.get("casa_momio"),
+            "paso_momio": juego.get("paso_momio"),
+            "origen_momio": juego.get("origen_momio"),
+            "momio_fallos": juego.get("momio_fallos"),
             "motivo_apuesta": motivo,
             "pitcherAway": juego.get("pitcherAway"),
             "pitcherHome": juego.get("pitcherHome"),
@@ -2274,6 +2364,9 @@ def resumen_predicciones_y_dinero(memoria: dict) -> dict:
     din_ganadas = din_perdidas = 0
     din_ganado = din_perdido = 0.0
     din_stake_total = 0.0
+    est_ganadas = est_perdidas = 0
+    est_ganado = est_perdido = 0.0
+    est_stake_total = 0.0
     mutado = False
     stake_v_default = float(stake_virtual_prediccion(memoria))
 
@@ -2325,7 +2418,18 @@ def resumen_predicciones_y_dinero(memoria: dict) -> dict:
             if a.get("estado") not in ("ganada", "perdida"):
                 continue
             profit = float(a.get("profit") or 0)
-            din_stake_total += float(a.get("stake") or 0)
+            stake_a = float(a.get("stake") or 0)
+            bucket_est = es_momio_estimado(a)
+            if bucket_est:
+                est_stake_total += stake_a
+                if a["estado"] == "ganada":
+                    est_ganadas += 1
+                    est_ganado += max(profit, 0)
+                else:
+                    est_perdidas += 1
+                    est_perdido += abs(min(profit, 0))
+                continue
+            din_stake_total += stake_a
             if a["estado"] == "ganada":
                 din_ganadas += 1
                 din_ganado += max(profit, 0)
@@ -2335,12 +2439,16 @@ def resumen_predicciones_y_dinero(memoria: dict) -> dict:
 
     pred_total = pred_aciertos + pred_fallos
     din_total = din_ganadas + din_perdidas
+    est_total = est_ganadas + est_perdidas
     pred_wr = round(100 * pred_aciertos / pred_total, 1) if pred_total else 0
     din_wr = round(100 * din_ganadas / din_total, 1) if din_total else 0
+    est_wr = round(100 * est_ganadas / est_total, 1) if est_total else 0
     pred_neto = round(pred_ganado - pred_perdido, 2)
     din_neto = round(din_ganado - din_perdido, 2)
+    est_neto = round(est_ganado - est_perdido, 2)
     pred_roi = round(100 * pred_neto / pred_stake_total, 1) if pred_stake_total else 0
     din_roi = round(100 * din_neto / din_stake_total, 1) if din_stake_total else 0
+    est_roi = round(100 * est_neto / est_stake_total, 1) if est_stake_total else 0
     wr_diff = round(pred_wr - din_wr, 1) if pred_total and din_total else None
 
     divergencia = {"wr_diff": wr_diff, "alerta": False, "mensaje": ""}
@@ -2375,6 +2483,17 @@ def resumen_predicciones_y_dinero(memoria: dict) -> dict:
             "neto": din_neto,
             "roi_pct": din_roi,
             "invertido": round(din_stake_total, 2),
+        },
+        "dinero_estimado": {
+            "total": est_total,
+            "ganadas": est_ganadas,
+            "perdidas": est_perdidas,
+            "win_rate": est_wr,
+            "ganado": round(est_ganado, 2),
+            "perdido": round(est_perdido, 2),
+            "neto": est_neto,
+            "roi_pct": est_roi,
+            "invertido": round(est_stake_total, 2),
         },
         "divergencia": divergencia,
         "_mutado": mutado,
@@ -2476,6 +2595,22 @@ def _bloquear_juego_locked(
         }
 
     stake_v = stake_virtual_prediccion(memoria)
+    # Precio de la cadena en este instante, antes de que el pick congelado lo pise.
+    momio_vivo = {
+        "visitante": juego.get("visitante"),
+        "home": juego.get("home"),
+        "odds_away_american": juego.get("odds_away_american"),
+        "odds_home_american": juego.get("odds_home_american"),
+        "odds_away_decimal": juego.get("odds_away_decimal"),
+        "odds_home_decimal": juego.get("odds_home_decimal"),
+        "fuente_momio": juego.get("fuente_momio"),
+        "lineas_fuente": juego.get("lineas_fuente"),
+        "casa_momio": juego.get("casa_momio"),
+        "momio_fallos": juego.get("momio_fallos") or "",
+        "momio_intentos": list(juego.get("momio_intentos") or [])
+        if isinstance(juego.get("momio_intentos"), list)
+        else [],
+    }
     # Congelar papel en PROGRAMADO; EN VIVO solo dentro de la gracia (Render dormido).
     ok_gracia, _motivo_g = _permite_bloqueo_dinero(juego, forzar=forzar)
     if juego.get("estado") == "PROGRAMADO":
@@ -2513,8 +2648,8 @@ def _bloquear_juego_locked(
             juego["odds_away_decimal"] = pred_existente["odds_away_decimal"]
         if pred_existente.get("odds_home_decimal"):
             juego["odds_home_decimal"] = pred_existente["odds_home_decimal"]
-        # Congelado apostable solo si había cuota real. El % alto no basta.
-        if apostable_con_mercado(pred_existente) or apostable_con_mercado(juego):
+        # Cuota real o momio estimado. Un % alto sin ninguno de los dos no basta.
+        if apostable_para_dinero(pred_existente) or apostable_para_dinero(juego):
             juego["apostable"] = True
         else:
             juego["apostable"] = False
@@ -2621,30 +2756,40 @@ def _bloquear_juego_locked(
         except Exception as e:
             print(f"[SCRATCH] refresh bloqueo: {e}")
 
-    # Con mercado: exigir edge. Sin cuota de casa: nunca dinero (ni con % alto).
-    if not cfg.get("modo_solo_modelo") and (cfg.get("estrategia") or {}).get("requiere_betmgm", True):
+    # Precio al momento de apostar: casa real de la cadena, o vig -110 si ninguna cotizó.
+    pick_final = (juego.get("pick") or "").strip()
+    prob_final = float(juego.get("probPick") or 0)
+    precio = momio_del_pick(dict(momio_vivo), pick_final, prob_final or 50.0)
+    juego["odds"] = precio["odds"]
+    juego["odds_american"] = precio["odds_american"]
+    juego["fuente_momio"] = precio["fuente_momio"]
+    juego["lineas_fuente"] = precio["fuente_momio"]
+    juego["casa_momio"] = precio["casa"]
+    juego["paso_momio"] = precio.get("paso_momio") or ""
+    juego["origen_momio"] = precio.get("origen_momio") or ""
+    juego["momio_fallos"] = precio.get("momio_fallos") or ""
+    if precio["estimado"]:
+        juego["edge"] = 0
+        if precio.get("momio_fallos"):
+            print(
+                f"[MOMIO] {juego.get('pick')} sin casa real · {precio['momio_fallos']} "
+                "· se apuesta al estimado"
+            )
+    else:
+        juego["edge"] = edge_pct(prob_final, float(precio["odds"]))
+
+    # Con cuota de casa se exige edge. Sin casa no se salta el pick: ya trae estimado.
+    if (
+        not precio["estimado"]
+        and not cfg.get("modo_solo_modelo")
+        and (cfg.get("estrategia") or {}).get("requiere_betmgm", True)
+    ):
         min_edge = float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0))
         edge_now = juego.get("edge")
-        if tiene_cuota_mercado(juego) or tiene_cuota_mercado(pred_existente or {}):
-            if edge_now is None or float(edge_now) < min_edge:
-                motivo = "Sin valor vs mercado ahora"
-                if pred_existente is not None:
-                    pred_existente["apostable"] = False
-                guardar_memoria(memoria)
-                return {
-                    "ok": False,
-                    "motivo": motivo,
-                    "juego": juego["visitante"] + " vs " + juego["home"],
-                    "prediccion_guardada": True,
-                }
-        else:
-            motivo = "Sin cuota real de mercado — el % del modelo no es valor"
+        if edge_now is None or float(edge_now) < min_edge:
+            motivo = "Sin valor vs mercado ahora"
             if pred_existente is not None:
                 pred_existente["apostable"] = False
-                pred_existente["edge"] = 0
-                pred_existente["motivo_apuesta"] = (
-                    f"{pred_existente.get('motivo_apuesta') or ''} · {motivo}"
-                ).strip(" ·")
             guardar_memoria(memoria)
             return {
                 "ok": False,
@@ -2717,12 +2862,7 @@ def _bloquear_juego_locked(
                 "ia_veto": veto,
             }
 
-    edge = juego.get("edge", 0)
-    confianza = min(max((edge - 5.0) / 10.0, 0.5), 1.0)
-    if mente and mente.get("autoriza_dinero") and float(mente.get("stake_pct") or 0) > 0:
-        stake = aplicar_stake_mente(memoria["capital"], mente, cfg)
-    else:
-        stake = calcular_stake_dinamico(memoria["capital"], edge, confianza, cfg)
+    stake = apuesta_fija_dolares(cfg)
 
     riesgo = sum(a["stake"] for a in dia["apuestas"] if a["estado"] == "pendiente")
     print(f"[DEBUG BLOQUEO] Juego {game_id} - Riesgo: {riesgo}, Stake: {stake}, Capital: {memoria['capital']}")
@@ -2753,10 +2893,18 @@ def _bloquear_juego_locked(
             "visitante": juego["visitante"],
             "home": juego["home"],
             "pick": juego["pick"],
-            "odds": juego["odds"],
-            "odds_american": juego.get("odds_american"),
-            "lineas_fuente": juego.get("lineas_fuente", "betmgm"),
-            "casa": "Modelo" if juego.get("lineas_fuente") == "modelo" else "BetMGM",
+            "odds": precio["odds"],
+            "odds_american": precio["odds_american"],
+            "lineas_fuente": precio["fuente_momio"],
+            "fuente_momio": precio["fuente_momio"],
+            "casa": precio["casa"],
+            "paso_momio": precio.get("paso_momio") or "",
+            "origen_momio": precio.get("origen_momio") or "",
+            "payout_si_gana": profit_moneyline_americano(
+                stake, int(precio["odds_american"]), "ganada"
+            ),
+            "momio_fallos": precio.get("momio_fallos") or "",
+            "precio_congelado": True,
             "edge": juego.get("edge"),
             "probPick": juego.get("probPick"),
             "motivo_apuesta": motivo_final,
@@ -2859,9 +3007,9 @@ def bloquear_apuestas_del_dia(forzar: bool = False) -> dict:
                 continue
         gid = str(juego["id"])
         pred = preds_por_id.get(gid)
-        apostable = apostable_con_mercado(juego)
+        apostable = apostable_para_dinero(juego)
         if not apostable and pred is not None:
-            apostable = apostable_con_mercado(pred)
+            apostable = apostable_para_dinero(pred)
             if apostable:
                 juego["apostable"] = True
         if not apostable:
@@ -3143,6 +3291,18 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
             copia["odds_american"] = ap.get("odds_american")
             copia["probPick"] = ap.get("probPick", copia.get("probPick"))
             copia["lineas_fuente"] = ap.get("lineas_fuente", "betmgm")
+            if ap.get("fuente_momio"):
+                copia["fuente_momio"] = ap.get("fuente_momio")
+            if ap.get("casa"):
+                copia["casa_momio"] = ap.get("casa")
+            if ap.get("paso_momio"):
+                copia["paso_momio"] = ap.get("paso_momio")
+            if ap.get("origen_momio"):
+                copia["origen_momio"] = ap.get("origen_momio")
+            if ap.get("payout_si_gana") is not None:
+                copia["payout_si_gana"] = ap.get("payout_si_gana")
+            if ap.get("momio_fallos"):
+                copia["momio_fallos"] = ap.get("momio_fallos")
             copia["estado_apuesta"] = ap["estado"]
             copia["profit"] = ap.get("profit")
             copia["edge"] = ap.get("edge", copia.get("edge"))
@@ -3165,6 +3325,14 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
             copia["motivo_apuesta"] = pred.get("motivo_apuesta", copia.get("motivo_apuesta", ""))
             if pred.get("lineas_fuente"):
                 copia["lineas_fuente"] = pred.get("lineas_fuente")
+            if pred.get("fuente_momio"):
+                copia["fuente_momio"] = pred.get("fuente_momio")
+            if pred.get("casa_momio"):
+                copia["casa_momio"] = pred.get("casa_momio")
+            if pred.get("paso_momio"):
+                copia["paso_momio"] = pred.get("paso_momio")
+            if pred.get("origen_momio"):
+                copia["origen_momio"] = pred.get("origen_momio")
             if pred.get("clv_pct") is not None:
                 copia["clv_pct"] = pred.get("clv_pct")
             copia["pick_congelado"] = True
@@ -3739,6 +3907,7 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
                 "capital_inicial",
                 "dias_totales",
                 "stake_por_juego",
+                "apuesta_fija",
                 "minutos_antes_juego",
                 "timezone",
                 "modo_solo_modelo",
@@ -3908,6 +4077,7 @@ def api_panel_boot(
                 "capital_inicial",
                 "dias_totales",
                 "stake_por_juego",
+                "apuesta_fija",
                 "minutos_antes_juego",
                 "timezone",
                 "modo_solo_modelo",
@@ -5247,7 +5417,7 @@ if __name__ == "__main__":
     print("  QUANTUM MLB — Experimento 10 días")
     print("  Panel: http://localhost:8000")
     print(f"  Bloqueo automático: {cargar_config().get('minutos_antes_juego', 60)} min antes de cada inicio")
-    print(f"  Stake: ${cargar_config().get('stake_por_juego', 3.0)} por juego")
+    print(f"  Stake fijo: ${apuesta_fija_dolares(cargar_config()):.2f} por juego")
     print("=" * 60)
     
     try:

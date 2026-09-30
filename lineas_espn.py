@@ -303,7 +303,15 @@ def parsear_scoreboard_espn(payload: dict[str, Any]) -> dict[tuple[str, str], di
             "provider": principal["provider"],
             "espn_id": ev.get("id"),
             "libros": [
-                {"casa": b["casa"], "away": b["away"], "home": b["home"]} for b in libros
+                {
+                    "casa": b["casa"],
+                    "provider": b.get("provider"),
+                    "away": b["away"],
+                    "home": b["home"],
+                    "ml_away": b.get("ml_away"),
+                    "ml_home": b.get("ml_home"),
+                }
+                for b in libros
             ],
         }
         tot = _parse_total_espn(odds, casa)
@@ -362,8 +370,11 @@ def parsear_eventos_espn(payload: dict[str, Any]) -> dict[tuple[str, str], dict[
             "libros": [
                 {
                     "casa": casa,
+                    "provider": provider,
                     "away": float(american_a_decimal(ml_away)),
                     "home": float(american_a_decimal(ml_home)),
+                    "ml_away": ml_away,
+                    "ml_home": ml_home,
                 }
             ],
         }
@@ -447,6 +458,57 @@ def _fetch_mapa_espn(timeout: float) -> tuple[dict[tuple[str, str], dict[str, An
     except Exception as e:
         errores.append(f"header: {e}"[:80])
     return {}, "none", " · ".join(errores)[:160] or "ESPN sin cuotas"
+
+
+_cache_header: dict[tuple[str, str], dict[str, Any]] | None = None
+_cache_header_ts: datetime | None = None
+
+
+def obtener_mapa_header_espn(
+    timeout: float = 12.0,
+) -> tuple[dict[tuple[str, str], dict[str, Any]], dict[str, Any]]:
+    """Header ESPN (público, sin key). Segundo paso si el scoreboard no trae el partido."""
+    meta: dict[str, Any] = {
+        "ok": False,
+        "fuente": "espn-header",
+        "mensaje": "",
+        "partidos": 0,
+        "requiere_key": False,
+    }
+    ahora = datetime.now()
+    global _cache_header, _cache_header_ts
+    if (
+        _cache_header is not None
+        and _cache_header_ts
+        and ahora - _cache_header_ts < timedelta(minutes=CACHE_MINUTES)
+    ):
+        return _cache_header, {
+            **meta,
+            "ok": bool(_cache_header),
+            "partidos": len(_cache_header),
+            "cache": True,
+            "mensaje": f"{len(_cache_header)} partidos ESPN header (cache)",
+        }
+    try:
+        r = _session.get(
+            ESPN_HEADER,
+            params={"sport": "baseball", "league": "mlb"},
+            headers=_HEADERS,
+            timeout=timeout,
+        )
+        r.raise_for_status()
+        mapa = parsear_eventos_espn(r.json())
+    except Exception as e:
+        meta["mensaje"] = f"ESPN header: {e}"[:200]
+        return {}, meta
+    _cache_header = mapa
+    _cache_header_ts = ahora
+    meta["ok"] = bool(mapa)
+    meta["partidos"] = len(mapa)
+    meta["mensaje"] = (
+        f"{len(mapa)} partidos ESPN header" if mapa else "ESPN header sin moneyline"
+    )
+    return mapa, meta
 
 
 def obtener_lineas_espn(timeout: float = 12.0) -> tuple[dict[tuple[str, str], dict[str, Any]], dict[str, Any]]:
@@ -535,8 +597,11 @@ def aplicar_lineas_espn(
                     juego["lineas_libros"] = [
                         {
                             "casa": juego["lineas_fuente"],
+                            "provider": away_l.get("casa") or home_l.get("casa"),
                             "away": float(away_l["decimal"]),
                             "home": float(home_l["decimal"]),
+                            "ml_away": away_l.get("american"),
+                            "ml_home": home_l.get("american"),
                         }
                     ]
                 aplicados += 1

@@ -459,39 +459,22 @@ def es_underdog_con_valor(cuota_decimal: float, prob_modelo: float, cfg: dict) -
     return edge > estrategia.get("min_edge_pct", 5.0)
 
 
+def apuesta_fija_dolares(cfg: dict | None) -> float:
+    """Cada apuesta nueva usa el mismo stake. Banca, edge y Kelly no lo mueven."""
+    from cadena_momios import apuesta_fija_dolares as _fija
+
+    return _fija(cfg)
+
+
 def calcular_stake_dinamico(capital: float, edge: float, confianza: float, cfg: dict) -> float:
+    """Stake fijo (`apuesta_fija`, $3 por defecto).
+
+    Reemplaza el rango 2–3% del bankroll. ``capital``, ``edge`` y
+    ``confianza`` se ignoran a propósito: la unidad no escala con la banca
+    ni con la convicción del modelo.
     """
-    Stake entre min_stake_pct y max_stake_pct del bankroll actual.
-
-    Con gestión dinámica el rango porcentual manda. stake_por_juego queda
-    solo como unidad fija cuando esa gestión está apagada: usarlo de piso
-    en dólares (hoy $3) aplasta el 2–3% en una banca de ~$100 y, por debajo
-    de ese nivel, supera max_stake_pct. El mínimo es el porcentaje mínimo;
-    si ese piso queda por encima del techo, gana el techo. El resultado
-    nunca supera max_stake_pct del capital actual.
-    """
-    estrategia = cfg.get("estrategia") or {}
-    if not estrategia.get("gestion_bankroll_dinamica", False):
-        return float(cfg.get("stake_por_juego", 5.0))
-
-    min_pct = float(estrategia.get("min_stake_pct", 1.0)) / 100.0
-    max_pct = float(estrategia.get("max_stake_pct", 3.0)) / 100.0
-    if max_pct < 0:
-        max_pct = 0.0
-    # Piso porcentual por encima del techo: gana el techo.
-    if min_pct > max_pct:
-        min_pct = max_pct
-
-    capital = float(capital)
-    if capital <= 0 or max_pct <= 0:
-        return 0.0
-
-    # Edge 5–15% → 0–1. Confianza fuera de 0–1 no puede salir del rango.
-    edge_normalizado = min(max(float(edge) - 5.0, 0.0) / 10.0, 1.0)
-    confianza_n = min(max(float(confianza), 0.0), 1.0)
-    pct = min_pct + (max_pct - min_pct) * edge_normalizado * confianza_n
-    pct = min(max(pct, min_pct), max_pct)
-    return capital * pct
+    del capital, edge, confianza
+    return apuesta_fija_dolares(cfg)
 
 
 def obtener_balance_lineup(team_id: int, season: int) -> float:
@@ -729,7 +712,7 @@ def cuota_desde_prob(prob: float) -> tuple[float, int]:
     return dec, amer
 
 
-_FUENTES_SIN_MERCADO = frozenset({"", "modelo", "none", "null", "import"})
+_FUENTES_SIN_MERCADO = frozenset({"", "modelo", "none", "null", "import", "estimado"})
 
 
 def fuente_es_mercado(fuente: Any) -> bool:
@@ -756,6 +739,30 @@ def apostable_con_mercado(juego: dict[str, Any] | None) -> bool:
     if not isinstance(juego, dict):
         return False
     return bool(juego.get("apostable")) and tiene_cuota_mercado(juego)
+
+
+def es_momio_estimado(juego: dict[str, Any] | None) -> bool:
+    """True si el precio es el último recurso (vig -110), no una casa."""
+    if not isinstance(juego, dict):
+        return False
+    fuente = str(juego.get("fuente_momio") or juego.get("lineas_fuente") or "").strip().lower()
+    return fuente == "estimado"
+
+
+def _momio_americano_valido(valor: Any) -> bool:
+    try:
+        return int(valor) != 0
+    except (TypeError, ValueError):
+        return False
+
+
+def apostable_para_dinero(juego: dict[str, Any] | None) -> bool:
+    """Dinero con cuota de casa, o con momio estimado si no hubo ninguna casa."""
+    if not isinstance(juego, dict) or not juego.get("apostable"):
+        return False
+    if tiene_cuota_mercado(juego):
+        return True
+    return es_momio_estimado(juego) and _momio_americano_valido(juego.get("odds_american"))
 
 
 def favorito_inflado_cfg(cfg: dict[str, Any]) -> dict[str, Any]:
@@ -827,6 +834,54 @@ def marcar_estudio_sin_mercado(
             f"Prob. modelo bajo {min_prob}% · sin cuota real"
         )
     return juego
+
+
+def _asignar_pick_estimado(
+    juego: dict[str, Any],
+    *,
+    min_prob: float,
+    lesiones_info: dict[str, Any],
+    scratch_info: dict[str, Any],
+) -> None:
+    """Pick con el momio de vig. No exige edge: el precio sale del propio modelo."""
+    prob_away = float(juego.get("probAway") or 0)
+    prob_home = float(juego.get("probHome") or 0)
+    if prob_away >= prob_home:
+        pick, prob = f"{juego['visitante']} ML", prob_away
+        dec = juego.get("odds_away_decimal")
+        amer = juego.get("odds_away_american")
+    else:
+        pick, prob = f"{juego['home']} ML", prob_home
+        dec = juego.get("odds_home_decimal")
+        amer = juego.get("odds_home_american")
+    juego["pick"] = pick
+    juego["probPick"] = float(prob)
+    juego["odds"] = dec
+    juego["odds_american"] = amer
+    juego["edge"] = 0
+    juego["fuente_momio"] = "estimado"
+    juego["lineas_fuente"] = "estimado"
+    juego["casa_momio"] = "estimado"
+    juego["apostable"] = float(prob) >= float(min_prob)
+    amer_txt = f"{int(amer):+d}" if amer not in (None, "") else "—"
+    fallos = str(juego.get("momio_fallos") or "").strip()
+    if juego["apostable"]:
+        juego["motivo_apuesta"] = (
+            f"Momio estimado {amer_txt} (vig -110) · modelo {float(prob):.0f}%"
+            + (f" · sin casa: {fallos}" if fallos else "")
+        )
+    else:
+        juego["motivo_apuesta"] = f"Prob. modelo bajo {min_prob}% · momio estimado {amer_txt}"
+    if lesiones_info.get("starter_riesgo") and _pick_sobre_starter_lesionado(
+        pick, lesiones_info, juego.get("visitante") or "", juego.get("home") or ""
+    ):
+        juego["apostable"] = False
+        juego["motivo_apuesta"] = "Spot no apto para dinero ahora"
+    elif scratch_info.get("riesgo") and pick_afectado_por_scratch(
+        pick, juego.get("visitante") or "", juego.get("home") or "", scratch_info
+    ):
+        juego["apostable"] = False
+        juego["motivo_apuesta"] = "Spot no apto para dinero ahora"
 
 
 def _modo_solo_modelo(cfg: dict[str, Any]) -> bool:
@@ -1244,9 +1299,28 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
     preferir_underdogs = estrategia.get("preferir_underdogs", False)
     solo_modelo = _modo_solo_modelo(cfg)
 
-    # Sin cuota de casa: el % es estudio. Nunca inventar edge = prob-50
-    # (eso convirtió un 72% en un falso "+22% de valor").
-    if solo_modelo or (not dec_away and not dec_home):
+    # Sin cuota de casa no se salta el pick: se estima con vig -110 y se marca.
+    if not solo_modelo and not (dec_away and dec_home):
+        from cadena_momios import aplicar_momio_estimado
+
+        aplicar_momio_estimado(
+            juego,
+            prob_away,
+            prob_home,
+            intentos=juego.get("momio_intentos") if isinstance(juego.get("momio_intentos"), list) else None,
+        )
+        dec_away = juego.get("odds_away_decimal")
+        dec_home = juego.get("odds_home_decimal")
+
+    if es_momio_estimado(juego) and dec_away and dec_home:
+        _asignar_pick_estimado(
+            juego,
+            min_prob=min_prob,
+            lesiones_info=lesiones_info,
+            scratch_info=scratch_info,
+        )
+    # Sin cuota de casa y sin estimado: el % es estudio. Nunca inventar edge = prob-50.
+    elif solo_modelo or (not dec_away and not dec_home):
         if prob_away >= prob_home:
             pick, prob = f"{juego['visitante']} ML", prob_away
         else:
@@ -1411,10 +1485,16 @@ def seleccionar_favorables_del_dia(juegos: list[dict[str, Any]], cfg: dict[str, 
     favorables: list[dict[str, Any]] = [
         j
         for j in juegos
-        if apostable_con_mercado(j) and j.get("estado") == "PROGRAMADO"
+        if apostable_para_dinero(j) and j.get("estado") == "PROGRAMADO"
     ]
-    # Sin mercado no hay apostables. Con cuota real: priorizar edge de valor.
-    favorables.sort(key=lambda x: x.get("edge", 0), reverse=True)
+    # Cuota real primero (por edge). El estimado solo llena el cupo que sobre.
+    favorables.sort(
+        key=lambda x: (
+            0 if es_momio_estimado(x) else 1,
+            float(x.get("edge") or 0),
+        ),
+        reverse=True,
+    )
 
     ids_top = {j["id"] for j in favorables[:max_apuestas]}
     for j in juegos:
