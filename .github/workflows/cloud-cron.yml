@@ -1,5 +1,9 @@
 # Mantiene Quantum MLB en Render despierto, congela T-60 y liquida cada 5 min.
 # Requiere: secret CRON_SECRET en GitHub (mismo valor que en Render).
+#
+# Este schedule deja el servicio web encendido (~720 h al mes). El plan free
+# de Render da 750 h compartidas entre TODOS los servicios web free. mlb-1
+# solo cabe así si es el único. Suspende cualquier otro servicio web free.
 name: MLB Cloud Cron
 
 on:
@@ -15,7 +19,7 @@ env:
 jobs:
   ping-render:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - name: Normalizar RENDER_URL
         run: |
@@ -24,8 +28,23 @@ jobs:
           echo "RENDER_URL=${url}" >> "$GITHUB_ENV"
           echo "Servicio: ${url}"
 
-      - name: Health (despierta Render)
-        run: curl -fsS --retry 3 --retry-delay 15 --max-time 120 "${RENDER_URL}/api/health"
+      - name: Despertar Render
+        run: |
+          ok=0
+          for i in 1 2 3 4 5 6; do
+            if curl -fsS --retry 2 --retry-all-errors --retry-delay 5 --max-time 40 \
+                "${RENDER_URL}/api/health" -o /tmp/mlb-health.json; then
+              echo "Health OK intento ${i}"
+              ok=1
+              break
+            fi
+            echo "Intento ${i}: servicio dormido, esperando arranque"
+            sleep 15
+          done
+          if [ "$ok" != "1" ]; then
+            echo "::error::mlb-1 no despertó"
+            exit 1
+          fi
 
       - name: Verificar cuotas de mercado
         env:
@@ -35,7 +54,7 @@ jobs:
             echo "::warning::Falta CRON_SECRET — no se verifica odds-status."
             exit 0
           fi
-          body=$(curl -fsS --max-time 90 \
+          body=$(curl -fsS --retry 4 --retry-all-errors --retry-delay 10 --max-time 90 \
             "${RENDER_URL}/api/odds-status" || echo '{"ok":false}')
           echo "$body"
           ok=$(echo "$body" | python3 -c "import json,sys; d=json.load(sys.stdin); print('1' if d.get('ok') else '0')" 2>/dev/null || echo 0)
@@ -52,7 +71,7 @@ jobs:
             exit 1
           fi
           # Header (preferido) y query (servidor anterior al deploy de auth).
-          curl -fsS --max-time 60 \
+          curl -fsS --retry 4 --retry-all-errors --retry-delay 10 --max-time 90 \
             -H "X-Cron-Secret: ${CRON_SECRET}" \
             "${RENDER_URL}/api/auto-bloqueo-externo?secret=${CRON_SECRET}&en_fondo=1"
       # El import 9 MB + ML ya lo hace el cron al final si hace falta.
