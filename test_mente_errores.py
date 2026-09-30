@@ -55,16 +55,17 @@ def test_forzar_espn_si_cuotas_fallo(tmp_path, monkeypatch):
     assert cfg2["lineas"]["proveedor"] == "espn"
 
 
-def test_apaga_shadow(tmp_path, monkeypatch):
+def test_sombra_no_se_apaga(tmp_path, monkeypatch):
+    """La sombra es el modo de evaluación: no es un fallo que haya que remediar."""
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
     monkeypatch.setattr(me, "DATA_DIR", Path(tmp_path))
 
     cfg = _cfg_base()
     cfg["mente"] = {"modo": "shadow", "shadow": True}
     out = me.ejecutar_ciclo(cfg)
-    assert any(h["codigo"] == "mente_shadow" for h in out["hallazgos"])
-    assert out["overrides"].get("mente.shadow") is False
-    assert out["overrides"].get("mente.modo") == "normal"
+    assert not any(h["codigo"] == "mente_shadow" for h in out["hallazgos"])
+    assert (out.get("overrides") or {}).get("mente.shadow") is None
+    assert (out.get("overrides") or {}).get("mente.modo") is None
 
 
 def test_activa_fallback_si_off(tmp_path, monkeypatch):
@@ -146,12 +147,12 @@ def test_no_duplica_incidentes_en_cooldown(tmp_path, monkeypatch):
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
     monkeypatch.setattr(me, "DATA_DIR", Path(tmp_path))
     cfg = _cfg_base()
-    cfg["mente"] = {"modo": "shadow", "shadow": True}
+    cfg["lineas"] = {"proveedor": "espn", "fallback_internet": False}
     me.ejecutar_ciclo(cfg)
     me.ejecutar_ciclo(cfg)
     estado = me._leer_estado()
-    shadows = [i for i in estado["incidentes"] if i.get("codigo") == "mente_shadow"]
-    assert len(shadows) == 1
+    fallbacks = [i for i in estado["incidentes"] if i.get("codigo") == "fallback_internet_off"]
+    assert len(fallbacks) == 1
 
 
 def test_ciclo_no_pide_telegram(tmp_path, monkeypatch):

@@ -8,7 +8,9 @@ Flujo V1:
   4) Devuelve UNA decisión estructurada:
      APOSTAR | PASAR | ESPERAR + stake_pct + razones + confianza + lecciones_usadas
 
-El dinero solo se mueve si decision=APOSTAR y confianza >= umbral del modo.
+En modo normal el dinero solo se mueve si decision=APOSTAR y confianza >= umbral.
+En sombra la mente igual concluye y deja el veredicto en el log, pero no
+aprueba ni bloquea: la apuesta la decide el filtro de valor.
 """
 
 from __future__ import annotations
@@ -69,6 +71,20 @@ def _modo_cfg(cfg: dict) -> dict[str, Any]:
         base["shadow"] = bool(mente["shadow"])
     base["nombre"] = nombre if nombre in MODOS else "normal"
     return base
+
+
+def veredicto_bloquea_dinero(conclusion: dict | None, cfg: dict | None = None) -> bool:
+    """True solo cuando la mente gatea y no autoriza.
+
+    En sombra el veredicto se guarda y esta función devuelve False: no bloquea.
+    """
+    if not isinstance(conclusion, dict):
+        return False
+    if conclusion.get("shadow") or _modo_cfg(cfg or {}).get("shadow"):
+        return False
+    if conclusion.get("fuente") == "off":
+        return False
+    return not bool(conclusion.get("autoriza_dinero"))
 
 
 def _texto_lecciones(
@@ -984,16 +1000,17 @@ def mente_conclusion(
         and not modo.get("shadow")
     )
     out["autoriza_dinero"] = bool(autoriza)
-    if out.get("decision") == "APOSTAR" and not autoriza:
+    if modo.get("shadow"):
         razones = list(out.get("razones") or [])
-        if modo.get("shadow"):
-            razones.append("Modo shadow: decide sin mover dinero")
-            out["dinero_bloqueado_por"] = "shadow"
-        else:
-            razones.append(
-                f"Conf {out.get('confianza')} < mínimo {modo['min_confianza']}"
-            )
-            out["dinero_bloqueado_por"] = "confianza"
+        razones.append("Modo sombra: veredicto registrado; no aprueba ni bloquea")
+        out["razones"] = razones
+        out["gate"] = "sombra"
+    elif out.get("decision") == "APOSTAR" and not autoriza:
+        razones = list(out.get("razones") or [])
+        razones.append(
+            f"Conf {out.get('confianza')} < mínimo {modo['min_confianza']}"
+        )
+        out["dinero_bloqueado_por"] = "confianza"
         out["razones"] = razones
 
     if gid and not solo_local:

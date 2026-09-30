@@ -712,7 +712,9 @@ def cuota_desde_prob(prob: float) -> tuple[float, int]:
     return dec, amer
 
 
-_FUENTES_SIN_MERCADO = frozenset({"", "modelo", "none", "null", "import", "estimado"})
+_FUENTES_SIN_MERCADO = frozenset(
+    {"", "modelo", "none", "null", "import", "estimado", "sin_momio_real"}
+)
 
 
 def fuente_es_mercado(fuente: Any) -> bool:
@@ -749,20 +751,20 @@ def es_momio_estimado(juego: dict[str, Any] | None) -> bool:
     return fuente == "estimado"
 
 
-def _momio_americano_valido(valor: Any) -> bool:
-    try:
-        return int(valor) != 0
-    except (TypeError, ValueError):
-        return False
-
-
 def apostable_para_dinero(juego: dict[str, Any] | None) -> bool:
-    """Dinero con cuota de casa, o con momio estimado si no hubo ninguna casa."""
+    """Dinero solo con cuota real de casa. Sin momio real no hay apuesta."""
     if not isinstance(juego, dict) or not juego.get("apostable"):
         return False
-    if tiene_cuota_mercado(juego):
-        return True
-    return es_momio_estimado(juego) and _momio_americano_valido(juego.get("odds_american"))
+    if juego.get("momio_stale") or juego.get("momio_en_vivo"):
+        return False
+    fuente = str(juego.get("fuente_momio") or juego.get("lineas_fuente") or "").strip().lower()
+    if fuente in _FUENTES_SIN_MERCADO:
+        return False
+    if not tiene_cuota_mercado(juego):
+        return False
+    from cadena_momios import parsear_momio_americano
+
+    return parsear_momio_americano(juego.get("odds_american"), registrar=False) is not None
 
 
 def favorito_inflado_cfg(cfg: dict[str, Any]) -> dict[str, Any]:
@@ -836,6 +838,13 @@ def marcar_estudio_sin_mercado(
     return juego
 
 
+def _marcar_lado_pick(juego: dict[str, Any], lado: str) -> None:
+    visita = lado == "away"
+    juego["pick_lado"] = "away" if visita else "home"
+    juego["pick_team_id"] = juego.get("away_id") if visita else juego.get("home_id")
+    juego["pick_abbr"] = juego.get("away_abbr") if visita else juego.get("home_abbr")
+
+
 def _asignar_pick_estimado(
     juego: dict[str, Any],
     *,
@@ -847,31 +856,37 @@ def _asignar_pick_estimado(
     prob_away = float(juego.get("probAway") or 0)
     prob_home = float(juego.get("probHome") or 0)
     if prob_away >= prob_home:
-        pick, prob = f"{juego['visitante']} ML", prob_away
+        pick, prob, lado = f"{juego['visitante']} ML", prob_away, "away"
         dec = juego.get("odds_away_decimal")
         amer = juego.get("odds_away_american")
     else:
-        pick, prob = f"{juego['home']} ML", prob_home
+        pick, prob, lado = f"{juego['home']} ML", prob_home, "home"
         dec = juego.get("odds_home_decimal")
         amer = juego.get("odds_home_american")
+    _marcar_lado_pick(juego, lado)
     juego["pick"] = pick
     juego["probPick"] = float(prob)
     juego["odds"] = dec
     juego["odds_american"] = amer
     juego["edge"] = 0
-    juego["fuente_momio"] = "estimado"
-    juego["lineas_fuente"] = "estimado"
-    juego["casa_momio"] = "estimado"
-    juego["apostable"] = float(prob) >= float(min_prob)
+    juego["fuente_momio"] = "sin_momio_real"
+    juego["lineas_fuente"] = "sin_momio_real"
+    juego["casa_momio"] = "sin_momio_real"
+    juego["paso_momio"] = "sin_casa"
+    juego["origen_momio"] = "sin_momio_real"
+    juego["estado_registro"] = "registrado sin apuesta"
+    juego["sin_momio_real"] = True
+    juego["apostable"] = False
     amer_txt = f"{int(amer):+d}" if amer not in (None, "") else "—"
     fallos = str(juego.get("momio_fallos") or "").strip()
-    if juego["apostable"]:
-        juego["motivo_apuesta"] = (
-            f"Momio estimado {amer_txt} (vig -110) · modelo {float(prob):.0f}%"
-            + (f" · sin casa: {fallos}" if fallos else "")
-        )
-    else:
-        juego["motivo_apuesta"] = f"Prob. modelo bajo {min_prob}% · momio estimado {amer_txt}"
+    juego["motivo_apuesta"] = (
+        "Sin momio real, solo registrado"
+        + f" · modelo {float(prob):.0f}%"
+        + (f" · referencia {amer_txt}" if amer not in (None, "") else "")
+        + (f" · {fallos}" if fallos else "")
+    )
+    if float(prob) < float(min_prob):
+        juego["motivo_apuesta"] += f" · prob bajo {min_prob}%"
     if lesiones_info.get("starter_riesgo") and _pick_sobre_starter_lesionado(
         pick, lesiones_info, juego.get("visitante") or "", juego.get("home") or ""
     ):
@@ -1263,6 +1278,8 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             if isinstance(intel_meta, dict):
                 tipo_pre = intel_meta.get("tipo_pre") or intel_meta.get("tipo_pick")
             antes_a, antes_h = prob_away, prob_home
+            juego["prob_sin_calibrar_away"] = antes_a
+            juego["prob_sin_calibrar_home"] = antes_h
             prob_away, prob_home = calibrar_par(
                 prob_away, prob_home, cfg, tipo_pick=tipo_pre
             )
@@ -1298,6 +1315,16 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
     candidatos: list[dict[str, Any]] = []
     preferir_underdogs = estrategia.get("preferir_underdogs", False)
     solo_modelo = _modo_solo_modelo(cfg)
+    from filtro_valor import (
+        cuota_lado_real,
+        filtro_valor_decide,
+        margen_para_tipo,
+        penaliza_scratch,
+        tipo_para_cuota,
+    )
+
+    # En sombra el valor no elige candidatos: manda min_edge / min_prob.
+    fv_decide = filtro_valor_decide(cfg)
 
     # Sin cuota de casa no se salta el pick: se estima con vig -110 y se marca.
     if not solo_modelo and not (dec_away and dec_home):
@@ -1312,7 +1339,8 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         dec_away = juego.get("odds_away_decimal")
         dec_home = juego.get("odds_home_decimal")
 
-    if es_momio_estimado(juego) and dec_away and dec_home:
+    fuente_linea = str(juego.get("fuente_momio") or "").strip().lower()
+    if fuente_linea in ("estimado", "sin_momio_real") and dec_away and dec_home:
         _asignar_pick_estimado(
             juego,
             min_prob=min_prob,
@@ -1326,6 +1354,57 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         else:
             pick, prob = f"{juego['home']} ML", prob_home
         marcar_estudio_sin_mercado(juego, pick=pick, prob=prob, min_prob=min_prob)
+    elif fv_decide:
+        # Solo cuota de casa. El margen es el del tipo: underdog más alto,
+        # scratch igual al base (no se le cobra el recargo).
+        dec_away_real = cuota_lado_real(juego, "away")
+        dec_home_real = cuota_lado_real(juego, "home")
+        if dec_away_real:
+            edge_away = edge_pct(prob_away, dec_away_real)
+            juego["edgeAway"] = edge_away
+            juego["implAway"] = prob_implicita(dec_away_real)
+        if dec_home_real:
+            edge_home = edge_pct(prob_home, dec_home_real)
+            juego["edgeHome"] = edge_home
+            juego["implHome"] = prob_implicita(dec_home_real)
+
+        def _agregar(dec_real: float, prob: float, edge: float, nombre: str, american: Any) -> None:
+            tipo_lado = tipo_para_cuota(juego, prob, dec_real)
+            margen = margen_para_tipo(cfg, tipo_lado)
+            if edge < margen or prob < min_prob:
+                return
+            es_underdog = tipo_lado == "underdog"
+            candidatos.append(
+                {
+                    "pick": f"{nombre} ML",
+                    "team": nombre,
+                    "prob": prob,
+                    "edge": edge,
+                    "edge_base": edge,
+                    "odds": dec_real,
+                    "american": american,
+                    "es_underdog": es_underdog,
+                    "tipo": tipo_lado,
+                    "margen": margen,
+                }
+            )
+
+        if dec_away_real:
+            _agregar(
+                dec_away_real,
+                prob_away,
+                edge_away,
+                juego["visitante"],
+                juego.get("odds_away_american"),
+            )
+        if dec_home_real:
+            _agregar(
+                dec_home_real,
+                prob_home,
+                edge_home,
+                juego["home"],
+                juego.get("odds_home_american"),
+            )
     else:
         if dec_away and edge_away >= min_edge and prob_away >= min_prob:
             es_underdog = es_underdog_con_valor(dec_away, prob_away, cfg)
@@ -1362,6 +1441,10 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         # Quién gana = más probabilidad. El edge solo decide si hay dinero.
         mejor = max(candidatos, key=lambda x: (x["prob"], x["edge_base"]))
         juego["pick"] = mejor["pick"]
+        if mejor.get("team") == juego.get("visitante"):
+            _marcar_lado_pick(juego, "away")
+        elif mejor.get("team") == juego.get("home"):
+            _marcar_lado_pick(juego, "home")
         juego["odds"] = mejor["odds"]
         juego["odds_american"] = mejor["american"]
         juego["edge"] = mejor["edge_base"]
@@ -1393,8 +1476,12 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         ):
             juego["apostable"] = False
             juego["motivo_apuesta"] = "Spot no apto para dinero ahora"
-        elif scratch_info.get("riesgo") and pick_afectado_por_scratch(
-            mejor["pick"], juego["visitante"], juego["home"], scratch_info
+        elif (
+            penaliza_scratch(cfg)
+            and scratch_info.get("riesgo")
+            and pick_afectado_por_scratch(
+                mejor["pick"], juego["visitante"], juego["home"], scratch_info
+            )
         ):
             juego["apostable"] = False
             juego["motivo_apuesta"] = "Spot no apto para dinero ahora"
@@ -1403,10 +1490,21 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             if bloqueado:
                 juego["apostable"] = False
                 juego["motivo_apuesta"] = motivo_fi
+            elif (
+                not penaliza_scratch(cfg)
+                and scratch_info.get("riesgo")
+                and pick_afectado_por_scratch(
+                    mejor["pick"], juego["visitante"], juego["home"], scratch_info
+                )
+            ):
+                juego["motivo_apuesta"] = (
+                    f"{juego.get('motivo_apuesta') or ''} · scratch registrado, no penaliza"
+                ).strip(" ·")
     elif not juego.get("pick"):
         # SIEMPRE hacer una predicción, aunque no sea apostable
         if prob_away >= prob_home:
             juego["pick"] = f"{juego['visitante']} ML"
+            _marcar_lado_pick(juego, "away")
             juego["probPick"] = prob_away
             juego["edge"] = edge_away if edge_away > -900 else 0
             if dec_away:
@@ -1419,6 +1517,7 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
                 juego["odds_american"] = amer
         else:
             juego["pick"] = f"{juego['home']} ML"
+            _marcar_lado_pick(juego, "home")
             juego["probPick"] = prob_home
             juego["edge"] = edge_home if edge_home > -900 else 0
             if dec_home:
@@ -1471,6 +1570,30 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
     else:
         juego.setdefault("tipo_pick", "limpio")
 
+    if juego.get("pick"):
+        lado = str(juego.get("pick_lado") or "")
+        if lado == "away":
+            cruda = juego.get("prob_sin_calibrar_away")
+        elif lado == "home":
+            cruda = juego.get("prob_sin_calibrar_home")
+        else:
+            cruda = None
+        if cruda is not None:
+            juego["prob_sin_calibrar"] = cruda
+
+    from filtro_valor import aplicar_decision_tipo, evaluar_valor, filtro_activo
+
+    if filtro_activo(cfg):
+        ev_valor = evaluar_valor(juego, cfg)
+        juego["filtro_valor"] = ev_valor
+        # En sombra el veredicto queda en el registro y no toca apostable.
+        if filtro_valor_decide(cfg) and juego.get("apostable") and not ev_valor.get("apostar"):
+            juego["apostable"] = False
+            juego["motivo_apuesta"] = ev_valor.get("motivo") or juego.get("motivo_apuesta")
+
+    # El tipo tiene la última palabra: scratch entra, underdog sale.
+    aplicar_decision_tipo(juego, cfg)
+
     juego.pop("_features_away", None)
     juego.pop("_features_home", None)
     return juego
@@ -1487,14 +1610,21 @@ def seleccionar_favorables_del_dia(juegos: list[dict[str, Any]], cfg: dict[str, 
         for j in juegos
         if apostable_para_dinero(j) and j.get("estado") == "PROGRAMADO"
     ]
-    # Cuota real primero (por edge). El estimado solo llena el cupo que sobre.
-    favorables.sort(
-        key=lambda x: (
-            0 if es_momio_estimado(x) else 1,
-            float(x.get("edge") or 0),
-        ),
-        reverse=True,
-    )
+    # #123: dentro del tope del día el scratch no se cae por tener menos edge.
+    from filtro_valor import filtro_tipo_cfg
+
+    ft = filtro_tipo_cfg(cfg)
+    if ft["activo"] and ft["apostar_scratch"]:
+        def _rank(j: dict[str, Any]) -> tuple[int, float]:
+            try:
+                edge = float(j.get("edge") or 0)
+            except (TypeError, ValueError):
+                edge = 0.0
+            return (1 if j.get("tipo_pick") == "scratch" else 0, edge)
+
+        favorables.sort(key=_rank, reverse=True)
+    else:
+        favorables.sort(key=lambda x: float(x.get("edge") or 0), reverse=True)
 
     ids_top = {j["id"] for j in favorables[:max_apuestas]}
     for j in juegos:

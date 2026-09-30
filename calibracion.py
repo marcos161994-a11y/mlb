@@ -10,6 +10,7 @@ Capa 4: además del calibrador global, entrena uno por tipo_pick
 
 from __future__ import annotations
 
+import json
 import os
 import pickle
 from pathlib import Path
@@ -28,8 +29,10 @@ _meta: dict[str, Any] = {}
 
 TIPOS_PICK = ("favorito_alto", "underdog", "scratch", "limpio")
 SEGMENTOS_EXTRA = ("prob_alta", "underdog_cuota", "mc_over", "entorno_f5", "general")
-MIN_MUESTRAS_TIPO = 12
-MIN_MUESTRAS_SEGMENTO = 10
+MIN_MUESTRAS_TIPO = 40
+MIN_MUESTRAS_SEGMENTO = 40
+_MIN_TRAIN_HOLDOUT = 40
+_MIN_HOLDOUT = 25
 
 
 def _path() -> Path:
@@ -104,29 +107,216 @@ def _cargar_pares_desde_memoria(
     )
 
 
-def _fit_uno(x: np.ndarray, y: np.ndarray, sample_weight: np.ndarray | None = None) -> tuple[str, Any] | None:
+def _fit_metodo(
+    metodo: str,
+    x: np.ndarray,
+    y: np.ndarray,
+    sample_weight: np.ndarray | None = None,
+) -> tuple[str, Any] | None:
+    """Ajusta isotonic o Platt. Platt es el fallback estable con poca historia."""
     from sklearn.isotonic import IsotonicRegression
     from sklearn.linear_model import LogisticRegression
 
     if len(x) < 8 or len(set(y.tolist())) < 2:
         return None
+    usar_peso = sample_weight is not None and len(sample_weight) == len(x)
     try:
-        iso = IsotonicRegression(y_min=0.05, y_max=0.95, out_of_bounds="clip")
-        if sample_weight is not None and len(sample_weight) == len(x):
-            iso.fit(x, y, sample_weight=sample_weight)
-        else:
-            iso.fit(x, y)
-        return ("isotonic", iso)
-    except Exception:
-        try:
-            lr = LogisticRegression(C=1.0, solver="lbfgs", max_iter=500)
-            if sample_weight is not None and len(sample_weight) == len(x):
-                lr.fit(x.reshape(-1, 1), y, sample_weight=sample_weight)
+        if metodo == "isotonic":
+            iso = IsotonicRegression(y_min=0.05, y_max=0.95, out_of_bounds="clip")
+            if usar_peso:
+                iso.fit(x, y, sample_weight=sample_weight)
             else:
-                lr.fit(x.reshape(-1, 1), y)
-            return ("platt", lr)
-        except Exception:
-            return None
+                iso.fit(x, y)
+            return ("isotonic", iso)
+        lr = LogisticRegression(C=1.0, solver="lbfgs", max_iter=500)
+        if usar_peso:
+            lr.fit(x.reshape(-1, 1), y, sample_weight=sample_weight)
+        else:
+            lr.fit(x.reshape(-1, 1), y)
+        return ("platt", lr)
+    except Exception:
+        return None
+
+
+def _fit_uno(x: np.ndarray, y: np.ndarray, sample_weight: np.ndarray | None = None) -> tuple[str, Any] | None:
+    return _fit_metodo("isotonic", x, y, sample_weight) or _fit_metodo("platt", x, y, sample_weight)
+
+
+def _predecir_par(par: tuple[str, Any], x: np.ndarray) -> np.ndarray:
+    tipo, modelo = par
+    if tipo == "isotonic":
+        return np.asarray(modelo.predict(np.asarray(x, dtype=float)), dtype=float)
+    matriz = np.asarray(x, dtype=float).reshape(-1, 1)
+    return np.asarray(modelo.predict_proba(matriz)[:, 1], dtype=float)
+
+
+def _brier(p: np.ndarray, y: np.ndarray) -> float:
+    pred = np.clip(np.asarray(p, dtype=float), 0.0, 1.0)
+    real = np.asarray(y, dtype=float)
+    if len(pred) == 0:
+        return 0.0
+    return float(np.mean((pred - real) ** 2))
+
+
+def _reliability(p: np.ndarray, y: np.ndarray, n_bins: int = 8) -> list[dict[str, Any]]:
+    pred = np.clip(np.asarray(p, dtype=float), 0.0, 1.0)
+    real = np.asarray(y, dtype=float)
+    bordes = np.linspace(0.40, 0.90, n_bins + 1)
+    bins: list[dict[str, Any]] = []
+    for i in range(n_bins):
+        if i == n_bins - 1:
+            mask = (pred >= bordes[i]) & (pred <= bordes[i + 1])
+        else:
+            mask = (pred >= bordes[i]) & (pred < bordes[i + 1])
+        if not np.any(mask):
+            continue
+        bins.append(
+            {
+                "desde": round(float(bordes[i]), 3),
+                "hasta": round(float(bordes[i + 1]), 3),
+                "n": int(np.sum(mask)),
+                "prob_media": round(float(np.mean(pred[mask])), 3),
+                "frecuencia": round(float(np.mean(real[mask])), 3),
+            }
+        )
+    return bins
+
+
+def _ece_de_bins(bins: list[dict[str, Any]], n: int) -> float:
+    if n <= 0:
+        return 0.0
+    total = 0.0
+    for b in bins:
+        total += (int(b["n"]) / n) * abs(float(b["frecuencia"]) - float(b["prob_media"]))
+    return float(total)
+
+
+def comparar_en_holdout(
+    x: np.ndarray,
+    y: np.ndarray,
+    pesos: np.ndarray | None = None,
+) -> dict[str, Any]:
+    """Elige isotonic o Platt por Brier en el tramo final (holdout cronológico).
+
+    Con poca historia gana Platt: isotonic se parte en escalones y memoriza.
+    Isotonic solo gana si baja el Brier del holdout en al menos 0.005.
+    """
+    n = int(len(x))
+    w = pesos if pesos is not None and len(pesos) == n else np.ones(n, dtype=float)
+    base: dict[str, Any] = {
+        "n": n,
+        "elegido": "platt",
+        "motivo": "",
+        "n_train": 0,
+        "n_holdout": 0,
+        "brier_antes": None,
+        "brier_despues": None,
+        "ece_antes": None,
+        "ece_despues": None,
+        "bins_antes": [],
+        "bins_despues": [],
+        "candidatos": {},
+    }
+    if n < _MIN_TRAIN_HOLDOUT + _MIN_HOLDOUT or len(set(y.tolist())) < 2:
+        base["motivo"] = (
+            "Muestra corta para un holdout estable: Platt es más robusto que isotonic."
+        )
+        return base
+    corte = int(round(n * 0.70))
+    corte = min(max(corte, _MIN_TRAIN_HOLDOUT), n - _MIN_HOLDOUT)
+    x_tr, y_tr, w_tr = x[:corte], y[:corte], w[:corte]
+    x_ho, y_ho = x[corte:], y[corte:]
+    base["n_train"] = int(len(x_tr))
+    base["n_holdout"] = int(len(x_ho))
+    if len(set(y_tr.tolist())) < 2 or len(set(y_ho.tolist())) < 2:
+        base["motivo"] = "El holdout no tiene aciertos y fallos: se usa Platt."
+        return base
+
+    brier_antes = _brier(x_ho, y_ho)
+    bins_antes = _reliability(x_ho, y_ho)
+    ece_antes = _ece_de_bins(bins_antes, len(y_ho))
+    candidatos: dict[str, Any] = {}
+    for metodo in ("isotonic", "platt"):
+        ajuste = _fit_metodo(metodo, x_tr, y_tr, w_tr)
+        if not ajuste:
+            candidatos[metodo] = {"ok": False}
+            continue
+        pred = np.clip(_predecir_par(ajuste, x_ho), 0.01, 0.99)
+        bins = _reliability(pred, y_ho)
+        candidatos[metodo] = {
+            "ok": True,
+            "brier": round(_brier(pred, y_ho), 4),
+            "ece": round(_ece_de_bins(bins, len(y_ho)), 4),
+        }
+    iso = candidatos.get("isotonic") or {}
+    platt = candidatos.get("platt") or {}
+    # Isotonic solo entra si le gana al crudo y a Platt. Si no, memoriza
+    # escalones y no corrige la sobreconfianza. Platt es el modelo robusto.
+    elegido = "platt"
+    motivo = (
+        "Platt es más robusto con este historial: isotonic no mejora el Brier "
+        "crudo del holdout."
+    )
+    if iso.get("ok") and platt.get("ok"):
+        iso_brier = float(iso["brier"])
+        platt_brier = float(platt["brier"])
+        if iso_brier + 0.005 < platt_brier and iso_brier < float(brier_antes):
+            elegido = "isotonic"
+            motivo = (
+                "Isotonic mejora el Brier del holdout frente al crudo y frente a Platt."
+            )
+        elif platt_brier < float(brier_antes) and platt_brier <= iso_brier:
+            motivo = "Platt baja el Brier del holdout y es más estable que isotonic."
+    elif iso.get("ok") and not platt.get("ok"):
+        elegido = "isotonic"
+        motivo = "Platt no ajustó en el train; se usa isotonic."
+    elif not iso.get("ok") and not platt.get("ok"):
+        motivo = "Ningún método ajustó en el train; se reintenta Platt con toda la muestra."
+
+    ajuste_ho = _fit_metodo(elegido, x_tr, y_tr, w_tr)
+    if ajuste_ho:
+        pred_fin = np.clip(_predecir_par(ajuste_ho, x_ho), 0.01, 0.99)
+        brier_despues = _brier(pred_fin, y_ho)
+        bins_despues = _reliability(pred_fin, y_ho)
+        ece_despues = _ece_de_bins(bins_despues, len(y_ho))
+    else:
+        brier_despues = brier_antes
+        bins_despues = bins_antes
+        ece_despues = ece_antes
+    base.update(
+        {
+            "elegido": elegido,
+            "motivo": motivo,
+            "brier_antes": round(brier_antes, 4),
+            "brier_despues": round(brier_despues, 4),
+            "ece_antes": round(ece_antes, 4),
+            "ece_despues": round(ece_despues, 4),
+            "bins_antes": bins_antes,
+            "bins_despues": bins_despues,
+            "candidatos": candidatos,
+        }
+    )
+    return base
+
+
+def _guardar_reporte(meta: dict[str, Any]) -> None:
+    """JSON legible al lado del pickle. No incluye el modelo."""
+    publico = {
+        "ok": meta.get("ok"),
+        "metodo": meta.get("metodo"),
+        "muestras": meta.get("muestras"),
+        "ece": meta.get("ece"),
+        "mensaje": meta.get("mensaje"),
+        "holdout": meta.get("holdout"),
+        "por_tipo": meta.get("por_tipo"),
+    }
+    try:
+        (_path().with_name("calibracion_reporte.json")).write_text(
+            json.dumps(publico, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        print(f"[CALIB] No se pudo guardar el reporte: {exc}")
 
 
 def entrenar_calibrador(memoria: dict, min_muestras: int = 30) -> dict[str, Any]:
@@ -149,10 +339,17 @@ def entrenar_calibrador(memoria: dict, min_muestras: int = 30) -> dict[str, Any]
         _meta = meta
         return meta
 
-    fit = _fit_uno(x, y, pesos if len(pesos) == len(x) else None)
+    pesos_fit = pesos if len(pesos) == len(x) else None
+    comparacion = comparar_en_holdout(x, y, pesos_fit if pesos_fit is not None else np.ones(len(x)))
+    meta["holdout"] = comparacion
+    metodo_elegido = str(comparacion.get("elegido") or "platt")
+    fit = _fit_metodo(metodo_elegido, x, y, pesos_fit)
+    if not fit:
+        fit = _fit_uno(x, y, pesos_fit)
     if not fit:
         meta["mensaje"] = "No se pudo ajustar calibrador"
         _meta = meta
+        _guardar_reporte(meta)
         return meta
     _calibrador = fit
     metodo = fit[0]
@@ -165,7 +362,9 @@ def entrenar_calibrador(memoria: dict, min_muestras: int = 30) -> dict[str, Any]
             por_tipo[tipo] = {"ok": False, "muestras": len(idx)}
             continue
         xt, yt = x[idx], y[idx]
-        ft = _fit_uno(xt, yt, pesos[idx] if len(pesos) == len(x) else None)
+        ft = _fit_metodo(metodo, xt, yt, pesos[idx] if len(pesos) == len(x) else None)
+        if not ft:
+            ft = _fit_uno(xt, yt, pesos[idx] if len(pesos) == len(x) else None)
         if not ft:
             por_tipo[tipo] = {"ok": False, "muestras": len(idx)}
             continue
@@ -186,7 +385,7 @@ def entrenar_calibrador(memoria: dict, min_muestras: int = 30) -> dict[str, Any]
             continue
         xt, yt = x[idx], y[idx]
         wt = pesos[idx] if len(pesos) == len(x) else None
-        fs = _fit_uno(xt, yt, wt)
+        fs = _fit_metodo(metodo, xt, yt, wt) or _fit_uno(xt, yt, wt)
         if not fs:
             por_seg[seg] = {"ok": False, "muestras": len(idx)}
             continue
@@ -206,6 +405,7 @@ def entrenar_calibrador(memoria: dict, min_muestras: int = 30) -> dict[str, Any]
             k: {"tipo": v[0], "modelo": v[1], "muestras": por_seg.get(k, {}).get("muestras")}
             for k, v in _calibradores_segmento.items()
         },
+        "holdout": comparacion,
     }
     try:
         with open(_path(), "wb") as f:
@@ -222,19 +422,27 @@ def entrenar_calibrador(memoria: dict, min_muestras: int = 30) -> dict[str, Any]
 
     ece = _ece(x, y, n_bins=5)
     n_tipos_ok = sum(1 for v in por_tipo.values() if v.get("ok"))
+    brier_txt = ""
+    if comparacion.get("brier_antes") is not None and comparacion.get("brier_despues") is not None:
+        brier_txt = (
+            f" · holdout Brier {comparacion['brier_antes']:.3f}→{comparacion['brier_despues']:.3f}"
+        )
     meta.update(
         {
             "ok": True,
             "metodo": metodo,
             "ece": round(ece, 3),
             "por_tipo": por_tipo,
+            "holdout": comparacion,
             "mensaje": (
                 f"Calibrado {metodo} con {len(x)} muestras (ECE≈{ece:.2f})"
                 + (f" · {n_tipos_ok} tipos" if n_tipos_ok else "")
+                + brier_txt
             ),
         }
     )
     _meta = meta
+    _guardar_reporte(meta)
     print(f"[CALIB] {meta['mensaje']}")
     return meta
 
@@ -285,6 +493,7 @@ def cargar_calibrador() -> bool:
             "ok": True,
             "muestras": payload.get("muestras"),
             "metodo": payload.get("tipo"),
+            "holdout": payload.get("holdout"),
             "tipos_activos": list(_calibradores_tipo.keys()),
             "segmentos_activos": list(_calibradores_segmento.keys()),
             "mensaje": "Calibrador cargado",
@@ -309,8 +518,8 @@ def calibrar_probabilidad(
     tipo_pick: str | None = None,
 ) -> float:
     """
-    Ajusta probabilidad 0-100. Si hay calibrador por tipo_pick, lo usa;
-    si no, el global. Si está desactivado, devuelve igual.
+    Ajusta la probabilidad final 0-100 con el calibrador global.
+    `tipo_pick` se conserva en la firma para los llamadores; no cambia el ajuste.
     """
     cfg = cfg or {}
     if not cfg.get("usar_calibracion", True):
@@ -321,16 +530,9 @@ def calibrar_probabilidad(
         return round(float(prob_pct), 1)
 
     p = max(0.01, min(0.99, float(prob_pct) / 100.0))
+    # Siempre el calibrador global. Partir por tipo con esta historia
+    # sobreajusta y vuelve a inflar la probabilidad final.
     pair = _calibrador
-    t = str(tipo_pick or "").strip().lower()
-    if t and t in _calibradores_tipo:
-        pair = _calibradores_tipo[t]
-    elif t:
-        from aprendizaje_mlb import segmento_calibracion
-
-        seg = segmento_calibracion({"tipo_pick": t, "probPick": prob_pct})
-        if seg in _calibradores_segmento:
-            pair = _calibradores_segmento[seg]
     try:
         p2 = _aplicar(pair, p)
         p2 = max(0.22, min(0.78, p2))
