@@ -46,13 +46,20 @@ from memoria_fusion import (
 )
 from modelo_mlb import (
     evaluar_juegos,
-    calcular_stake_dinamico,
     cuota_desde_prob,
     edge_pct,
     fuente_es_mercado,
     bloqueado_favorito_inflado,
     tiene_cuota_mercado,
     apostable_con_mercado,
+    apostable_para_dinero,
+    es_momio_estimado,
+)
+from cadena_momios import (
+    apuesta_fija_dolares,
+    campos_precio_congelado,
+    momio_del_pick,
+    profit_moneyline_americano,
 )
 from aprendizaje_mlb import calcular_movimiento_linea, peso_muestra_aprendizaje, bloqueado_linea_en_contra
 from clv_mlb import actualizar_clv_registro, resumen_clv_memoria
@@ -61,7 +68,6 @@ from ia_groq import ia_veto_disponible, modelo_groq, probar_conexion_groq, veto_
 from mente_mlb import (
     mente_conclusion,
     mente_disponible,
-    aplicar_stake_mente,
     generar_briefing_juego,
     veredicto_bloquea_dinero,
 )
@@ -465,6 +471,16 @@ def cargar_config() -> dict:
     return cfg
 
 
+def _hidratar_auditoria_momios(data: dict) -> None:
+    """El conteo de momios vive en el documento, no en RAM suelta."""
+    try:
+        from cadena_momios import importar_auditoria_momios
+
+        importar_auditoria_momios(data.get("auditoria_momios"))
+    except Exception as e:
+        print(f"[MOMIO] No se pudo hidratar la auditoría: {e}")
+
+
 def cargar_memoria(*, force: bool = False) -> dict:
     """Carga el documento desde la base (o el JSON legado si la base está vacía).
 
@@ -500,6 +516,7 @@ def cargar_memoria(*, force: bool = False) -> dict:
                 return _memoria_cache
             data = None
         if isinstance(data, dict):
+            _hidratar_auditoria_momios(data)
             return _recordar_cache(data, origen="db", revision=rev, digest=None)
 
     if MEMORIA_PATH.exists():
@@ -514,6 +531,7 @@ def cargar_memoria(*, force: bool = False) -> dict:
             return _memoria_cache
         data = _cargar_json_memoria(MEMORIA_PATH)
         if isinstance(data, dict):
+            _hidratar_auditoria_momios(data)
             return _recordar_cache(data, origen="archivo", revision=None, digest=digest)
         print(f"[ERROR] {MEMORIA_PATH.name} está corrupto. Se iniciará una nueva memoria.")
 
@@ -566,6 +584,14 @@ _PRED_PANEL_KEYS = (
     "predicho_en",
     "liquidado_en",
     "lineas_fuente",
+    "fuente_momio",
+    "casa_momio",
+    "paso_momio",
+    "origen_momio",
+    "estado_registro",
+    "sin_momio_real",
+    "momio_stale",
+    "momio_fallos",
     "linea_movimiento_pct",
     "cuota_retry",
     "clv_pct",
@@ -578,6 +604,14 @@ _APUESTA_PANEL_KEYS = (
     "pick",
     "odds",
     "odds_american",
+    "fuente_momio",
+    "casa",
+    "paso_momio",
+    "origen_momio",
+    "estado_registro",
+    "sin_momio_real",
+    "payout_si_gana",
+    "momio_fallos",
     "probPick",
     "estado",
     "profit",
@@ -617,6 +651,15 @@ _JUEGO_PANEL_KEYS = (
     "pitcherAway",
     "pitcherHome",
     "lineas_fuente",
+    "fuente_momio",
+    "casa_momio",
+    "paso_momio",
+    "origen_momio",
+    "estado_registro",
+    "sin_momio_real",
+    "momio_stale",
+    "payout_si_gana",
+    "momio_fallos",
     "pick_congelado",
     "linea_movimiento_pct",
     "bullpen_dia",
@@ -717,6 +760,16 @@ def guardar_memoria(memoria: dict, *, permitir_wipe: bool = False) -> None:
         final, meta = _proteger_escritura(
             actual, memoria, permitir_wipe=permitir_wipe
         )
+        if isinstance(actual, dict) and not isinstance(final.get("auditoria_momios"), dict):
+            previa = actual.get("auditoria_momios")
+            if isinstance(previa, dict):
+                final["auditoria_momios"] = copy.deepcopy(previa)
+        try:
+            from cadena_momios import volcar_auditoria_en
+
+            volcar_auditoria_en(final)
+        except Exception as e:
+            print(f"[MOMIO] No se pudo volcar la auditoría: {e}")
         if meta.get("protegido"):
             print(
                 f"[GUARDAR] Candado anti-wipe: se salvaron fechas "
@@ -838,6 +891,7 @@ def resumen_banca(memoria: dict) -> dict:
         "en_juego_hoy": en_juego,
         "disponible": round(memoria["capital"] - en_juego, 2),
         "stake_por_juego": memoria["stake_por_juego"],
+        "apuesta_fija": apuesta_fija_dolares(cargar_config()),
     }
 
 
@@ -1673,6 +1727,37 @@ def precalentar_cuotas_mercado(cfg: dict | None = None) -> dict:
     return {"ok": False, **meta}
 
 
+def estado_desde_status_mlb(status_info: dict | None) -> str:
+    """Traduce el status de MLB. Suspendido abierto no es push."""
+    status_info = status_info or {}
+    abs_state = str(status_info.get("abstractGameState") or "")
+    coded = str(status_info.get("codedGameState") or status_info.get("statusCode") or "")
+    detailed = str(status_info.get("detailedState") or "")
+    if "Suspended" in detailed or coded in ("T", "U"):
+        if abs_state == "Final" or "Final" in detailed:
+            return "SUSPENDIDO_OFICIAL"
+        return "SUSPENDIDO"
+    if coded == "C" or "Cancelled" in detailed or "Canceled" in detailed:
+        return "CANCELADO"
+    if coded in ("D", "DR", "DI") or "Postponed" in detailed:
+        return "POSPUESTO"
+    if (
+        abs_state == "Live"
+        or coded in ("I", "IW", "IR")
+        or "In Progress" in detailed
+        or "Warmup" in detailed
+        or "Manager Challenge" in detailed
+    ):
+        return "EN VIVO"
+    if (
+        abs_state == "Final"
+        or coded in ("F", "O", "FT", "FR")
+        or detailed in ("Final", "Game Over", "Completed Early")
+    ):
+        return "FINALIZADO"
+    return "PROGRAMADO"
+
+
 def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False) -> list[dict]:
     memoria = cargar_memoria()
     params = {"sportId": 1, "hydrate": "probablePitcher,lineups,linescore,team,officials"}
@@ -1704,29 +1789,9 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
             detailed = status_info.get("detailedState", "")
 
             # Solo FINALIZADO con códigos oficiales MLB. Nunca por marcador en vivo.
-            # Postponed/Cancelled a veces vienen con abstractGameState=Final: no liquidar.
-            estado = "PROGRAMADO"
-            if (
-                coded in ("D", "C", "DR", "DI")
-                or "Postponed" in detailed
-                or "Cancelled" in detailed
-                or "Suspended" in detailed
-            ):
-                estado = "POSPUESTO"
-            elif (
-                abs_state == "Live"
-                or coded in ("I", "IW", "IR")
-                or "In Progress" in detailed
-                or "Warmup" in detailed
-                or "Manager Challenge" in detailed
-            ):
-                estado = "EN VIVO"
-            elif (
-                abs_state == "Final"
-                or coded in ("F", "O", "FT", "FR")
-                or detailed in ("Final", "Game Over", "Completed Early")
-            ):
-                estado = "FINALIZADO"
+            # Postponed/Cancelled a veces vienen con abstractGameState=Final: no liquidar como ganada.
+            # Suspended no se anula aquí: sigue pendiente hasta el final o un cierre oficial.
+            estado = estado_desde_status_mlb(status_info)
 
             away = juego["teams"]["away"]
             home = juego["teams"]["home"]
@@ -1764,6 +1829,8 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
                 "visitante": visitante,
                 "away_id": away["team"]["id"],
                 "home_id": home["team"]["id"],
+                "away_abbr": (away.get("team") or {}).get("abbreviation"),
+                "home_abbr": (home.get("team") or {}).get("abbreviation"),
                 "pitcher_away_id": pa.get("id"),
                 "pitcher_home_id": ph.get("id"),
                 "pitcherAway": pa.get("fullName"),
@@ -1807,18 +1874,18 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
         else:
             juegos, _lineas_meta_cache = aplicar_lineas_a_juegos(juegos, cfg)
             bias = calcular_bias_aprendizaje(memoria)
-            cfg_eval = cfg
-            # Si ESPN no trajo cuotas: estudio, no apostar.
-            if not (_lineas_meta_cache or {}).get("ok") and (cfg.get("estrategia") or {}).get(
-                "fallback_solo_modelo", True
-            ):
-                cfg_eval = {**cfg, "modo_solo_modelo": True}
+            # Sin casa no se apaga el dinero: el modelo estima con vig -110
+            # y esas apuestas quedan aparte del ROI de cuota real.
+            if not (_lineas_meta_cache or {}).get("ok"):
                 _lineas_meta_cache = {
                     **(_lineas_meta_cache or {}),
-                    "fallback_solo_modelo": True,
-                    "mensaje": "Sin cuota de casa ahora · estudio (no apostar). ESPN no disponible.",
+                    "fallback_estimado": True,
+                    "mensaje": (
+                        ((_lineas_meta_cache or {}).get("mensaje"))
+                        or "Sin momio real, solo registrado."
+                    ),
                 }
-            juegos = evaluar_juegos(juegos, cfg_eval, bias)
+            juegos = evaluar_juegos(juegos, cfg, bias)
     else:
         print(f"[INFO] Modo solo_resultados activo para {fecha or 'hoy'}. Saltando IA y Cuotas.")
         
@@ -1853,7 +1920,14 @@ def _revertir_liquidacion_prematura(apuesta: dict, juego: dict) -> bool:
     # No tocar liquidaciones si MLB ya marca Final (aunque falte isWinner un momento).
     if _juego_finalizado(juego):
         return False
-    if juego.get("estado") not in ("EN VIVO", "PROGRAMADO", "POSPUESTO"):
+    if juego.get("estado") not in (
+        "EN VIVO",
+        "PROGRAMADO",
+        "POSPUESTO",
+        "CANCELADO",
+        "SUSPENDIDO",
+        "SUSPENDIDO_OFICIAL",
+    ):
         return False
     apuesta["estado"] = "pendiente"
     apuesta["profit"] = None
@@ -1863,9 +1937,85 @@ def _revertir_liquidacion_prematura(apuesta: dict, juego: dict) -> bool:
     return True
 
 
+def _es_anulado(juego: dict) -> bool:
+    """Postpuesto o cancelado devuelven el stake. Suspendido abierto no.
+
+    Un suspendido solo es push si MLB ya lo cerró sin completarlo
+    (SUSPENDIDO_OFICIAL). Si sigue abierto, la apuesta espera el final.
+    """
+    return juego.get("estado") in ("POSPUESTO", "CANCELADO", "SUSPENDIDO_OFICIAL")
+
+
+def _es_empate_final(juego: dict) -> bool:
+    if not _juego_finalizado(juego) or _ganador_oficial(juego):
+        return False
+    try:
+        return int(juego.get("scoreAway") or 0) == int(juego.get("scoreHome") or 0)
+    except (TypeError, ValueError):
+        return False
+
+
+def _profit_al_liquidar(apuesta: dict, stake: float, estado: str) -> float | None:
+    """Apuestas nuevas cobran el momio americano congelado. Las viejas no se reescriben."""
+    if apuesta.get("fuente_momio") is None:
+        odds = float(apuesta.get("odds") or 0)
+        if estado == "ganada":
+            if odds <= 1.0:
+                return None
+            return round(stake * (odds - 1), 2)
+        if estado == "perdida":
+            return round(-stake, 2)
+        if estado == "push":
+            return 0.0
+        return None
+    american = apuesta.get("odds_american")
+    try:
+        momio = int(american)
+    except (TypeError, ValueError):
+        momio = 0
+    if momio == 0:
+        print(
+            f"[LIQUIDACIÓN] {apuesta.get('pick')} sin momio americano congelado "
+            f"(fuente {apuesta.get('fuente_momio')}). No se inventa el pago."
+        )
+        return None
+    return profit_moneyline_americano(stake, momio, estado)
+
+
 def liquidar_apuesta(apuesta: dict, juego: dict, stake: float) -> bool:
     """Liquida si el juego finalizó. Devuelve True si hubo cambio."""
     if _revertir_liquidacion_prematura(apuesta, juego):
+        return True
+
+    # Push/void solo en apuestas del régimen nuevo. El historial ya liquidado no se toca.
+    if (
+        apuesta.get("fuente_momio") is not None
+        and juego.get("estado") == "SUSPENDIDO"
+        and apuesta.get("estado") == "pendiente"
+    ):
+        print(
+            f"[LIQUIDACIÓN] Juego {juego.get('id')} SUSPENDIDO: "
+            f"{apuesta.get('pick')} sigue pendiente hasta el final oficial"
+        )
+        return False
+
+    if apuesta.get("fuente_momio") is not None and (_es_anulado(juego) or _es_empate_final(juego)):
+        if apuesta.get("estado") == "push" and apuesta.get("profit") == 0:
+            return False
+        stake_usada = float(apuesta.get("stake") or stake)
+        apuesta["estado"] = "push"
+        apuesta["profit"] = 0.0
+        apuesta["cierre"] = "void" if _es_anulado(juego) else "push"
+        apuesta["stake"] = stake_usada
+        apuesta["marcador_final"] = (
+            f"{juego.get('visitante')} {juego.get('scoreAway')} - "
+            f"{juego.get('home')} {juego.get('scoreHome')}"
+        )
+        apuesta["liquidado_en"] = datetime.now(tz_experimento()).isoformat()
+        print(
+            f"[MOTOR] Juego {juego.get('id')} {apuesta['cierre'].upper()} "
+            f"({apuesta.get('pick')}): stake devuelto"
+        )
         return True
 
     if not _juego_finalizado(juego):
@@ -1891,11 +2041,14 @@ def liquidar_apuesta(apuesta: dict, juego: dict, stake: float) -> bool:
         print(f"[DEBUG LIQ] Juego {juego['id']} ya liquidado con el mismo estado ({nuevo_estado}).")
         return False
 
+    stake_usada = float(apuesta.get("stake") if apuesta.get("stake") is not None else stake)
+    profit = _profit_al_liquidar(apuesta, stake_usada, nuevo_estado)
+    if profit is None:
+        return False
+
     apuesta["estado"] = nuevo_estado
-    if nuevo_estado == "ganada":
-        apuesta["profit"] = round(stake * (apuesta["odds"] - 1), 2)
-    else:
-        apuesta["profit"] = round(-stake, 2)
+    apuesta["stake"] = stake_usada
+    apuesta["profit"] = profit
 
     apuesta["marcador_final"] = nuevo_marcador
     print(f"[MOTOR] Juego {juego['id']} actualizado automáticamente: {nuevo_estado.upper()} ({apuesta['profit']:+.2f})")
@@ -1930,6 +2083,130 @@ def recalcular_capital(memoria: dict) -> None:
     
     # Guardar inmediatamente para que los cambios persistan en el disco
     guardar_memoria(memoria)
+
+
+def revisar_apuestas_colgadas(memoria: dict, *, log: bool = False) -> dict[str, int]:
+    """Cuenta pendientes de más de 24h y precios congelados ausentes o en cero."""
+    from cadena_momios import parsear_momio_americano
+
+    ahora = datetime.now(tz_experimento())
+    pendientes_24h = 0
+    sin_precio = 0
+    for dia in memoria.get("dias") or []:
+        for apuesta in dia.get("apuestas") or []:
+            if apuesta.get("estado") != "pendiente":
+                continue
+            if apuesta.get("fuente_momio") is None:
+                try:
+                    odds = float(apuesta.get("odds") or 0)
+                except (TypeError, ValueError):
+                    odds = 0.0
+                if odds <= 1.0:
+                    sin_precio += 1
+                    if log:
+                        print(f"[ALERTA] {apuesta.get('pick')} sin precio decimal congelado")
+            elif parsear_momio_americano(apuesta.get("odds_american"), registrar=False) is None:
+                sin_precio += 1
+                if log:
+                    print(
+                        f"[ALERTA] {apuesta.get('pick')} sin momio americano congelado "
+                        f"(ausente o 0, fuente {apuesta.get('fuente_momio')})"
+                    )
+            marca = apuesta.get("bloqueado_en") or apuesta.get("inicio_juego")
+            try:
+                cuando = datetime.fromisoformat(str(marca)) if marca else None
+            except ValueError:
+                cuando = None
+            if cuando is not None:
+                if cuando.tzinfo is None:
+                    cuando = cuando.replace(tzinfo=tz_experimento())
+                if ahora - cuando > timedelta(hours=24):
+                    pendientes_24h += 1
+                    if log:
+                        print(f"[ALERTA] {apuesta.get('pick')} pendiente más de 24h")
+    return {"pendientes_24h": pendientes_24h, "sin_precio_congelado": sin_precio}
+
+
+def _salud_momios(memoria: dict) -> dict:
+    """Bloque de solo lectura para /api/health."""
+    from cadena_momios import edad_ultimo_fetch_seg, resumen_rechazos
+
+    hoy = fecha_str()
+    dia = next((d for d in memoria.get("dias") or [] if d.get("fecha") == hoy), None)
+    preds = (dia or {}).get("predicciones") or []
+    por_casa: dict[str, int] = {}
+    reales = 0
+    sin_real = 0
+    for pred in preds:
+        fuente = str(pred.get("fuente_momio") or pred.get("lineas_fuente") or "").strip().lower()
+        if (
+            fuente in ("sin_momio_real", "estimado")
+            or pred.get("sin_momio_real")
+            or pred.get("estado_registro") == "registrado sin apuesta"
+        ):
+            sin_real += 1
+            continue
+        if fuente and fuente not in ("", "modelo", "none", "null", "import"):
+            reales += 1
+            casa = str(pred.get("casa_momio") or pred.get("casa") or fuente)
+            por_casa[casa] = por_casa.get(casa, 0) + 1
+    total = reales + sin_real
+    share = (sin_real / total) if total else 0.0
+    cruce = 0
+    for d in memoria.get("dias") or []:
+        for apuesta in d.get("apuestas") or []:
+            if apuesta.get("cruce_momio_alerta"):
+                cruce += 1
+    edad = edad_ultimo_fetch_seg()
+    rech = resumen_rechazos()
+    colgadas = revisar_apuestas_colgadas(memoria, log=False)
+    return {
+        "fecha": hoy,
+        "reales": reales,
+        "por_casa": por_casa,
+        "sin_momio_real": sin_real,
+        "rechazados": rech["total"],
+        "rechazados_razones": rech["razones"],
+        "ultimo_fetch_hace_seg": None if edad is None else round(edad, 1),
+        "alerta_sin_momio_real": bool(total and share > 0.20),
+        "sin_momio_real_pct": round(100 * share, 1) if total else 0.0,
+        "cruce_espn_alertas": cruce,
+        "pendientes_24h": colgadas["pendientes_24h"],
+        "sin_precio_congelado": colgadas["sin_precio_congelado"],
+    }
+
+
+def _cruzar_momios_espn(dia: dict) -> bool:
+    """Compara el momio guardado con el cierre ESPN. Nunca tumba la liquidación."""
+    from lineas_espn import cruzar_momio_apuesta
+
+    cambio = False
+    ahora = datetime.now(tz_experimento())
+    for apuesta in dia.get("apuestas") or []:
+        if apuesta.get("odds_american") in (None, ""):
+            continue
+        previo = apuesta.get("cruce_espn") if isinstance(apuesta.get("cruce_espn"), dict) else None
+        if previo and previo.get("ok"):
+            continue
+        if previo and previo.get("revisado_en"):
+            try:
+                visto = datetime.fromisoformat(str(previo["revisado_en"]))
+                if visto.tzinfo is None:
+                    visto = visto.replace(tzinfo=tz_experimento())
+                if ahora - visto < timedelta(hours=6):
+                    continue
+            except ValueError:
+                pass
+        try:
+            res = cruzar_momio_apuesta(apuesta, timeout=6.0)
+        except Exception as e:
+            print(f"[CRUCE] ESPN falló game {apuesta.get('game_id')}: {e}")
+            res = {"ok": False, "motivo": str(e)[:180]}
+        apuesta["cruce_espn"] = {**res, "revisado_en": ahora.isoformat()}
+        if res.get("ok"):
+            apuesta["cruce_momio_alerta"] = bool(res.get("alerta"))
+        cambio = True
+    return cambio
 
 
 def liquidar_dia(memoria: dict, dia: dict) -> int:
@@ -1990,6 +2267,16 @@ def _liquidar_dia_con_juegos(memoria: dict, dia: dict, juegos: list) -> int:
         if apuesta.get("estado") == "pendiente" or apuesta.get("estado") in ("ganada", "perdida"):
             if liquidar_apuesta(apuesta, juego, apuesta["stake"]):
                 cambios += 1
+
+    try:
+        if _cruzar_momios_espn(dia):
+            cambios += 1
+    except Exception as e:
+        print(f"[CRUCE] ESPN no bloquea la liquidación: {e}")
+    try:
+        revisar_apuestas_colgadas(memoria, log=True)
+    except Exception as e:
+        print(f"[ALERTA] {e}")
     
     # Liquidar también predicciones no apostadas (y corregir si se liquidaron mal)
     if "predicciones" in dia:
@@ -2001,7 +2288,7 @@ def _liquidar_dia_con_juegos(memoria: dict, dia: dict, juegos: list) -> int:
                 continue
 
             if prediccion.get("estado") == "liquidado" and juego.get("estado") in (
-                "EN VIVO", "PROGRAMADO", "POSPUESTO"
+                "EN VIVO", "PROGRAMADO", "POSPUESTO", "CANCELADO", "SUSPENDIDO", "SUSPENDIDO_OFICIAL"
             ):
                 prediccion["estado"] = "pendiente"
                 prediccion["resultado"] = None
@@ -2350,8 +2637,7 @@ def guardar_prediccion(
     if not odds or float(odds) <= 1.0:
         odds, odds_amer = cuota_desde_prob(prob)
 
-    # Apostable solo con cuota de casa. Un 72% sin mercado no es valor.
-    apostable_flag = apostable_con_mercado(juego)
+    apostable_flag = apostable_para_dinero(juego)
 
     # Briefing T-60 interno (para la mente). No se muestra en el panel.
     briefing = None
@@ -2378,7 +2664,7 @@ def guardar_prediccion(
             "home": juego["home"],
             "pick": juego["pick"],
             "odds": float(odds),
-            "odds_american": odds_amer if odds_amer is not None else 150,
+            "odds_american": odds_amer,
             "edge": 0 if not tiene_cuota_mercado(juego) else juego.get("edge", 0),
             "probPick": prob,
             "prob_sin_calibrar": juego.get("prob_sin_calibrar"),
@@ -2386,6 +2672,15 @@ def guardar_prediccion(
             "filtro_tipo": juego.get("filtro_tipo") if isinstance(juego.get("filtro_tipo"), dict) else None,
             "apostable": apostable_flag,
             "lineas_fuente": juego.get("lineas_fuente") or "modelo",
+            "fuente_momio": juego.get("fuente_momio"),
+            "casa_momio": juego.get("casa_momio"),
+            "paso_momio": juego.get("paso_momio"),
+            "origen_momio": juego.get("origen_momio"),
+            "estado_registro": juego.get("estado_registro"),
+            "sin_momio_real": bool(juego.get("sin_momio_real")),
+            "momio_stale": bool(juego.get("momio_stale")),
+            "momio_fallos": juego.get("momio_fallos"),
+            "odds_estimado_american": juego.get("odds_estimado_american"),
             "motivo_apuesta": motivo,
             "pitcherAway": juego.get("pitcherAway"),
             "pitcherHome": juego.get("pitcherHome"),
@@ -2752,6 +3047,9 @@ def resumen_predicciones_y_dinero(memoria: dict) -> dict:
     din_ganadas = din_perdidas = 0
     din_ganado = din_perdido = 0.0
     din_stake_total = 0.0
+    est_ganadas = est_perdidas = 0
+    est_ganado = est_perdido = 0.0
+    est_stake_total = 0.0
     mutado = False
     stake_v_default = float(stake_virtual_prediccion(memoria))
 
@@ -2803,7 +3101,18 @@ def resumen_predicciones_y_dinero(memoria: dict) -> dict:
             if a.get("estado") not in ("ganada", "perdida"):
                 continue
             profit = float(a.get("profit") or 0)
-            din_stake_total += float(a.get("stake") or 0)
+            stake_a = float(a.get("stake") or 0)
+            bucket_est = es_momio_estimado(a)
+            if bucket_est:
+                est_stake_total += stake_a
+                if a["estado"] == "ganada":
+                    est_ganadas += 1
+                    est_ganado += max(profit, 0)
+                else:
+                    est_perdidas += 1
+                    est_perdido += abs(min(profit, 0))
+                continue
+            din_stake_total += stake_a
             if a["estado"] == "ganada":
                 din_ganadas += 1
                 din_ganado += max(profit, 0)
@@ -2813,12 +3122,16 @@ def resumen_predicciones_y_dinero(memoria: dict) -> dict:
 
     pred_total = pred_aciertos + pred_fallos
     din_total = din_ganadas + din_perdidas
+    est_total = est_ganadas + est_perdidas
     pred_wr = round(100 * pred_aciertos / pred_total, 1) if pred_total else 0
     din_wr = round(100 * din_ganadas / din_total, 1) if din_total else 0
+    est_wr = round(100 * est_ganadas / est_total, 1) if est_total else 0
     pred_neto = round(pred_ganado - pred_perdido, 2)
     din_neto = round(din_ganado - din_perdido, 2)
+    est_neto = round(est_ganado - est_perdido, 2)
     pred_roi = round(100 * pred_neto / pred_stake_total, 1) if pred_stake_total else 0
     din_roi = round(100 * din_neto / din_stake_total, 1) if din_stake_total else 0
+    est_roi = round(100 * est_neto / est_stake_total, 1) if est_stake_total else 0
     wr_diff = round(pred_wr - din_wr, 1) if pred_total and din_total else None
 
     divergencia = {"wr_diff": wr_diff, "alerta": False, "mensaje": ""}
@@ -2853,6 +3166,17 @@ def resumen_predicciones_y_dinero(memoria: dict) -> dict:
             "neto": din_neto,
             "roi_pct": din_roi,
             "invertido": round(din_stake_total, 2),
+        },
+        "dinero_estimado": {
+            "total": est_total,
+            "ganadas": est_ganadas,
+            "perdidas": est_perdidas,
+            "win_rate": est_wr,
+            "ganado": round(est_ganado, 2),
+            "perdido": round(est_perdido, 2),
+            "neto": est_neto,
+            "roi_pct": est_roi,
+            "invertido": round(est_stake_total, 2),
         },
         "divergencia": divergencia,
         "_mutado": mutado,
@@ -2913,6 +3237,43 @@ def bloquear_juego(game_id: str, forzar: bool = False) -> dict:
         return _bloquear_juego_locked(game_id, juego, forzar=forzar, max_dia=max_dia, hoy=hoy)
 
 
+def _marcar_sin_momio_real(juego: dict, pred: dict | None, precio: dict, prob: float) -> None:
+    """El pick queda registrado. El estimado no mueve la banca."""
+    fallos = str(precio.get("momio_fallos") or juego.get("momio_fallos") or "").strip()
+    motivo = "Sin momio real, solo registrado"
+    if fallos:
+        motivo = f"{motivo} · {fallos}"
+    juego["fuente_momio"] = "sin_momio_real"
+    juego["lineas_fuente"] = "sin_momio_real"
+    juego["casa_momio"] = "sin_momio_real"
+    juego["paso_momio"] = "sin_casa"
+    juego["origen_momio"] = "sin_momio_real"
+    juego["estado_registro"] = "registrado sin apuesta"
+    juego["sin_momio_real"] = True
+    juego["apostable"] = False
+    juego["edge"] = 0
+    juego["momio_fallos"] = fallos
+    juego["motivo_apuesta"] = motivo
+    juego["probPick"] = prob
+    if precio.get("odds_american") is not None:
+        juego["odds_estimado_american"] = precio.get("odds_american")
+        juego["odds_american"] = precio.get("odds_american")
+        juego["odds"] = precio.get("odds")
+    if pred is None:
+        return
+    pred["fuente_momio"] = "sin_momio_real"
+    pred["lineas_fuente"] = "sin_momio_real"
+    pred["estado_registro"] = "registrado sin apuesta"
+    pred["sin_momio_real"] = True
+    pred["apostable"] = False
+    pred["edge"] = 0
+    pred["momio_fallos"] = fallos
+    pred["motivo_apuesta"] = motivo
+    pred["probPick"] = prob
+    if precio.get("odds_american") is not None:
+        pred["odds_estimado_american"] = precio.get("odds_american")
+
+
 def _bloquear_juego_locked(
     game_id: str,
     juego: dict,
@@ -2939,7 +3300,41 @@ def _bloquear_juego_locked(
         }
 
     stake_v = stake_virtual_prediccion(memoria)
-    # El pick de papel solo se crea si el partido sigue sin empezar.
+    # Precio de la cadena en este instante, antes de que el pick congelado lo pise.
+    momio_vivo = {
+        "visitante": juego.get("visitante"),
+        "home": juego.get("home"),
+        "away_id": juego.get("away_id"),
+        "home_id": juego.get("home_id"),
+        "away_abbr": juego.get("away_abbr"),
+        "home_abbr": juego.get("home_abbr"),
+        "pick_lado": juego.get("pick_lado"),
+        "pick_team_id": juego.get("pick_team_id"),
+        "pick_abbr": juego.get("pick_abbr"),
+        "odds_away_american": juego.get("odds_away_american"),
+        "odds_home_american": juego.get("odds_home_american"),
+        "odds_away_decimal": juego.get("odds_away_decimal"),
+        "odds_home_decimal": juego.get("odds_home_decimal"),
+        "fuente_momio": juego.get("fuente_momio"),
+        "lineas_fuente": juego.get("lineas_fuente"),
+        "casa_momio": juego.get("casa_momio"),
+        "paso_momio": juego.get("paso_momio"),
+        "origen_momio": juego.get("origen_momio"),
+        "momio_fallos": juego.get("momio_fallos") or "",
+        "momio_intentos": list(juego.get("momio_intentos") or [])
+        if isinstance(juego.get("momio_intentos"), list)
+        else [],
+        "momio_fetched_at": juego.get("momio_fetched_at"),
+        "momio_stale": juego.get("momio_stale"),
+        "momio_en_vivo": juego.get("momio_en_vivo"),
+        "estado_cuota": juego.get("estado_cuota"),
+        "estado": juego.get("estado"),
+        "inicio_juego": juego.get("inicio_juego"),
+        "fecha": juego.get("fecha"),
+        "id": juego.get("id"),
+        "espn_id": juego.get("espn_id"),
+    }
+    # #124: el pick de papel solo se crea si el partido sigue sin empezar.
     if juego.get("estado") == "PROGRAMADO":
         guardar_prediccion(dia, juego, con_dinero=False, stake_virtual=stake_v)
 
@@ -2967,8 +3362,8 @@ def _bloquear_juego_locked(
             juego["odds_away_decimal"] = pred_existente["odds_away_decimal"]
         if pred_existente.get("odds_home_decimal"):
             juego["odds_home_decimal"] = pred_existente["odds_home_decimal"]
-        # Congelado apostable solo si había cuota real. El % alto no basta.
-        if apostable_con_mercado(pred_existente) or apostable_con_mercado(juego):
+        # Cuota real o momio estimado. Un % alto sin ninguno de los dos no basta.
+        if apostable_para_dinero(pred_existente) or apostable_para_dinero(juego):
             juego["apostable"] = True
         else:
             juego["apostable"] = False
@@ -3086,8 +3481,48 @@ def _bloquear_juego_locked(
         except Exception as e:
             print(f"[SCRATCH] refresh bloqueo: {e}")
 
-    # Con mercado: el valor en sombra solo anota. Sin cuota de casa: nunca dinero.
-    # El filtro de tipo vuelve a decidir después del refresh de scratch.
+    # Precio de la cadena (#121). Sin momio real fresco no hay dinero (#123 + auditoría).
+    # El filtro de valor solo anota en sombra; el tipo vuelve a decidir tras el scratch.
+    pick_final = (juego.get("pick") or "").strip()
+    prob_final = float(juego.get("probPick") or 0)
+    if pred_existente:
+        for campo in ("pick_lado", "pick_team_id", "pick_abbr", "away_abbr", "home_abbr", "away_id", "home_id"):
+            if pred_existente.get(campo) not in (None, ""):
+                momio_vivo[campo] = pred_existente.get(campo)
+                juego[campo] = pred_existente.get(campo)
+    precio = momio_del_pick(dict(momio_vivo), pick_final, prob_final or 50.0)
+    from cadena_momios import parsear_momio_americano
+
+    american_ok = parsear_momio_americano(precio.get("odds_american"), registrar=False)
+    if not precio.get("apto_para_apuesta") or american_ok is None:
+        _marcar_sin_momio_real(juego, pred_existente, precio, prob_final)
+        guardar_memoria(memoria)
+        print(
+            f"[MOMIO] {juego.get('pick')} sin momio real · "
+            f"{precio.get('momio_fallos') or 'sin casa'} · registrado sin apuesta"
+        )
+        return {
+            "ok": False,
+            "motivo": "Sin momio real, solo registrado",
+            "juego": juego["visitante"] + " vs " + juego["home"],
+            "prediccion_guardada": True,
+            "sin_momio_real": True,
+            "fuente_momio": "sin_momio_real",
+            "probPick": prob_final,
+            "momio_fallos": precio.get("momio_fallos") or "",
+        }
+    precio = {**precio, "odds_american": american_ok}
+    juego["odds"] = precio["odds"]
+    juego["odds_american"] = american_ok
+    juego["fuente_momio"] = precio["fuente_momio"]
+    juego["lineas_fuente"] = precio["fuente_momio"]
+    juego["casa_momio"] = precio["casa"]
+    juego["paso_momio"] = precio.get("paso_momio") or ""
+    juego["origen_momio"] = precio.get("origen_momio") or ""
+    juego["momio_fallos"] = precio.get("momio_fallos") or ""
+    juego["momio_fetched_at"] = precio.get("fetched_at")
+    juego["edge"] = edge_pct(prob_final, float(precio["odds"]))
+
     if not cfg.get("modo_solo_modelo") and (cfg.get("estrategia") or {}).get("requiere_betmgm", True):
         from filtro_valor import filtro_activo
 
@@ -3096,25 +3531,13 @@ def _bloquear_juego_locked(
         else:
             min_edge = float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0))
             edge_now = juego.get("edge")
-            if tiene_cuota_mercado(juego) or tiene_cuota_mercado(pred_existente or {}):
-                if edge_now is None or float(edge_now) < min_edge:
-                    motivo = "Sin valor vs mercado ahora"
-                    juego["apostable"] = False
-                    juego["motivo_apuesta"] = motivo
-                    if pred_existente is not None:
-                        pred_existente["apostable"] = False
-                        pred_existente["motivo_apuesta"] = motivo
-            else:
-                motivo = "Sin cuota real de mercado — el % del modelo no es valor"
+            if edge_now is None or float(edge_now) < min_edge:
+                motivo = "Sin valor vs mercado ahora"
                 juego["apostable"] = False
-                juego["edge"] = 0
                 juego["motivo_apuesta"] = motivo
                 if pred_existente is not None:
                     pred_existente["apostable"] = False
-                    pred_existente["edge"] = 0
-                    pred_existente["motivo_apuesta"] = (
-                        f"{pred_existente.get('motivo_apuesta') or ''} · {motivo}"
-                    ).strip(" ·")
+                    pred_existente["motivo_apuesta"] = motivo
         _aplicar_tipo_sobre(juego, cfg, pred_existente)
         if not juego.get("apostable"):
             motivo = juego.get("motivo_apuesta") or "Sin valor vs cuota real"
@@ -3205,12 +3628,7 @@ def _bloquear_juego_locked(
                 "ia_veto": veto,
             }
 
-    edge = juego.get("edge", 0)
-    confianza = min(max((edge - 5.0) / 10.0, 0.5), 1.0)
-    if mente and mente.get("autoriza_dinero") and float(mente.get("stake_pct") or 0) > 0:
-        stake = aplicar_stake_mente(memoria["capital"], mente, cfg)
-    else:
-        stake = calcular_stake_dinamico(memoria["capital"], edge, confianza, cfg)
+    stake = apuesta_fija_dolares(cfg)
 
     riesgo = sum(a["stake"] for a in dia["apuestas"] if a["estado"] == "pendiente")
     print(f"[DEBUG BLOQUEO] Juego {game_id} - Riesgo: {riesgo}, Stake: {stake}, Capital: {memoria['capital']}")
@@ -3246,10 +3664,14 @@ def _bloquear_juego_locked(
             "visitante": juego["visitante"],
             "home": juego["home"],
             "pick": juego["pick"],
-            "odds": juego["odds"],
-            "odds_american": juego.get("odds_american"),
-            "lineas_fuente": juego.get("lineas_fuente", "betmgm"),
-            "casa": "Modelo" if juego.get("lineas_fuente") == "modelo" else "BetMGM",
+            "pick_lado": juego.get("pick_lado"),
+            "pick_abbr": juego.get("pick_abbr"),
+            "pick_team_id": juego.get("pick_team_id"),
+            "away_id": juego.get("away_id"),
+            "home_id": juego.get("home_id"),
+            "away_abbr": juego.get("away_abbr"),
+            "home_abbr": juego.get("home_abbr"),
+            **campos_precio_congelado(precio, stake),
             "edge": juego.get("edge"),
             "probPick": juego.get("probPick"),
             "motivo_apuesta": motivo_final,
@@ -3352,9 +3774,9 @@ def bloquear_apuestas_del_dia(forzar: bool = False) -> dict:
                 continue
         gid = str(juego["id"])
         pred = preds_por_id.get(gid)
-        apostable = apostable_con_mercado(juego)
+        apostable = apostable_para_dinero(juego)
         if not apostable and pred is not None:
-            apostable = apostable_con_mercado(pred)
+            apostable = apostable_para_dinero(pred)
             if apostable:
                 juego["apostable"] = True
         if not apostable:
@@ -3664,6 +4086,18 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
             copia["odds_american"] = ap.get("odds_american")
             copia["probPick"] = ap.get("probPick", copia.get("probPick"))
             copia["lineas_fuente"] = ap.get("lineas_fuente", "betmgm")
+            if ap.get("fuente_momio"):
+                copia["fuente_momio"] = ap.get("fuente_momio")
+            if ap.get("casa"):
+                copia["casa_momio"] = ap.get("casa")
+            if ap.get("paso_momio"):
+                copia["paso_momio"] = ap.get("paso_momio")
+            if ap.get("origen_momio"):
+                copia["origen_momio"] = ap.get("origen_momio")
+            if ap.get("payout_si_gana") is not None:
+                copia["payout_si_gana"] = ap.get("payout_si_gana")
+            if ap.get("momio_fallos"):
+                copia["momio_fallos"] = ap.get("momio_fallos")
             copia["estado_apuesta"] = ap["estado"]
             copia["profit"] = ap.get("profit")
             copia["edge"] = ap.get("edge", copia.get("edge"))
@@ -3686,6 +4120,14 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
             copia["motivo_apuesta"] = pred.get("motivo_apuesta", copia.get("motivo_apuesta", ""))
             if pred.get("lineas_fuente"):
                 copia["lineas_fuente"] = pred.get("lineas_fuente")
+            if pred.get("fuente_momio"):
+                copia["fuente_momio"] = pred.get("fuente_momio")
+            if pred.get("casa_momio"):
+                copia["casa_momio"] = pred.get("casa_momio")
+            if pred.get("paso_momio"):
+                copia["paso_momio"] = pred.get("paso_momio")
+            if pred.get("origen_momio"):
+                copia["origen_momio"] = pred.get("origen_momio")
             if pred.get("clv_pct") is not None:
                 copia["clv_pct"] = pred.get("clv_pct")
             copia["pick_congelado"] = True
@@ -4223,6 +4665,7 @@ def construir_estado_completo(liquidar: bool = False, ligero: bool = False) -> d
                 "capital_inicial",
                 "dias_totales",
                 "stake_por_juego",
+                "apuesta_fija",
                 "minutos_antes_juego",
                 "timezone",
                 "modo_solo_modelo",
@@ -4396,6 +4839,7 @@ def api_panel_boot(
                 "capital_inicial",
                 "dias_totales",
                 "stake_por_juego",
+                "apuesta_fija",
                 "minutos_antes_juego",
                 "timezone",
                 "modo_solo_modelo",
@@ -4812,6 +5256,7 @@ def api_health():
             "fallback_internet": bool((cfg.get("lineas") or {}).get("fallback_internet", True)),
             "bookmakers": (cfg.get("lineas") or {}).get("bookmakers") or "draftkings",
             "min_edge_pct": float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0)),
+            **_salud_momios(mem_h),
         },
         "scratch_lineup": {
             "activo": bool(cfg.get("usar_scratch_lineup", True)),
@@ -5781,7 +6226,7 @@ if __name__ == "__main__":
         + "/".join(f"T-{m}" for m in ventanas_congelacion(cargar_config()))
         + f" · dinero {cargar_config().get('minutos_antes_juego', 60)} min antes"
     )
-    print(f"  Stake: ${cargar_config().get('stake_por_juego', 3.0)} por juego")
+    print(f"  Stake fijo: ${apuesta_fija_dolares(cargar_config()):.2f} por juego")
     print("=" * 60)
     
     try:

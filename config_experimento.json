@@ -8,6 +8,8 @@
 
   "stake_por_juego": 3.0,
 
+  "apuesta_fija": 3.0,
+
   "minutos_antes_juego": 60,
 
   "ventanas_congelacion": [90, 60, 30, 10],
@@ -32,7 +34,9 @@
 
     "mercado": "h2h",
 
-    "fallback_internet": true
+    "fallback_internet": true,
+
+    "cadena_momios": ["espn_scoreboard", "espn_header", "odds_api"]
 
   },
 
@@ -48,7 +52,7 @@
 
     "fallback_solo_modelo": true,
 
-    "gestion_bankroll_dinamica": true,
+    "gestion_bankroll_dinamica": false,
 
     "min_stake_pct": 2.0,
 

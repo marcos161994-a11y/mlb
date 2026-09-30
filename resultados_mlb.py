@@ -10,11 +10,12 @@ nunca llega a ser una apuesta, así que no está en la banca.
 
 Fuente de la cuota
 -------------------
-Otro cambio (apuesta fija de $3) va a guardar ``fuente_momio`` en cada
-apuesta: el nombre de la casa, o ``estimado`` si el precio es de respaldo.
-Si ese campo no está, se usa ``lineas_fuente`` (casa real vs ``modelo``).
-Si tampoco hay fuente, la apuesta queda en ``sin_dato`` y no se inventa
-un lado.
+``fuente_momio`` guarda el nombre de la casa. ``estimado`` solo aparece
+en dinero viejo, cuando un precio de respaldo sí se apostó. Hoy un
+precio estimado no se convierte en apuesta: el pick queda
+``sin_momio_real`` / registrado sin apuesta y no entra al ROI.
+Si no hay ``fuente_momio``, se usa ``lineas_fuente``. Si tampoco hay
+fuente, la apuesta queda en ``sin_dato``.
 """
 
 from __future__ import annotations
@@ -23,8 +24,8 @@ import math
 from datetime import datetime
 from typing import Any
 
-# Valores que no son una casa. ``fuente_momio='estimado'`` es el contrato
-# del otro cambio; el resto cubre el historial viejo (``lineas_fuente``).
+# Dinero viejo con precio de respaldo, o historial sin casa (``lineas_fuente``).
+# ``sin_momio_real`` no está aquí: no es una apuesta.
 _FUENTES_ESTIMADAS = frozenset(
     {
         "",
@@ -105,7 +106,7 @@ def calcular_resultados(memoria: dict | None) -> dict[str, Any]:
         "estimado": _vacio(),
         "sin_dato": _vacio(),
     }
-    ganadas = perdidas = pendientes = 0
+    ganadas = perdidas = pendientes = sin_apuesta = 0
     profit = stake = 0.0
 
     for _, dia in dias_ord:
@@ -113,6 +114,9 @@ def calcular_resultados(memoria: dict | None) -> dict[str, Any]:
         n_dia = 0
         apuestas = [a for a in (dia.get("apuestas") or []) if isinstance(a, dict)]
         for apuesta in apuestas:
+            if _es_sin_apuesta(apuesta):
+                sin_apuesta += 1
+                continue
             estado = str(apuesta.get("estado") or "").strip().lower()
             if estado == "pendiente":
                 pendientes += 1
@@ -173,16 +177,33 @@ def calcular_resultados(memoria: dict | None) -> dict[str, Any]:
             "sin_dato": {"etiqueta": "Sin dato", **_bloque_de(fuentes["sin_dato"])},
         },
         "mente": _mente(dias_ord, stake_papel),
+        "registrados_sin_apuesta": sin_apuesta,
     }
 
 
+def _es_sin_apuesta(apuesta: dict | None) -> bool:
+    """Pick registrado sin casa. No movió la banca."""
+    if not isinstance(apuesta, dict):
+        return False
+    if apuesta.get("sin_momio_real"):
+        return True
+    if str(apuesta.get("estado_registro") or "").strip().lower() == "registrado sin apuesta":
+        return True
+    fuente = str(apuesta.get("fuente_momio") or apuesta.get("lineas_fuente") or "").strip().lower()
+    return fuente == "sin_momio_real"
+
+
 def clasificar_fuente_cuota(apuesta: dict | None) -> str:
-    """``real``, ``estimado`` o ``sin_dato``.
+    """``real``, ``estimado``, ``sin_dato`` o ``sin_apuesta``.
 
     ``fuente_momio`` (o un alias) manda. Si no viene, cae a ``lineas_fuente``.
+    ``sin_momio_real`` no es una apuesta y no entra a ninguna tarjeta de ROI.
+    ``estimado`` sigue siendo dinero viejo liquidado con precio de respaldo.
     """
     if not isinstance(apuesta, dict):
         return "sin_dato"
+    if _es_sin_apuesta(apuesta):
+        return "sin_apuesta"
     raw = _leer_fuente_explicita(apuesta)
     if raw is None:
         if "lineas_fuente" not in apuesta:
@@ -278,6 +299,8 @@ def _decision_mente(pred: dict) -> str | None:
 
 
 def _prediccion_cuenta(pred: dict) -> bool:
+    if _es_sin_apuesta(pred):
+        return False
     if pred.get("estado") != "liquidado":
         return False
     if pred.get("resultado") not in ("acierto", "fallo"):

@@ -199,6 +199,47 @@ def test_fuente_real_estimada_y_ausente():
     assert clasificar_fuente_cuota(None) == "sin_dato"
 
 
+def test_sin_momio_real_no_entra_al_roi_y_el_estimado_sigue_siendo_dinero_viejo():
+    memoria = _memoria()
+    memoria["dias"][0]["apuestas"].append(
+        {
+            "estado": "ganada",
+            "profit": 50,
+            "stake": 3,
+            "fuente_momio": "sin_momio_real",
+            "estado_registro": "registrado sin apuesta",
+            "sin_momio_real": True,
+            "tipo_pick": "limpio",
+            "lineas_fuente": "draftkings",
+        }
+    )
+    memoria["dias"][0]["predicciones"].append(
+        {
+            "estado": "liquidado",
+            "resultado": "acierto",
+            "profit": 9,
+            "stake_virtual": 3,
+            "fuente_momio": "sin_momio_real",
+            "ia_mente": {"decision": "APOSTAR"},
+        }
+    )
+    base = calcular_resultados(_memoria())
+    out = calcular_resultados(memoria)
+    assert out["resumen"]["n"] == base["resumen"]["n"]
+    assert out["resumen"]["profit"] == base["resumen"]["profit"]
+    assert out["resumen"]["roi_pct"] == base["resumen"]["roi_pct"]
+    assert out["resumen"]["capital"] == base["resumen"]["capital"]
+    assert out["registrados_sin_apuesta"] == 1
+    assert out["por_fuente"]["real"] == base["por_fuente"]["real"]
+    assert out["por_fuente"]["estimado"]["n"] == 2
+    assert out["por_fuente"]["estimado"]["etiqueta"] == "Estimada"
+    assert clasificar_fuente_cuota({"fuente_momio": "sin_momio_real", "lineas_fuente": "pinnacle"}) == "sin_apuesta"
+    assert clasificar_fuente_cuota({"estado_registro": "registrado sin apuesta", "fuente_momio": "draftkings"}) == "sin_apuesta"
+    assert clasificar_fuente_cuota({"fuente_momio": "estimado"}) == "estimado"
+    mente = {v["decision"]: v for v in out["mente"]["veredictos"]}
+    assert mente["APOSTAR"]["n"] == 1
+
+
 def test_mente_apost_ar_pasar_y_omite_tardias():
     out = calcular_resultados(_memoria())
     mente = out["mente"]

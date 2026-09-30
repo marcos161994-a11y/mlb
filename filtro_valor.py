@@ -25,7 +25,9 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-_FUENTES_NO_REALES = frozenset({"", "modelo", "none", "null", "import", "estimado"})
+_FUENTES_NO_REALES = frozenset(
+    {"", "modelo", "none", "null", "import", "estimado", "sin_momio_real"}
+)
 _TIPOS = ("favorito_alto", "underdog", "scratch", "limpio")
 
 

@@ -235,7 +235,7 @@ def construir_briefing(juego: dict[str, Any], memoria: dict | None = None) -> di
         if a not in alertas:
             alertas.append(str(a))
     fuente = str(pilares["modelo"]["fuente_cuotas"] or "").lower()
-    if fuente in ("modelo", "", "none"):
+    if fuente in ("modelo", "", "none") and str(juego.get("fuente_momio") or "").lower() != "estimado":
         alertas.append("sin_mercado")
     elo_p = pilares.get("elo") or {}
     if elo_p.get("ok"):
@@ -489,7 +489,8 @@ def _reglas_duras(
                 )
 
     fuente = str(juego.get("lineas_fuente") or "modelo").lower()
-    sin_mercado = fuente in ("modelo", "", "none", "import")
+    estimado = fuente == "estimado" or str(juego.get("fuente_momio") or "").lower() == "estimado"
+    sin_mercado = fuente in ("modelo", "", "none", "import") and not estimado
     if modo.get("requiere_mercado") and sin_mercado:
         return _pack(
             "PASAR",
@@ -516,7 +517,7 @@ def _reglas_duras(
             fuente="regla-local",
             briefing=briefing,
         )
-    if edge < 3 and not sin_mercado:
+    if edge < 3 and not sin_mercado and not estimado:
         return _pack(
             "PASAR",
             0,
@@ -852,6 +853,22 @@ def _heuristica_conclusion(juego: dict, briefing: dict, modo: dict) -> dict[str,
     if ("mc_under" in alertas or "mc_over" in alertas) and edge < 7:
         conf_bonus = min(conf_bonus, 0)
 
+    estimado = str(juego.get("fuente_momio") or juego.get("lineas_fuente") or "").lower() == "estimado"
+    if estimado and prob >= 55 and "sin_mercado" not in alertas:
+        razones = [
+            f"Momio estimado (vig -110) · prob {prob:.0f}%",
+            "Ninguna casa real cotizó el partido",
+        ]
+        razones.extend(razones_extra[:1])
+        return _pack(
+            "APOSTAR",
+            0,
+            razones,
+            min(5, 3 + conf_bonus),
+            lec_ids[:2],
+            fuente="heuristica",
+            briefing=briefing,
+        )
     if edge >= 6 and prob >= 55 and "sin_mercado" not in alertas:
         stake = 2.0 if edge < 8 else (3.0 if edge < 12 else 4.0)
         conf = 3 if edge < 8 else (4 if edge < 12 else 5)
