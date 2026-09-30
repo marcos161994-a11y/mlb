@@ -14,9 +14,9 @@ on:
   workflow_dispatch:
 
 # Prioridad: variable de repo RENDER_URL, luego secret RENDER_URL,
-# y si no hay ninguno el servicio vivo (mlb-u9rd). mlb-1-en7i es otro servicio.
+# y si no hay ninguno el servicio vivo mlb-1 (tiene CRON_SECRET).
 env:
-  RENDER_URL: ${{ vars.RENDER_URL || secrets.RENDER_URL || 'https://mlb-u9rd.onrender.com' }}
+  RENDER_URL: ${{ vars.RENDER_URL || secrets.RENDER_URL || 'https://mlb-1-en7i.onrender.com' }}
 
 permissions:
   contents: write
@@ -28,7 +28,7 @@ jobs:
     steps:
       - name: Normalizar RENDER_URL
         run: |
-          url="${RENDER_URL:-https://mlb-u9rd.onrender.com}"
+          url="${RENDER_URL:-https://mlb-1-en7i.onrender.com}"
           url="${url%/}"
           echo "RENDER_URL=${url}" >> "$GITHUB_ENV"
           echo "Servicio: ${url}"
