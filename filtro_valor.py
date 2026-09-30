@@ -70,13 +70,13 @@ def filtro_valor_cfg(cfg: dict | None) -> dict[str, Any]:
     raw = estrategia.get("filtro_valor") if isinstance(estrategia.get("filtro_valor"), dict) else {}
     activo = bool(raw.get("activo", False))
     try:
-        base = float(raw.get("margen_min_pct", 2.5))
+        base = float(raw.get("margen_min_pct", 1.0))
     except (TypeError, ValueError):
-        base = 2.5
+        base = 1.0
     try:
-        underdog = float(raw.get("margen_underdog_pct", 5.0))
+        underdog = float(raw.get("margen_underdog_pct", 2.0))
     except (TypeError, ValueError):
-        underdog = 5.0
+        underdog = 2.0
     try:
         scratch = float(raw.get("margen_scratch_pct", base))
     except (TypeError, ValueError):

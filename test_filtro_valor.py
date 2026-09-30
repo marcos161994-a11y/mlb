@@ -22,9 +22,9 @@ CFG = {
         "min_cuota_underdog": 2.0,
         "filtro_valor": {
             "activo": True,
-            "margen_min_pct": 2.5,
-            "margen_underdog_pct": 5.0,
-            "margen_scratch_pct": 2.5,
+            "margen_min_pct": 1.0,
+            "margen_underdog_pct": 2.0,
+            "margen_scratch_pct": 1.0,
             "penalizar_scratch": False,
         },
     },
@@ -36,7 +36,8 @@ def test_config_trae_filtro_sombra_y_pesos_en_cero():
     cfg = json.loads(Path("config_experimento.json").read_text(encoding="utf-8"))
     fv = (cfg.get("estrategia") or {}).get("filtro_valor") or {}
     assert fv.get("activo") is True
-    assert float(fv.get("margen_min_pct")) == 2.5
+    assert float(fv.get("margen_min_pct")) == 1.0
+    assert float(fv.get("margen_underdog_pct")) == 2.0
     assert float(fv.get("margen_underdog_pct")) > float(fv.get("margen_min_pct"))
     assert float(fv.get("margen_scratch_pct")) == float(fv.get("margen_min_pct"))
     assert fv.get("penalizar_scratch") is False
@@ -85,20 +86,22 @@ def test_underdog_exige_mas_edge_y_scratch_no():
         "lineas_fuente": "draftkings",
         "tipo_pick": "limpio",
     }
-    # implícita 58.8, edge 3.2 >= 2.5
+    # implícita 58.8, edge 3.2 >= 1.0
     assert evaluar_valor(favorito, CFG)["apostar"] is True
 
-    # Cuota 1.80 → implícita 55.6. Prob 58 deja solo 2.4 pts, bajo el margen 5 del underdog.
-    under = {
+    # Cuota 1.76 → implícita 56.8. Prob 58 deja 1.2 pts: pasa el margen 1.0 y no el 2.0 del underdog.
+    mismo_precio = {
         "probPick": 58.0,
-        "odds": 1.80,
+        "odds": 1.76,
         "lineas_fuente": "draftkings",
-        "tipo_pick": "underdog",
+        "tipo_pick": "limpio",
     }
+    assert evaluar_valor(mismo_precio, CFG)["apostar"] is True
+    under = {**mismo_precio, "tipo_pick": "underdog"}
     ev_under = evaluar_valor(under, CFG)
     assert ev_under["apostar"] is False
     assert ev_under["tipo"] == "underdog"
-    assert ev_under["margen"] == 5.0
+    assert ev_under["margen"] == 2.0
 
     scratch = {
         "probPick": 58.0,
@@ -108,9 +111,9 @@ def test_underdog_exige_mas_edge_y_scratch_no():
         "scratch_lineup": {"riesgo": True},
     }
     ev_scratch = evaluar_valor(scratch, CFG)
-    # implícita 45.5, edge 12.5, margen scratch 2.5 (no el de underdog)
+    # implícita 45.5, edge 12.5, margen scratch 1.0 (no el de underdog)
     assert ev_scratch["apostar"] is True
-    assert ev_scratch["margen"] == 2.5
+    assert ev_scratch["margen"] == 1.0
 
 
 def test_sin_filtro_sigue_el_min_edge_viejo():
@@ -128,9 +131,9 @@ def test_apostable_por_valor_respeta_filtro(monkeypatch):
 
     reg = {"probPick": 60.0, "tipo_pick": "limpio", "lineas_fuente": "modelo"}
     apostable, edge = srv._apostable_por_valor(reg, CFG, 1.75, "draftkings")
-    # implícita 57.1, edge ~2.9 >= 2.5
+    # implícita 57.1, edge ~2.9 >= 1.0
     assert apostable is True
-    assert edge >= 2.5
+    assert edge >= 1.0
     assert reg["filtro_valor"]["tipo"] == "limpio"
 
 

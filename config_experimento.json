@@ -80,9 +80,9 @@
     },
     "filtro_valor": {
       "activo": true,
-      "margen_min_pct": 2.5,
-      "margen_underdog_pct": 5.0,
-      "margen_scratch_pct": 2.5,
+      "margen_min_pct": 1.0,
+      "margen_underdog_pct": 2.0,
+      "margen_scratch_pct": 1.0,
       "penalizar_scratch": false
     }
 
