@@ -41,6 +41,7 @@ RUTAS_PUBLICAS = [
     ("GET", "/api/health"),
     ("GET", "/api/state"),
     ("GET", "/api/panel-boot"),
+    ("GET", "/api/resultados"),
     ("POST", "/api/mente-errores/cliente"),
 ]
 
