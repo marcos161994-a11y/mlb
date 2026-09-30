@@ -9,8 +9,7 @@ import pytest
 _REPO = Path(__file__).resolve().parent
 _SALTAR = {".git", ".venv", ".pytest_cache", "__pycache__", ".devdata"}
 _VIGILADOS = (
-    "diagrama/bitacora.json",
-    "diagrama/reporte.json",
+    "mente/bitacora.json",
     "config_experimento.json",
 )
 
@@ -72,11 +71,9 @@ def _datos_aislados(tmp_path, monkeypatch):
 
     import clima
     import bullpen
-    import mente_skills
 
     monkeypatch.setattr(clima, "CACHE_PATH", data / "clima_cache.json")
     monkeypatch.setattr(bullpen, "CACHE_PATH", data / "bullpen_cache.json")
-    monkeypatch.setattr(mente_skills, "REPORTE_PATH", data / "reporte.json")
 
     antes = _huella()
     yield

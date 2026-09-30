@@ -10,6 +10,8 @@
 
   "minutos_antes_juego": 60,
 
+  "ventanas_congelacion": [90, 60, 30, 10],
+
   "minutos_gracia_bloqueo": 30,
 
   "timezone": "America/Puerto_Rico",
@@ -77,6 +79,19 @@
       "activo": true,
       "umbral_pct": 5.0,
       "min_edge_excepcion_pct": 18.0
+    },
+    "filtro_valor": {
+      "activo": true,
+      "sombra": true,
+      "margen_min_pct": 1.0,
+      "margen_underdog_pct": 2.0,
+      "margen_scratch_pct": 1.0,
+      "penalizar_scratch": false
+    },
+    "filtro_tipo": {
+      "activo": true,
+      "apostar_scratch": true,
+      "cortar_underdog": true
     }
 
   },
@@ -143,10 +158,10 @@
   },
 
   "mente": {
-    "modo": "normal",
+    "modo": "shadow",
     "min_confianza": 3,
     "requiere_mercado": true,
-    "shadow": false
+    "shadow": true
   },
 
   "mente_errores": {
@@ -172,9 +187,9 @@
 
     "estadistico": 0.40,
 
-    "rf": 0.25,
+    "rf": 0.0,
 
-    "xgb": 0.35,
+    "xgb": 0.0,
 
     "ia": 0.0
 

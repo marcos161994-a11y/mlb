@@ -1208,6 +1208,8 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             if isinstance(intel_meta, dict):
                 tipo_pre = intel_meta.get("tipo_pre") or intel_meta.get("tipo_pick")
             antes_a, antes_h = prob_away, prob_home
+            juego["prob_sin_calibrar_away"] = antes_a
+            juego["prob_sin_calibrar_home"] = antes_h
             prob_away, prob_home = calibrar_par(
                 prob_away, prob_home, cfg, tipo_pick=tipo_pre
             )
@@ -1243,6 +1245,16 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
     candidatos: list[dict[str, Any]] = []
     preferir_underdogs = estrategia.get("preferir_underdogs", False)
     solo_modelo = _modo_solo_modelo(cfg)
+    from filtro_valor import (
+        cuota_lado_real,
+        filtro_valor_decide,
+        margen_para_tipo,
+        penaliza_scratch,
+        tipo_para_cuota,
+    )
+
+    # En sombra el valor no elige candidatos: manda min_edge / min_prob.
+    fv_decide = filtro_valor_decide(cfg)
 
     # Sin cuota de casa: el % es estudio. Nunca inventar edge = prob-50
     # (eso convirtió un 72% en un falso "+22% de valor").
@@ -1252,6 +1264,57 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         else:
             pick, prob = f"{juego['home']} ML", prob_home
         marcar_estudio_sin_mercado(juego, pick=pick, prob=prob, min_prob=min_prob)
+    elif fv_decide:
+        # Solo cuota de casa. El margen es el del tipo: underdog más alto,
+        # scratch igual al base (no se le cobra el recargo).
+        dec_away_real = cuota_lado_real(juego, "away")
+        dec_home_real = cuota_lado_real(juego, "home")
+        if dec_away_real:
+            edge_away = edge_pct(prob_away, dec_away_real)
+            juego["edgeAway"] = edge_away
+            juego["implAway"] = prob_implicita(dec_away_real)
+        if dec_home_real:
+            edge_home = edge_pct(prob_home, dec_home_real)
+            juego["edgeHome"] = edge_home
+            juego["implHome"] = prob_implicita(dec_home_real)
+
+        def _agregar(dec_real: float, prob: float, edge: float, nombre: str, american: Any) -> None:
+            tipo_lado = tipo_para_cuota(juego, prob, dec_real)
+            margen = margen_para_tipo(cfg, tipo_lado)
+            if edge < margen or prob < min_prob:
+                return
+            es_underdog = tipo_lado == "underdog"
+            candidatos.append(
+                {
+                    "pick": f"{nombre} ML",
+                    "team": nombre,
+                    "prob": prob,
+                    "edge": edge,
+                    "edge_base": edge,
+                    "odds": dec_real,
+                    "american": american,
+                    "es_underdog": es_underdog,
+                    "tipo": tipo_lado,
+                    "margen": margen,
+                }
+            )
+
+        if dec_away_real:
+            _agregar(
+                dec_away_real,
+                prob_away,
+                edge_away,
+                juego["visitante"],
+                juego.get("odds_away_american"),
+            )
+        if dec_home_real:
+            _agregar(
+                dec_home_real,
+                prob_home,
+                edge_home,
+                juego["home"],
+                juego.get("odds_home_american"),
+            )
     else:
         if dec_away and edge_away >= min_edge and prob_away >= min_prob:
             es_underdog = es_underdog_con_valor(dec_away, prob_away, cfg)
@@ -1319,8 +1382,12 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         ):
             juego["apostable"] = False
             juego["motivo_apuesta"] = "Spot no apto para dinero ahora"
-        elif scratch_info.get("riesgo") and pick_afectado_por_scratch(
-            mejor["pick"], juego["visitante"], juego["home"], scratch_info
+        elif (
+            penaliza_scratch(cfg)
+            and scratch_info.get("riesgo")
+            and pick_afectado_por_scratch(
+                mejor["pick"], juego["visitante"], juego["home"], scratch_info
+            )
         ):
             juego["apostable"] = False
             juego["motivo_apuesta"] = "Spot no apto para dinero ahora"
@@ -1329,6 +1396,16 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             if bloqueado:
                 juego["apostable"] = False
                 juego["motivo_apuesta"] = motivo_fi
+            elif (
+                not penaliza_scratch(cfg)
+                and scratch_info.get("riesgo")
+                and pick_afectado_por_scratch(
+                    mejor["pick"], juego["visitante"], juego["home"], scratch_info
+                )
+            ):
+                juego["motivo_apuesta"] = (
+                    f"{juego.get('motivo_apuesta') or ''} · scratch registrado, no penaliza"
+                ).strip(" ·")
     elif not juego.get("pick"):
         # SIEMPRE hacer una predicción, aunque no sea apostable
         if prob_away >= prob_home:
@@ -1397,6 +1474,25 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
     else:
         juego.setdefault("tipo_pick", "limpio")
 
+    if juego.get("pick"):
+        lado_visita = juego.get("visitante") and str(juego.get("visitante")) in str(juego.get("pick"))
+        cruda = juego.get("prob_sin_calibrar_away") if lado_visita else juego.get("prob_sin_calibrar_home")
+        if cruda is not None:
+            juego["prob_sin_calibrar"] = cruda
+
+    from filtro_valor import aplicar_decision_tipo, evaluar_valor, filtro_activo
+
+    if filtro_activo(cfg):
+        ev_valor = evaluar_valor(juego, cfg)
+        juego["filtro_valor"] = ev_valor
+        # En sombra el veredicto queda en el registro y no toca apostable.
+        if filtro_valor_decide(cfg) and juego.get("apostable") and not ev_valor.get("apostar"):
+            juego["apostable"] = False
+            juego["motivo_apuesta"] = ev_valor.get("motivo") or juego.get("motivo_apuesta")
+
+    # El tipo tiene la última palabra: scratch entra, underdog sale.
+    aplicar_decision_tipo(juego, cfg)
+
     juego.pop("_features_away", None)
     juego.pop("_features_home", None)
     return juego
@@ -1414,7 +1510,21 @@ def seleccionar_favorables_del_dia(juegos: list[dict[str, Any]], cfg: dict[str, 
         if apostable_con_mercado(j) and j.get("estado") == "PROGRAMADO"
     ]
     # Sin mercado no hay apostables. Con cuota real: priorizar edge de valor.
-    favorables.sort(key=lambda x: x.get("edge", 0), reverse=True)
+    from filtro_valor import filtro_tipo_cfg
+
+    ft = filtro_tipo_cfg(cfg)
+    if ft["activo"] and ft["apostar_scratch"]:
+        # Dentro del tope del día, el scratch no se cae por tener menos edge.
+        def _rank(j: dict[str, Any]) -> tuple[int, float]:
+            try:
+                edge = float(j.get("edge") or 0)
+            except (TypeError, ValueError):
+                edge = 0.0
+            return (1 if j.get("tipo_pick") == "scratch" else 0, edge)
+
+        favorables.sort(key=_rank, reverse=True)
+    else:
+        favorables.sort(key=lambda x: x.get("edge", 0), reverse=True)
 
     ids_top = {j["id"] for j in favorables[:max_apuestas]}
     for j in juegos:

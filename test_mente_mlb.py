@@ -4,6 +4,7 @@ from mente_mlb import (
     aplicar_stake_mente,
     construir_briefing,
     mente_conclusion,
+    veredicto_bloquea_dinero,
 )
 
 
@@ -124,9 +125,33 @@ def test_shadow_no_autoriza_aunque_aposte():
     c = mente_conclusion(juego, cfg, {}, forzar=True, solo_local=True)
     assert c["decision"] == "APOSTAR"
     assert c["autoriza_dinero"] is False
-    assert c.get("dinero_bloqueado_por") == "shadow"
-    assert any("shadow" in r.lower() for r in c["razones"])
+    assert c.get("shadow") is True
+    assert c.get("gate") == "sombra"
+    assert c.get("dinero_bloqueado_por") is None
+    assert any("no aprueba ni bloquea" in r.lower() for r in c["razones"])
     assert not any("conf 5 <" in r.lower() for r in c["razones"])
+
+
+def test_sombra_no_bloquea_aunque_diga_pasar():
+    conclusion = {
+        "decision": "PASAR",
+        "autoriza_dinero": False,
+        "shadow": True,
+        "fuente": "heuristica",
+    }
+    cfg = {"mente": {"modo": "shadow", "shadow": True}}
+    assert veredicto_bloquea_dinero(conclusion, cfg) is False
+
+
+def test_modo_normal_sigue_bloqueando_si_no_autoriza():
+    conclusion = {
+        "decision": "PASAR",
+        "autoriza_dinero": False,
+        "shadow": False,
+        "fuente": "heuristica",
+    }
+    cfg = {"mente": {"modo": "normal", "shadow": False}}
+    assert veredicto_bloquea_dinero(conclusion, cfg) is True
 
 
 def test_conf_baja_no_autoriza_en_estricto():

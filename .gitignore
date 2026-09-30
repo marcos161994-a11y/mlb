@@ -26,8 +26,10 @@ memoria.sqlite-shm
 
 # Estado y cachés generados al ejecutar la app
 calibrador_prob.pkl
+calibracion_reporte.json
 elo_ratings.json
 juegos_panel_cache.json
+ventanas_congelacion.json
 reporte_dia_*.txt
 
 # Credenciales que la app escribe en disco

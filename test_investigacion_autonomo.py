@@ -119,12 +119,9 @@ def test_servidor_expone_bitacora():
 
     src = Path("servidor_mlb.py").read_text(encoding="utf-8")
     assert '@app.get("/api/mente-bitacora")' in src
-    html = Path("diagrama/index.html").read_text(encoding="utf-8")
-    assert "abrirBitacora" in html
-    assert "Leer resumen" in html
-    resumen = Path("diagrama/resumen.html").read_text(encoding="utf-8")
-    assert "Qué hice en la mente" in resumen
-    assert ".py" not in resumen
-    assert "diagrama/resumen" in Path("diagrama/Abrir-diagrama.bat").read_text(encoding="utf-8")
-    assert "diagrama/resumen" in Path("diagrama/Resumen.url").read_text(encoding="utf-8")
-    assert Path("diagrama/bitacora.json").exists()
+    assert "/diagrama" not in src
+    html = Path("mente/index.html").read_text(encoding="utf-8")
+    assert "/api/mente-bitacora" in html
+    assert "diagrama" not in html
+    assert Path("mente/bitacora.json").exists()
+    assert not Path("diagrama").exists()
