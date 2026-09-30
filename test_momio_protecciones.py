@@ -144,7 +144,7 @@ def test_doble_cartelera_elige_por_hora_y_no_adivina():
     assert buscar_lineas_partido(mapa, visita, local, fecha="2026-09-30", evento_id="g1")["espn_id"] == "g1"
 
 
-def test_header_y_odds_api_filtran_por_fecha(monkeypatch):
+def test_header_filtra_por_fecha():
     header = {
         "sports": [
             {
@@ -186,59 +186,6 @@ def test_header_y_odds_api_filtran_por_fecha(monkeypatch):
     mapa = parsear_eventos_espn(header)
     assert buscar_lineas_partido(mapa, "Chicago White Sox", "Houston Astros", fecha="2026-09-30")["away"]["american"] == 102
     assert buscar_lineas_partido(mapa, "Chicago White Sox", "Houston Astros", fecha="2026-10-01")["away"]["american"] == 124
-
-    import lineas_betmgm as lb
-
-    lb._cache_por_casa = None
-    lb._cache_por_casa_ts = None
-    eventos = []
-    for eid, commence, precio in (
-        ("a", "2026-09-30T23:10:00Z", 102),
-        ("b", "2026-10-01T23:10:00Z", 124),
-        ("c", None, 999),
-    ):
-        ev = {
-            "id": eid,
-            "away_team": "Chicago White Sox",
-            "home_team": "Houston Astros",
-            "bookmakers": [
-                {
-                    "key": "draftkings",
-                    "markets": [
-                        {
-                            "key": "h2h",
-                            "outcomes": [
-                                {"name": "Chicago White Sox", "price": precio},
-                                {"name": "Houston Astros", "price": -120},
-                            ],
-                        }
-                    ],
-                }
-            ],
-        }
-        if commence:
-            ev["commence_time"] = commence
-        eventos.append(ev)
-
-    class _Resp:
-        status_code = 200
-        headers = {}
-
-        def raise_for_status(self):
-            return None
-
-        def json(self):
-            return eventos
-
-    monkeypatch.setenv("ODDS_API_KEY", "test-key")
-    monkeypatch.setattr(lb.requests, "get", lambda *_a, **_k: _Resp())
-    mapas, meta = lb.obtener_mapas_por_casa({"lineas": {"bookmakers": "draftkings", "api_key": "test-key"}})
-    assert meta["ok"] is True
-    libro = mapas["draftkings"]
-    assert buscar_lineas_partido(libro, "Chicago White Sox", "Houston Astros", fecha="2026-09-30")["away"]["american"] == 102
-    assert buscar_lineas_partido(libro, "Chicago White Sox", "Houston Astros", fecha="2026-10-01")["away"]["american"] == 124
-    variantes = next(iter(libro.values()))["variantes"]
-    assert len(variantes) == 2
 
 
 def test_cadena_no_apuesta_el_precio_de_otro_dia():
@@ -282,7 +229,7 @@ def test_cadena_no_apuesta_el_precio_de_otro_dia():
         {"lineas": {"bookmakers": "draftkings"}},
         fetch_espn=lambda js, _cfg: (js, {"ok": False, "mensaje": "scoreboard vacío"}),
         fetch_header=lambda: (mapa, {"ok": True, "mensaje": "header"}),
-        fetch_odds=lambda _cfg: ({}, {"ok": False, "mensaje": "sin key"}),
+        fetch_action=lambda _cfg, _js: (_ for _ in ()).throw(AssertionError("action")),
     )
     assert out[0]["odds_away_american"] == 102
     assert out[0]["fuente_momio"] == "draftkings"
@@ -496,6 +443,51 @@ def test_health_cuenta_sin_momio_real_y_conserva_congelacion(monkeypatch):
     assert odds["pendientes_24h"] == 1
     assert odds["sin_precio_congelado"] == 1
     assert body["congelacion"]["ventanas_min"]
+    texto = json.dumps(body, ensure_ascii=False)
+    assert "odds_api" not in odds
+    assert "key_presente" not in odds
+    assert "key_preview" not in odds
+    assert "ODDS_API_KEY" not in texto
+    assert "the-odds-api" not in texto.lower()
+
+
+def test_proveedor_betmgm_cae_en_espn_sin_clave(monkeypatch):
+    import copy
+
+    monkeypatch.setattr(srv.app.router, "lifespan_context", _sin_motor)
+    real = srv.cargar_config()
+
+    def espn():
+        return {}, {"ok": True, "partidos": 4, "mensaje": "4 partidos ESPN"}
+
+    monkeypatch.setattr("lineas_espn.obtener_lineas_espn", espn)
+
+    for legado in ("betmgm", "the-odds-api"):
+        def cfg(nombre=legado):
+            out = copy.deepcopy(real)
+            out.setdefault("lineas", {})["proveedor"] = nombre
+            return out
+
+        monkeypatch.setattr(srv, "cargar_config", cfg)
+        body = srv.api_odds_status()
+        assert body["proveedor"] == "espn"
+        assert body["ok"] is True
+        assert body["fallback_espn"] is True
+        assert body["partidos"] == 4
+        assert "key_presente" not in body
+        assert "key_preview" not in body
+        assert "fuente" not in body
+        assert "ayuda" not in body
+        texto = json.dumps(body, ensure_ascii=False)
+        assert "ODDS_API_KEY" not in texto
+        assert "the-odds-api.com" not in texto
+        health = srv.api_health()["odds"]
+        assert health["proveedor"] == "espn"
+        assert "odds_api" not in health
+        texto_health = json.dumps(health, ensure_ascii=False)
+        assert "ODDS_API_KEY" not in texto_health
+        assert "the-odds-api" not in texto_health.lower()
+        assert "clave" not in texto_health.lower()
 
 
 def test_sin_momio_y_auditoria_persisten_en_la_base(monkeypatch):

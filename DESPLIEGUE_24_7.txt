@@ -24,7 +24,6 @@ PASO 2 — CREAR SERVICIO EN RENDER
    - Plan: Free
 
 5. Variables de entorno (Environment):
-   ODDS_API_KEY     = (tu key de the-odds-api.com)
    GROQ_API_KEY     = (opcional; key gratis en console.groq.com)
    CRON_SECRET      = inventa una clave larga (ej. miClaveSecreta2026)
    DATA_DIR         = /var/data
@@ -68,7 +67,7 @@ PASO 5 — TU EXPERIMENTO EN LA NUBE
 ------------------------------------
 - memoria_auditoria.json se copia al arrancar (banca guardada)
 - Bloqueo 1h antes de cada juego (automatico)
-- Stats + ML + BetMGM (sin IA / sin costo Google)
+- Stats + ML + cuotas ESPN y Action Network (sin IA / sin costo Google)
 - PC puede estar APAGADA
 
 NOTAS
@@ -79,6 +78,4 @@ NOTAS
 - Backup automatico: GitHub Action "Backup memoria Render" guarda
   memoria_auditoria.json en main 3 veces al dia. Si hay wipe, al
   arrancar se restaura desde ese archivo (+ dia actual en disco).
-- No subas odds_api_key.txt a GitHub; usa ODDS_API_KEY en Render
-
 ================================================================================

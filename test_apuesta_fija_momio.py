@@ -134,21 +134,23 @@ def test_cadena_elige_la_siguiente_casa_y_no_inventa():
             ],
         }
     ]
-    odds_called = {"n": 0}
-
     def fetch_espn(js, _cfg):
         return js, {"ok": True, "mensaje": "stub"}
 
     def fetch_header():
         raise AssertionError("no debía pedir el header: DraftKings ya cotiza")
 
-    def fetch_odds(_cfg):
-        odds_called["n"] += 1
-        raise AssertionError("no debía pedir The Odds API")
+    def fetch_action(_cfg, _juegos):
+        raise AssertionError("no debía pedir Action Network")
 
-    cfg = {"lineas": {"bookmakers": "pinnacle,draftkings,fanduel", "cadena_momios": ["espn_scoreboard", "espn_header", "odds_api"]}}
+    cfg = {
+        "lineas": {
+            "bookmakers": "pinnacle,draftkings,fanduel",
+            "cadena_momios": ["espn_scoreboard", "espn_header", "action_network"],
+        }
+    }
     out, meta = aplicar_cadena_momios(
-        juegos, cfg, fetch_espn=fetch_espn, fetch_header=fetch_header, fetch_odds=fetch_odds
+        juegos, cfg, fetch_espn=fetch_espn, fetch_header=fetch_header, fetch_action=fetch_action
     )
     juego = out[0]
     assert juego["fuente_momio"] == "draftkings"
@@ -156,13 +158,12 @@ def test_cadena_elige_la_siguiente_casa_y_no_inventa():
     assert juego["origen_momio"] == "espn_scoreboard:draftkings"
     assert juego["odds_away_american"] == -110
     assert meta["reales"] == 1
-    assert odds_called["n"] == 0
     fallos = " ".join(i["fuente"] for i in juego["momio_intentos"] if not i["ok"])
     assert "pinnacle" in fallos
     assert "fanduel" not in fallos
 
 
-def test_header_y_odds_api_entran_si_el_anterior_no_cotiza():
+def test_header_y_action_network_entran_si_el_anterior_no_cotiza():
     from lineas_betmgm import _match_key
 
     key = _match_key("New York Yankees", "Boston Red Sox")
@@ -178,29 +179,32 @@ def test_header_y_odds_api_entran_si_el_anterior_no_cotiza():
             "home": {"casa": "fanduel", "american": -115, "decimal": 1.87},
         }
     }
-    odds_called = {"n": 0}
 
-    def fetch_odds(_cfg):
-        odds_called["n"] += 1
-        raise AssertionError("header ya cotizó; no hace falta The Odds API")
+    def fetch_action(_cfg, _juegos):
+        raise AssertionError("header ya cotizó; no hace falta Action Network")
 
     out, _meta = aplicar_cadena_momios(
         [dict(partido)],
         cfg,
         fetch_espn=vacio,
         fetch_header=lambda: (header, {"ok": True, "mensaje": "header"}),
-        fetch_odds=fetch_odds,
+        fetch_action=fetch_action,
     )
     assert out[0]["origen_momio"] == "espn_header:fanduel"
     assert out[0]["paso_momio"] == "espn_header"
-    assert odds_called["n"] == 0
 
-    api = {
-        "betmgm": {
-            key: {
-                "away": {"casa": "betmgm", "american": 130, "decimal": 2.3},
-                "home": {"casa": "betmgm", "american": -150, "decimal": 1.667},
-            }
+    action = {
+        key: {
+            "libros": [
+                {
+                    "casa": "betmgm",
+                    "provider": "BetMGM",
+                    "ml_away": 130,
+                    "ml_home": -150,
+                    "away": 2.3,
+                    "home": 1.667,
+                }
+            ]
         }
     }
     out2, _meta2 = aplicar_cadena_momios(
@@ -208,10 +212,10 @@ def test_header_y_odds_api_entran_si_el_anterior_no_cotiza():
         cfg,
         fetch_espn=vacio,
         fetch_header=lambda: ({}, {"ok": False, "mensaje": "ESPN header vacío"}),
-        fetch_odds=lambda _cfg: (api, {"ok": True, "mensaje": "odds api"}),
+        fetch_action=lambda _cfg, _juegos: (action, {"ok": True, "mensaje": "action"}),
     )
-    assert out2[0]["origen_momio"] == "odds_api:betmgm"
-    assert out2[0]["paso_momio"] == "odds_api"
+    assert out2[0]["origen_momio"] == "action_network:betmgm"
+    assert out2[0]["paso_momio"] == "action_network"
     assert out2[0]["odds_away_american"] == 130
     fallos = " ".join(i["fuente"] for i in out2[0]["momio_intentos"] if not i["ok"])
     assert "espn_scoreboard" in fallos
@@ -227,21 +231,22 @@ def test_si_todas_las_casas_fallan_se_estima_y_no_se_salta():
     def fetch_header():
         return {}, {"ok": False, "mensaje": "ESPN header vacío"}
 
-    def fetch_odds(_cfg):
-        return {}, {"ok": False, "mensaje": "Falta ODDS_API_KEY"}
+    def fetch_action(_cfg, _juegos):
+        return {}, {"ok": False, "mensaje": "Action Network vacío"}
 
     out, _meta = aplicar_cadena_momios(
         juegos,
         {"lineas": {"bookmakers": "pinnacle,draftkings"}},
         fetch_espn=fetch_espn,
         fetch_header=fetch_header,
-        fetch_odds=fetch_odds,
+        fetch_action=fetch_action,
     )
     juego = out[0]
     assert juego.get("fuente_momio") != "estimado"
     motivos = " ".join(i["motivo"] for i in juego["momio_intentos"])
-    assert "ODDS_API_KEY" in motivos
+    assert "ODDS_API_KEY" not in motivos
     assert "scoreboard" in motivos.lower() or "ESPN" in motivos
+    assert "action network" in motivos.lower()
 
     aplicar_momio_estimado(juego, 60, 40, intentos=juego["momio_intentos"])
     assert juego["fuente_momio"] == "sin_momio_real"

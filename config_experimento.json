@@ -38,7 +38,7 @@
 
     "action_network": true,
 
-    "cadena_momios": ["espn_scoreboard", "espn_header", "odds_api", "action_network"]
+    "cadena_momios": ["espn_scoreboard", "espn_header", "action_network"]
 
   },
 

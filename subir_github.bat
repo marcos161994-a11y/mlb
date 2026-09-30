@@ -21,10 +21,6 @@ if not exist .git (
 )
 
 echo.
-echo IMPORTANTE: odds_api_key.txt NO se sube a GitHub (esta en .gitignore^)
-echo En Render pondras ODDS_API_KEY como variable de entorno.
-echo.
-
 git add .
 git status
 echo.

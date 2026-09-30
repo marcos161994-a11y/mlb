@@ -7,10 +7,7 @@ Orden, y se detiene en la primera casa que cotiza el partido:
    mismo payload.
 2. ESPN header (segundo endpoint público, sin key) si el scoreboard no
    trajo ese partido.
-3. The Odds API, una casa configurada a la vez. Hace falta ``ODDS_API_KEY``
-   (o ``lineas.api_key`` / ``odds_api_key.txt``). Sin key se anota el fallo
-   y se sigue; no se inventa un precio de esa API.
-4. Action Network (público, sin key), si ``lineas.action_network`` no está
+3. Action Network (público, sin key), si ``lineas.action_network`` no está
    en false. Moneyline de las casas de ``lineas.bookmakers`` y, si ninguna
    de esas cotiza, cualquier otra casa del payload. ``fuente_momio`` y
    ``paso_momio`` quedan en ``action_network``; ``casa_momio`` es la casa.
@@ -29,7 +26,7 @@ from typing import Any, Callable
 # Dos lados a -110: cada uno implica 110/210. El overround es 220/210.
 OVERROUND_MENOS_110 = 220.0 / 210.0
 
-_CADENA_DEFAULT = ("espn_scoreboard", "espn_header", "odds_api", "action_network")
+_CADENA_DEFAULT = ("espn_scoreboard", "espn_header", "action_network")
 FRESH_MINUTES = 15
 _FUENTES_SIN_PRECIO = frozenset(
     {"", "modelo", "none", "null", "import", "estimado", "sin_momio_real"}
@@ -77,7 +74,7 @@ def reset_rechazos() -> None:
 
 
 def anotar_fuente(fuente: str, ok: bool) -> None:
-    """Suma un acierto o un fallo del eslabón (espn, odds_api, action_network…)."""
+    """Suma un acierto o un fallo del eslabón (espn_scoreboard, espn_header, action_network)."""
     nombre = _paso_de(fuente)
     if not nombre or nombre in _FUENTES_SIN_PRECIO:
         nombre = "fuente"
@@ -537,8 +534,6 @@ def _paso_de(nombre: str) -> str:
     nombre = str(nombre or "").strip().lower()
     if nombre.startswith("action_network"):
         return "action_network"
-    if nombre.startswith("odds_api"):
-        return "odds_api"
     if nombre.startswith("espn_header"):
         return "espn_header"
     if nombre.startswith("espn_scoreboard"):
@@ -760,16 +755,6 @@ def _fetch_header_default() -> tuple[dict, dict]:
         return {}, {"ok": False, "mensaje": f"ESPN header: {e}"[:180]}
 
 
-def _fetch_odds_default(cfg: dict) -> tuple[dict[str, dict], dict]:
-    from lineas_betmgm import obtener_mapas_por_casa
-
-    try:
-        return obtener_mapas_por_casa(cfg)
-    except Exception as e:
-        print(f"[MOMIO] odds_api falló: {e}")
-        return {}, {"ok": False, "mensaje": f"The Odds API: {e}"[:180]}
-
-
 def _fetch_action_default(cfg: dict, juegos: list[dict]) -> tuple[dict, dict]:
     from lineas_action_network import obtener_mapa_action_network
 
@@ -846,7 +831,6 @@ def aplicar_cadena_momios(
     *,
     fetch_espn: Callable | None = None,
     fetch_header: Callable | None = None,
-    fetch_odds: Callable | None = None,
     fetch_action: Callable | None = None,
 ) -> tuple[list[dict], dict]:
     """Rellena momios reales. Los partidos sin casa quedan para el estimado."""
@@ -855,7 +839,6 @@ def aplicar_cadena_momios(
     pasos = _pasos_cadena(cfg)
     fetch_espn = fetch_espn or _fetch_espn_default
     fetch_header = fetch_header or _fetch_header_default
-    fetch_odds = fetch_odds or _fetch_odds_default
     fetch_action = fetch_action or _fetch_action_default
 
     meta_espn: dict = {"ok": False, "mensaje": "ESPN no consultado"}
@@ -890,34 +873,6 @@ def aplicar_cadena_momios(
                 _aplicar_mapa(juego, mapa_h if isinstance(mapa_h, dict) else {}, "espn_header", meta_h)
                 anotar_fuente("espn_header", _paso_cubrio(juego, "espn_header"))
 
-    meta_api: dict = {"ok": False, "mensaje": "The Odds API no consultada"}
-    if "odds_api" in pasos:
-        faltan = [j for j in juegos if not _tiene_momio_real(j)]
-        if faltan:
-            mapas, meta_api = fetch_odds(cfg)
-            if not isinstance(meta_api, dict):
-                meta_api = {"ok": False, "mensaje": "The Odds API sin meta"}
-            mapas = mapas if isinstance(mapas, dict) else {}
-            if not mapas:
-                motivo = str(meta_api.get("mensaje") or "sin momios")[:180]
-                for juego in faltan:
-                    _anotar(juego, "odds_api", False, motivo)
-            else:
-                casas = list(orden) + [c for c in mapas if c not in orden]
-                for casa in casas:
-                    mapa = mapas.get(casa) or {}
-                    for juego in faltan:
-                        if _tiene_momio_real(juego):
-                            continue
-                        _aplicar_mapa(
-                            juego,
-                            mapa,
-                            f"odds_api:{casa}",
-                            {"ok": bool(mapa), "mensaje": "esta casa no cotiza el partido"},
-                        )
-            for juego in faltan:
-                anotar_fuente("odds_api", _paso_cubrio(juego, "odds_api"))
-
     meta_an: dict = {"ok": False, "mensaje": "Action Network no consultada"}
     if "action_network" in pasos and action_network_activo(cfg):
         faltan = [j for j in juegos if not _tiene_momio_real(j)]
@@ -951,7 +906,6 @@ def aplicar_cadena_momios(
             "(registrado sin apuesta)"
         ),
         "espn": meta_espn.get("mensaje"),
-        "odds_api": meta_api.get("mensaje"),
         "action_network": meta_an.get("mensaje"),
     }
     return juegos, meta

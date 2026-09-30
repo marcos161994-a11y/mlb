@@ -72,17 +72,18 @@ EN EL PANEL
   - 🎯 Ver Parleys Recomendados = parleys en vivo (actualiza cada minuto)
   - Botón: "Forzar bloqueos pendientes ahora"
 
-LÍNEAS BETMGM
--------------
-  - API key en: odds_api_key.txt
-  - Plan gratis: the-odds-api.com
-  - Actualización: Cada minuto para datos en vivo
+LÍNEAS
+------
+  - Cadena: ESPN scoreboard, ESPN header y Action Network (sin API key)
+  - Si nadie cotiza el partido, el pick queda registrado sin apuesta
 
 ARCHIVOS IMPORTANTES
 --------------------
   servidor_mlb.py        → motor principal
   modelo_mlb.py          → predicciones y valor (con bullpen fatiga)
-  lineas_betmgm.py       → cuotas BetMGM (cache 1 minuto)
+  lineas_betmgm.py       → empareja equipos y momios (ESPN / Action Network)
+  lineas_espn.py         → cuotas ESPN
+  lineas_action_network.py → cuotas Action Network
   parleys_betmgm.py      → sistema de parleys en vivo
   memoria_auditoria.json → banca y apuestas (NO borrar)
   config_experimento.json → reglas del experimento

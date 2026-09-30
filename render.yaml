@@ -16,8 +16,6 @@ services:
       # Si el dashboard ya define PYTHON_VERSION, ese valor pisa este blueprint.
       - key: PYTHON_VERSION
         value: "3.12.14"
-      - key: ODDS_API_KEY
-        sync: false
       - key: GROQ_API_KEY
         sync: false
       # Mismo valor en GitHub → Settings → Secrets → Actions → CRON_SECRET.

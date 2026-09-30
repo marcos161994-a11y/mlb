@@ -102,7 +102,6 @@ def _sin_previos():
     return dict(
         fetch_espn=lambda js, _cfg: (js, {"ok": False, "mensaje": "ESPN scoreboard caído"}),
         fetch_header=lambda: ({}, {"ok": False, "mensaje": "ESPN header vacío"}),
-        fetch_odds=lambda _cfg: ({}, {"ok": False, "mensaje": "Falta ODDS_API_KEY"}),
     )
 
 
@@ -113,7 +112,7 @@ def _motivos(juego: dict) -> str:
 
 
 def test_la_cadena_default_termina_en_action_network():
-    assert _CADENA_DEFAULT == ("espn_scoreboard", "espn_header", "odds_api", "action_network")
+    assert _CADENA_DEFAULT == ("espn_scoreboard", "espn_header", "action_network")
     assert action_network_activo({}) is True
     assert action_network_activo({"lineas": {}}) is True
     assert action_network_activo({"lineas": {"action_network": False}}) is False
@@ -353,7 +352,6 @@ def test_no_llama_action_network_si_una_casa_anterior_ya_cotiza(monkeypatch):
         _CFG,
         fetch_espn=fetch_espn,
         fetch_header=lambda: (_ for _ in ()).throw(AssertionError("header")),
-        fetch_odds=lambda _cfg: (_ for _ in ()).throw(AssertionError("odds")),
     )
     assert out[0]["paso_momio"] == "espn_scoreboard"
     assert out[0]["fuente_momio"] == "draftkings"
@@ -372,11 +370,11 @@ def test_el_orden_de_la_cadena_llega_a_action_network_al_final(monkeypatch):
     assert juego["origen_momio"] == "action_network:draftkings"
     fuentes = [item["fuente"] for item in juego["momio_intentos"]]
     assert fuentes.index("espn_scoreboard") < fuentes.index("espn_header")
-    assert fuentes.index("espn_header") < fuentes.index("odds_api")
     assert any(nombre.startswith("action_network") for nombre in fuentes)
-    assert max(i for i, nombre in enumerate(fuentes) if nombre == "odds_api") < min(
+    assert max(i for i, nombre in enumerate(fuentes) if nombre.startswith("espn_header")) < min(
         i for i, nombre in enumerate(fuentes) if nombre.startswith("action_network")
     )
+    assert "odds_api" not in fuentes
     assert len(llamadas) == 1
     out2, _meta2 = aplicar_cadena_momios([_juego(game, inicio)], _CFG, **_sin_previos())
     assert out2[0]["casa_momio"] == "DraftKings"

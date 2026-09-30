@@ -125,8 +125,7 @@ PASO 4: DESPLEGAR EN RENDER
 4.4 Configurar variables de entorno (si es necesario)
    - En la sección "Environment", haz clic en "Add Environment Variable"
    - Agrega variables si tu código las necesita:
-     - ODDS_API_KEY: tu clave de The Odds API
-     - Otras variables que uses
+     - GROQ_API_KEY, CRON_SECRET, DATABASE_URL (ver render.yaml)
 
 4.5 Configurar plan gratuito
    - Instance Type: Free
