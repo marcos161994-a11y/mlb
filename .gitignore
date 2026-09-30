@@ -13,6 +13,10 @@ memoria_snapshots/
 taller/salida/
 taller/boveda_mental/
 memoria_auditoria_backup.json
+memoria.sqlite
+memoria.sqlite-journal
+memoria.sqlite-wal
+memoria.sqlite-shm
 
 # Entorno de desarrollo local
 .venv/

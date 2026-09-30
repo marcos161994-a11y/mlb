@@ -104,26 +104,9 @@ def auditar_integridad_memoria(memoria: dict | None) -> list[dict[str, Any]]:
     return hallazgos
 
 
-def auditar_backup_local(
-    memoria_path: Path,
-    backup_path: Path,
-) -> list[dict[str, Any]]:
-    """Compara memoria principal vs memoria_auditoria_backup.json en disco."""
+def auditar_backup_documentos(main: dict | None, backup: dict | None) -> list[dict[str, Any]]:
+    """Compara el documento vivo contra un snapshot o backup."""
     hallazgos: list[dict[str, Any]] = []
-    if not backup_path.exists():
-        return hallazgos
-    try:
-        main = json.loads(memoria_path.read_text(encoding="utf-8")) if memoria_path.exists() else {}
-        backup = json.loads(backup_path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as e:
-        return [
-            {
-                "codigo": "backup_ilegible",
-                "severidad": "alta",
-                "mensaje": f"No se pudo leer memoria/backup: {e}"[:160],
-                "acciones": [ACCION_REGISTRAR, ACCION_NOTIFICAR],
-            }
-        ]
     if not isinstance(main, dict):
         main = {}
     if not isinstance(backup, dict):
@@ -146,6 +129,28 @@ def auditar_backup_local(
             }
         )
     return hallazgos
+
+
+def auditar_backup_local(
+    memoria_path: Path,
+    backup_path: Path,
+) -> list[dict[str, Any]]:
+    """Compara memoria principal vs memoria_auditoria_backup.json en disco."""
+    if not backup_path.exists():
+        return []
+    try:
+        main = json.loads(memoria_path.read_text(encoding="utf-8")) if memoria_path.exists() else {}
+        backup = json.loads(backup_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as e:
+        return [
+            {
+                "codigo": "backup_ilegible",
+                "severidad": "alta",
+                "mensaje": f"No se pudo leer memoria/backup: {e}"[:160],
+                "acciones": [ACCION_REGISTRAR, ACCION_NOTIFICAR],
+            }
+        ]
+    return auditar_backup_documentos(main if isinstance(main, dict) else {}, backup if isinstance(backup, dict) else None)
 
 
 def verificar_panel_html(html_path: Path | None = None) -> dict[str, Any]:

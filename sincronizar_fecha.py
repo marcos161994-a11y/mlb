@@ -11,15 +11,22 @@ TZ = ZoneInfo("America/Puerto_Rico")
 
 
 def sincronizar_dia() -> None:
-    ruta_json = os.path.join(os.path.dirname(__file__), "memoria_auditoria.json")
+    from pathlib import Path
 
-    if not os.path.exists(ruta_json):
-        print(f"[ERROR] No se encontró el archivo: {ruta_json}")
-        return
+    from memoria_store import abrir
+
+    base = Path(__file__).resolve().parent
+    ruta_json = base / "memoria_auditoria.json"
+    store = abrir(Path(os.environ.get("DATA_DIR", str(base))))
 
     try:
-        with open(ruta_json, "r", encoding="utf-8") as f:
-            data = json.load(f)
+        data = store.cargar()
+        if not isinstance(data, dict) or not data.get("dias"):
+            if not ruta_json.exists():
+                print(f"[ERROR] No se encontró el archivo: {ruta_json}")
+                return
+            with ruta_json.open("r", encoding="utf-8") as f:
+                data = json.load(f)
 
         if not isinstance(data, dict) or "dias" not in data or not data["dias"]:
             print("[INFO] No hay días registrados para sincronizar.")
@@ -61,8 +68,7 @@ def sincronizar_dia() -> None:
         anterior = data.get("dia_actual")
         data["dia_actual"] = nuevo_dia
 
-        with open(ruta_json, "w", encoding="utf-8") as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
+        store.guardar(data)
 
         print(
             f"[OK] Experimento sincronizado: día {anterior} → {nuevo_dia} "
