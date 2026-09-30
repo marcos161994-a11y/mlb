@@ -10,6 +10,8 @@
 
   "minutos_antes_juego": 60,
 
+  "ventanas_congelacion": [90, 60, 30, 10],
+
   "minutos_gracia_bloqueo": 30,
 
   "timezone": "America/Puerto_Rico",

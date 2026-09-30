@@ -1,8 +1,10 @@
 """
 Quantum MLB — Experimento de 10 días (paper trading con resultados reales MLB).
 
-Cada juego se evalúa y bloquea el stake configurado automáticamente 1 hora ANTES de su inicio
-(hora Puerto Rico), solo si hay valor vs BetMGM. Al finalizar se liquida P/L.
+Cada juego se congela en T-90, T-60, T-30 o T-10 (la primera ventana que alcance
+el servidor) y el stake se bloquea 1 hora ANTES del inicio (hora Puerto Rico),
+solo si hay valor vs el mercado. No se congela después del primer lanzamiento.
+Al finalizar se liquida P/L.
 """
 
 from __future__ import annotations
@@ -770,6 +772,262 @@ def fecha_oficial_juego(juego_api: dict, inicio: datetime) -> str:
 def hora_bloqueo_para_inicio(inicio: datetime) -> datetime:
     mins = int(cargar_config().get("minutos_antes_juego", 60))
     return inicio - timedelta(minutes=mins)
+
+
+# Cualquiera de estas abre el congelado si el pick aún no está fijo.
+# El catch-up (despertar o cron) congela en cuanto la más temprana ya pasó,
+# sin esperar a la siguiente, mientras el primer lanzamiento no haya ocurrido.
+VENTANAS_CONGELACION_DEFAULT = (90, 60, 30, 10)
+
+
+def ventanas_congelacion(cfg: dict | None = None) -> list[int]:
+    """Minutos antes del inicio en los que se puede congelar (de más temprano a más tarde)."""
+    cfg = cfg if isinstance(cfg, dict) else {}
+    raw = cfg.get("ventanas_congelacion")
+    if raw is None:
+        raw = list(VENTANAS_CONGELACION_DEFAULT)
+    if isinstance(raw, str):
+        raw = [x.strip() for x in raw.split(",")]
+    if not isinstance(raw, (list, tuple)):
+        return list(VENTANAS_CONGELACION_DEFAULT)
+    out: set[int] = set()
+    for x in raw:
+        try:
+            n = int(x)
+        except (TypeError, ValueError):
+            continue
+        if n > 0:
+            out.add(n)
+    if not out:
+        return list(VENTANAS_CONGELACION_DEFAULT)
+    return sorted(out, reverse=True)
+
+
+def horizonte_congelacion_min(cfg: dict | None = None) -> int:
+    ventanas = ventanas_congelacion(cfg)
+    return ventanas[0] if ventanas else 90
+
+
+def minutos_hasta_inicio(juego: dict, ahora: datetime | None = None) -> float | None:
+    """Minutos que faltan para el primer lanzamiento. Negativo si ya pasó."""
+    inicio = _parse_iso_dt(juego.get("inicio_juego"))
+    if inicio is None:
+        return None
+    ahora = ahora or ahora_simulado()
+    if ahora.tzinfo is None:
+        ahora = ahora.replace(tzinfo=inicio.tzinfo or tz_experimento())
+    return (inicio - ahora).total_seconds() / 60.0
+
+
+def ventana_congelacion_abierta(mins_hasta: float, cfg: dict | None = None) -> int | None:
+    """Ventana más ajustada ya abierta (T-30 si faltan 25 min). None si aún no es T-90."""
+    if mins_hasta <= 0:
+        return None
+    abierta: int | None = None
+    for w in ventanas_congelacion(cfg):
+        if mins_hasta <= w:
+            abierta = w
+        else:
+            break
+    return abierta
+
+
+def juego_se_puede_congelar(
+    juego: dict,
+    cfg: dict | None = None,
+    ahora: datetime | None = None,
+) -> tuple[bool, str]:
+    """
+    True solo si el partido sigue PROGRAMADO, falta el primer pitch
+    y ya abrió alguna ventana (T-90 o más cerca).
+    """
+    cfg = cfg or {}
+    estado = str(juego.get("estado") or "")
+    if estado in ("EN VIVO", "FINALIZADO", "POSPUESTO"):
+        return False, f"no se congela en {estado}"
+    if estado != "PROGRAMADO":
+        return False, f"estado {estado or 'desconocido'}"
+    mins = minutos_hasta_inicio(juego, ahora)
+    if mins is None:
+        return False, "sin hora de inicio"
+    if mins <= 0:
+        return False, "primer pitch ya pasó"
+    abierta = ventana_congelacion_abierta(mins, cfg)
+    if abierta is None:
+        return False, f"aún no abre T-{horizonte_congelacion_min(cfg)}"
+    return True, f"T-{abierta}"
+
+
+def _ruta_alertas_congelacion() -> Path:
+    return DATA_DIR / "ventanas_congelacion.json"
+
+
+def _alertas_congelacion_vacias() -> dict:
+    return {
+        "ventanas_perdidas": 0,
+        "ventanas_recuperadas": 0,
+        "ultima_alerta": None,
+        "perdidas": {},
+        "recuperadas": {},
+    }
+
+
+def _leer_alertas_congelacion() -> dict:
+    path = _ruta_alertas_congelacion()
+    base = _alertas_congelacion_vacias()
+    if not path.exists():
+        return base
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return base
+    if not isinstance(data, dict):
+        return base
+    perdidas = data.get("perdidas")
+    recuperadas = data.get("recuperadas")
+    base["perdidas"] = perdidas if isinstance(perdidas, dict) else {}
+    base["recuperadas"] = recuperadas if isinstance(recuperadas, dict) else {}
+    base["ultima_alerta"] = data.get("ultima_alerta")
+    base["ventanas_perdidas"] = len(base["perdidas"])
+    base["ventanas_recuperadas"] = len(base["recuperadas"])
+    return base
+
+
+def _guardar_alertas_congelacion(data: dict) -> None:
+    data["ventanas_perdidas"] = len(data.get("perdidas") or {})
+    data["ventanas_recuperadas"] = len(data.get("recuperadas") or {})
+    path = _ruta_alertas_congelacion()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    tmp.replace(path)
+
+
+def resumen_congelacion_health(cfg: dict | None = None) -> dict:
+    """Conteo para /api/health. No llama a MLB."""
+    data = _leer_alertas_congelacion()
+    recientes = []
+    for gid, info in list((data.get("perdidas") or {}).items())[-8:]:
+        if not isinstance(info, dict):
+            continue
+        recientes.append(
+            {
+                "id": gid,
+                "visitante": info.get("visitante"),
+                "home": info.get("home"),
+                "motivo": info.get("motivo"),
+                "detectado_en": info.get("detectado_en"),
+            }
+        )
+    try:
+        ventanas = ventanas_congelacion(cfg or cargar_config())
+    except Exception:
+        ventanas = list(VENTANAS_CONGELACION_DEFAULT)
+    return {
+        "ventanas_min": ventanas,
+        "ventanas_perdidas": int(data.get("ventanas_perdidas") or 0),
+        "ventanas_recuperadas": int(data.get("ventanas_recuperadas") or 0),
+        "ultima_alerta": data.get("ultima_alerta"),
+        "recientes": recientes,
+    }
+
+
+def anotar_ventanas_perdidas(
+    juegos: list[dict],
+    ya_congelados: set[str],
+    cfg: dict | None = None,
+    ahora: datetime | None = None,
+) -> dict:
+    """
+    Cuenta partidos que ya empezaron o terminaron sin pick congelado.
+    No inventa el pick: solo deja el aviso para el watchdog.
+    """
+    try:
+        data = _leer_alertas_congelacion()
+    except Exception as e:
+        print(f"[CONGELAR] no se pudieron leer alertas: {e}")
+        return resumen_congelacion_health(cfg)
+
+    ahora = ahora or ahora_simulado()
+    perdidas = data.setdefault("perdidas", {})
+    nuevas = 0
+    for j in juegos or []:
+        gid = str(j.get("id") or "")
+        if not gid or gid in ya_congelados or gid in perdidas:
+            continue
+        estado = str(j.get("estado") or "")
+        mins = minutos_hasta_inicio(j, ahora)
+        if estado == "FINALIZADO":
+            motivo = "FINAL sin predicción (ventana perdida; no se congela después del primer pitch)"
+        elif estado == "EN VIVO":
+            motivo = "EN VIVO sin congelar (primer pitch ya pasó)"
+        elif estado == "PROGRAMADO" and mins is not None and mins <= 0:
+            motivo = "primer pitch sin pick congelado"
+        else:
+            continue
+        perdidas[gid] = {
+            "visitante": j.get("visitante"),
+            "home": j.get("home"),
+            "estado": estado,
+            "motivo": motivo,
+            "detectado_en": ahora.isoformat(),
+        }
+        nuevas += 1
+        print(
+            f"[CONGELAR] ventana perdida game_id={gid} "
+            f"{j.get('visitante')} @ {j.get('home')} · {motivo}"
+        )
+    if nuevas:
+        data["ultima_alerta"] = ahora.isoformat()
+        try:
+            _guardar_alertas_congelacion(data)
+        except Exception as e:
+            print(f"[CONGELAR] no se pudo guardar alerta: {e}")
+    return resumen_congelacion_health(cfg)
+
+
+def anotar_congelacion_recuperada(
+    juego: dict,
+    etiqueta: str,
+    cfg: dict | None = None,
+    ahora: datetime | None = None,
+) -> None:
+    """El pick se fijó en una ventana posterior (T-60/T-30/T-10), no en la primera."""
+    ventanas = ventanas_congelacion(cfg)
+    if not ventanas:
+        return
+    try:
+        num = int(str(etiqueta).removeprefix("T-"))
+    except (TypeError, ValueError):
+        return
+    if num >= ventanas[0]:
+        return
+    gid = str(juego.get("id") or "")
+    if not gid:
+        return
+    try:
+        data = _leer_alertas_congelacion()
+    except Exception as e:
+        print(f"[CONGELAR] recuperación no leída: {e}")
+        return
+    rec = data.setdefault("recuperadas", {})
+    if gid in rec:
+        return
+    ahora = ahora or ahora_simulado()
+    rec[gid] = {
+        "visitante": juego.get("visitante"),
+        "home": juego.get("home"),
+        "ventana": etiqueta,
+        "detectado_en": ahora.isoformat(),
+    }
+    print(
+        f"[CONGELAR] ventana anterior perdida, pick recuperado antes del primer pitch "
+        f"game_id={gid} {juego.get('visitante')} @ {juego.get('home')} · {etiqueta}"
+    )
+    try:
+        _guardar_alertas_congelacion(data)
+    except Exception as e:
+        print(f"[CONGELAR] no se pudo guardar recuperación: {e}")
 
 
 def _minutos_retry_cuotas(cfg: dict | None = None) -> list[int]:
@@ -1900,7 +2158,12 @@ def guardar_prediccion(
     stake_virtual: float | None = None,
     permitir_gracia: bool = False,
 ) -> bool:
-    """Guarda/actualiza predicción de un juego. No mueve capital."""
+    """Guarda/actualiza predicción de un juego. No mueve capital.
+
+    permitir_gracia se conserva por compatibilidad y no abre congelado
+    después del primer lanzamiento.
+    """
+    del permitir_gracia
     cfg = cargar_config()
     pick = (juego.get("pick") or "").strip()
     if not pick:
@@ -1961,31 +2224,23 @@ def guardar_prediccion(
         )
         return False
 
-    gracia_min = float(cfg.get("minutos_gracia_bloqueo", 30))
     inicio = _parse_iso_dt(juego.get("inicio_juego"))
     mins_despues = (
         (ahora_dt - inicio).total_seconds() / 60.0 if inicio else None
     )
 
-    # EN VIVO: solo con gracia explícita (Render dormido en T-60).
-    if estado == "EN VIVO":
-        if not permitir_gracia:
-            print(
-                f"[PREDICCIONES] No se congela pick nuevo en estado EN VIVO "
-                f"({juego.get('visitante')}@{juego.get('home')})"
-            )
-            return False
-        if mins_despues is None or mins_despues > gracia_min:
-            print(
-                f"[PREDICCIONES] EN VIVO fuera de gracia "
-                f"({mins_despues} min > {gracia_min}) "
-                f"({juego.get('visitante')}@{juego.get('home')})"
-            )
-            return False
-    elif mins_despues is not None and mins_despues > gracia_min:
+    # Integridad: un pick nuevo solo existe antes del primer lanzamiento.
+    # permitir_gracia se ignora: un partido empezado o final no entra en el conteo.
+    if estado in ("EN VIVO", "FINALIZADO", "POSPUESTO"):
         print(
-            f"[PREDICCIONES] No se congela pick post-inicio "
-            f"({mins_despues:.0f}m > gracia {gracia_min:.0f}m) "
+            f"[PREDICCIONES] No se congela pick nuevo en estado {estado} "
+            f"({juego.get('visitante')}@{juego.get('home')})"
+        )
+        return False
+    if mins_despues is not None and mins_despues >= 0:
+        print(
+            f"[PREDICCIONES] No se congela tras el primer pitch "
+            f"({mins_despues:.0f} min) "
             f"({juego.get('visitante')}@{juego.get('home')})"
         )
         return False
@@ -2011,12 +2266,11 @@ def guardar_prediccion(
         print(f"[BRIEFING] aviso T-60: {e}")
 
     motivo = juego.get("motivo_apuesta") or ""
-    if estado == "EN VIVO" and permitir_gracia:
-        extra = (
-            f"Congelado en gracia EN VIVO "
-            f"({(mins_despues or 0):.0f} min tras inicio)"
-        )
-        motivo = f"{motivo} · {extra}".strip(" ·")
+    etiqueta_ventana = None
+    if mins_despues is not None and mins_despues < 0:
+        abierta = ventana_congelacion_abierta(-mins_despues, cfg)
+        if abierta is not None:
+            etiqueta_ventana = f"T-{abierta}"
 
     dia["predicciones"].append(
         {
@@ -2045,7 +2299,8 @@ def guardar_prediccion(
             "stake_virtual": stake_v,
             "con_dinero": bool(con_dinero),
             "predicho_en": ahora,
-            "congelado_en_gracia": bool(estado == "EN VIVO" and permitir_gracia),
+            "congelado_en_gracia": False,
+            "ventana_congelacion": etiqueta_ventana,
             "valida_stats": True,
             "invalida_tarde": False,
             "confianza_baja": False,
@@ -2088,9 +2343,12 @@ def guardar_prediccion(
 
 def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     """
-    Registra pick en PAPEL para juegos PROGRAMADOS (tras T-60).
-    Si Render dormía: también EN VIVO dentro de minutos_gracia_bloqueo.
-    FINALIZADO: no se inventa pick a posteriori.
+    Congela el pick en papel si ya abrió T-90/T-60/T-30/T-10 y el partido
+    no ha empezado. Idempotente: un pick ya fijo no se reescribe.
+
+    forzar no salta el primer pitch ni congela un juego que todavía está
+    fuera de la ventana más temprana (eso fijaría un precio demasiado viejo).
+    FINAL / EN VIVO: no se inventa pick. Se anota la ventana perdida.
     """
     memoria = cargar_memoria()
     hoy = fecha_str()
@@ -2102,74 +2360,77 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
     nuevas = 0
     omitidas_vivo = 0
     cfg = cargar_config()
-    gracia = float(cfg.get("minutos_gracia_bloqueo", 30))
 
     for juego in juegos:
         estado = juego.get("estado")
         gid = str(juego.get("id") or "")
-        permitir_gracia = False
-        if estado == "EN VIVO":
-            mins = _minutos_desde_inicio(juego)
-            if mins is None or mins > gracia:
-                if gid not in ya:
-                    omitidas_vivo += 1
-                continue
-            permitir_gracia = True
-        elif estado != "PROGRAMADO":
-            continue
         if not (juego.get("pick") or "").strip():
             continue
         if gid in ya and not forzar:
             continue
-        if estado == "PROGRAMADO" and not forzar:
-            try:
-                hb = datetime.fromisoformat(juego["hora_bloqueo"])
-            except Exception:
-                continue
-            if hb > ahora:
-                continue
-        if guardar_prediccion(
+        se_puede, etiqueta = juego_se_puede_congelar(juego, cfg, ahora)
+        if not se_puede:
+            if gid not in ya and estado in ("EN VIVO", "FINALIZADO"):
+                omitidas_vivo += 1
+            elif gid not in ya and estado == "PROGRAMADO":
+                mins = minutos_hasta_inicio(juego, ahora)
+                if mins is not None and mins <= 0:
+                    omitidas_vivo += 1
+            continue
+        if not guardar_prediccion(
             dia,
             juego,
             con_dinero=False,
             stake_virtual=stake_v,
-            permitir_gracia=permitir_gracia,
+            permitir_gracia=False,
         ):
-            # Marca validez: solo PROGRAMADO pre-inicio
-            pred = next(
-                (p for p in dia["predicciones"] if str(p.get("game_id")) == gid),
-                None,
-            )
-            if pred is None:
-                print(f"[REGISTRO] Predicción no encontrada tras guardar game_id={gid}")
-                continue
-            if permitir_gracia:
-                pred["valida_stats"] = prediccion_valida_para_stats(pred)
-                pred["invalida_tarde"] = not pred["valida_stats"]
-            else:
-                pred["valida_stats"] = True
-                pred["invalida_tarde"] = False
-            try:
-                if cfg.get("usar_mente", True) and not isinstance(pred.get("ia_mente"), dict):
-                    mente_t60 = mente_conclusion(
-                        juego, cfg, memoria, forzar=True, solo_local=True
-                    )
-                    pred["ia_mente"] = mente_t60
-                    juego["ia_mente"] = mente_t60
-            except Exception as e:
-                print(f"[MENTE] aviso T-60: {e}")
-            nuevas += 1
-            ya.add(gid)
+            continue
+        pred = next(
+            (p for p in dia["predicciones"] if str(p.get("game_id")) == gid),
+            None,
+        )
+        if pred is None:
+            print(f"[REGISTRO] Predicción no encontrada tras guardar game_id={gid}")
+            continue
+        pred["valida_stats"] = True
+        pred["invalida_tarde"] = False
+        pred["congelado_en_gracia"] = False
+        pred["ventana_congelacion"] = etiqueta
+        try:
+            anotar_congelacion_recuperada(juego, etiqueta, cfg, ahora)
+        except Exception as e:
+            print(f"[CONGELAR] aviso recuperación: {e}")
+        try:
+            if cfg.get("usar_mente", True) and not isinstance(pred.get("ia_mente"), dict):
+                mente_t60 = mente_conclusion(
+                    juego, cfg, memoria, forzar=True, solo_local=True
+                )
+                pred["ia_mente"] = mente_t60
+                juego["ia_mente"] = mente_t60
+        except Exception as e:
+            print(f"[MENTE] aviso congelación: {e}")
+        print(
+            f"[CONGELAR] pick congelado game_id={gid} ventana={etiqueta} "
+            f"{juego.get('visitante')} @ {juego.get('home')}"
+        )
+        nuevas += 1
+        ya.add(gid)
 
     if nuevas:
         guardar_memoria(memoria)
     if omitidas_vivo:
-        print(f"[PREDICCIONES] Omitidas {omitidas_vivo} EN VIVO (fuera de gracia / ya empezados).")
+        print(f"[PREDICCIONES] Omitidos {omitidas_vivo} partidos ya empezados (no se congelan).")
+    congelacion: dict = {}
+    try:
+        congelacion = anotar_ventanas_perdidas(juegos, ya, cfg, ahora)
+    except Exception as e:
+        print(f"[CONGELAR] aviso ventanas perdidas: {e}")
     return {
         "ok": True,
         "predicciones_nuevas": nuevas,
         "omitidas_en_vivo": omitidas_vivo,
         "fecha": hoy,
+        "congelacion": congelacion,
     }
 
 
@@ -2184,9 +2445,7 @@ def vigilancia_t60(
     """
     cfg = cfg or {}
     memoria = memoria or {}
-    mins_antes = int(cfg.get("minutos_antes_juego", 60))
-    gracia = float(cfg.get("minutos_gracia_bloqueo", 30))
-    ventana_pre = float(mins_antes) + 30.0  # p.ej. 90 min si T-60
+    horizonte = float(horizonte_congelacion_min(cfg))
 
     fecha = fecha_str()
     dia = dia_por_fecha(memoria, fecha) if memoria else None
@@ -2228,7 +2487,7 @@ def vigilancia_t60(
         except Exception:
             mins_a_inicio = None
 
-        # Ya terminó y nunca hubo pick → perdido por sueño/ops (no inventamos pick)
+        # Ya terminó o ya empezó y nunca hubo pick → perdido (no se inventa).
         if estado == "FINALIZADO":
             perdidos.append(
                 {
@@ -2243,36 +2502,35 @@ def vigilancia_t60(
             )
             continue
 
-        if estado not in ("PROGRAMADO", "EN VIVO"):
+        if estado == "EN VIVO" or (
+            estado == "PROGRAMADO" and mins_a_inicio is not None and mins_a_inicio <= 0
+        ):
+            perdidos.append(
+                {
+                    "id": gid,
+                    "visitante": j.get("visitante"),
+                    "home": j.get("home"),
+                    "estado": estado,
+                    "hora_inicio_txt": j.get("hora_inicio_txt"),
+                    "mins_a_inicio": round(mins_a_inicio, 1) if mins_a_inicio is not None else None,
+                    "motivo": "Primer pitch sin pick congelado (no se congela a posteriori)",
+                }
+            )
+            continue
+
+        if estado != "PROGRAMADO":
             continue
 
         # Antes se exigía pick en el objeto juego: si el motor no corrió, no alertaba.
         riesgo = False
         motivo = ""
-        if estado == "PROGRAMADO" and mins_a_inicio is not None:
-            if -gracia <= mins_a_inicio <= ventana_pre:
-                riesgo = True
-                if mins_a_inicio <= mins_antes:
-                    motivo = f"T-60 pasado · faltan {mins_a_inicio:.0f} min al inicio · sin congelar"
-                else:
-                    motivo = f"Se acerca T-60 · faltan {mins_a_inicio:.0f} min · sin congelar"
-        elif estado == "EN VIVO":
-            mins_desde = _minutos_desde_inicio(j)
-            if mins_desde is not None and mins_desde <= gracia:
-                riesgo = True
-                motivo = f"EN VIVO sin congelar · {mins_desde:.0f} min de juego (gracia)"
-            elif mins_desde is not None and mins_desde > gracia:
-                perdidos.append(
-                    {
-                        "id": gid,
-                        "visitante": j.get("visitante"),
-                        "home": j.get("home"),
-                        "estado": estado,
-                        "hora_inicio_txt": j.get("hora_inicio_txt"),
-                        "mins_a_inicio": round(mins_a_inicio, 1) if mins_a_inicio is not None else None,
-                        "motivo": f"EN VIVO fuera de gracia ({mins_desde:.0f} min) sin pick",
-                    }
-                )
+        if mins_a_inicio is not None and 0 < mins_a_inicio <= horizonte:
+            riesgo = True
+            abierta = ventana_congelacion_abierta(mins_a_inicio, cfg)
+            etiqueta = f"T-{abierta}" if abierta else f"T-{int(horizonte)}"
+            motivo = (
+                f"{etiqueta} abierta · faltan {mins_a_inicio:.0f} min al inicio · sin congelar"
+            )
 
         if riesgo:
             en_riesgo.append(
@@ -2314,6 +2572,11 @@ def vigilancia_t60(
     else:
         mensaje = "Vigilancia T-60 OK · sin juegos en riesgo ahora"
         nivel = "ok"
+
+    try:
+        anotar_ventanas_perdidas(juegos or [], ya, cfg, ahora)
+    except Exception as e:
+        print(f"[CONGELAR] vigilancia: {e}")
 
     return {
         "ok": n == 0 and n_perd == 0,
@@ -2512,30 +2775,15 @@ def _minutos_desde_inicio(juego: dict) -> float | None:
 
 
 def _permite_bloqueo_dinero(juego: dict, *, forzar: bool = False) -> tuple[bool, str]:
-    """
-    PROGRAMADO siempre (si ya pasó T-60 o forzar).
-    EN VIVO: solo gracia corta tras el inicio (Render dormido en T-60).
-    """
+    """Dinero solo en PROGRAMADO y antes del primer lanzamiento."""
+    del forzar
     estado = juego.get("estado")
+    mins = _minutos_desde_inicio(juego)
+    if mins is not None and mins >= 0:
+        return False, "Primer pitch ya pasó; no se apuesta a un partido empezado."
     if estado == "PROGRAMADO":
         return True, ""
-    if estado != "EN VIVO":
-        return False, f"El juego ya está {estado}; solo se apuesta antes/al inicio."
-
-    cfg = cargar_config()
-    gracia = float(cfg.get("minutos_gracia_bloqueo", 30))
-    mins = _minutos_desde_inicio(juego)
-    if mins is None:
-        return False, "EN VIVO sin hora de inicio; no se bloquea dinero."
-    if mins < -5:
-        # Aún no debería estar EN VIVO según reloj; permitir
-        return True, "gracia_preinicio"
-    if mins <= gracia or forzar:
-        return True, f"gracia_en_vivo_{mins:.0f}m"
-    return False, (
-        f"EN VIVO hace {mins:.0f} min (gracia {gracia:.0f} min); "
-        "no se apuesta dinero a partido avanzado."
-    )
+    return False, f"El juego ya está {estado}; solo se apuesta antes del primer pitch."
 
 
 def bloquear_juego(game_id: str, forzar: bool = False) -> dict:
@@ -2592,18 +2840,9 @@ def _bloquear_juego_locked(
         }
 
     stake_v = stake_virtual_prediccion(memoria)
-    # Congelar papel en PROGRAMADO; EN VIVO solo dentro de la gracia (Render dormido).
-    ok_gracia, _motivo_g = _permite_bloqueo_dinero(juego, forzar=forzar)
+    # El pick de papel solo se crea si el partido sigue sin empezar.
     if juego.get("estado") == "PROGRAMADO":
         guardar_prediccion(dia, juego, con_dinero=False, stake_virtual=stake_v)
-    elif juego.get("estado") == "EN VIVO" and ok_gracia:
-        guardar_prediccion(
-            dia,
-            juego,
-            con_dinero=False,
-            stake_virtual=stake_v,
-            permitir_gracia=True,
-        )
 
     # Si ya había predicción congelada, la apuesta con dinero debe usar ESE pick
     pred_existente = next(
@@ -3037,19 +3276,36 @@ def bloquear_apuestas_del_dia(forzar: bool = False) -> dict:
             1 for j in juegos if j["estado"] != "FINALIZADO"
         ),
         "capital_actual": memoria["capital"],
+        "congelacion": pred_res.get("congelacion"),
     }
 
 
+def congelar_pick_si_toca(game_id: str) -> dict:
+    """Una ventana T-90/T-60/T-30/T-10. Si ya está congelado, no cambia el pick."""
+    try:
+        res = registrar_predicciones_del_dia(forzar=False)
+        res["game_id"] = str(game_id)
+        return res
+    except Exception as e:
+        print(f"[CONGELAR] ventana game_id={game_id}: {e}")
+        return {"ok": False, "game_id": str(game_id), "error": str(e)}
+
+
 def programar_bloqueos_por_juego() -> None:
-    """Programa bloqueo T-60 y reintentos de cuotas T-45/T-30 por juego."""
+    """Programa congelado en cada ventana y el bloqueo de dinero en T-60."""
     cfg = cargar_config()
     tz = cfg["timezone"]
     ahora = ahora_simulado()
     retries = _minutos_retry_cuotas(cfg)
+    ventanas = ventanas_congelacion(cfg)
 
     for job in scheduler.get_jobs():
         jid = job.id or ""
-        if jid.startswith("bloqueo_juego_") or jid.startswith("cuotas_retry_"):
+        if (
+            jid.startswith("bloqueo_juego_")
+            or jid.startswith("cuotas_retry_")
+            or jid.startswith("congelar_juego_")
+        ):
             scheduler.remove_job(job.id)
 
     juegos = obtener_juegos_fecha(fecha_str())
@@ -3061,6 +3317,16 @@ def programar_bloqueos_por_juego() -> None:
         if hb <= ahora and juego["estado"] != "PROGRAMADO":
             continue
         gid = juego["id"]
+        for mins in ventanas:
+            run_at = inicio - timedelta(minutes=mins)
+            if run_at <= ahora or run_at >= inicio:
+                continue
+            scheduler.add_job(
+                lambda g=gid: congelar_pick_si_toca(g),
+                DateTrigger(run_date=run_at, timezone=tz),
+                id=f"congelar_juego_{gid}_{mins}",
+                replace_existing=True,
+            )
         if hb > ahora:
             scheduler.add_job(
                 lambda g=gid: bloquear_juego(g),
@@ -3079,10 +3345,11 @@ def programar_bloqueos_por_juego() -> None:
                 replace_existing=True,
             )
         retry_txt = ", ".join(f"T-{m}" for m in retries) if retries else "—"
+        ventanas_txt = ", ".join(f"T-{m}" for m in ventanas)
         print(
             f"[PROGRAMADO] {juego['visitante']} vs {juego['home']} → "
-            f"bloqueo {juego['hora_bloqueo_txt']} · retry cuotas {retry_txt} "
-            f"(juego {juego['hora_inicio_txt']})"
+            f"congelar {ventanas_txt} · bloqueo {juego['hora_bloqueo_txt']} · "
+            f"retry cuotas {retry_txt} (juego {juego['hora_inicio_txt']})"
         )
 
 
@@ -3467,6 +3734,16 @@ async def lifespan(app: FastAPI):
         try:
             print("[MOTOR] Iniciando motor autónomo de sincronización en segundo plano...")
             avanzar_dia_automatico()
+            try:
+                catch = registrar_predicciones_del_dia(forzar=False)
+                cong = catch.get("congelacion") or {}
+                print(
+                    "[CONGELAR] catch-up al despertar · "
+                    f"nuevas={catch.get('predicciones_nuevas')} · "
+                    f"ventanas_perdidas={cong.get('ventanas_perdidas')}"
+                )
+            except Exception as e:
+                print(f"[CONGELAR] catch-up al despertar: {e}")
             mem_boot = cargar_memoria()
             try:
                 from calibracion import entrenar_calibrador
@@ -4477,6 +4754,7 @@ def api_health():
         },
         "mente_errores": _resumen_mente_errores(cfg_ops),
         "vigilancia_cron_min": 5,
+        "congelacion": resumen_congelacion_health(cfg),
         "xgboost": {
             "activo": bool(cfg.get("usar_xgboost", True)),
         },
@@ -5019,6 +5297,15 @@ def ejecutar_trabajo_cron_externo() -> dict:
             pass
     import_meta = None
     try:
+        cong_cron = resumen_congelacion_health(cfg)
+        n_perd = int(cong_cron.get("ventanas_perdidas") or 0)
+        if n_perd:
+            print(
+                f"[CONGELAR] alerta: {n_perd} partido(s) empezaron sin pick congelado"
+            )
+    except Exception as e:
+        print(f"[CONGELAR] resumen cron: {e}")
+    try:
         import_meta = _intentar_import_aprendizaje_repo_automatico()
     except Exception as e:
         print(f"[CRON] import aprendizaje: {e}")
@@ -5047,6 +5334,7 @@ def ejecutar_trabajo_cron_externo() -> dict:
             "mensaje": (mente_err or {}).get("mensaje"),
             "n_hallazgos": len((mente_err or {}).get("hallazgos") or []),
         },
+        "congelacion": resumen_congelacion_health(cfg),
     }
 
 
@@ -5407,7 +5695,11 @@ if __name__ == "__main__":
     print("=" * 60)
     print("  QUANTUM MLB — Experimento 10 días")
     print("  Panel: http://localhost:8000")
-    print(f"  Bloqueo automático: {cargar_config().get('minutos_antes_juego', 60)} min antes de cada inicio")
+    print(
+        "  Congelado: "
+        + "/".join(f"T-{m}" for m in ventanas_congelacion(cargar_config()))
+        + f" · dinero {cargar_config().get('minutos_antes_juego', 60)} min antes"
+    )
     print(f"  Stake: ${cargar_config().get('stake_por_juego', 3.0)} por juego")
     print("=" * 60)
     

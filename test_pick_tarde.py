@@ -73,7 +73,7 @@ def test_guardar_no_crea_en_vivo():
     assert dia["predicciones"] == []
 
 
-def test_guardar_en_vivo_con_gracia(monkeypatch):
+def test_guardar_no_congela_tras_primer_pitch_aunque_pidan_gracia(monkeypatch):
     from datetime import datetime, timedelta
     from zoneinfo import ZoneInfo
     import servidor_mlb as s
@@ -107,9 +107,8 @@ def test_guardar_en_vivo_con_gracia(monkeypatch):
         "inicio_juego": inicio.isoformat(),
         "lineas_fuente": "draftkings",
     }
-    assert s.guardar_prediccion(dia, juego, permitir_gracia=True) is True
-    assert len(dia["predicciones"]) == 1
-    assert dia["predicciones"][0]["congelado_en_gracia"] is True
+    assert s.guardar_prediccion(dia, juego, permitir_gracia=True) is False
+    assert dia["predicciones"] == []
 
 
 def test_guardar_no_crea_finalizado():
