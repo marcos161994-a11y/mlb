@@ -1247,13 +1247,14 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
     solo_modelo = _modo_solo_modelo(cfg)
     from filtro_valor import (
         cuota_lado_real,
-        filtro_activo,
+        filtro_valor_decide,
         margen_para_tipo,
         penaliza_scratch,
         tipo_para_cuota,
     )
 
-    fv_on = filtro_activo(cfg)
+    # En sombra el valor no elige candidatos: manda min_edge / min_prob.
+    fv_decide = filtro_valor_decide(cfg)
 
     # Sin cuota de casa: el % es estudio. Nunca inventar edge = prob-50
     # (eso convirtió un 72% en un falso "+22% de valor").
@@ -1263,7 +1264,7 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         else:
             pick, prob = f"{juego['home']} ML", prob_home
         marcar_estudio_sin_mercado(juego, pick=pick, prob=prob, min_prob=min_prob)
-    elif fv_on:
+    elif fv_decide:
         # Solo cuota de casa. El margen es el del tipo: underdog más alto,
         # scratch igual al base (no se le cobra el recargo).
         dec_away_real = cuota_lado_real(juego, "away")
@@ -1479,13 +1480,18 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         if cruda is not None:
             juego["prob_sin_calibrar"] = cruda
 
-    if fv_on:
-        from filtro_valor import evaluar_valor
+    from filtro_valor import aplicar_decision_tipo, evaluar_valor, filtro_activo
 
-        juego["filtro_valor"] = evaluar_valor(juego, cfg)
-        if juego.get("apostable") and not juego["filtro_valor"].get("apostar"):
+    if filtro_activo(cfg):
+        ev_valor = evaluar_valor(juego, cfg)
+        juego["filtro_valor"] = ev_valor
+        # En sombra el veredicto queda en el registro y no toca apostable.
+        if filtro_valor_decide(cfg) and juego.get("apostable") and not ev_valor.get("apostar"):
             juego["apostable"] = False
-            juego["motivo_apuesta"] = juego["filtro_valor"].get("motivo") or juego.get("motivo_apuesta")
+            juego["motivo_apuesta"] = ev_valor.get("motivo") or juego.get("motivo_apuesta")
+
+    # El tipo tiene la última palabra: scratch entra, underdog sale.
+    aplicar_decision_tipo(juego, cfg)
 
     juego.pop("_features_away", None)
     juego.pop("_features_home", None)
@@ -1504,7 +1510,21 @@ def seleccionar_favorables_del_dia(juegos: list[dict[str, Any]], cfg: dict[str, 
         if apostable_con_mercado(j) and j.get("estado") == "PROGRAMADO"
     ]
     # Sin mercado no hay apostables. Con cuota real: priorizar edge de valor.
-    favorables.sort(key=lambda x: x.get("edge", 0), reverse=True)
+    from filtro_valor import filtro_tipo_cfg
+
+    ft = filtro_tipo_cfg(cfg)
+    if ft["activo"] and ft["apostar_scratch"]:
+        # Dentro del tope del día, el scratch no se cae por tener menos edge.
+        def _rank(j: dict[str, Any]) -> tuple[int, float]:
+            try:
+                edge = float(j.get("edge") or 0)
+            except (TypeError, ValueError):
+                edge = 0.0
+            return (1 if j.get("tipo_pick") == "scratch" else 0, edge)
+
+        favorables.sort(key=_rank, reverse=True)
+    else:
+        favorables.sort(key=lambda x: x.get("edge", 0), reverse=True)
 
     ids_top = {j["id"] for j in favorables[:max_apuestas]}
     for j in juegos:
