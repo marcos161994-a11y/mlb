@@ -838,6 +838,75 @@ def marcar_estudio_sin_mercado(
     return juego
 
 
+def lado_probs_modelo(juego: dict[str, Any]) -> str:
+    """Lado del pick ya elegido: away o home. El texto del pick manda."""
+    if not isinstance(juego, dict):
+        return ""
+    pick = str(juego.get("pick") or "")
+    visita = str(juego.get("visitante") or "")
+    home = str(juego.get("home") or "")
+    en_visita = bool(visita) and visita in pick
+    en_home = bool(home) and home in pick
+    if en_visita and not en_home:
+        return "away"
+    if en_home and not en_visita:
+        return "home"
+    lado = str(juego.get("pick_lado") or "").strip().lower()
+    if lado in ("away", "visitante"):
+        return "away"
+    if lado in ("home", "local"):
+        return "home"
+    try:
+        from cadena_momios import lado_del_pick
+
+        resuelto = lado_del_pick(juego, pick)
+        if resuelto in ("away", "home"):
+            return resuelto
+    except Exception:
+        pass
+    return ""
+
+
+def publicar_probs_lados(juego: dict[str, Any]) -> None:
+    """Deja probAway/probHome en 1 decimal, sumando ~100, alineadas con probPick.
+
+    Solo display. No cambia pick, probPick, edge, cuota ni apostable.
+    Sin probabilidad final, quita los campos para que el panel oculte la línea.
+    """
+    if not isinstance(juego, dict):
+        return
+    try:
+        pp = float(juego.get("probPick"))
+    except (TypeError, ValueError):
+        juego.pop("probAway", None)
+        juego.pop("probHome", None)
+        return
+    if not (0 < pp <= 100):
+        juego.pop("probAway", None)
+        juego.pop("probHome", None)
+        return
+    p = float(f"{pp:.1f}")
+    if abs(p - pp) < 1e-6:
+        p = pp
+    otro = float(f"{(100.0 - p):.1f}")
+    lado = lado_probs_modelo(juego)
+    if lado not in ("away", "home"):
+        try:
+            pa = float(juego.get("probAway"))
+            ph = float(juego.get("probHome"))
+        except (TypeError, ValueError):
+            juego.pop("probAway", None)
+            juego.pop("probHome", None)
+            return
+        lado = "away" if abs(pa - pp) <= abs(ph - pp) else "home"
+    if lado == "away":
+        juego["probAway"] = p
+        juego["probHome"] = otro
+    else:
+        juego["probHome"] = p
+        juego["probAway"] = otro
+
+
 def _marcar_lado_pick(juego: dict[str, Any], lado: str) -> None:
     visita = lado == "away"
     juego["pick_lado"] = "away" if visita else "home"
@@ -952,6 +1021,8 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
         # Inicializamos valores para evitar signos de pregunta en la interfaz
         juego.setdefault("probPick", 0)
         juego.setdefault("edge", 0)
+        juego.pop("probAway", None)
+        juego.pop("probHome", None)
         juego["elo"] = {"ok": False, "motivo": "esperando_pitchers", "activo": True}
         return juego
 
@@ -1596,6 +1667,7 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
 
     juego.pop("_features_away", None)
     juego.pop("_features_home", None)
+    publicar_probs_lados(juego)
     return juego
 
 

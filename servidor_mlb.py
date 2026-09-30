@@ -54,6 +54,8 @@ from modelo_mlb import (
     apostable_con_mercado,
     apostable_para_dinero,
     es_momio_estimado,
+    lado_probs_modelo,
+    publicar_probs_lados,
 )
 from cadena_momios import (
     action_network_activo,
@@ -572,6 +574,8 @@ _PRED_PANEL_KEYS = (
     "odds",
     "odds_american",
     "probPick",
+    "probAway",
+    "probHome",
     "resultado",
     "estado",
     "profit",
@@ -616,6 +620,8 @@ _APUESTA_PANEL_KEYS = (
     "payout_si_gana",
     "momio_fallos",
     "probPick",
+    "probAway",
+    "probHome",
     "estado",
     "profit",
     "stake",
@@ -634,6 +640,8 @@ _JUEGO_PANEL_KEYS = (
     "estado_apuesta",
     "pick",
     "probPick",
+    "probAway",
+    "probHome",
     "odds",
     "odds_american",
     "edge",
@@ -2659,6 +2667,7 @@ def guardar_prediccion(
         print(f"[BRIEFING] aviso T-60: {e}")
 
     motivo = juego.get("motivo_apuesta") or ""
+    publicar_probs_lados(juego)
     etiqueta_ventana = None
     if mins_despues is not None and mins_despues < 0:
         abierta = ventana_congelacion_abierta(-mins_despues, cfg)
@@ -2675,6 +2684,9 @@ def guardar_prediccion(
             "odds_american": odds_amer,
             "edge": 0 if not tiene_cuota_mercado(juego) else juego.get("edge", 0),
             "probPick": prob,
+            "probAway": juego.get("probAway"),
+            "probHome": juego.get("probHome"),
+            "pick_lado": juego.get("pick_lado"),
             "prob_sin_calibrar": juego.get("prob_sin_calibrar"),
             "filtro_valor": juego.get("filtro_valor") if isinstance(juego.get("filtro_valor"), dict) else None,
             "filtro_tipo": juego.get("filtro_tipo") if isinstance(juego.get("filtro_tipo"), dict) else None,
@@ -2737,6 +2749,11 @@ def guardar_prediccion(
     )
     try:
         pred_n = dia["predicciones"][-1]
+        if pred_n.get("probAway") is None or pred_n.get("probHome") is None:
+            pred_n.pop("probAway", None)
+            pred_n.pop("probHome", None)
+        if not pred_n.get("pick_lado"):
+            pred_n.pop("pick_lado", None)
         actualizar_clv_registro(pred_n, juego, fase="entrada")
     except Exception as e:
         print(f"[CLV] aviso guardar predicción: {e}")
@@ -3688,6 +3705,7 @@ def _bloquear_juego_locked(
             **campos_precio_congelado(precio, stake),
             "edge": juego.get("edge"),
             "probPick": juego.get("probPick"),
+            **_probs_lados_de(juego, pred_existente, juego),
             "motivo_apuesta": motivo_final,
             "ia_veto": veto if veto.get("ok") else None,
             "ia_mente": mente,
@@ -4135,6 +4153,73 @@ def exportar_reporte(memoria: dict, dia: dict) -> None:
     txt.write_text("\n".join(lines), encoding="utf-8")
 
 
+def _par_probs_lados(reg: dict | None) -> tuple[float, float] | None:
+    """Par ya guardado (1 decimal, suma ~100). None si el registro no lo trae."""
+    if not isinstance(reg, dict):
+        return None
+    if reg.get("probAway") is None or reg.get("probHome") is None:
+        return None
+    try:
+        away = float(reg["probAway"])
+        home = float(reg["probHome"])
+    except (TypeError, ValueError):
+        return None
+    if abs(away + home - 100.0) > 0.15:
+        return None
+    return away, home
+
+
+def _par_cuadra_con_pick(juego: dict, par: tuple[float, float], prob_pick: Any) -> bool:
+    """El lado del pick tiene que ser la misma probabilidad que probPick."""
+    try:
+        pp = float(prob_pick)
+    except (TypeError, ValueError):
+        return False
+    away, home = par
+    lado = lado_probs_modelo(juego)
+    objetivo = round(pp, 1)
+    if lado == "away":
+        return abs(away - pp) <= 0.051 or abs(away - objetivo) <= 0.051
+    if lado == "home":
+        return abs(home - pp) <= 0.051 or abs(home - objetivo) <= 0.051
+    return any(abs(x - pp) <= 0.051 or abs(x - objetivo) <= 0.051 for x in (away, home))
+
+
+def _probs_lados_de(juego: dict, *regs: dict | None) -> dict:
+    """Copia el par guardado si cuadra con el probPick que se va a mostrar."""
+    for reg in regs:
+        par = _par_probs_lados(reg)
+        if par is None:
+            continue
+        if _par_cuadra_con_pick(juego, par, juego.get("probPick")):
+            return {"probAway": par[0], "probHome": par[1]}
+    return {}
+
+
+def _aplicar_probs_visibles(
+    copia: dict,
+    *fuentes: dict | None,
+    congelado: bool,
+) -> None:
+    """Congelado: solo el par persistido. En vivo: el del modelo actual."""
+    if congelado:
+        for fuente in fuentes:
+            if isinstance(fuente, dict) and fuente.get("pick_lado") in ("away", "home"):
+                copia["pick_lado"] = fuente.get("pick_lado")
+                break
+        for fuente in fuentes:
+            par = _par_probs_lados(fuente)
+            if par is None:
+                continue
+            if _par_cuadra_con_pick(copia, par, copia.get("probPick")):
+                copia["probAway"], copia["probHome"] = par
+                return
+        copia.pop("probAway", None)
+        copia.pop("probHome", None)
+        return
+    publicar_probs_lados(copia)
+
+
 def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict]:
     """Congela el pick bloqueado/predicho para que no 'cambie' con el marcador en vivo."""
     # Preferir día de la fecha de los juegos (hoy), no solo dia_actual
@@ -4269,6 +4354,7 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
             # Sin pick congelado: el panel no debe tratar el pick vivo como resultado
             if copia.get("estado") in ("EN VIVO", "FINALIZADO"):
                 copia["solo_orientativo"] = True
+        _aplicar_probs_visibles(copia, ap, pred, congelado=bool(ap or pred))
         copia["apostable"] = copia.get("apostable", False)
         if copia.get("apostable") and not ap and not tiene_cuota_mercado(copia):
             copia["apostable"] = False

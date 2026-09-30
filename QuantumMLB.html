@@ -2694,9 +2694,15 @@ function pintarJuegos(juegos) {
                 </div>
                 <details class="analisis-juego">
                     <summary>Ver análisis del modelo</summary>
-                    <div style="font-size:0.75rem;color:#8899aa;margin-top:6px">
-                        Modelo ${j.probAway||'?'}% / ${j.probHome||'?'}% (visitante / local)
-                    </div>
+                    ${(() => {
+                        const a = j.probAway;
+                        const h = j.probHome;
+                        if (a == null || h == null || a === '' || h === '') return '';
+                        const na = Number(a);
+                        const nh = Number(h);
+                        if (!Number.isFinite(na) || !Number.isFinite(nh)) return '';
+                        return `<div style="font-size:0.75rem;color:#8899aa;margin-top:6px">Modelo ${na.toFixed(1)}% / ${nh.toFixed(1)}% (visitante / local)</div>`;
+                    })()}
                     <div style="font-size:0.7rem;color:#8899aa;margin-top:4px">${j.motivo_apuesta || ''}</div>
                     ${(() => {
                         const mov = j.linea_movimiento_pct;
