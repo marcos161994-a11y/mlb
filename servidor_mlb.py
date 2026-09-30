@@ -31,7 +31,15 @@ from apscheduler.triggers.date import DateTrigger
 from fastapi import Depends, FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, RedirectResponse
-from lineas_betmgm import aplicar_lineas_a_juegos
+from lineas_betmgm import (
+    aplicar_lineas_a_juegos,
+    cargar_api_key,
+    enmascarar_api_key,
+    estado_odds_api,
+    origen_api_key,
+    redactar_secreto,
+    validar_clave_odds_api,
+)
 from lineas_betmgm import normalizar_nombre_equipo as norm_nombre
 from memoria_fusion import (
     backup_tiene_dias_que_el_disco_perdio as _backup_tiene_dias_que_el_disco_perdio,
@@ -1682,7 +1690,7 @@ def _lineas_para_panel(cfg: dict | None = None) -> dict:
     out = dict(_lineas_meta_cache if isinstance(_lineas_meta_cache, dict) else {})
     out["bookmakers"] = lineas_cfg.get("bookmakers") or "draftkings"
     out["minutos_retry_cuotas"] = _minutos_retry_cuotas(cfg)
-    return out
+    return redactar_secreto(out, cargar_api_key(cfg))
 
 
 def _mercado_requiere_cuotas(cfg: dict | None = None) -> bool:
@@ -4220,6 +4228,14 @@ def fusionar_apuestas_con_juegos(juegos: list[dict], memoria: dict) -> list[dict
     return resultado
 
 
+def _validar_odds_api_en_background() -> None:
+    """Comprueba la clave sin consumir cuota. No imprime la excepción (puede traer la URL)."""
+    try:
+        validar_clave_odds_api(cargar_config())
+    except Exception as e:
+        print(f"[ODDS] validación periódica: {type(e).__name__}")
+
+
 def programar_tareas_background() -> None:
     cfg = cargar_config()
     tz = cfg["timezone"]
@@ -4239,6 +4255,13 @@ def programar_tareas_background() -> None:
         programar_bloqueos_por_juego,
         CronTrigger(hour=12, minute=0, timezone=tz),
         id="refresh_calendario_mediodia",
+        replace_existing=True,
+    )
+    # /v4/sports no consume cuota. Si la cadena ya llamó a The Odds API hace poco, no repite.
+    scheduler.add_job(
+        _validar_odds_api_en_background,
+        CronTrigger(hour="*/6", minute=20, timezone=tz),
+        id="validar_odds_api_key",
         replace_existing=True,
     )
     if _cron_externo_habilitado():
@@ -4266,6 +4289,15 @@ async def lifespan(app: FastAPI):
     """Arranque rápido: Render exige puerto abierto; motor en background."""
 
     def _boot_completo() -> None:
+        try:
+            info = validar_clave_odds_api(cargar_config())
+            print(
+                "[ODDS] clave "
+                + ("presente" if info.get("key_presente") else "ausente")
+                + f" fuente={info.get('fuente')} http={info.get('http_status')}"
+            )
+        except Exception as e:
+            print(f"[ODDS] validación de clave: {type(e).__name__}")
         try:
             programar_tareas_background()
             scheduler.start()
@@ -5257,6 +5289,7 @@ def api_health():
             "bookmakers": (cfg.get("lineas") or {}).get("bookmakers") or "draftkings",
             "min_edge_pct": float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0)),
             **_salud_momios(mem_h),
+            "odds_api": estado_odds_api(cfg),
         },
         "scratch_lineup": {
             "activo": bool(cfg.get("usar_scratch_lineup", True)),
@@ -5382,6 +5415,14 @@ def api_lesiones_status():
         return {"ok": False, "activo": True, "motivo": str(e)[:120]}
 
 
+def _diag_clave_odds(cfg: dict) -> tuple[str | None, dict]:
+    """Clave real (enmascarada) para cualquier proveedor. Nunca devuelve la clave."""
+    key = cargar_api_key(cfg)
+    diag = enmascarar_api_key(key)
+    diag["fuente"] = origen_api_key(cfg) if key else None
+    return key, diag
+
+
 @app.get("/api/odds-status")
 def api_odds_status():
     """Estado del proveedor de cuotas. Con modo_solo_modelo no se usa ni se exige."""
@@ -5389,6 +5430,7 @@ def api_odds_status():
     solo = bool(cfg.get("modo_solo_modelo"))
     requiere = bool((cfg.get("estrategia") or {}).get("requiere_betmgm", True))
     proveedor = str((cfg.get("lineas") or {}).get("proveedor") or "espn").lower()
+    key, diag = _diag_clave_odds(cfg)
     base = {
         "activo": not solo and requiere,
         "requiere_mercado": requiere and not solo,
@@ -5400,14 +5442,19 @@ def api_odds_status():
         "fallback_solo_modelo": bool(
             (cfg.get("estrategia") or {}).get("fallback_solo_modelo", True)
         ),
+        **diag,
     }
+
+    def _out(payload: dict) -> dict:
+        return redactar_secreto(payload, key)
+
     if solo or not requiere:
-        return {
+        return _out({
             **base,
             "ok": True,
             "desactivado": True,
             "motivo": "Odds API desactivada: dinero solo con % del modelo (≥ min_prob)",
-        }
+        })
     try:
         def _con_espn(out: dict) -> dict:
             if out.get("ok") or not bool((cfg.get("lineas") or {}).get("fallback_internet", True)):
@@ -5437,36 +5484,31 @@ def api_odds_status():
             from lineas_espn import obtener_lineas_espn
 
             _, me = obtener_lineas_espn()
-            return {
+            return _out({
                 **base,
                 "ok": bool(me.get("ok")),
-                "key_presente": False,
                 "fallback_espn": True,
                 "partidos": me.get("partidos"),
                 "mensaje": me.get("mensaje"),
-            }
+            })
 
         # Legacy The Odds API (proveedor betmgm / the-odds-api)
-        from lineas_betmgm import cargar_api_key, enmascarar_api_key, obtener_lineas_betmgm
+        from lineas_betmgm import obtener_lineas_betmgm
 
-        key = cargar_api_key(cfg)
-        diag = enmascarar_api_key(key)
         if not key:
-            return _con_espn({
+            return _out(_con_espn({
                 **base,
                 "ok": False,
-                **diag,
                 "motivo": "Falta ODDS_API_KEY · se intenta ESPN/DraftKings",
                 "ayuda": (
                     "Crea key en https://the-odds-api.com → pégala en Render "
                     "como ODDS_API_KEY (sin comillas) → Save → Manual Deploy."
                 ),
-            })
+            }))
         _, meta = obtener_lineas_betmgm(cfg)
-        return _con_espn({
+        return _out(_con_espn({
             **base,
             "ok": bool(meta.get("ok")),
-            **diag,
             "partidos": meta.get("partidos"),
             "mensaje": meta.get("mensaje"),
             "error_code": meta.get("error_code"),
@@ -5474,9 +5516,9 @@ def api_odds_status():
             "ayuda": meta.get("ayuda"),
             "requests_restantes": meta.get("requests_restantes"),
             "cache": meta.get("cache"),
-        })
+        }))
     except Exception as e:
-        return {**base, "ok": False, "motivo": str(e)[:120]}
+        return _out({**base, "ok": False, "motivo": str(e)[:120]})
 
 
 @app.get("/api/scratch-status")

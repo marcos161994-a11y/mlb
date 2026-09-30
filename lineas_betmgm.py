@@ -6,6 +6,7 @@ Coloca tu API key en odds_api_key.txt (una línea).
 from __future__ import annotations
 
 import re
+import threading
 from typing import Any
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -16,6 +17,11 @@ import requests
 BASE_DIR = Path(__file__).resolve().parent
 KEY_FILE = BASE_DIR / "odds_api_key.txt"
 ODDS_URL = "https://api.the-odds-api.com/v4/sports/baseball_mlb/odds"
+# /v4/sports no descuenta cuota. Sirve para saber si la clave responde.
+SPORTS_URL = "https://api.the-odds-api.com/v4/sports"
+_VALIDACION_CADA = timedelta(hours=6)
+_ultimo_llamado_odds: dict[str, Any] | None = None
+_validacion_lock = threading.Lock()
 
 _cache: dict[tuple[str, str], dict[str, Any]] | None = None
 _cache_ts: datetime | None = None
@@ -123,13 +129,7 @@ def enmascarar_api_key(key: str | None) -> dict:
 
 def cargar_api_key(cfg: dict) -> str | None:
     """Prioriza ODDS_API_KEY (Render). Config/archivo solo si env vacío."""
-    import os
-
-    for candidate in (
-        os.environ.get("ODDS_API_KEY"),
-        (cfg.get("lineas") or {}).get("api_key"),
-        KEY_FILE.read_text(encoding="utf-8") if KEY_FILE.exists() else None,
-    ):
+    for _nombre, candidate in _candidatos_api_key(cfg):
         if candidate is None:
             continue
         if isinstance(candidate, str) and candidate.lstrip().startswith("#"):
@@ -138,6 +138,220 @@ def cargar_api_key(cfg: dict) -> str | None:
         if key:
             return key
     return None
+
+
+def _candidatos_api_key(cfg: dict | None):
+    """Mismo orden que ``cargar_api_key``: entorno, config, archivo."""
+    import os
+
+    cfg = cfg or {}
+    archivo = None
+    if KEY_FILE.exists():
+        try:
+            archivo = KEY_FILE.read_text(encoding="utf-8")
+        except OSError:
+            archivo = None
+    return (
+        ("ODDS_API_KEY", os.environ.get("ODDS_API_KEY")),
+        ("config", (cfg.get("lineas") or {}).get("api_key")),
+        ("archivo", archivo),
+    )
+
+
+def origen_api_key(cfg: dict | None) -> str | None:
+    """De dónde sale la clave que usaría ``cargar_api_key``.
+
+    ``ODDS_API_KEY`` (entorno), ``config`` (``lineas.api_key``) o ``archivo``
+    (``odds_api_key.txt``). None si no hay clave usable.
+    """
+    for nombre, candidate in _candidatos_api_key(cfg):
+        if candidate is None:
+            continue
+        if isinstance(candidate, str) and candidate.lstrip().startswith("#"):
+            continue
+        key = _sanear_api_key(candidate if isinstance(candidate, str) else str(candidate))
+        if key:
+            return nombre
+    return None
+
+
+def redactar_secreto(obj: Any, key: str | None) -> Any:
+    """Quita la clave completa de un payload público."""
+    if not key:
+        return obj
+    if isinstance(obj, str):
+        return obj.replace(key, "…")
+    if isinstance(obj, dict):
+        return {k: redactar_secreto(v, key) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [redactar_secreto(v, key) for v in obj]
+    return obj
+
+
+def reset_estado_odds_api() -> None:
+    """Olvida el último llamado a The Odds API. Lo usan los tests."""
+    global _ultimo_llamado_odds
+    _ultimo_llamado_odds = None
+
+
+def _codigo_cuerpo(r: Any) -> tuple[str | None, str | None]:
+    try:
+        body = r.json()
+    except Exception:
+        return None, None
+    if not isinstance(body, dict):
+        return None, None
+    codigo = body.get("error_code")
+    mensaje = body.get("message")
+    return (str(codigo) if codigo else None, str(mensaje) if mensaje else None)
+
+
+def _requests_restantes(r: Any) -> str | None:
+    try:
+        remaining = r.headers.get("x-requests-remaining")
+    except Exception:
+        return None
+    if remaining is None:
+        return None
+    texto = str(remaining).strip()
+    return texto or None
+
+
+def _sin_cuota(status: int | None, codigo: str | None, err_msg: str | None, restantes: str | None) -> bool:
+    if status == 429 or codigo == "OUT_OF_USAGE_CREDITS":
+        return True
+    if err_msg and "usage" in err_msg.lower():
+        return True
+    # Un 200 con cero créditos: la clave sirve, pero el siguiente llamado de pago no.
+    # Un 401 no se reinterpreta como cuota solo porque el header venga en 0.
+    if status is not None and status < 400 and restantes is not None:
+        try:
+            return int(restantes) <= 0
+        except ValueError:
+            return False
+    return False
+
+
+def _registrar_llamada_odds(r: Any) -> None:
+    """Guarda el último llamado real. No guarda la clave ni el cuerpo."""
+    global _ultimo_llamado_odds
+    status = getattr(r, "status_code", None)
+    codigo, err_msg = _codigo_cuerpo(r)
+    restantes = _requests_restantes(r)
+    if _sin_cuota(status, codigo, err_msg, restantes):
+        ok, error = False, "sin_cuota"
+    elif status == 401 or codigo in ("INVALID_KEY", "DEACTIVATED_KEY"):
+        ok, error = False, "invalid_key"
+    elif status is None or (isinstance(status, int) and status >= 400):
+        ok, error = False, "http_error"
+    else:
+        ok, error = True, None
+    _ultimo_llamado_odds = {
+        "ok": ok,
+        "error": error,
+        "error_code": codigo,
+        "http_status": status,
+        "requests_restantes": restantes,
+        "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }
+
+
+def _registrar_llamada_sin_respuesta(error: str = "red") -> None:
+    global _ultimo_llamado_odds
+    _ultimo_llamado_odds = {
+        "ok": False,
+        "error": error,
+        "error_code": None,
+        "http_status": None,
+        "requests_restantes": None,
+        "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    }
+
+
+def _mensaje_odds_api(key: str | None, ultimo: dict | None) -> str | None:
+    """Texto en español si la clave está puesta pero no sirve."""
+    if not key or not ultimo:
+        return None
+    codigo = str(ultimo.get("error_code") or "")
+    status = ultimo.get("http_status")
+    error = ultimo.get("error")
+    if error == "sin_cuota" or codigo == "OUT_OF_USAGE_CREDITS" or status == 429:
+        return (
+            "La clave está configurada, pero The Odds API se quedó sin cuota "
+            "(créditos agotados o límite de peticiones)."
+        )
+    if codigo == "DEACTIVATED_KEY":
+        return (
+            "La clave ODDS_API_KEY está desactivada "
+            "(The Odds API respondió 401: suscripción cancelada)."
+        )
+    if status == 401 or error == "invalid_key" or codigo == "INVALID_KEY":
+        return (
+            "La clave ODDS_API_KEY es inválida (The Odds API respondió 401). "
+            "En Render pega solo la clave, sin comillas ni espacios, y vuelve a desplegar."
+        )
+    if error == "red":
+        return "No se pudo contactar The Odds API para comprobar la clave."
+    if error == "http_error":
+        return f"The Odds API respondió con error HTTP {status}."
+    return None
+
+
+def estado_odds_api(cfg: dict | None) -> dict[str, Any]:
+    """Bloque público para /api/health. No llama a la red."""
+    cfg = cfg or {}
+    key = cargar_api_key(cfg)
+    diag = enmascarar_api_key(key)
+    ultimo = _ultimo_llamado_odds if key else None
+    bloque: dict[str, Any] = {
+        **diag,
+        "fuente": origen_api_key(cfg) if key else None,
+        "ok": None if not ultimo else bool(ultimo.get("ok")),
+        "error": None if not ultimo else ultimo.get("error"),
+        "http_status": None if not ultimo else ultimo.get("http_status"),
+        "requests_restantes": None if not ultimo else ultimo.get("requests_restantes"),
+        "timestamp": None if not ultimo else ultimo.get("timestamp"),
+    }
+    mensaje = _mensaje_odds_api(key, ultimo)
+    if mensaje:
+        bloque["mensaje"] = mensaje
+    return redactar_secreto(bloque, key)
+
+
+def _llamada_odds_reciente() -> bool:
+    ultimo = _ultimo_llamado_odds
+    if not ultimo or not ultimo.get("timestamp"):
+        return False
+    try:
+        ts = datetime.fromisoformat(str(ultimo["timestamp"]))
+    except ValueError:
+        return False
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
+    return datetime.now(timezone.utc) - ts < _VALIDACION_CADA
+
+
+def validar_clave_odds_api(cfg: dict | None = None, *, forzar: bool = False) -> dict[str, Any]:
+    """Una llamada a /v4/sports, que no consume cuota.
+
+    En arranque, o como mucho cada pocas horas. /api/health no la dispara.
+    """
+    cfg = cfg or {}
+    key = cargar_api_key(cfg)
+    if not key:
+        return estado_odds_api(cfg)
+    if not forzar and _llamada_odds_reciente():
+        return estado_odds_api(cfg)
+    with _validacion_lock:
+        if not forzar and _llamada_odds_reciente():
+            return estado_odds_api(cfg)
+        try:
+            r = requests.get(SPORTS_URL, params={"apiKey": key}, timeout=8)
+        except requests.RequestException:
+            _registrar_llamada_sin_respuesta("red")
+            return estado_odds_api(cfg)
+        _registrar_llamada_odds(r)
+        return estado_odds_api(cfg)
 
 
 def american_a_decimal(price: float | int) -> float:
@@ -258,17 +472,25 @@ def obtener_lineas_betmgm(cfg: dict) -> tuple[dict[tuple[str, str], dict], dict]
                 "Prueba en el navegador: "
                 "https://api.the-odds-api.com/v4/sports?apiKey=TU_KEY"
             )
+            _registrar_llamada_odds(r)
             return {}, meta
         if r.status_code == 429:
             meta["http_status"] = 429
             meta["mensaje"] = "Odds API rate limit / sin créditos"
             meta["ayuda"] = "Espera el reset mensual o reduce llamadas; revisa x-requests-remaining en el dashboard."
+            _registrar_llamada_odds(r)
             return {}, meta
         r.raise_for_status()
         eventos = r.json()
     except requests.RequestException as e:
-        meta["mensaje"] = f"Error Odds API: {e}"
+        resp = getattr(e, "response", None)
+        if resp is not None:
+            _registrar_llamada_odds(resp)
+        else:
+            _registrar_llamada_sin_respuesta("red")
+        meta["mensaje"] = redactar_secreto(f"Error Odds API: {e}", api_key)
         return {}, meta
+    _registrar_llamada_odds(r)
 
     mapa: dict[tuple[str, str], dict] = {}
     fetched_at = datetime.now(timezone.utc).isoformat()
@@ -586,12 +808,19 @@ def obtener_mapas_por_casa(cfg: dict) -> tuple[dict[str, dict], dict]:
             meta["mensaje"] = (
                 "ODDS_API_KEY rechazada" if r.status_code == 401 else "The Odds API sin cupo"
             )
+            _registrar_llamada_odds(r)
             return {}, meta
         r.raise_for_status()
         eventos = r.json()
     except requests.RequestException as e:
-        meta["mensaje"] = f"Error Odds API: {e}"[:180]
+        resp = getattr(e, "response", None)
+        if resp is not None:
+            _registrar_llamada_odds(resp)
+        else:
+            _registrar_llamada_sin_respuesta("red")
+        meta["mensaje"] = redactar_secreto(f"Error Odds API: {e}", api_key)[:180]
         return {}, meta
+    _registrar_llamada_odds(r)
 
     mapas: dict[str, dict] = {book: {} for book in book_keys}
     fetched_at = datetime.now(timezone.utc).isoformat()
