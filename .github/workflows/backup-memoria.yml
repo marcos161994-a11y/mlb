@@ -83,6 +83,8 @@ jobs:
       - name: Publicar en la rama backup/memoria
         run: |
           set -euo pipefail
+          # backup/memoria no trae este archivo; se copia antes del switch.
+          cp .github/scripts/validar_dump_memoria.py /tmp/validar_dump_memoria.py
           python3 - <<'PY'
           import json, pathlib
           data = json.loads(pathlib.Path("/tmp/memoria_live.json").read_text(encoding="utf-8"))
@@ -108,26 +110,7 @@ jobs:
             git fetch --depth 1 origin backup/memoria
             git switch -C backup/memoria FETCH_HEAD
             if [ -f memoria_auditoria.json ]; then
-              python3 - <<'PY'
-              import json, pathlib, sys
-              def fechas(path):
-                  data = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
-                  out = set()
-                  for dia in data.get("dias") or []:
-                      if not isinstance(dia, dict):
-                          continue
-                      fecha = str(dia.get("fecha") or "")
-                      if fecha and ((dia.get("predicciones") or []) or (dia.get("apuestas") or [])):
-                          out.add(fecha)
-                  return out
-              prev = fechas("memoria_auditoria.json")
-              live = fechas("/tmp/memoria_live.json")
-              lost = prev - live
-              if lost:
-                  print("::error::El dump perdería fechas", ", ".join(sorted(lost)))
-                  sys.exit(1)
-              print(f"Dump OK: {len(prev)} fechas previas, {len(live)} en vivo")
-              PY
+              python3 /tmp/validar_dump_memoria.py memoria_auditoria.json /tmp/memoria_live.json
             fi
           else
             git switch --orphan backup/memoria
