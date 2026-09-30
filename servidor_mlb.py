@@ -62,7 +62,7 @@ from cadena_momios import (
     profit_moneyline_americano,
 )
 from aprendizaje_mlb import calcular_movimiento_linea, peso_muestra_aprendizaje, bloqueado_linea_en_contra
-from clv_mlb import actualizar_clv_registro, resumen_clv_memoria
+from clv_mlb import actualizar_clv_registro, resumen_clv_memoria, resumen_clv_publico, sincronizar_clv
 from ml_predictor import auto_entrenar_ml
 from ia_groq import ia_veto_disponible, modelo_groq, probar_conexion_groq, veto_apuesta
 from mente_mlb import (
@@ -596,6 +596,8 @@ _PRED_PANEL_KEYS = (
     "cuota_retry",
     "clv_pct",
     "clv_entrada_pct",
+    "clv",
+    "clv_motivo",
 )
 _APUESTA_PANEL_KEYS = (
     "game_id",
@@ -620,6 +622,8 @@ _APUESTA_PANEL_KEYS = (
     "liquidado_en",
     "clv_pct",
     "clv_entrada_pct",
+    "clv",
+    "clv_motivo",
 )
 _JUEGO_PANEL_KEYS = (
     "id",
@@ -664,6 +668,8 @@ _JUEGO_PANEL_KEYS = (
     "linea_movimiento_pct",
     "bullpen_dia",
     "clv_pct",
+    "clv",
+    "clv_motivo",
 )
 
 
@@ -2810,7 +2816,12 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
         nuevas += 1
         ya.add(gid)
 
-    if nuevas:
+    info_clv: dict = {"cambios": 0}
+    try:
+        info_clv = sincronizar_clv_memoria(memoria, juegos, cfg, ahora)
+    except Exception as e:
+        print(f"[CLV] catch-up al congelar: {e}")
+    if nuevas or info_clv.get("cambios"):
         guardar_memoria(memoria)
     if omitidas_vivo:
         print(f"[PREDICCIONES] Omitidos {omitidas_vivo} partidos ya empezados (no se congelan).")
@@ -2825,6 +2836,7 @@ def registrar_predicciones_del_dia(forzar: bool = False) -> dict:
         "omitidas_en_vivo": omitidas_vivo,
         "fecha": hoy,
         "congelacion": congelacion,
+        "clv": info_clv,
     }
 
 
@@ -3716,6 +3728,8 @@ def _bloquear_juego_locked(
         ):
             if pred_existente.get(clv_k) is not None:
                 apuesta_n[clv_k] = pred_existente[clv_k]
+        if isinstance(pred_existente.get("clv"), dict):
+            apuesta_n["clv"] = pred_existente["clv"]
     try:
         actualizar_clv_registro(apuesta_n, juego, fase="cierre")
         if pred_existente is not None:
@@ -3801,6 +3815,70 @@ def bloquear_apuestas_del_dia(forzar: bool = False) -> dict:
     }
 
 
+def _fetcher_cierre_cadena(juego: dict, cfg: dict | None = None) -> dict:
+    """Misma cadena de #121, sobre una copia. No pisa el precio ya apostado."""
+    from cadena_momios import aplicar_cadena_momios
+
+    copia = copy.deepcopy(juego)
+    for clave in (
+        "lineas_libros",
+        "fuente_momio",
+        "casa_momio",
+        "paso_momio",
+        "origen_momio",
+        "odds_away_decimal",
+        "odds_home_decimal",
+        "odds_away_american",
+        "odds_home_american",
+        "momio_fetched_at",
+        "momio_stale",
+        "momio_en_vivo",
+        "lineas_fuente",
+        "momio_intentos",
+        "momio_fallos",
+    ):
+        copia.pop(clave, None)
+    copia["sin_momio_real"] = False
+    juegos, _meta = aplicar_cadena_momios([copia], cfg or {})
+    return juegos[0] if juegos else copia
+
+
+def sincronizar_clv_memoria(
+    memoria: dict,
+    juegos: list[dict] | None = None,
+    cfg: dict | None = None,
+    ahora: datetime | None = None,
+) -> dict:
+    """Cierre T-5..T-0 y catch-up al despertar. No cambia la apuesta ni el stake."""
+    cfg = cfg or {}
+
+    def _traer(juego: dict) -> dict:
+        return _fetcher_cierre_cadena(juego, cfg)
+
+    info = sincronizar_clv(memoria, juegos or [], ahora=ahora, fetcher=_traer)
+    if info.get("cambios"):
+        print(f"[CLV] snapshots de cierre: {info.get('cambios')}")
+    return info
+
+
+def capturar_cierre_juego(game_id: str) -> dict:
+    """Job de T-5. Si el proceso acaba de despertar, el catch-up cubre el mismo hueco."""
+    try:
+        cfg = cargar_config()
+        ahora = ahora_simulado()
+        juegos = obtener_juegos_fecha(fecha_str())
+        memoria = cargar_memoria()
+        info = sincronizar_clv_memoria(memoria, juegos, cfg, ahora)
+        if info.get("cambios"):
+            guardar_memoria(memoria)
+        info["ok"] = True
+        info["game_id"] = str(game_id)
+        return info
+    except Exception as e:
+        print(f"[CLV] cierre game_id={game_id}: {e}")
+        return {"ok": False, "game_id": str(game_id), "error": str(e), "cambios": 0}
+
+
 def congelar_pick_si_toca(game_id: str) -> dict:
     """Una ventana T-90/T-60/T-30/T-10. Si ya está congelado, no cambia el pick."""
     try:
@@ -3826,6 +3904,7 @@ def programar_bloqueos_por_juego() -> None:
             jid.startswith("bloqueo_juego_")
             or jid.startswith("cuotas_retry_")
             or jid.startswith("congelar_juego_")
+            or jid.startswith("cierre_clv_")
         ):
             scheduler.remove_job(job.id)
 
@@ -3846,6 +3925,14 @@ def programar_bloqueos_por_juego() -> None:
                 lambda g=gid: congelar_pick_si_toca(g),
                 DateTrigger(run_date=run_at, timezone=tz),
                 id=f"congelar_juego_{gid}_{mins}",
+                replace_existing=True,
+            )
+        cierre_at = inicio - timedelta(minutes=5)
+        if ahora < cierre_at < inicio:
+            scheduler.add_job(
+                lambda g=gid: capturar_cierre_juego(g),
+                DateTrigger(run_date=cierre_at, timezone=tz),
+                id=f"cierre_clv_{gid}",
                 replace_existing=True,
             )
         if hb > ahora:
@@ -3869,7 +3956,7 @@ def programar_bloqueos_por_juego() -> None:
         ventanas_txt = ", ".join(f"T-{m}" for m in ventanas)
         print(
             f"[PROGRAMADO] {juego['visitante']} vs {juego['home']} → "
-            f"congelar {ventanas_txt} · bloqueo {juego['hora_bloqueo_txt']} · "
+            f"congelar {ventanas_txt} · cierre T-5 · bloqueo {juego['hora_bloqueo_txt']} · "
             f"retry cuotas {retry_txt} (juego {juego['hora_inicio_txt']})"
         )
 
@@ -5281,6 +5368,7 @@ def api_health():
         "mente_errores": _resumen_mente_errores(cfg_ops),
         "vigilancia_cron_min": 5,
         "congelacion": resumen_congelacion_health(cfg),
+        "clv": resumen_clv_publico(mem_h),
         "xgboost": {
             "activo": bool(cfg.get("usar_xgboost", True)),
         },
@@ -5831,6 +5919,15 @@ def ejecutar_trabajo_cron_externo() -> dict:
             )
     except Exception as e:
         print(f"[CONGELAR] resumen cron: {e}")
+    try:
+        juegos_clv = obtener_juegos_fecha(fecha_str())
+        mem_clv = cargar_memoria()
+        info_clv = sincronizar_clv_memoria(mem_clv, juegos_clv, cfg)
+        if info_clv.get("cambios"):
+            guardar_memoria(mem_clv)
+            memoria = mem_clv
+    except Exception as e:
+        print(f"[CLV] catch-up cron: {e}")
     try:
         import_meta = _intentar_import_aprendizaje_repo_automatico()
     except Exception as e:

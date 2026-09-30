@@ -117,26 +117,55 @@ def _unir_auditoria_momios(base: Any, extra: Any) -> dict | None:
     return {"ultimo_fetch_ok": fetch, "rechazos": rechazos[-300:]}
 
 
+def _clv_medido(reg: dict | None) -> bool:
+    if not isinstance(reg, dict):
+        return False
+    clv = reg.get("clv")
+    return isinstance(clv, dict) and clv.get("clv_pp") is not None and clv.get("precio_cierre") not in (None, "")
+
+
+def _unir_clv(dest: dict, src: dict | None) -> dict:
+    """El cierre medido sobrevive al merge. `sin_cierre` solo rellena un hueco."""
+    if not isinstance(dest, dict) or not isinstance(src, dict):
+        return dest
+    if _clv_medido(src) and not _clv_medido(dest):
+        dest["clv"] = copy.deepcopy(src["clv"])
+        dest.pop("clv_motivo", None)
+        return dest
+    if _clv_medido(src) and _clv_medido(dest):
+        if str(src["clv"].get("timestamp") or "") > str(dest["clv"].get("timestamp") or ""):
+            dest["clv"] = copy.deepcopy(src["clv"])
+            dest.pop("clv_motivo", None)
+        return dest
+    if dest.get("clv") in (None, "", False) and src.get("clv") == "sin_cierre":
+        dest["clv"] = "sin_cierre"
+        if src.get("clv_motivo"):
+            dest["clv_motivo"] = src["clv_motivo"]
+    elif dest.get("clv") == "sin_cierre" and not dest.get("clv_motivo") and src.get("clv_motivo"):
+        dest["clv_motivo"] = src["clv_motivo"]
+    return dest
+
+
 def _mejor_pred(cur: dict | None, nuevo: dict) -> dict:
     if cur is None:
         return copy.deepcopy(nuevo)
     # Preferir liquidado sobre pendiente
     if cur.get("estado") == "pendiente" and nuevo.get("estado") == "liquidado":
-        return _completar_campos_momio(copy.deepcopy(nuevo), cur)
+        return _unir_clv(_completar_campos_momio(copy.deepcopy(nuevo), cur), cur)
     if cur.get("estado") == "liquidado" and nuevo.get("estado") != "liquidado":
-        return _completar_campos_momio(cur, nuevo)
+        return _unir_clv(_completar_campos_momio(cur, nuevo), nuevo)
     # Preferir el que ya tiene resultado
     if not cur.get("resultado") and nuevo.get("resultado"):
-        return _completar_campos_momio(copy.deepcopy(nuevo), cur)
-    return _completar_campos_momio(cur, nuevo)
+        return _unir_clv(_completar_campos_momio(copy.deepcopy(nuevo), cur), cur)
+    return _unir_clv(_completar_campos_momio(cur, nuevo), nuevo)
 
 
 def _mejor_apuesta(cur: dict | None, nuevo: dict) -> dict:
     if cur is None:
         return copy.deepcopy(nuevo)
     if cur.get("estado") == "pendiente" and nuevo.get("estado") in ("ganada", "perdida", "push"):
-        return _completar_campos_momio(copy.deepcopy(nuevo), cur)
-    return _completar_campos_momio(cur, nuevo)
+        return _unir_clv(_completar_campos_momio(copy.deepcopy(nuevo), cur), cur)
+    return _unir_clv(_completar_campos_momio(cur, nuevo), nuevo)
 
 
 def _fusionar_lecciones(base: list, extra: list) -> list:

@@ -330,6 +330,8 @@
             border-top: 1px solid var(--border);
         }
         .resultados-tabla .num { text-align: right; font-variant-numeric: tabular-nums; }
+        .resultados-tabla td.pos { color: var(--green); }
+        .resultados-tabla td.neg { color: var(--red); }
         .tabla-scroll { overflow-x: auto; }
         .leccion-fila {
             padding: 8px 0;
@@ -1416,6 +1418,43 @@ function tarjetaFuente(row) {
 
 let cargandoResultados = false;
 
+function fmtClv(n, sufijo) {
+    if (n == null || n === '' || !Number.isFinite(Number(n))) return '—';
+    const x = Number(n);
+    return (x > 0 ? '+' : '') + x.toFixed(2) + (sufijo || '');
+}
+
+function bloqueClv(clv) {
+    const c = clv || {};
+    const papel = c.sin_apuesta || {};
+    const ultimos = Array.isArray(c.ultimos) ? c.ultimos : [];
+    const filas = ultimos.length
+        ? `<div class="tabla-scroll"><table class="resultados-tabla">
+            <thead><tr><th>Pick</th><th class="num">Puntos</th><th class="num">Precio</th><th>Casa cierre</th></tr></thead>
+            <tbody>${ultimos.map(u => `<tr>
+                <td>${escHtml(u.pick || '')}</td>
+                <td class="num ${clsPl(u.clv_pp)}">${fmtClv(u.clv_pp, ' pp')}</td>
+                <td class="num ${clsPl(u.clv_pct)}">${fmtClv(u.clv_pct, '%')}</td>
+                <td>${escHtml(u.casa_cierre || '')}</td>
+            </tr>`).join('')}</tbody>
+           </table></div>`
+        : '<p class="meta-line">Todavía no hay un cierre medido.</p>';
+    const leyenda = c.leyenda || 'CLV positivo: el precio de la apuesta era mejor que el cierre. sin_cierre no inventa un número.';
+    const medioPapel = papel.promedio_pp == null ? '' : ' · medio ' + fmtClv(papel.promedio_pp, ' pp');
+    return `
+        <h3>Valor de cierre (CLV)</h3>
+        <div class="stats-row resultados-stats">
+            <div class="stat-box"><div class="label">Con CLV</div><div class="val">${c.n || 0}</div></div>
+            <div class="stat-box"><div class="label">CLV medio</div><div class="val ${clsPl(c.promedio_pp)}">${fmtClv(c.promedio_pp, ' pp')}</div></div>
+            <div class="stat-box"><div class="label">Bate el cierre</div><div class="val">${c.bate_cierre_pct == null ? '—' : Number(c.bate_cierre_pct).toFixed(1) + '%'}</div></div>
+            <div class="stat-box"><div class="label">Sin cierre</div><div class="val">${c.sin_cierre || 0}</div></div>
+        </div>
+        <p class="meta-line">${escHtml(leyenda)}</p>
+        ${filas}
+        <p class="meta-line">Picks registrados sin apuesta: ${papel.n || 0} con CLV${escHtml(medioPapel)} · sin cierre ${papel.sin_cierre || 0}.</p>
+    `;
+}
+
 function pintarResultados(data) {
     const body = document.getElementById('resultados-body');
     if (!body || !data) return;
@@ -1468,6 +1507,7 @@ function pintarResultados(data) {
             <div class="stat-box"><div class="label">Racha</div><div class="val ${rachaCls}">${escHtml(racha.texto || 'Sin racha')}</div></div>
             <div class="stat-box"><div class="label">Drawdown máx.</div><div class="val ${(Number(dd.max_usd) || 0) > 0 ? 'neg' : ''}">${ddTxt}</div></div>
         </div>
+        ${bloqueClv(data.clv)}
         <h3>Por tipo de pick</h3>
         ${tablaTipos}
         <h3>Fuente de la cuota</h3>
