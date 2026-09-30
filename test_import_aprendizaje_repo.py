@@ -1,7 +1,5 @@
 """Test import aprendizaje desde repo bundled."""
 
-from pathlib import Path
-
 import pytest
 from fastapi import HTTPException
 
@@ -38,7 +36,8 @@ def test_ejecutar_import_aprendizaje_desde_repo(tmp_path, monkeypatch):
     monkeypatch.setenv("DATA_DIR", str(tmp_path))
     monkeypatch.setattr(srv, "DATA_DIR", tmp_path)
     monkeypatch.setattr(srv, "MEMORIA_PATH", tmp_path / "memoria_auditoria.json")
-    monkeypatch.setattr(srv, "BASE_DIR", Path("/workspace"))
+    monkeypatch.setattr(srv, "MEMORIA_BACKUP_PATH", tmp_path / "memoria_auditoria_backup.json")
+    monkeypatch.setattr(srv, "BASE_DIR", tmp_path)
     monkeypatch.setattr(srv, "auto_entrenar_ml", lambda m: {"ok": True, "omitido": True})
 
     out = srv._ejecutar_import_aprendizaje(memoria, repo_dump)

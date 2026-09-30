@@ -5,7 +5,22 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
+
 import mente_errores as me
+
+
+@pytest.fixture(autouse=True)
+def _aislar_memoria_del_servidor(tmp_path, monkeypatch):
+    """ejecutar_ciclo restaura historial: no puede tocar el JSON del repo."""
+    import servidor_mlb as srv
+
+    monkeypatch.setenv("DATA_DIR", str(tmp_path))
+    monkeypatch.setattr(me, "DATA_DIR", Path(tmp_path))
+    monkeypatch.setattr(srv, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(srv, "MEMORIA_PATH", tmp_path / "memoria_auditoria.json")
+    monkeypatch.setattr(srv, "MEMORIA_BACKUP_PATH", tmp_path / "memoria_auditoria_backup.json")
+    srv._invalidar_cache_memoria()
 
 
 def _cfg_base(**extra):
