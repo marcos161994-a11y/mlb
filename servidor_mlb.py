@@ -471,6 +471,16 @@ def cargar_config() -> dict:
     return cfg
 
 
+def _hidratar_auditoria_momios(data: dict) -> None:
+    """El conteo de momios vive en el documento, no en RAM suelta."""
+    try:
+        from cadena_momios import importar_auditoria_momios
+
+        importar_auditoria_momios(data.get("auditoria_momios"))
+    except Exception as e:
+        print(f"[MOMIO] No se pudo hidratar la auditoría: {e}")
+
+
 def cargar_memoria(*, force: bool = False) -> dict:
     """Carga el documento desde la base (o el JSON legado si la base está vacía).
 
@@ -506,6 +516,7 @@ def cargar_memoria(*, force: bool = False) -> dict:
                 return _memoria_cache
             data = None
         if isinstance(data, dict):
+            _hidratar_auditoria_momios(data)
             return _recordar_cache(data, origen="db", revision=rev, digest=None)
 
     if MEMORIA_PATH.exists():
@@ -520,6 +531,7 @@ def cargar_memoria(*, force: bool = False) -> dict:
             return _memoria_cache
         data = _cargar_json_memoria(MEMORIA_PATH)
         if isinstance(data, dict):
+            _hidratar_auditoria_momios(data)
             return _recordar_cache(data, origen="archivo", revision=None, digest=digest)
         print(f"[ERROR] {MEMORIA_PATH.name} está corrupto. Se iniciará una nueva memoria.")
 
@@ -748,6 +760,16 @@ def guardar_memoria(memoria: dict, *, permitir_wipe: bool = False) -> None:
         final, meta = _proteger_escritura(
             actual, memoria, permitir_wipe=permitir_wipe
         )
+        if isinstance(actual, dict) and not isinstance(final.get("auditoria_momios"), dict):
+            previa = actual.get("auditoria_momios")
+            if isinstance(previa, dict):
+                final["auditoria_momios"] = copy.deepcopy(previa)
+        try:
+            from cadena_momios import volcar_auditoria_en
+
+            volcar_auditoria_en(final)
+        except Exception as e:
+            print(f"[MOMIO] No se pudo volcar la auditoría: {e}")
         if meta.get("protegido"):
             print(
                 f"[GUARDAR] Candado anti-wipe: se salvaron fechas "
@@ -2654,7 +2676,11 @@ def guardar_prediccion(
             "casa_momio": juego.get("casa_momio"),
             "paso_momio": juego.get("paso_momio"),
             "origen_momio": juego.get("origen_momio"),
+            "estado_registro": juego.get("estado_registro"),
+            "sin_momio_real": bool(juego.get("sin_momio_real")),
+            "momio_stale": bool(juego.get("momio_stale")),
             "momio_fallos": juego.get("momio_fallos"),
+            "odds_estimado_american": juego.get("odds_estimado_american"),
             "motivo_apuesta": motivo,
             "pitcherAway": juego.get("pitcherAway"),
             "pitcherHome": juego.get("pitcherHome"),

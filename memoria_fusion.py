@@ -63,26 +63,80 @@ def _indice_por_game_id(items: list) -> dict[str, dict]:
     return out
 
 
+_CAMPOS_MOMIO = (
+    "fuente_momio",
+    "sin_momio_real",
+    "estado_registro",
+    "momio_fallos",
+    "casa_momio",
+    "paso_momio",
+    "origen_momio",
+    "cruce_espn",
+    "cruce_momio_alerta",
+    "odds_american",
+    "payout_si_gana",
+    "momio_fetched_at",
+    "momio_stale",
+)
+
+
+def _completar_campos_momio(dest: dict, src: dict) -> dict:
+    """Si nos quedamos con el registro viejo, no se pierden el cruce ni el sin-apuesta."""
+    for clave in _CAMPOS_MOMIO:
+        if clave not in src:
+            continue
+        valor = src.get(clave)
+        if valor in (None, "", False):
+            continue
+        if dest.get(clave) in (None, "", False):
+            dest[clave] = copy.deepcopy(valor)
+    return dest
+
+
+def _unir_auditoria_momios(base: Any, extra: Any) -> dict | None:
+    a = base if isinstance(base, dict) else {}
+    b = extra if isinstance(extra, dict) else {}
+    rechazos: list[dict] = []
+    vistos: set[tuple] = set()
+    for item in list(a.get("rechazos") or []) + list(b.get("rechazos") or []):
+        if not isinstance(item, dict):
+            continue
+        clave = (item.get("ts"), item.get("raw"), item.get("motivo"))
+        if clave in vistos:
+            continue
+        vistos.add(clave)
+        rechazos.append(copy.deepcopy(item))
+    fa = a.get("ultimo_fetch_ok")
+    fb = b.get("ultimo_fetch_ok")
+    if fa and fb:
+        fetch = max(str(fa), str(fb))
+    else:
+        fetch = fa or fb
+    if not rechazos and not fetch:
+        return None
+    return {"ultimo_fetch_ok": fetch, "rechazos": rechazos[-300:]}
+
+
 def _mejor_pred(cur: dict | None, nuevo: dict) -> dict:
     if cur is None:
         return copy.deepcopy(nuevo)
     # Preferir liquidado sobre pendiente
     if cur.get("estado") == "pendiente" and nuevo.get("estado") == "liquidado":
-        return copy.deepcopy(nuevo)
+        return _completar_campos_momio(copy.deepcopy(nuevo), cur)
     if cur.get("estado") == "liquidado" and nuevo.get("estado") != "liquidado":
-        return cur
+        return _completar_campos_momio(cur, nuevo)
     # Preferir el que ya tiene resultado
     if not cur.get("resultado") and nuevo.get("resultado"):
-        return copy.deepcopy(nuevo)
-    return cur
+        return _completar_campos_momio(copy.deepcopy(nuevo), cur)
+    return _completar_campos_momio(cur, nuevo)
 
 
 def _mejor_apuesta(cur: dict | None, nuevo: dict) -> dict:
     if cur is None:
         return copy.deepcopy(nuevo)
-    if cur.get("estado") == "pendiente" and nuevo.get("estado") in ("ganada", "perdida"):
-        return copy.deepcopy(nuevo)
-    return cur
+    if cur.get("estado") == "pendiente" and nuevo.get("estado") in ("ganada", "perdida", "push"):
+        return _completar_campos_momio(copy.deepcopy(nuevo), cur)
+    return _completar_campos_momio(cur, nuevo)
 
 
 def _fusionar_lecciones(base: list, extra: list) -> list:
@@ -155,6 +209,9 @@ def fusionar_memoria(base: dict, extra: dict) -> dict:
         len(dias) or 1,
     )
     out["lecciones"] = _fusionar_lecciones(out.get("lecciones") or [], extra.get("lecciones") or [])
+    auditoria = _unir_auditoria_momios(out.get("auditoria_momios"), extra.get("auditoria_momios"))
+    if auditoria:
+        out["auditoria_momios"] = auditoria
     for k in (
         "telegram",
         "mente_stats",

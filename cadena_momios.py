@@ -71,6 +71,60 @@ def reset_rechazos() -> None:
     _rechazos.clear()
 
 
+def reset_auditoria_momios() -> None:
+    """Limpia el contador de este proceso. No toca la base."""
+    global _ultimo_fetch_ok
+    _rechazos.clear()
+    _ultimo_fetch_ok = None
+
+
+def _clave_rechazo(item: dict) -> tuple:
+    return (item.get("ts"), item.get("raw"), item.get("motivo"))
+
+
+def exportar_auditoria_momios() -> dict[str, Any]:
+    """Contadores de salud que tienen que viajar dentro del documento."""
+    return {
+        "ultimo_fetch_ok": _ultimo_fetch_ok.isoformat() if _ultimo_fetch_ok else None,
+        "rechazos": [dict(item) for item in _rechazos[-300:]],
+    }
+
+
+def importar_auditoria_momios(data: Any) -> None:
+    """Recupera el fetch y los rechazos guardados. No borra lo de este proceso."""
+    global _ultimo_fetch_ok
+    if not isinstance(data, dict):
+        return
+    marca = _marca_tiempo(data.get("ultimo_fetch_ok"))
+    if marca is not None and (_ultimo_fetch_ok is None or marca > _ultimo_fetch_ok):
+        _ultimo_fetch_ok = marca
+    vistos = {_clave_rechazo(item) for item in _rechazos}
+    for item in data.get("rechazos") or []:
+        if not isinstance(item, dict):
+            continue
+        clave = _clave_rechazo(item)
+        if clave in vistos:
+            continue
+        _rechazos.append(
+            {
+                "raw": str(item.get("raw") or "")[:40],
+                "motivo": str(item.get("motivo") or "rechazado")[:120],
+                "ts": str(item.get("ts") or ""),
+            }
+        )
+        vistos.add(clave)
+    if len(_rechazos) > 300:
+        del _rechazos[: len(_rechazos) - 300]
+
+
+def volcar_auditoria_en(memoria: dict) -> None:
+    """Mete el conteo de este proceso en el documento, sin pisar uno ya guardado."""
+    if not isinstance(memoria, dict):
+        return
+    importar_auditoria_momios(memoria.get("auditoria_momios"))
+    memoria["auditoria_momios"] = exportar_auditoria_momios()
+
+
 def parsear_momio_americano(raw: Any, *, registrar: bool = True) -> int | None:
     """Entero americano en -1000..-100 o +100..+1000. EVEN vale +100.
 

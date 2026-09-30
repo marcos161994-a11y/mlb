@@ -496,3 +496,84 @@ def test_health_cuenta_sin_momio_real_y_conserva_congelacion(monkeypatch):
     assert odds["pendientes_24h"] == 1
     assert odds["sin_precio_congelado"] == 1
     assert body["congelacion"]["ventanas_min"]
+
+
+def test_sin_momio_y_auditoria_persisten_en_la_base(monkeypatch):
+    from cadena_momios import (
+        anotar_fetch_ok,
+        edad_ultimo_fetch_seg,
+        registrar_rechazo,
+        reset_auditoria_momios,
+        resumen_rechazos,
+    )
+
+    reset_auditoria_momios()
+    anotar_fetch_ok()
+    registrar_rechazo("5000", "fuera de -1000..+1000")
+    monkeypatch.setattr(srv, "generar_briefing_juego", lambda *_a, **_k: {"ok": True})
+
+    memoria = srv.cargar_memoria()
+    dia = srv.asegurar_dia_operativo(memoria, "2026-09-30")
+    inicio = (datetime.now(timezone.utc) + timedelta(hours=3)).isoformat()
+    juego = {
+        "id": "g-sin",
+        "visitante": "Chicago White Sox",
+        "home": "Houston Astros",
+        "pick": "Houston Astros ML",
+        "estado": "PROGRAMADO",
+        "inicio_juego": inicio,
+        "probPick": 61,
+        "odds": 1.91,
+        "odds_american": -110,
+        "fuente_momio": "sin_momio_real",
+        "lineas_fuente": "sin_momio_real",
+        "estado_registro": "registrado sin apuesta",
+        "sin_momio_real": True,
+        "momio_fallos": "espn: sin momio de esta fecha",
+        "apostable": False,
+    }
+    assert srv.guardar_prediccion(dia, juego, stake_virtual=3) is True
+    dia["apuestas"].append(
+        {
+            "game_id": "g-real",
+            "pick": "Houston Astros ML",
+            "estado": "ganada",
+            "stake": 3,
+            "profit": 2.0,
+            "odds_american": -150,
+            "fuente_momio": "draftkings",
+            "payout_si_gana": 2.0,
+            "cruce_espn": {"ok": True, "diff": 28, "alerta": True, "espn_odds": -122},
+            "cruce_momio_alerta": True,
+        }
+    )
+    srv.guardar_memoria(memoria)
+
+    reset_auditoria_momios()
+    srv._invalidar_cache_memoria()
+    cargado = srv.cargar_memoria(force=True)
+    preds = [p for d in cargado["dias"] for p in d.get("predicciones") or [] if p.get("game_id") == "g-sin"]
+    apuestas = [a for d in cargado["dias"] for a in d.get("apuestas") or [] if a.get("game_id") == "g-real"]
+    pred = preds[0]
+    assert pred["sin_momio_real"] is True
+    assert pred["estado_registro"] == "registrado sin apuesta"
+    assert pred["fuente_momio"] == "sin_momio_real"
+    assert "espn" in pred["momio_fallos"]
+    apuesta = apuestas[0]
+    assert apuesta["cruce_momio_alerta"] is True
+    assert apuesta["cruce_espn"]["diff"] == 28
+    assert apuesta["payout_si_gana"] == 2.0
+    aud = cargado["auditoria_momios"]
+    assert aud["ultimo_fetch_ok"]
+    assert any(item["raw"] == "5000" for item in aud["rechazos"])
+    assert resumen_rechazos()["razones"]["fuera de -1000..+1000"] >= 1
+    assert edad_ultimo_fetch_seg() is not None
+    bruto = srv._store().cargar()
+    assert bruto["auditoria_momios"]["ultimo_fetch_ok"] == aud["ultimo_fetch_ok"]
+    guardada = next(
+        p
+        for d in bruto["dias"]
+        for p in d.get("predicciones") or []
+        if p.get("game_id") == "g-sin"
+    )
+    assert guardada["sin_momio_real"] is True
