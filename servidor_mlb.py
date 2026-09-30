@@ -798,16 +798,23 @@ def _apostable_por_valor(
     dec_f: float,
     fuente: str,
 ) -> tuple[bool, float]:
-    """(apostable, edge). Con filtro activo manda el margen calibrado vs casa."""
-    from filtro_valor import evaluar_valor, filtro_activo
+    """(apostable, edge).
+
+    Con el filtro de valor en sombra se anota el veredicto y manda el edge
+    viejo (min_edge / min_prob). Solo si el filtro decide de verdad, el
+    margen calibrado aprueba o bloquea.
+    """
+    from filtro_valor import evaluar_valor, filtro_activo, filtro_valor_decide
 
     prob = float(registro.get("probPick") or 0)
     edge = edge_pct(prob, dec_f)
+    estr = cfg.get("estrategia") or {}
+    min_edge = float(estr.get("min_edge_pct", 6.0))
+    min_prob = float(estr.get("min_prob_modelo", 58.0))
+    legacy = prob >= min_prob and edge >= min_edge
+    edge_out = edge if edge > -900 else 0.0
     if not filtro_activo(cfg):
-        estr = cfg.get("estrategia") or {}
-        min_edge = float(estr.get("min_edge_pct", 6.0))
-        min_prob = float(estr.get("min_prob_modelo", 58.0))
-        return prob >= min_prob and edge >= min_edge, edge if edge > -900 else 0.0
+        return legacy, edge_out
     ev = evaluar_valor(
         {
             **registro,
@@ -819,10 +826,80 @@ def _apostable_por_valor(
         cfg,
     )
     registro["filtro_valor"] = ev
+    if not filtro_valor_decide(cfg):
+        return legacy, edge_out
     edge_ev = ev.get("edge")
     if edge_ev is None or edge_ev <= -900:
-        edge_ev = edge if edge > -900 else 0.0
+        edge_ev = edge_out
     return bool(ev.get("apostar")), float(edge_ev)
+
+
+def _aplicar_tipo_sobre(registro: dict, cfg: dict, juego: dict | None = None) -> dict:
+    """Reclasifica y aplica el filtro de tipo. El valor no pisa esta decisión."""
+    from filtro_valor import aplicar_decision_tipo, filtro_tipo_activo
+
+    if not isinstance(registro, dict) or not filtro_tipo_activo(cfg):
+        return {}
+    if isinstance(juego, dict):
+        for campo in ("scratch_lineup", "lesiones", "visitante", "home", "fuente_momio", "cuota_real_decimal"):
+            if registro.get(campo) is None and juego.get(campo) is not None:
+                registro[campo] = juego.get(campo)
+    try:
+        from inteligencia_mlb import clasificar_tipo_pick
+
+        registro["tipo_pick"] = clasificar_tipo_pick(
+            registro,
+            prob=registro.get("probPick"),
+            odds=registro.get("odds"),
+        )
+    except Exception:
+        registro.setdefault("tipo_pick", registro.get("tipo_pick") or "limpio")
+    ev = aplicar_decision_tipo(registro, cfg)
+    if isinstance(juego, dict):
+        juego["tipo_pick"] = registro.get("tipo_pick")
+        juego["filtro_tipo"] = registro.get("filtro_tipo")
+        juego["apostable"] = bool(registro.get("apostable"))
+        if ev.get("decision") in ("cortar", "apostar", "sin_cuota"):
+            juego["motivo_apuesta"] = registro.get("motivo_apuesta")
+    if ev.get("decision") == "cortar":
+        print(f"[FILTRO TIPO] {registro.get('pick')}: underdog cortado")
+    elif ev.get("decision") == "apostar":
+        print(f"[FILTRO TIPO] {registro.get('pick')}: scratch se apuesta")
+    return ev
+
+
+def _anotar_filtro_valor_bloqueo(juego: dict, pred_existente: dict | None, cfg: dict) -> None:
+    """Guarda el veredicto de valor. En sombra no cambia apostable."""
+    from filtro_valor import evaluar_valor, filtro_activo, filtro_valor_decide
+
+    if not filtro_activo(cfg) or not isinstance(juego, dict):
+        return
+    reg_valor = dict(juego)
+    if isinstance(pred_existente, dict):
+        for campo in ("fuente_momio", "cuota_real_decimal", "precio_congelado", "tipo_pick", "probPick", "odds"):
+            if pred_existente.get(campo) is not None and reg_valor.get(campo) is None:
+                reg_valor[campo] = pred_existente.get(campo)
+    ev = evaluar_valor(reg_valor, cfg)
+    juego["filtro_valor"] = ev
+    if isinstance(pred_existente, dict):
+        pred_existente["filtro_valor"] = ev
+    if filtro_valor_decide(cfg) and not ev.get("apostar"):
+        motivo = ev.get("motivo") or "Sin valor vs cuota real"
+        juego["apostable"] = False
+        juego["motivo_apuesta"] = motivo
+        if isinstance(pred_existente, dict):
+            pred_existente["apostable"] = False
+            if ev.get("edge") is not None:
+                pred_existente["edge"] = ev.get("edge")
+            pred_existente["motivo_apuesta"] = (
+                f"{pred_existente.get('motivo_apuesta') or ''} · {motivo}"
+            ).strip(" ·")
+        return
+    if ev.get("sombra"):
+        print(
+            f"[FILTRO VALOR sombra] {juego.get('pick')}: "
+            f"{ev.get('veredicto')} edge={ev.get('edge')} ({ev.get('motivo')})"
+        )
 
 
 def actualizar_mercado_en_prediccion(
@@ -897,6 +974,7 @@ def actualizar_mercado_en_prediccion(
         juego["probPick"] = prob
         if motivo_le and bloqueado_le:
             juego["motivo_apuesta"] = motivo_le
+        _aplicar_tipo_sobre(existente, cfg, juego)
         return True
 
     if not tiene_cuota_mercado(juego):
@@ -964,6 +1042,7 @@ def actualizar_mercado_en_prediccion(
         juego["linea_movimiento_pct"] = mov
     if bloqueado_le:
         juego["motivo_apuesta"] = motivo_le
+    _aplicar_tipo_sobre(existente, cfg, juego)
     try:
         actualizar_clv_registro(existente, juego, fase="cierre")
         if not existente.get("clv_odds_entrada"):
@@ -1951,6 +2030,7 @@ def guardar_prediccion(
             "probPick": prob,
             "prob_sin_calibrar": juego.get("prob_sin_calibrar"),
             "filtro_valor": juego.get("filtro_valor") if isinstance(juego.get("filtro_valor"), dict) else None,
+            "filtro_tipo": juego.get("filtro_tipo") if isinstance(juego.get("filtro_tipo"), dict) else None,
             "apostable": apostable_flag,
             "lineas_fuente": juego.get("lineas_fuente") or "modelo",
             "motivo_apuesta": motivo,
@@ -2570,6 +2650,11 @@ def _bloquear_juego_locked(
             pred_existente["motivo_apuesta"] = motivo_le
             juego["motivo_apuesta"] = motivo_le
 
+    # Sombra de valor solo anota. El tipo puede devolver un scratch o cortar un underdog.
+    if not cfg.get("modo_solo_modelo") and (cfg.get("estrategia") or {}).get("requiere_betmgm", True):
+        _anotar_filtro_valor_bloqueo(juego, pred_existente, cfg)
+    _aplicar_tipo_sobre(juego, cfg, pred_existente)
+
     if not juego.get("apostable"):
         print(f"[DEBUG BLOQUEO] Juego {game_id} no apostable. Motivo: {juego.get('motivo_apuesta', 'Desconocido')}")
         guardar_memoria(memoria)
@@ -2663,67 +2748,47 @@ def _bloquear_juego_locked(
         except Exception as e:
             print(f"[SCRATCH] refresh bloqueo: {e}")
 
-    # Con mercado: exigir edge real. Sin cuota de casa: nunca dinero.
+    # Con mercado: el valor en sombra solo anota. Sin cuota de casa: nunca dinero.
+    # El filtro de tipo vuelve a decidir después del refresh de scratch.
     if not cfg.get("modo_solo_modelo") and (cfg.get("estrategia") or {}).get("requiere_betmgm", True):
-        from filtro_valor import evaluar_valor, filtro_activo
+        from filtro_valor import filtro_activo
 
         if filtro_activo(cfg):
-            reg_valor = dict(juego)
-            if pred_existente:
-                for campo in ("fuente_momio", "cuota_real_decimal", "precio_congelado", "tipo_pick"):
-                    if pred_existente.get(campo) is not None and reg_valor.get(campo) is None:
-                        reg_valor[campo] = pred_existente.get(campo)
-            ev = evaluar_valor(reg_valor, cfg)
-            juego["filtro_valor"] = ev
-            if pred_existente is not None:
-                pred_existente["filtro_valor"] = ev
-            if not ev.get("apostar"):
-                motivo = ev.get("motivo") or "Sin valor vs cuota real"
-                if pred_existente is not None:
-                    pred_existente["apostable"] = False
-                    if ev.get("edge") is not None:
-                        pred_existente["edge"] = ev.get("edge")
-                    pred_existente["motivo_apuesta"] = (
-                        f"{pred_existente.get('motivo_apuesta') or ''} · {motivo}"
-                    ).strip(" ·")
-                guardar_memoria(memoria)
-                return {
-                    "ok": False,
-                    "motivo": motivo,
-                    "juego": juego["visitante"] + " vs " + juego["home"],
-                    "prediccion_guardada": True,
-                    "filtro_valor": ev,
-                }
+            _anotar_filtro_valor_bloqueo(juego, pred_existente, cfg)
         else:
             min_edge = float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0))
             edge_now = juego.get("edge")
             if tiene_cuota_mercado(juego) or tiene_cuota_mercado(pred_existente or {}):
                 if edge_now is None or float(edge_now) < min_edge:
                     motivo = "Sin valor vs mercado ahora"
+                    juego["apostable"] = False
+                    juego["motivo_apuesta"] = motivo
                     if pred_existente is not None:
                         pred_existente["apostable"] = False
-                    guardar_memoria(memoria)
-                    return {
-                        "ok": False,
-                        "motivo": motivo,
-                        "juego": juego["visitante"] + " vs " + juego["home"],
-                        "prediccion_guardada": True,
-                    }
+                        pred_existente["motivo_apuesta"] = motivo
             else:
                 motivo = "Sin cuota real de mercado — el % del modelo no es valor"
+                juego["apostable"] = False
+                juego["edge"] = 0
+                juego["motivo_apuesta"] = motivo
                 if pred_existente is not None:
                     pred_existente["apostable"] = False
                     pred_existente["edge"] = 0
                     pred_existente["motivo_apuesta"] = (
                         f"{pred_existente.get('motivo_apuesta') or ''} · {motivo}"
                     ).strip(" ·")
-                guardar_memoria(memoria)
-                return {
-                    "ok": False,
-                    "motivo": motivo,
-                    "juego": juego["visitante"] + " vs " + juego["home"],
-                    "prediccion_guardada": True,
-                }
+        _aplicar_tipo_sobre(juego, cfg, pred_existente)
+        if not juego.get("apostable"):
+            motivo = juego.get("motivo_apuesta") or "Sin valor vs cuota real"
+            guardar_memoria(memoria)
+            return {
+                "ok": False,
+                "motivo": motivo,
+                "juego": juego["visitante"] + " vs " + juego["home"],
+                "prediccion_guardada": True,
+                "filtro_valor": juego.get("filtro_valor"),
+                "filtro_tipo": juego.get("filtro_tipo"),
+            }
 
     # Modelo propone → MENTE concluye (APOSTAR/PASAR/ESPERAR) → solo entonces dinero.
     # Si mente off: cae al veto Groq legacy (con lecciones en memoria).
