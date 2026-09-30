@@ -15,9 +15,7 @@ def test_config_mercado_activo():
     assert float(cfg.get("apuesta_fija") or 0) == 3.0
     assert (cfg.get("estrategia") or {}).get("gestion_bankroll_dinamica") is False
     cadena = (cfg.get("lineas") or {}).get("cadena_momios") or []
-    assert cadena[:2] == ["espn_scoreboard", "espn_header"]
-    assert "odds_api" in cadena
-    assert cadena[-1] == "action_network"
+    assert cadena == ["espn_scoreboard", "espn_header", "action_network"]
     assert lineas.get("action_network") is True
     assert int(estr.get("max_apuestas_dia") or 99) <= 4
     assert lineas.get("proveedor") == "espn"
