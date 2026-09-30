@@ -4156,6 +4156,14 @@ def api_apuestas():
     }
 
 
+@app.get("/api/resultados")
+def api_resultados():
+    """Curva, ROI y cortes del experimento. Solo lectura: no liquida ni guarda."""
+    from resultados_mlb import calcular_resultados
+
+    return calcular_resultados(cargar_memoria())
+
+
 @app.get("/api/predicciones")
 def api_predicciones():
     """Predicciones del modelo (apostadas y no apostadas) del día actual e historial."""
