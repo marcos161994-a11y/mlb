@@ -1,0 +1,347 @@
+{
+  "league": {
+    "id": 8,
+    "sport": "baseball",
+    "name": "mlb",
+    "current_season": "2026",
+    "current_season_type": "reg"
+  },
+  "games": [
+    {
+      "id": 302580,
+      "league_id": 8,
+      "status": "scheduled",
+      "real_status": "scheduled",
+      "status_display": null,
+      "start_time": "2026-09-30T18:00:00.000Z",
+      "away_team_id": 212,
+      "home_team_id": 215,
+      "winning_team_id": null,
+      "league_name": "mlb",
+      "type": "post",
+      "season": 2026,
+      "week": null,
+      "attendance": 0,
+      "is_free": false,
+      "away_rotation_number": 901,
+      "home_rotation_number": 902,
+      "teams": [
+        {
+          "id": 215,
+          "full_name": "Atlanta Braves",
+          "display_name": "Braves",
+          "abbr": "ATL",
+          "location": "Atlanta",
+          "short_name": "Braves"
+        },
+        {
+          "id": 212,
+          "full_name": "Philadelphia Phillies",
+          "display_name": "Phillies",
+          "abbr": "PHI",
+          "location": "Philadelphia",
+          "short_name": "Phillies"
+        }
+      ],
+      "num_bets": 2398,
+      "odds": [
+        {
+          "book_id": 15,
+          "type": "game",
+          "ml_away": -119,
+          "ml_home": -100,
+          "inserted": "2026-09-30T03:32:28.216614+00:00",
+          "line_status": {
+            "ml_away": 0,
+            "ml_home": 0
+          }
+        },
+        {
+          "book_id": 30,
+          "type": "game",
+          "ml_away": -120,
+          "ml_home": 100,
+          "inserted": "2026-09-29T21:11:36.200097+00:00",
+          "line_status": {
+            "ml_away": 0,
+            "ml_home": 0
+          }
+        },
+        {
+          "book_id": 68,
+          "type": "game",
+          "ml_away": -117,
+          "ml_home": -103,
+          "inserted": "2026-09-30T03:31:57.154347+00:00",
+          "line_status": {
+            "ml_away": 0,
+            "ml_home": 0
+          }
+        },
+        {
+          "book_id": 69,
+          "type": "game",
+          "ml_away": -120,
+          "ml_home": 102,
+          "inserted": "2026-09-30T00:51:02.172432+00:00",
+          "line_status": {
+            "ml_away": 0,
+            "ml_home": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 302581,
+      "league_id": 8,
+      "status": "scheduled",
+      "real_status": "scheduled",
+      "status_display": null,
+      "start_time": "2026-09-30T21:00:00.000Z",
+      "away_team_id": 194,
+      "home_team_id": 199,
+      "winning_team_id": null,
+      "league_name": "mlb",
+      "type": "post",
+      "season": 2026,
+      "week": null,
+      "attendance": 0,
+      "is_free": false,
+      "away_rotation_number": 903,
+      "home_rotation_number": 904,
+      "teams": [
+        {
+          "id": 199,
+          "full_name": "Houston Astros",
+          "display_name": "Astros",
+          "abbr": "HOU",
+          "location": "Houston",
+          "short_name": "Astros"
+        },
+        {
+          "id": 194,
+          "full_name": "Chicago White Sox",
+          "display_name": "White Sox",
+          "abbr": "CWS",
+          "location": "Chicago",
+          "short_name": "White Sox"
+        }
+      ],
+      "num_bets": 1448,
+      "odds": [
+        {
+          "book_id": 15,
+          "type": "game",
+          "ml_away": 123,
+          "ml_home": -147,
+          "inserted": "2026-09-30T02:35:27.146906+00:00",
+          "line_status": {
+            "ml_away": 0,
+            "ml_home": 0
+          }
+        },
+        {
+          "book_id": 30,
+          "type": "game",
+          "ml_away": 126,
+          "ml_home": -153,
+          "inserted": "2026-09-30T00:41:29.179305+00:00",
+          "line_status": {
+            "ml_away": 0,
+            "ml_home": 0
+          }
+        },
+        {
+          "book_id": 68,
+          "type": "game",
+          "ml_away": 128,
+          "ml_home": -155,
+          "inserted": "2026-09-30T04:12:02.219191+00:00",
+          "line_status": {
+            "ml_away": 0,
+            "ml_home": 0
+          }
+        },
+        {
+          "book_id": 69,
+          "type": "game",
+          "ml_away": 122,
+          "ml_home": -144,
+          "inserted": "2026-09-30T02:35:01.224409+00:00",
+          "line_status": {
+            "ml_away": 0,
+            "ml_home": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 302517,
+      "league_id": 8,
+      "status": "scheduled",
+      "real_status": "scheduled",
+      "status_display": null,
+      "start_time": "2026-10-01T00:00:00.000Z",
+      "away_team_id": 190,
+      "home_team_id": 191,
+      "winning_team_id": null,
+      "league_name": "mlb",
+      "type": "post",
+      "season": 2026,
+      "week": null,
+      "attendance": 0,
+      "is_free": false,
+      "away_rotation_number": 905,
+      "home_rotation_number": 906,
+      "teams": [
+        {
+          "id": 190,
+          "full_name": "Boston Red Sox",
+          "display_name": "Red Sox",
+          "abbr": "BOS",
+          "location": "Boston",
+          "short_name": "Red Sox"
+        },
+        {
+          "id": 191,
+          "full_name": "New York Yankees",
+          "display_name": "Yankees",
+          "abbr": "NYY",
+          "location": "New York",
+          "short_name": "Yankees"
+        }
+      ],
+      "num_bets": 575,
+      "odds": [
+        {
+          "book_id": 15,
+          "type": "game",
+          "ml_away": 115,
+          "ml_home": -135,
+          "inserted": "2026-09-30T04:02:26.461641+00:00",
+          "line_status": {
+            "ml_away": 0,
+            "ml_home": 0
+          }
+        },
+        {
+          "book_id": 30,
+          "type": "game",
+          "ml_away": 115,
+          "ml_home": -135,
+          "inserted": "2026-09-30T03:41:26.234751+00:00",
+          "line_status": {
+            "ml_away": 0,
+            "ml_home": 0
+          }
+        },
+        {
+          "book_id": 68,
+          "type": "game",
+          "ml_away": 113,
+          "ml_home": -136,
+          "inserted": "2026-09-30T03:58:07.259379+00:00",
+          "line_status": {
+            "ml_away": 0,
+            "ml_home": 0
+          }
+        },
+        {
+          "book_id": 69,
+          "type": "game",
+          "ml_away": 116,
+          "ml_home": -134,
+          "inserted": "2026-09-30T03:41:10.196629+00:00",
+          "line_status": {
+            "ml_away": 0,
+            "ml_home": 0
+          }
+        }
+      ]
+    },
+    {
+      "id": 302543,
+      "league_id": 8,
+      "status": "scheduled",
+      "real_status": "scheduled",
+      "status_display": null,
+      "start_time": "2026-10-01T02:00:00.000Z",
+      "away_team_id": 206,
+      "home_team_id": 211,
+      "winning_team_id": null,
+      "league_name": "mlb",
+      "type": "post",
+      "season": 2026,
+      "week": null,
+      "attendance": 0,
+      "is_free": false,
+      "away_rotation_number": 907,
+      "home_rotation_number": 908,
+      "teams": [
+        {
+          "id": 206,
+          "full_name": "Chicago Cubs",
+          "display_name": "Cubs",
+          "abbr": "CHC",
+          "location": "Chicago",
+          "short_name": "Cubs"
+        },
+        {
+          "id": 211,
+          "full_name": "San Diego Padres",
+          "display_name": "Padres",
+          "abbr": "SD",
+          "location": "San Diego",
+          "short_name": "Padres"
+        }
+      ],
+      "num_bets": 65,
+      "odds": [
+        {
+          "book_id": 15,
+          "type": "game",
+          "ml_away": 115,
+          "ml_home": -134,
+          "inserted": "2026-09-30T04:57:37.172594+00:00",
+          "line_status": {
+            "ml_away": 0,
+            "ml_home": 0
+          }
+        },
+        {
+          "book_id": 30,
+          "type": "game",
+          "ml_away": 112,
+          "ml_home": -132,
+          "inserted": "2026-09-30T04:41:33.179706+00:00",
+          "line_status": {
+            "ml_away": 0,
+            "ml_home": 0
+          }
+        },
+        {
+          "book_id": 68,
+          "type": "game",
+          "ml_away": 113,
+          "ml_home": -137,
+          "inserted": "2026-09-30T04:58:09.119415+00:00",
+          "line_status": {
+            "ml_away": 0,
+            "ml_home": 0
+          }
+        },
+        {
+          "book_id": 69,
+          "type": "game",
+          "ml_away": 116,
+          "ml_home": -134,
+          "inserted": "2026-09-30T04:51:08.175937+00:00",
+          "line_status": {
+            "ml_away": 0,
+            "ml_home": 0
+          }
+        }
+      ]
+    }
+  ]
+}

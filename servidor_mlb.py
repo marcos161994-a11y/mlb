@@ -64,6 +64,7 @@ from modelo_mlb import (
     es_momio_estimado,
 )
 from cadena_momios import (
+    action_network_activo,
     apuesta_fija_dolares,
     campos_precio_congelado,
     momio_del_pick,
@@ -2137,7 +2138,7 @@ def revisar_apuestas_colgadas(memoria: dict, *, log: bool = False) -> dict[str, 
 
 def _salud_momios(memoria: dict) -> dict:
     """Bloque de solo lectura para /api/health."""
-    from cadena_momios import edad_ultimo_fetch_seg, resumen_rechazos
+    from cadena_momios import edad_ultimo_fetch_seg, resumen_fuentes, resumen_rechazos
 
     hoy = fecha_str()
     dia = next((d for d in memoria.get("dias") or [] if d.get("fecha") == hoy), None)
@@ -2172,6 +2173,7 @@ def _salud_momios(memoria: dict) -> dict:
         "fecha": hoy,
         "reales": reales,
         "por_casa": por_casa,
+        "fuentes": resumen_fuentes(),
         "sin_momio_real": sin_real,
         "rechazados": rech["total"],
         "rechazados_razones": rech["razones"],
@@ -5287,6 +5289,7 @@ def api_health():
             and not bool(cfg.get("modo_solo_modelo")),
             "fallback_internet": bool((cfg.get("lineas") or {}).get("fallback_internet", True)),
             "bookmakers": (cfg.get("lineas") or {}).get("bookmakers") or "draftkings",
+            "action_network": action_network_activo(cfg),
             "min_edge_pct": float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0)),
             **_salud_momios(mem_h),
             "odds_api": estado_odds_api(cfg),

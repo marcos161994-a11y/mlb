@@ -10,6 +10,10 @@ Orden, y se detiene en la primera casa que cotiza el partido:
 3. The Odds API, una casa configurada a la vez. Hace falta ``ODDS_API_KEY``
    (o ``lineas.api_key`` / ``odds_api_key.txt``). Sin key se anota el fallo
    y se sigue; no se inventa un precio de esa API.
+4. Action Network (público, sin key), si ``lineas.action_network`` no está
+   en false. Moneyline de las casas de ``lineas.bookmakers`` y, si ninguna
+   de esas cotiza, cualquier otra casa del payload. ``fuente_momio`` y
+   ``paso_momio`` quedan en ``action_network``; ``casa_momio`` es la casa.
 
 Si ninguna fuente real cotiza el partido con un precio fresco y en rango,
 el pick se registra sin apuesta (``fuente_momio='sin_momio_real'``). El
@@ -25,7 +29,7 @@ from typing import Any, Callable
 # Dos lados a -110: cada uno implica 110/210. El overround es 220/210.
 OVERROUND_MENOS_110 = 220.0 / 210.0
 
-_CADENA_DEFAULT = ("espn_scoreboard", "espn_header", "odds_api")
+_CADENA_DEFAULT = ("espn_scoreboard", "espn_header", "odds_api", "action_network")
 FRESH_MINUTES = 15
 _FUENTES_SIN_PRECIO = frozenset(
     {"", "modelo", "none", "null", "import", "estimado", "sin_momio_real"}
@@ -34,6 +38,7 @@ _ML_SUFIJO = re.compile(r"\s+ML\s*$", re.IGNORECASE)
 
 _rechazos: list[dict[str, Any]] = []
 _ultimo_fetch_ok: datetime | None = None
+_fuentes: dict[str, dict[str, int]] = {}
 
 
 def anotar_fetch_ok(cuando: datetime | None = None) -> None:
@@ -71,10 +76,47 @@ def reset_rechazos() -> None:
     _rechazos.clear()
 
 
+def anotar_fuente(fuente: str, ok: bool) -> None:
+    """Suma un acierto o un fallo del eslabón (espn, odds_api, action_network…)."""
+    nombre = _paso_de(fuente)
+    if not nombre or nombre in _FUENTES_SIN_PRECIO:
+        nombre = "fuente"
+    bucket = _fuentes.setdefault(nombre, {"ok": 0, "fallo": 0})
+    clave = "ok" if ok else "fallo"
+    bucket[clave] = int(bucket.get(clave) or 0) + 1
+
+
+def resumen_fuentes() -> dict[str, dict[str, int]]:
+    return {
+        nombre: {"ok": int(valores.get("ok") or 0), "fallo": int(valores.get("fallo") or 0)}
+        for nombre, valores in _fuentes.items()
+    }
+
+
+def fusionar_conteo_fuentes(base: Any, extra: Any) -> dict[str, dict[str, int]]:
+    """Une contadores sin sumar dos veces el mismo proceso. Se queda con el máximo."""
+    out: dict[str, dict[str, int]] = {}
+    for origen in (base, extra):
+        if not isinstance(origen, dict):
+            continue
+        for nombre, raw in origen.items():
+            if not isinstance(raw, dict):
+                continue
+            bucket = out.setdefault(str(nombre), {"ok": 0, "fallo": 0})
+            for clave in ("ok", "fallo"):
+                try:
+                    valor = int(raw.get(clave) or 0)
+                except (TypeError, ValueError):
+                    valor = 0
+                bucket[clave] = max(bucket[clave], valor)
+    return out
+
+
 def reset_auditoria_momios() -> None:
     """Limpia el contador de este proceso. No toca la base."""
     global _ultimo_fetch_ok
     _rechazos.clear()
+    _fuentes.clear()
     _ultimo_fetch_ok = None
 
 
@@ -87,6 +129,7 @@ def exportar_auditoria_momios() -> dict[str, Any]:
     return {
         "ultimo_fetch_ok": _ultimo_fetch_ok.isoformat() if _ultimo_fetch_ok else None,
         "rechazos": [dict(item) for item in _rechazos[-300:]],
+        "fuentes": resumen_fuentes(),
     }
 
 
@@ -115,6 +158,9 @@ def importar_auditoria_momios(data: Any) -> None:
         vistos.add(clave)
     if len(_rechazos) > 300:
         del _rechazos[: len(_rechazos) - 300]
+    unido = fusionar_conteo_fuentes(_fuentes, data.get("fuentes"))
+    _fuentes.clear()
+    _fuentes.update(unido)
 
 
 def volcar_auditoria_en(memoria: dict) -> None:
@@ -489,6 +535,8 @@ def _precio_libro(libro: dict) -> dict[str, Any] | None:
 def _paso_de(nombre: str) -> str:
     """Nombre del eslabón de la cadena, sin la casa."""
     nombre = str(nombre or "").strip().lower()
+    if nombre.startswith("action_network"):
+        return "action_network"
     if nombre.startswith("odds_api"):
         return "odds_api"
     if nombre.startswith("espn_header"):
@@ -496,6 +544,17 @@ def _paso_de(nombre: str) -> str:
     if nombre.startswith("espn_scoreboard"):
         return "espn_scoreboard"
     return (nombre.split(":")[0] or "casa")
+
+
+def action_network_activo(cfg: dict | None) -> bool:
+    """``lineas.action_network`` sale prendido. Solo un false explícito lo apaga."""
+    lineas = (cfg or {}).get("lineas") or {}
+    if "action_network" not in lineas:
+        return True
+    valor = lineas.get("action_network")
+    if isinstance(valor, str):
+        return valor.strip().lower() not in ("0", "false", "no", "off", "")
+    return bool(valor)
 
 
 def _escribir_precio(juego: dict, precio: dict, paso: str) -> None:
@@ -561,8 +620,13 @@ def _tiene_momio_real(juego: dict) -> bool:
     return True
 
 
-def _elegir_de_libros(juego: dict, orden: list[str], nombre_fuente: str) -> bool:
-    libros = _libros_juego(juego)
+def _elegir_de_libros(
+    juego: dict,
+    orden: list[str],
+    nombre_fuente: str,
+    libros: list[dict] | None = None,
+) -> bool:
+    libros = list(libros) if libros is not None else _libros_juego(juego)
     if not libros:
         _anotar(juego, nombre_fuente, False, "sin momio para este partido")
         return False
@@ -706,6 +770,76 @@ def _fetch_odds_default(cfg: dict) -> tuple[dict[str, dict], dict]:
         return {}, {"ok": False, "mensaje": f"The Odds API: {e}"[:180]}
 
 
+def _fetch_action_default(cfg: dict, juegos: list[dict]) -> tuple[dict, dict]:
+    from lineas_action_network import obtener_mapa_action_network
+
+    try:
+        return obtener_mapa_action_network(juegos, cfg)
+    except Exception as e:
+        print(f"[MOMIO] action_network falló: {e}")
+        return {}, {"ok": False, "mensaje": f"Action Network: {e}"[:180]}
+
+
+def _paso_cubrio(juego: dict, paso: str) -> bool:
+    return bool(_tiene_momio_real(juego) and juego.get("paso_momio") == paso)
+
+
+def _fijar_fuente_action(juego: dict) -> None:
+    """La fuente del eslabón es action_network. La casa real queda en casa_momio."""
+    casa_key = str(juego.get("fuente_momio") or "").strip().lower().replace(" ", "")
+    casa_nombre = juego.get("casa_momio") or casa_key
+    juego["casa_momio"] = casa_nombre
+    juego["fuente_momio"] = "action_network"
+    juego["lineas_fuente"] = "action_network"
+    juego["paso_momio"] = "action_network"
+    if casa_key and casa_key != "action_network":
+        juego["origen_momio"] = f"action_network:{casa_key}"
+    else:
+        juego["origen_momio"] = "action_network"
+
+
+def _aplicar_action_network(juego: dict, mapa: dict, meta: dict | None, orden: list[str]) -> None:
+    """Moneyline de Action Network para este partido. No inventa el precio."""
+    ident = {k: juego.get(k) for k in ("fecha", "espn_id", "id")}
+    if not mapa:
+        _anotar(
+            juego,
+            "action_network",
+            False,
+            str((meta or {}).get("mensaje") or "sin partidos")[:180],
+        )
+        anotar_fuente("action_network", False)
+        return
+    from lineas_betmgm import buscar_lineas_partido
+
+    fila = buscar_lineas_partido(
+        mapa,
+        juego.get("visitante") or "",
+        juego.get("home") or "",
+        fecha=juego.get("fecha"),
+        inicio=juego.get("inicio_juego"),
+        evento_id=juego.get("espn_id") or juego.get("id"),
+    )
+    if not fila:
+        _anotar(juego, "action_network", False, "sin momio de esta fecha")
+        anotar_fuente("action_network", False)
+        return
+    libros = [b for b in (fila.get("libros") or []) if isinstance(b, dict)]
+    if not libros:
+        _anotar(juego, "action_network", False, "sin moneyline de casa")
+        anotar_fuente("action_network", False)
+        return
+    ok = _elegir_de_libros(juego, orden, "action_network", libros)
+    for clave, valor in ident.items():
+        if valor not in (None, ""):
+            juego[clave] = valor
+    if ok and _tiene_momio_real(juego):
+        _fijar_fuente_action(juego)
+        anotar_fuente("action_network", True)
+        return
+    anotar_fuente("action_network", False)
+
+
 def aplicar_cadena_momios(
     juegos: list[dict],
     cfg: dict | None = None,
@@ -713,6 +847,7 @@ def aplicar_cadena_momios(
     fetch_espn: Callable | None = None,
     fetch_header: Callable | None = None,
     fetch_odds: Callable | None = None,
+    fetch_action: Callable | None = None,
 ) -> tuple[list[dict], dict]:
     """Rellena momios reales. Los partidos sin casa quedan para el estimado."""
     cfg = cfg or {}
@@ -721,6 +856,7 @@ def aplicar_cadena_momios(
     fetch_espn = fetch_espn or _fetch_espn_default
     fetch_header = fetch_header or _fetch_header_default
     fetch_odds = fetch_odds or _fetch_odds_default
+    fetch_action = fetch_action or _fetch_action_default
 
     meta_espn: dict = {"ok": False, "mensaje": "ESPN no consultado"}
     if "espn_scoreboard" in pasos:
@@ -735,11 +871,14 @@ def aplicar_cadena_momios(
                     False,
                     str(meta_espn.get("mensaje") or "ESPN scoreboard sin cuotas")[:180],
                 )
+                anotar_fuente("espn_scoreboard", False)
         else:
             for juego in juegos:
                 if _tiene_momio_real(juego) and juego.get("fuente_momio"):
+                    anotar_fuente("espn_scoreboard", True)
                     continue
                 _elegir_de_libros(juego, orden, "espn_scoreboard")
+                anotar_fuente("espn_scoreboard", _paso_cubrio(juego, "espn_scoreboard"))
 
     if "espn_header" in pasos:
         faltan = [j for j in juegos if not _tiene_momio_real(j)]
@@ -749,6 +888,7 @@ def aplicar_cadena_momios(
                 meta_h = {"ok": False, "mensaje": "ESPN header sin meta"}
             for juego in faltan:
                 _aplicar_mapa(juego, mapa_h if isinstance(mapa_h, dict) else {}, "espn_header", meta_h)
+                anotar_fuente("espn_header", _paso_cubrio(juego, "espn_header"))
 
     meta_api: dict = {"ok": False, "mensaje": "The Odds API no consultada"}
     if "odds_api" in pasos:
@@ -775,6 +915,23 @@ def aplicar_cadena_momios(
                             f"odds_api:{casa}",
                             {"ok": bool(mapa), "mensaje": "esta casa no cotiza el partido"},
                         )
+            for juego in faltan:
+                anotar_fuente("odds_api", _paso_cubrio(juego, "odds_api"))
+
+    meta_an: dict = {"ok": False, "mensaje": "Action Network no consultada"}
+    if "action_network" in pasos and action_network_activo(cfg):
+        faltan = [j for j in juegos if not _tiene_momio_real(j)]
+        if faltan:
+            mapa_an, meta_an = fetch_action(cfg, faltan)
+            if not isinstance(meta_an, dict):
+                meta_an = {"ok": False, "mensaje": "Action Network sin meta"}
+            mapa_an = mapa_an if isinstance(mapa_an, dict) else {}
+            for juego in faltan:
+                if _tiene_momio_real(juego):
+                    continue
+                _aplicar_action_network(juego, mapa_an, meta_an, orden)
+    elif "action_network" in pasos:
+        meta_an = {"ok": False, "mensaje": "Action Network desactivado", "omitido": True}
 
     reales = 0
     for juego in juegos:
@@ -795,6 +952,7 @@ def aplicar_cadena_momios(
         ),
         "espn": meta_espn.get("mensaje"),
         "odds_api": meta_api.get("mensaje"),
+        "action_network": meta_an.get("mensaje"),
     }
     return juegos, meta
 

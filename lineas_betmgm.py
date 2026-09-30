@@ -871,7 +871,7 @@ def obtener_mapas_por_casa(cfg: dict) -> tuple[dict[str, dict], dict]:
 
 
 def aplicar_lineas_a_juegos(juegos: list[dict], cfg: dict) -> tuple[list[dict], dict]:
-    """Cadena de momios: ESPN scoreboard, ESPN header y The Odds API."""
+    """Cadena de momios: ESPN scoreboard, ESPN header, The Odds API y Action Network."""
     from cadena_momios import aplicar_cadena_momios
 
     return aplicar_cadena_momios(juegos, cfg)

@@ -36,7 +36,9 @@
 
     "fallback_internet": true,
 
-    "cadena_momios": ["espn_scoreboard", "espn_header", "odds_api"]
+    "action_network": true,
+
+    "cadena_momios": ["espn_scoreboard", "espn_header", "odds_api", "action_network"]
 
   },
 

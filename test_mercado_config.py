@@ -17,6 +17,8 @@ def test_config_mercado_activo():
     cadena = (cfg.get("lineas") or {}).get("cadena_momios") or []
     assert cadena[:2] == ["espn_scoreboard", "espn_header"]
     assert "odds_api" in cadena
+    assert cadena[-1] == "action_network"
+    assert lineas.get("action_network") is True
     assert int(estr.get("max_apuestas_dia") or 99) <= 4
     assert lineas.get("proveedor") == "espn"
     assert lineas.get("fallback_internet") is True
