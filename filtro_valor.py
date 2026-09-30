@@ -1,4 +1,10 @@
-"""Filtro de valor: apostar solo si la probabilidad calibrada le gana a la casa.
+"""Filtro de valor (sombra) y filtro de tipo (el que decide).
+
+El filtro de valor calcula la probabilidad calibrada, el edge contra la cuota
+real y un veredicto apostaría/pasaría. En sombra ese veredicto se guarda y
+no aprueba ni bloquea. El filtro de tipo sí decide: entra todo scratch con
+cuota real, no entra el underdog (`underdog cortado`) y limpio/favorito
+siguen con las reglas de edge que ya tenían.
 
 Contrato de cuota real (compartido con el trabajo de momios de bc-015ab330,
 que al cerrar este cambio aún no tenía PR):
@@ -88,6 +94,7 @@ def filtro_valor_cfg(cfg: dict | None) -> dict[str, Any]:
         penalizar = True
     return {
         "activo": activo,
+        "sombra": bool(raw.get("sombra", False)),
         "margen_min_pct": base,
         "margen_underdog_pct": underdog,
         "margen_scratch_pct": scratch,
@@ -99,8 +106,37 @@ def filtro_activo(cfg: dict | None) -> bool:
     return bool(filtro_valor_cfg(cfg)["activo"])
 
 
+def filtro_valor_en_sombra(cfg: dict | None) -> bool:
+    fv = filtro_valor_cfg(cfg)
+    return bool(fv["activo"] and fv["sombra"])
+
+
+def filtro_valor_decide(cfg: dict | None) -> bool:
+    """True solo cuando el filtro de valor aprueba o bloquea de verdad."""
+    fv = filtro_valor_cfg(cfg)
+    return bool(fv["activo"] and not fv["sombra"])
+
+
 def penaliza_scratch(cfg: dict | None) -> bool:
     return bool(filtro_valor_cfg(cfg)["penalizar_scratch"])
+
+
+MOTIVO_UNDERDOG_CORTADO = "underdog cortado"
+
+
+def filtro_tipo_cfg(cfg: dict | None) -> dict[str, Any]:
+    cfg = cfg or {}
+    estrategia = cfg.get("estrategia") if isinstance(cfg.get("estrategia"), dict) else {}
+    raw = estrategia.get("filtro_tipo") if isinstance(estrategia.get("filtro_tipo"), dict) else {}
+    return {
+        "activo": bool(raw.get("activo", False)),
+        "apostar_scratch": bool(raw.get("apostar_scratch", True)),
+        "cortar_underdog": bool(raw.get("cortar_underdog", True)),
+    }
+
+
+def filtro_tipo_activo(cfg: dict | None) -> bool:
+    return bool(filtro_tipo_cfg(cfg)["activo"])
 
 
 def tipo_para_cuota(juego: dict | None, prob: float, odds: float) -> str:
@@ -138,12 +174,46 @@ def _minimos(cfg: dict | None) -> tuple[float, float]:
     return min_prob, min_edge
 
 
-def evaluar_valor(registro: dict | None, cfg: dict | None) -> dict[str, Any]:
-    """Decide si hay edge real contra la cuota de casa.
+def _tipo_registro(registro: dict | None) -> str:
+    reg = registro or {}
+    tipo = str(reg.get("tipo_pick") or "").strip().lower()
+    if tipo in _TIPOS:
+        return tipo
+    try:
+        prob = float(reg.get("probPick") or 0)
+    except (TypeError, ValueError):
+        prob = 0.0
+    cuota = cuota_decimal_real(reg)
+    if cuota is None:
+        try:
+            cuota = float(reg.get("odds") or 0)
+        except (TypeError, ValueError):
+            cuota = 0.0
+    return tipo_para_cuota(reg, prob, float(cuota or 0))
 
-    Con el filtro apagado igual calcula el edge, y el margen es `min_edge_pct`.
-    Con el filtro activo el margen depende del tipo: underdog paga más,
-    scratch paga el margen base.
+
+def _veto_starter_lesionado(registro: dict | None) -> bool:
+    """El scratch no pisa el veto de starter lesionado."""
+    reg = registro or {}
+    les = reg.get("lesiones") if isinstance(reg.get("lesiones"), dict) else {}
+    if not les.get("starter_riesgo"):
+        return False
+    pick = str(reg.get("pick") or "")
+    visitante = str(reg.get("visitante") or "")
+    home = str(reg.get("home") or "")
+    if les.get("starter_away_lesionado") and visitante and visitante in pick:
+        return True
+    if les.get("starter_home_lesionado") and home and home in pick:
+        return True
+    return False
+
+
+def evaluar_valor(registro: dict | None, cfg: dict | None) -> dict[str, Any]:
+    """Calcula el veredicto de valor contra la cuota de casa.
+
+    `apostar` es el veredicto (apostaría / no). En sombra se guarda y no
+    decide. Con el filtro apagado el margen es `min_edge_pct`. Con el filtro
+    activo el margen depende del tipo: underdog paga más, scratch el base.
     """
     fv = filtro_valor_cfg(cfg)
     min_prob, min_edge = _minimos(cfg)
@@ -155,6 +225,8 @@ def evaluar_valor(registro: dict | None, cfg: dict | None) -> dict[str, Any]:
     cuota = cuota_decimal_real(reg)
     out: dict[str, Any] = {
         "filtro_activo": fv["activo"],
+        "sombra": bool(fv["sombra"]),
+        "veredicto": "pasaria",
         "apostar": False,
         "prob": round(prob, 1),
         "cuota": cuota,
@@ -169,9 +241,7 @@ def evaluar_valor(registro: dict | None, cfg: dict | None) -> dict[str, Any]:
         return out
     implicita = round(100.0 / cuota, 1)
     edge = round(prob - implicita, 1)
-    tipo = str(reg.get("tipo_pick") or "").strip().lower()
-    if tipo not in _TIPOS:
-        tipo = tipo_para_cuota(reg, prob, cuota)
+    tipo = _tipo_registro(reg)
     margen = margen_para_tipo(cfg, tipo) if fv["activo"] else min_edge
     apostar = prob >= min_prob and edge >= margen
     if apostar:
@@ -183,6 +253,7 @@ def evaluar_valor(registro: dict | None, cfg: dict | None) -> dict[str, Any]:
     out.update(
         {
             "apostar": apostar,
+            "veredicto": "apostaria" if apostar else "pasaria",
             "implicita": implicita,
             "edge": edge,
             "margen": margen,
@@ -191,6 +262,84 @@ def evaluar_valor(registro: dict | None, cfg: dict | None) -> dict[str, Any]:
         }
     )
     return out
+
+
+def evaluar_tipo(registro: dict | None, cfg: dict | None) -> dict[str, Any]:
+    """Veredicto del filtro de tipo. No usa el filtro de valor.
+
+    Scratch con cuota real: apostar. Sin cuota real no se inventa la apuesta.
+    Underdog: no apostar, con el motivo exacto `underdog cortado`.
+    Limpio y favorito_alto: no cambian la decisión que ya trae el pick.
+    """
+    ft = filtro_tipo_cfg(cfg)
+    tipo = _tipo_registro(registro)
+    out: dict[str, Any] = {
+        "filtro_activo": ft["activo"],
+        "tipo": tipo,
+        "decision": "igual",
+        "cambia_apostable": None,
+        "motivo": f"{tipo}: sigue las reglas de edge y probabilidad",
+    }
+    if not ft["activo"]:
+        out["motivo"] = "Filtro de tipo apagado"
+        return out
+    if tipo == "underdog" and ft["cortar_underdog"]:
+        out.update(
+            decision="cortar",
+            cambia_apostable=False,
+            motivo=MOTIVO_UNDERDOG_CORTADO,
+        )
+        return out
+    if tipo == "scratch" and ft["apostar_scratch"]:
+        if cuota_decimal_real(registro) is None:
+            out.update(
+                decision="sin_cuota",
+                cambia_apostable=False,
+                motivo="Scratch sin cuota real: no se inventa apuesta",
+            )
+            return out
+        if _veto_starter_lesionado(registro):
+            out.update(
+                decision="veto_lesion",
+                cambia_apostable=None,
+                motivo="Scratch con cuota real, pero el starter lesionado veta el dinero",
+            )
+            return out
+        out.update(
+            decision="apostar",
+            cambia_apostable=True,
+            motivo="Scratch con cuota real: se apuesta",
+        )
+        return out
+    return out
+
+
+def aplicar_decision_tipo(registro: dict | None, cfg: dict | None) -> dict[str, Any]:
+    """Escribe `filtro_tipo` y, si el tipo manda, cambia `apostable`."""
+    ev = evaluar_tipo(registro, cfg)
+    if not isinstance(registro, dict):
+        return ev
+    registro["filtro_tipo"] = ev
+    cambia = ev.get("cambia_apostable")
+    if cambia is True:
+        registro["apostable"] = True
+        registro["motivo_apuesta"] = ev.get("motivo") or registro.get("motivo_apuesta")
+    elif cambia is False and ev.get("decision") == "cortar":
+        registro["apostable"] = False
+        registro["motivo_apuesta"] = MOTIVO_UNDERDOG_CORTADO
+    elif cambia is False and ev.get("decision") == "sin_cuota":
+        registro["apostable"] = False
+        if not registro.get("motivo_apuesta"):
+            registro["motivo_apuesta"] = ev.get("motivo")
+    return ev
+
+
+def incluir_por_tipo(fila: dict | None, cfg: dict | None) -> bool:
+    """True si el backtest del filtro de tipo se queda con la fila."""
+    ev = evaluar_tipo(fila, cfg)
+    if not ev.get("filtro_activo"):
+        return True
+    return ev.get("decision") not in ("cortar", "sin_cuota")
 
 
 def filas_liquidadas(memoria: dict | None) -> list[dict[str, Any]]:
@@ -251,7 +400,14 @@ def _pnl_fila(fila: dict[str, Any]) -> tuple[float, float] | None:
     return None
 
 
-def _roi(filas: list[dict[str, Any]], *, filtrar: bool, cfg: dict, cal: Callable | None) -> dict[str, Any]:
+def _roi(
+    filas: list[dict[str, Any]],
+    *,
+    filtrar: bool,
+    cfg: dict,
+    cal: Callable | None,
+    quedarse: Callable[[dict[str, Any]], bool] | None = None,
+) -> dict[str, Any]:
     profit = 0.0
     stake = 0.0
     n = 0
@@ -260,7 +416,10 @@ def _roi(filas: list[dict[str, Any]], *, filtrar: bool, cfg: dict, cal: Callable
         reg = dict(fila)
         if cal is not None:
             reg["probPick"] = float(cal(fila))
-        if filtrar and not evaluar_valor(reg, cfg)["apostar"]:
+        if quedarse is not None and not quedarse(reg):
+            continue
+        # En sombra `apostar` es solo el veredicto: no recorta el libro.
+        if filtrar and filtro_valor_decide(cfg) and not evaluar_valor(reg, cfg)["apostar"]:
             continue
         pnl = _pnl_fila(reg)
         if pnl is None:
@@ -273,6 +432,7 @@ def _roi(filas: list[dict[str, Any]], *, filtrar: bool, cfg: dict, cal: Callable
     return {
         "n": n,
         "aciertos": aciertos,
+        "wr_pct": round(100.0 * aciertos / n, 1) if n else None,
         "roi_pct": round(100.0 * profit / stake, 1) if stake else None,
         "profit": round(profit, 2),
         "stake": round(stake, 2),
@@ -353,3 +513,146 @@ def backtest_historico(memoria: dict, cfg: dict | None = None) -> dict[str, Any]
             calibracion._calibradores_segmento,
             calibracion._meta,
         ) = snapshot
+
+
+def _contar_veredicto(
+    filas: list[dict[str, Any]],
+    cfg: dict,
+    cal: Callable | None,
+) -> dict[str, Any]:
+    """Cuántos picks el filtro de valor apostaría o pasaría. No decide apuestas."""
+    apostaria = 0
+    pasaria = 0
+    for fila in filas:
+        reg = dict(fila)
+        if cal is not None:
+            reg["probPick"] = float(cal(fila))
+        if evaluar_valor(reg, cfg).get("veredicto") == "apostaria":
+            apostaria += 1
+        else:
+            pasaria += 1
+    return {"apostaria": apostaria, "pasaria": pasaria, "n": apostaria + pasaria}
+
+
+def _por_tipo(filas: list[dict[str, Any]], cfg: dict) -> dict[str, Any]:
+    grupos: dict[str, list[dict[str, Any]]] = {tipo: [] for tipo in _TIPOS}
+    for fila in filas:
+        grupos.setdefault(_tipo_registro(fila), []).append(fila)
+    return {
+        tipo: _roi(rows, filtrar=False, cfg=cfg, cal=None)
+        for tipo, rows in grupos.items()
+    }
+
+
+def backtest_filtro_tipo(memoria: dict, cfg: dict | None = None) -> dict[str, Any]:
+    """Backtest del filtro de tipo. El filtro de valor queda en sombra.
+
+    Mismo corte cronológico 70/30 que el backtest de calibración: los
+    primeros 70% son la ventana que antes entrenaba el calibrador; los
+    últimos 30% son el holdout. También se puntúa el libro completo.
+    Antes = todos los liquidados con cuota real. Después = scratch con
+    cuota real, sin underdog, y el resto de tipos enteros. No reescribe
+    la memoria. El veredicto de valor se cuenta aparte y no cambia el ROI.
+    """
+    import tempfile
+    from pathlib import Path
+
+    import calibracion
+
+    cfg = cfg or {}
+    con_cuota = [fila for fila in filas_liquidadas(memoria) if cuota_decimal_real(fila) is not None]
+    n = len(con_cuota)
+    corte = int(n * 0.70)
+    if corte < 30 or n - corte < 15:
+        return {
+            "ok": False,
+            "etiqueta": "backtest",
+            "motivo": f"Pocas filas con cuota real para un holdout ({n})",
+            "n_con_cuota_real": n,
+        }
+    train, holdout = con_cuota[:corte], con_cuota[corte:]
+
+    def _lado(filas: list[dict[str, Any]]) -> dict[str, Any]:
+        return {
+            "antes": _roi(filas, filtrar=False, cfg=cfg, cal=None),
+            "despues": _roi(
+                filas,
+                filtrar=False,
+                cfg=cfg,
+                cal=None,
+                quedarse=lambda fila: incluir_por_tipo(fila, cfg),
+            ),
+        }
+
+    snapshot = (
+        calibracion._calibrador,
+        dict(calibracion._calibradores_tipo),
+        dict(calibracion._calibradores_segmento),
+        dict(calibracion._meta),
+        calibracion.DATA_DIR,
+    )
+    metodo = None
+    sombra_holdout: dict[str, Any] | None = None
+    sombra_todos: dict[str, Any] | None = None
+    aviso_sombra = ""
+    try:
+        calibracion._calibrador = None
+        calibracion._calibradores_tipo = {}
+        calibracion._calibradores_segmento = {}
+        with tempfile.TemporaryDirectory() as tmp:
+            calibracion.DATA_DIR = Path(tmp)
+            meta = calibracion.entrenar_calibrador(_memoria_de_filas(train), min_muestras=30)
+            metodo = meta.get("metodo")
+
+            def _cal(fila: dict[str, Any]) -> float:
+                return calibracion.calibrar_probabilidad(
+                    float(fila.get("probPick") or 0),
+                    cfg,
+                    tipo_pick=None,
+                )
+
+            sombra_holdout = _contar_veredicto(holdout, cfg, _cal)
+            sombra_todos = _contar_veredicto(con_cuota, cfg, _cal)
+            if not meta.get("ok"):
+                aviso_sombra = str(meta.get("mensaje") or "Calibrador no ajustado; el conteo usa la prob. guardada")
+            else:
+                aviso_sombra = (
+                    "Conteo en sombra con calibrador ajustado solo en los primeros 70%. "
+                    "No entra en el ROI. En 'todos', la parte de entrenamiento está en muestra."
+                )
+    except Exception as exc:
+        aviso_sombra = f"No se pudo contar la sombra de valor: {exc}"
+    finally:
+        (
+            calibracion._calibrador,
+            calibracion._calibradores_tipo,
+            calibracion._calibradores_segmento,
+            calibracion._meta,
+            calibracion.DATA_DIR,
+        ) = snapshot
+
+    return {
+        "ok": True,
+        "etiqueta": "backtest",
+        "n_con_cuota_real": n,
+        "n_train": len(train),
+        "n_holdout": len(holdout),
+        "metodo_calibracion_sombra": metodo,
+        "nota": (
+            "Backtest. Antes = todos los picks con cuota real. "
+            "Después = filtro de tipo: todo scratch con cuota real, "
+            "underdog fuera, limpio y favorito_alto se quedan. "
+            "El filtro de valor está en sombra y no cambia las apuestas."
+        ),
+        "holdout": _lado(holdout),
+        "todos": _lado(con_cuota),
+        "train": {
+            **_lado(train),
+            "aviso": "Primeros 70%. El filtro de tipo no se ajusta con estos datos.",
+        },
+        "por_tipo_holdout": _por_tipo(holdout, cfg),
+        "por_tipo_todos": _por_tipo(con_cuota, cfg),
+        "sombra_valor_holdout": sombra_holdout,
+        "sombra_valor_todos": sombra_todos,
+        "aviso_sombra": aviso_sombra,
+    }

@@ -80,10 +80,16 @@
     },
     "filtro_valor": {
       "activo": true,
+      "sombra": true,
       "margen_min_pct": 1.0,
       "margen_underdog_pct": 2.0,
       "margen_scratch_pct": 1.0,
       "penalizar_scratch": false
+    },
+    "filtro_tipo": {
+      "activo": true,
+      "apostar_scratch": true,
+      "cortar_underdog": true
     }
 
   },
