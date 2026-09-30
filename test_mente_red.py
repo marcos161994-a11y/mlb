@@ -87,33 +87,11 @@ def test_servidor_expone_ruta_mente():
     assert "def mente_acceso_directo" in src
 
 
-def test_diagrama_parece_ciencia_ficcion():
-    html = Path("diagrama/index.html").read_text(encoding="utf-8")
-    assert "sci-fi-hud" in html
-    assert "function hexPoints" in html
-    assert "neural-graph" in html
-    assert "hex-nodo" in html
-    assert "animateMotion" in html
-    assert "FALLBACK_RED" in html
-
-
-def test_carpeta_diagrama_para_el_escritorio():
-    html = Path("diagrama/index.html").read_text(encoding="utf-8")
-    assert 'id="mente-red-svg"' in html
-    assert "/api/mente-red" in html
-    assert "Diagramma.zip" in html
-    assert "abrirBitacora" in html
-    assert Path("diagrama/bitacora.json").exists()
-    atajo = Path("diagrama/Diagrama.url").read_text(encoding="utf-8")
-    assert "mlb-1-en7i.onrender.com/diagrama" in atajo
-    assert Path("diagrama/Abrir-diagrama.bat").exists()
-    assert Path("diagrama/LEEME.txt").exists()
-
-
-def test_servidor_expone_ruta_diagrama():
+def test_no_queda_el_diagrama():
+    assert not Path("diagrama").exists()
     src = Path("servidor_mlb.py").read_text(encoding="utf-8")
-    assert '@app.get("/diagrama")' in src
-    assert "def panel_diagrama" in src
-    assert "def panel_diagrama_resumen" in src
-    assert "def diagrama_carpeta_zip" in src
-    assert 'filename="Diagramma.zip"' in src
+    assert "/diagrama" not in src
+    html = Path("mente/index.html").read_text(encoding="utf-8")
+    assert "diagrama" not in html
+    panel = Path("QuantumMLB.html").read_text(encoding="utf-8")
+    assert "/diagrama" not in panel

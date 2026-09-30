@@ -1,9 +1,0 @@
-Para leer el resumen (sin código), abre uno de estos en el navegador:
-
-  Resumen.url
-  Abrir-diagrama.bat
-
-Los dos abren la página en Chrome o Edge. No abras los archivos con el Bloc de notas:
-ahí solo verías código.
-
-La red de la mente está en Diagrama.url
