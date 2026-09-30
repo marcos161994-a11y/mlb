@@ -48,15 +48,15 @@ OPCION A — GitHub Actions (recomendado, ya en el repo)
 
 OPCION B — cron-job.org (alternativa)
 1. Crea cuenta en https://cron-job.org
-2. Cron cada 10 MIN: GET https://mlb-1-en7i.onrender.com/api/health
-3. Cron cada 10 MIN: GET https://mlb-1-en7i.onrender.com/api/auto-bloqueo-externo?secret=TU_CRON_SECRET
+2. Cron cada 10 MIN: GET https://mlb-u9rd.onrender.com/api/health
+3. Cron cada 10 MIN: GET https://mlb-u9rd.onrender.com/api/auto-bloqueo-externo?secret=TU_CRON_SECRET
 
 MANUAL (una vez, o si faltaron dias)
   Doble clic: despertar_nube.bat
   (te pedira el CRON_SECRET de Render)
 
 PANEL SIN PC
-  Abre en el celular/otro PC: https://mlb-1-en7i.onrender.com
+  Abre en el celular/otro PC: https://mlb-u9rd.onrender.com
   (no uses localhost si la PC esta apagada)
 
 PASO 4 — VERIFICAR

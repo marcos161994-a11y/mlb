@@ -2,7 +2,7 @@ param(
     [string]$Secret = $env:CRON_SECRET
 )
 
-$base = "https://mlb-1-en7i.onrender.com"
+$base = if ($env:RENDER_URL) { $env:RENDER_URL.Trim().TrimEnd('/') } else { "https://mlb-u9rd.onrender.com" }
 Write-Host "Comprobando salud..." -ForegroundColor Cyan
 try {
     $h = Invoke-WebRequest -Uri "$base/api/health" -TimeoutSec 90 -UseBasicParsing

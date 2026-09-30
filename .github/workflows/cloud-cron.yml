@@ -7,13 +7,25 @@ on:
     - cron: "*/5 * * * *"
   workflow_dispatch:
 
+# Prioridad: variable de repo RENDER_URL, luego secret RENDER_URL,
+# y si no hay ninguno el servicio vivo (mlb-u9rd). mlb-1-en7i es otro servicio.
+env:
+  RENDER_URL: ${{ vars.RENDER_URL || secrets.RENDER_URL || 'https://mlb-u9rd.onrender.com' }}
+
 jobs:
   ping-render:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Normalizar RENDER_URL
+        run: |
+          url="${RENDER_URL:-https://mlb-u9rd.onrender.com}"
+          url="${url%/}"
+          echo "RENDER_URL=${url}" >> "$GITHUB_ENV"
+          echo "Servicio: ${url}"
+
       - name: Health (despierta Render)
-        run: curl -fsS --retry 3 --retry-delay 15 --max-time 120 "https://mlb-1-en7i.onrender.com/api/health"
+        run: curl -fsS --retry 3 --retry-delay 15 --max-time 120 "${RENDER_URL}/api/health"
 
       - name: Verificar cuotas de mercado
         env:
@@ -24,7 +36,7 @@ jobs:
             exit 0
           fi
           body=$(curl -fsS --max-time 90 \
-            "https://mlb-1-en7i.onrender.com/api/odds-status" || echo '{"ok":false}')
+            "${RENDER_URL}/api/odds-status" || echo '{"ok":false}')
           echo "$body"
           ok=$(echo "$body" | python3 -c "import json,sys; d=json.load(sys.stdin); print('1' if d.get('ok') else '0')" 2>/dev/null || echo 0)
           if [ "$ok" != "1" ]; then
@@ -42,6 +54,6 @@ jobs:
           # Header (preferido) y query (servidor anterior al deploy de auth).
           curl -fsS --max-time 60 \
             -H "X-Cron-Secret: ${CRON_SECRET}" \
-            "https://mlb-1-en7i.onrender.com/api/auto-bloqueo-externo?secret=${CRON_SECRET}&en_fondo=1"
+            "${RENDER_URL}/api/auto-bloqueo-externo?secret=${CRON_SECRET}&en_fondo=1"
       # El import 9 MB + ML ya lo hace el cron al final si hace falta.
       # Pegarlo aquí en paralelo era el pico que tumba Render free (512 MB).

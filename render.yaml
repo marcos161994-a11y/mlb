@@ -11,8 +11,11 @@ services:
     startCommand: bash start.sh
     healthCheckPath: /api/health
     envVars:
+      # numpy==2.5.3 y xgboost==3.4.1 exigen Python >= 3.12.
+      # Tiene que ser versión completa (3.12.14, no 3.12).
+      # Si el dashboard ya define PYTHON_VERSION, ese valor pisa este blueprint.
       - key: PYTHON_VERSION
-        value: "3.11.9"
+        value: "3.12.14"
       - key: ODDS_API_KEY
         sync: false
       - key: GROQ_API_KEY

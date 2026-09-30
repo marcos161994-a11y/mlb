@@ -6,11 +6,23 @@ name: Importar aprendizaje
 on:
   workflow_dispatch:
 
+# Prioridad: variable de repo RENDER_URL, luego secret RENDER_URL,
+# y si no hay ninguno el servicio vivo (mlb-u9rd). mlb-1-en7i es otro servicio.
+env:
+  RENDER_URL: ${{ vars.RENDER_URL || secrets.RENDER_URL || 'https://mlb-u9rd.onrender.com' }}
+
 jobs:
   importar:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
+      - name: Normalizar RENDER_URL
+        run: |
+          url="${RENDER_URL:-https://mlb-u9rd.onrender.com}"
+          url="${url%/}"
+          echo "RENDER_URL=${url}" >> "$GITHUB_ENV"
+          echo "Servicio: ${url}"
+
       - name: Importar desde backup del repo
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
@@ -22,7 +34,7 @@ jobs:
           body=$(curl -fsS --max-time 300 \
             -X POST \
             -H "X-Cron-Secret: ${CRON_SECRET}" \
-            "https://mlb-1-en7i.onrender.com/api/importar-aprendizaje-repo?secret=${CRON_SECRET}")
+            "${RENDER_URL}/api/importar-aprendizaje-repo?secret=${CRON_SECRET}")
           echo "$body" | python3 -m json.tool
           ok=$(echo "$body" | python3 -c "import json,sys; d=json.load(sys.stdin); print('1' if d.get('ok') else '0')")
           if [ "$ok" != "1" ]; then

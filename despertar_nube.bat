@@ -4,7 +4,7 @@ echo ============================================
 echo   DESPERTAR NUBE QUANTUM MLB (Render)
 echo ============================================
 echo.
-echo URL panel: https://mlb-1-en7i.onrender.com
+echo URL panel: https://mlb-u9rd.onrender.com (o la variable RENDER_URL)
 echo.
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0despertar_nube.ps1" %*
 pause

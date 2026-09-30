@@ -7,11 +7,23 @@ name: Restore memoria Render
 on:
   workflow_dispatch:
 
+# Prioridad: variable de repo RENDER_URL, luego secret RENDER_URL,
+# y si no hay ninguno el servicio vivo (mlb-u9rd). mlb-1-en7i es otro servicio.
+env:
+  RENDER_URL: ${{ vars.RENDER_URL || secrets.RENDER_URL || 'https://mlb-u9rd.onrender.com' }}
+
 jobs:
   restore:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
+      - name: Normalizar RENDER_URL
+        run: |
+          url="${RENDER_URL:-https://mlb-u9rd.onrender.com}"
+          url="${url%/}"
+          echo "RENDER_URL=${url}" >> "$GITHUB_ENV"
+          echo "Servicio: ${url}"
+
       - uses: actions/checkout@v4
 
       - name: Subir memoria a Render (fusionar)
@@ -28,9 +40,9 @@ jobs:
             -H "Content-Type: application/json; charset=utf-8" \
             -H "X-Cron-Secret: ${CRON_SECRET}" \
             --data-binary @"memoria_auditoria.json" \
-            "https://mlb-1-en7i.onrender.com/api/subir-memoria?secret=${CRON_SECRET}&modo=fusionar"
+            "${RENDER_URL}/api/subir-memoria?secret=${CRON_SECRET}&modo=fusionar"
           echo
           echo "Verificando..."
-          curl -fsS --max-time 60 "https://mlb-1-en7i.onrender.com/api/predicciones" \
+          curl -fsS --max-time 60 "${RENDER_URL}/api/predicciones" \
             | python3 -c "import json,sys; d=json.load(sys.stdin); print('dias', [(x.get('fecha'), len(x.get('predicciones') or [])) for x in d.get('historial') or []])"
           echo
