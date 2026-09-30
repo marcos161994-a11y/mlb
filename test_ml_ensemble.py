@@ -106,6 +106,13 @@ def test_ensemble_cae_al_estadistico_solo_si_no_hay_ml():
     assert p == 55.4
 
 
+def test_ensemble_peso_cero_en_rf_y_xgb_deja_el_estadistico():
+    """RF y XGBoost siguen en el código; con peso 0 no mueven la probabilidad."""
+    pesos = {"estadistico": 0.40, "rf": 0.0, "xgb": 0.0, "ia": 0.0}
+    p = ml.ensemble_prediction(62.0, pesos=pesos, prob_rf=91.0, prob_xgb=12.0)
+    assert p == 62.0
+
+
 def test_ensemble_respeta_pesos_cuando_los_tres_votan():
     # 50*0.40 + 80*0.25 + 60*0.35 = 61.0
     p = ml.ensemble_prediction(50.0, pesos=PESOS, prob_rf=80.0, prob_xgb=60.0)

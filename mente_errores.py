@@ -2,11 +2,12 @@
 Mente de errores — director operativo de la aplicación (no decide apuestas).
 
 Detecta fallos recurrentes (T-60 sin congelar, juegos perdidos por sueño
-Render, shadow accidental) y aplica remediaciones seguras:
+Render) y aplica remediaciones seguras:
   - forzar proveedor ESPN + fallback internet
   - respetar overrides de líneas
-  - apagar shadow de la mente de picks
   - forzar registro T-60 al despertar
+La sombra de la mente de picks es intencional: registra el veredicto y no
+gatea apuestas, así que no se apaga sola.
   - registrar incidentes en DATA_DIR
   - integridad memoria / backup local / panel HTML
   - errores reportados desde el navegador (Safari iOS)
@@ -346,15 +347,7 @@ def diagnosticar(
             }
         )
 
-    if bool(mente.get("shadow")) or str(mente.get("modo") or "").lower() == "shadow":
-        hallazgos.append(
-            {
-                "codigo": "mente_shadow",
-                "severidad": "alta",
-                "mensaje": "Mente de picks en shadow · bloquearía el dinero de todas",
-                "acciones": [ACCION_APAGAR_SHADOW, ACCION_NOTIFICAR],
-            }
-        )
+    # La sombra de picks no es un fallo: calcula y loguea, no bloquea dinero.
 
     # Historial wipeado en Render (días del backup del repo que el disco ya no tiene)
     try:

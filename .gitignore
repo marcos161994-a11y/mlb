@@ -22,6 +22,7 @@ memoria_auditoria_backup.json
 
 # Estado y cachés generados al ejecutar la app
 calibrador_prob.pkl
+calibracion_reporte.json
 elo_ratings.json
 juegos_panel_cache.json
 reporte_dia_*.txt
