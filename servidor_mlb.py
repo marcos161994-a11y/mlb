@@ -63,6 +63,7 @@ from mente_mlb import (
     mente_disponible,
     aplicar_stake_mente,
     generar_briefing_juego,
+    veredicto_bloquea_dinero,
 )
 from mente_errores import (
     mente_errores_disponible,
@@ -791,6 +792,39 @@ def _minutos_retry_cuotas(cfg: dict | None = None) -> list[int]:
     return out or [45, 30]
 
 
+def _apostable_por_valor(
+    registro: dict,
+    cfg: dict,
+    dec_f: float,
+    fuente: str,
+) -> tuple[bool, float]:
+    """(apostable, edge). Con filtro activo manda el margen calibrado vs casa."""
+    from filtro_valor import evaluar_valor, filtro_activo
+
+    prob = float(registro.get("probPick") or 0)
+    edge = edge_pct(prob, dec_f)
+    if not filtro_activo(cfg):
+        estr = cfg.get("estrategia") or {}
+        min_edge = float(estr.get("min_edge_pct", 6.0))
+        min_prob = float(estr.get("min_prob_modelo", 58.0))
+        return prob >= min_prob and edge >= min_edge, edge if edge > -900 else 0.0
+    ev = evaluar_valor(
+        {
+            **registro,
+            "odds": dec_f,
+            "probPick": prob,
+            "lineas_fuente": fuente,
+            "fuente_momio": registro.get("fuente_momio"),
+        },
+        cfg,
+    )
+    registro["filtro_valor"] = ev
+    edge_ev = ev.get("edge")
+    if edge_ev is None or edge_ev <= -900:
+        edge_ev = edge if edge > -900 else 0.0
+    return bool(ev.get("apostar")), float(edge_ev)
+
+
 def actualizar_mercado_en_prediccion(
     existente: dict,
     juego: dict,
@@ -836,11 +870,8 @@ def actualizar_mercado_en_prediccion(
             existente["odds_american"] = amer
         existente["cuota_retry"] = True
         prob = float(existente.get("probPick") or 0)
-        edge = edge_pct(prob, dec_f)
-        estr = cfg.get("estrategia") or {}
-        min_edge = float(estr.get("min_edge_pct", 6.0))
-        min_prob = float(estr.get("min_prob_modelo", 58.0))
-        apostable = prob >= min_prob and edge >= min_edge
+        fuente_ya = str(existente.get("lineas_fuente") or juego.get("lineas_fuente") or "mercado")
+        apostable, edge = _apostable_por_valor(existente, cfg, dec_f, fuente_ya)
         bloqueado_fi, motivo_fi = bloqueado_favorito_inflado(
             {**juego, "probPick": prob, "edge": edge if edge > -900 else 0},
             cfg,
@@ -871,9 +902,6 @@ def actualizar_mercado_en_prediccion(
     if not tiene_cuota_mercado(juego):
         return False
 
-    estr = cfg.get("estrategia") or {}
-    min_edge = float(estr.get("min_edge_pct", 6.0))
-    min_prob = float(estr.get("min_prob_modelo", 58.0))
     prob = float(existente.get("probPick") or 0)
     fuente = juego.get("lineas_fuente") or "mercado"
     if not existente.get("odds_congelada"):
@@ -882,8 +910,14 @@ def actualizar_mercado_en_prediccion(
         existente["cuota_retry"] = True
         existente["lineas_fuente_inicial"] = existente.get("lineas_fuente") or "modelo"
 
-    edge = edge_pct(prob, dec_f)
-    apostable = prob >= min_prob and edge >= min_edge
+    reg_valor = dict(existente)
+    if juego.get("fuente_momio") and not reg_valor.get("fuente_momio"):
+        reg_valor["fuente_momio"] = juego.get("fuente_momio")
+    if juego.get("cuota_real_decimal") and not reg_valor.get("cuota_real_decimal"):
+        reg_valor["cuota_real_decimal"] = juego.get("cuota_real_decimal")
+    apostable, edge = _apostable_por_valor(reg_valor, cfg, dec_f, fuente)
+    if isinstance(reg_valor.get("filtro_valor"), dict):
+        existente["filtro_valor"] = reg_valor["filtro_valor"]
     bloqueado, motivo_fi = bloqueado_favorito_inflado(
         {**juego, "probPick": prob, "edge": edge if edge > -900 else 0},
         cfg,
@@ -1915,6 +1949,8 @@ def guardar_prediccion(
             "odds_american": odds_amer if odds_amer is not None else 150,
             "edge": 0 if not tiene_cuota_mercado(juego) else juego.get("edge", 0),
             "probPick": prob,
+            "prob_sin_calibrar": juego.get("prob_sin_calibrar"),
+            "filtro_valor": juego.get("filtro_valor") if isinstance(juego.get("filtro_valor"), dict) else None,
             "apostable": apostable_flag,
             "lineas_fuente": juego.get("lineas_fuente") or "modelo",
             "motivo_apuesta": motivo,
@@ -2602,13 +2638,17 @@ def _bloquear_juego_locked(
                 min_estrellas_fuera=int((cfg.get("estrategia") or {}).get("min_estrellas_fuera_lineup", 2)),
             )
             juego["scratch_lineup"] = scratch
-            if scratch.get("riesgo") and pick_afectado_por_scratch(
+            if pred_existente is not None:
+                pred_existente["scratch_lineup"] = scratch
+            from filtro_valor import penaliza_scratch
+
+            scratch_del_pick = scratch.get("riesgo") and pick_afectado_por_scratch(
                 pick_now, juego.get("visitante") or "", juego.get("home") or "", scratch
-            ):
+            )
+            if scratch_del_pick and penaliza_scratch(cfg):
                 motivo = "Spot no apto para dinero ahora"
                 if pred_existente is not None:
                     pred_existente["apostable"] = False
-                    pred_existente["scratch_lineup"] = scratch
                 guardar_memoria(memoria)
                 print(f"[SCRATCH] Dinero cancelado: {scratch.get('alerta')}")
                 return {
@@ -2618,18 +2658,65 @@ def _bloquear_juego_locked(
                     "prediccion_guardada": True,
                     "scratch_lineup": scratch,
                 }
+            if scratch_del_pick:
+                print(f"[SCRATCH] Registrado sin penalizar: {scratch.get('alerta')}")
         except Exception as e:
             print(f"[SCRATCH] refresh bloqueo: {e}")
 
-    # Con mercado: exigir edge. Sin cuota de casa: nunca dinero (ni con % alto).
+    # Con mercado: exigir edge real. Sin cuota de casa: nunca dinero.
     if not cfg.get("modo_solo_modelo") and (cfg.get("estrategia") or {}).get("requiere_betmgm", True):
-        min_edge = float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0))
-        edge_now = juego.get("edge")
-        if tiene_cuota_mercado(juego) or tiene_cuota_mercado(pred_existente or {}):
-            if edge_now is None or float(edge_now) < min_edge:
-                motivo = "Sin valor vs mercado ahora"
+        from filtro_valor import evaluar_valor, filtro_activo
+
+        if filtro_activo(cfg):
+            reg_valor = dict(juego)
+            if pred_existente:
+                for campo in ("fuente_momio", "cuota_real_decimal", "precio_congelado", "tipo_pick"):
+                    if pred_existente.get(campo) is not None and reg_valor.get(campo) is None:
+                        reg_valor[campo] = pred_existente.get(campo)
+            ev = evaluar_valor(reg_valor, cfg)
+            juego["filtro_valor"] = ev
+            if pred_existente is not None:
+                pred_existente["filtro_valor"] = ev
+            if not ev.get("apostar"):
+                motivo = ev.get("motivo") or "Sin valor vs cuota real"
                 if pred_existente is not None:
                     pred_existente["apostable"] = False
+                    if ev.get("edge") is not None:
+                        pred_existente["edge"] = ev.get("edge")
+                    pred_existente["motivo_apuesta"] = (
+                        f"{pred_existente.get('motivo_apuesta') or ''} · {motivo}"
+                    ).strip(" ·")
+                guardar_memoria(memoria)
+                return {
+                    "ok": False,
+                    "motivo": motivo,
+                    "juego": juego["visitante"] + " vs " + juego["home"],
+                    "prediccion_guardada": True,
+                    "filtro_valor": ev,
+                }
+        else:
+            min_edge = float((cfg.get("estrategia") or {}).get("min_edge_pct", 6.0))
+            edge_now = juego.get("edge")
+            if tiene_cuota_mercado(juego) or tiene_cuota_mercado(pred_existente or {}):
+                if edge_now is None or float(edge_now) < min_edge:
+                    motivo = "Sin valor vs mercado ahora"
+                    if pred_existente is not None:
+                        pred_existente["apostable"] = False
+                    guardar_memoria(memoria)
+                    return {
+                        "ok": False,
+                        "motivo": motivo,
+                        "juego": juego["visitante"] + " vs " + juego["home"],
+                        "prediccion_guardada": True,
+                    }
+            else:
+                motivo = "Sin cuota real de mercado — el % del modelo no es valor"
+                if pred_existente is not None:
+                    pred_existente["apostable"] = False
+                    pred_existente["edge"] = 0
+                    pred_existente["motivo_apuesta"] = (
+                        f"{pred_existente.get('motivo_apuesta') or ''} · {motivo}"
+                    ).strip(" ·")
                 guardar_memoria(memoria)
                 return {
                     "ok": False,
@@ -2637,21 +2724,6 @@ def _bloquear_juego_locked(
                     "juego": juego["visitante"] + " vs " + juego["home"],
                     "prediccion_guardada": True,
                 }
-        else:
-            motivo = "Sin cuota real de mercado — el % del modelo no es valor"
-            if pred_existente is not None:
-                pred_existente["apostable"] = False
-                pred_existente["edge"] = 0
-                pred_existente["motivo_apuesta"] = (
-                    f"{pred_existente.get('motivo_apuesta') or ''} · {motivo}"
-                ).strip(" ·")
-            guardar_memoria(memoria)
-            return {
-                "ok": False,
-                "motivo": motivo,
-                "juego": juego["visitante"] + " vs " + juego["home"],
-                "prediccion_guardada": True,
-            }
 
     # Modelo propone → MENTE concluye (APOSTAR/PASAR/ESPERAR) → solo entonces dinero.
     # Si mente off: cae al veto Groq legacy (con lecciones en memoria).
@@ -2671,7 +2743,7 @@ def _bloquear_juego_locked(
         juego["ia_mente"] = mente
         if pred_existente is not None:
             pred_existente["ia_mente"] = mente
-        if not mente.get("autoriza_dinero"):
+        if veredicto_bloquea_dinero(mente, cfg):
             motivo_m = (
                 f"MENTE {mente.get('decision')}: "
                 + "; ".join(mente.get("razones") or [mente.get("decision") or "bloqueo"])
@@ -2689,14 +2761,27 @@ def _bloquear_juego_locked(
                 "prediccion_guardada": True,
                 "ia_mente": mente,
             }
-        # Compat: mapear a forma de veto para logs antiguos
-        veto = {
-            "ok": True,
-            "decision": "APOSTAR",
-            "motivo": "; ".join(mente.get("razones") or [])[:120],
-            "confianza": mente.get("confianza"),
-            "fuente": "mente",
-        }
+        if mente.get("shadow"):
+            print(
+                f"[MENTE] Sombra {juego.get('pick')}: {mente.get('decision')} "
+                f"conf={mente.get('confianza')} (no aprueba ni bloquea)"
+            )
+            veto = {
+                "ok": True,
+                "decision": mente.get("decision"),
+                "motivo": "sombra: veredicto registrado, sin gate",
+                "confianza": mente.get("confianza"),
+                "fuente": "mente_sombra",
+            }
+        else:
+            # Compat: mapear a forma de veto para logs antiguos
+            veto = {
+                "ok": True,
+                "decision": "APOSTAR",
+                "motivo": "; ".join(mente.get("razones") or [])[:120],
+                "confianza": mente.get("confianza"),
+                "fuente": "mente",
+            }
     else:
         veto = veto_apuesta(juego, cfg, memoria=memoria)
         if pred_existente is not None:
@@ -2741,6 +2826,11 @@ def _bloquear_juego_locked(
             f"{motivo_final} · MENTE APOSTAR: "
             + "; ".join(mente.get("razones") or [])
             + f" (conf {mente.get('confianza')})"
+        ).strip(" ·")
+    elif mente and mente.get("shadow"):
+        motivo_final = (
+            f"{motivo_final} · MENTE sombra {mente.get('decision')}: "
+            + "; ".join(mente.get("razones") or [])
         ).strip(" ·")
     elif veto.get("ok") and veto.get("decision") == "APOSTAR":
         motivo_final = (
@@ -3313,6 +3403,12 @@ async def lifespan(app: FastAPI):
             print("[MOTOR] Iniciando motor autónomo de sincronización en segundo plano...")
             avanzar_dia_automatico()
             mem_boot = cargar_memoria()
+            try:
+                from calibracion import entrenar_calibrador
+
+                mem_boot["calib_meta"] = entrenar_calibrador(mem_boot, min_muestras=30)
+            except Exception as e:
+                print(f"[CALIB] aviso arranque: {e}")
             reparar_odds_papel(mem_boot)
             rellenar_predicciones_recientes(mem_boot, dias_atras=7)
             bloquear_apuestas_del_dia(forzar=False)
