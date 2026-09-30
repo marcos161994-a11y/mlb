@@ -10,7 +10,7 @@ import json
 def crear_dockerfile():
     """Crea Dockerfile para despliegue en Cloud Run"""
     dockerfile = """
-FROM python:3.11-slim
+FROM python:3.12.14-slim
 
 WORKDIR /app
 
@@ -47,7 +47,7 @@ runtime: python
 env: flex
 
 runtime_config:
-  python_version: 3.11
+  python_version: "3.12"
 
 manual_scaling:
   instances: 1

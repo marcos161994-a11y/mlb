@@ -3,7 +3,7 @@ param(
     [string]$MemoriaPath = "$PSScriptRoot\memoria_auditoria.json"
 )
 
-$base = "https://mlb-1-en7i.onrender.com"
+$base = if ($env:RENDER_URL) { $env:RENDER_URL.Trim().TrimEnd('/') } else { "https://mlb-u9rd.onrender.com" }
 
 if (-not (Test-Path $MemoriaPath)) {
     Write-Host "No existe: $MemoriaPath" -ForegroundColor Red
