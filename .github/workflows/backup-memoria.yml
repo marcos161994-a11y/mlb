@@ -1,5 +1,6 @@
-# Backup automático de memoria_auditoria.json desde Render → GitHub.
-# Fusiona (nunca pisa) para que un wipe en vivo no borre días viejos del repo.
+# Vuelca la memoria de la base (Postgres) a un artefacto y a la rama backup/memoria.
+# No commitea memoria_auditoria.json en main: ese archivo queda como semilla
+# hasta que la migración esté verificada.
 # Requiere: secret CRON_SECRET (igual que en Render).
 # El schedule solo corre cuando este archivo está en la rama default (main).
 name: Backup memoria Render
@@ -14,7 +15,7 @@ on:
   workflow_dispatch:
 
 # Prioridad: variable de repo RENDER_URL, luego secret RENDER_URL,
-# y si no hay ninguno el servicio vivo mlb-1 (tiene CRON_SECRET).
+# y si no hay ninguno el servicio vivo mlb-1.
 env:
   RENDER_URL: ${{ vars.RENDER_URL || secrets.RENDER_URL || 'https://mlb-1-en7i.onrender.com' }}
 
@@ -24,7 +25,7 @@ permissions:
 jobs:
   backup:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
       - name: Normalizar RENDER_URL
         run: |
@@ -39,7 +40,11 @@ jobs:
           ref: main
           fetch-depth: 1
 
-      - name: Descargar memoria desde Render
+      # despertar_render.sh pega /api/health con reintentos hasta que mlb-1 responda.
+      - name: Despertar Render
+        run: bash .github/scripts/despertar_render.sh "$RENDER_URL"
+
+      - name: Descargar memoria desde la base
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
@@ -48,12 +53,8 @@ jobs:
             exit 1
           fi
 
-          curl -fsS --retry 4 --retry-delay 15 --max-time 120 \
-            "${RENDER_URL}/api/health" >/dev/null
-
           echo "Fuente: /api/exportar-memoria"
-          # Header (preferido) y query (servidor anterior al deploy de auth).
-          curl -fsS --retry 3 --retry-delay 10 --max-time 120 \
+          curl -fsS --retry 3 --retry-delay 10 --max-time 180 \
             -H "X-Cron-Secret: ${CRON_SECRET}" \
             "${RENDER_URL}/api/exportar-memoria?secret=${CRON_SECRET}" \
             -o /tmp/memoria_live.json
@@ -71,30 +72,75 @@ jobs:
           )
           PY
 
-          # NUNCA pisar: unir repo + vivo. Si falta el script, abortar (no borrar historial).
-          if [ ! -f memoria_fusion.py ]; then
-            echo "::error::Falta memoria_fusion.py — no se sobrescribe el historial del repo."
-            exit 1
-          fi
-          BEFORE=$(python3 -c "import json; d=json.load(open('memoria_auditoria.json')); print(len([x for x in d.get('dias') or [] if x.get('predicciones') or x.get('apuestas')]))")
-          python3 memoria_fusion.py memoria_auditoria.json /tmp/memoria_live.json memoria_auditoria.json
-          AFTER=$(python3 -c "import json; d=json.load(open('memoria_auditoria.json')); print(len([x for x in d.get('dias') or [] if x.get('predicciones') or x.get('apuestas')]))")
-          if [ "$AFTER" -lt "$BEFORE" ]; then
-            echo "::error::Fusion perdería días ($BEFORE -> $AFTER). Abortando."
-            exit 1
-          fi
-          echo "Backup OK: días con historial $BEFORE -> $AFTER"
+      - name: Subir artefacto
+        uses: actions/upload-artifact@v4
+        with:
+          name: memoria-db
+          path: /tmp/memoria_live.json
+          retention-days: 30
+          if-no-files-found: error
 
-      - name: Commit si cambió
+      - name: Publicar en la rama backup/memoria
         run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, pathlib
+          data = json.loads(pathlib.Path("/tmp/memoria_live.json").read_text(encoding="utf-8"))
+          pathlib.Path("/tmp/backup_meta.json").write_text(json.dumps({
+              "dia_actual": data.get("dia_actual"),
+              "capital": data.get("capital"),
+              "dias": len(data.get("dias") or []),
+              "fuente": "/api/exportar-memoria",
+          }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+          open("/tmp/dia_cap.env", "w", encoding="utf-8").write(
+              f"DIA={data.get('dia_actual')}\nCAP={data.get('capital')}\n"
+          )
+          PY
+          set -a
+          # shellcheck disable=SC1091
+          source /tmp/dia_cap.env
+          set +a
+
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add memoria_auditoria.json
+
+          if git ls-remote --exit-code --heads origin backup/memoria >/dev/null 2>&1; then
+            git fetch --depth 1 origin backup/memoria
+            git switch -C backup/memoria FETCH_HEAD
+            if [ -f memoria_auditoria.json ]; then
+              python3 - <<'PY'
+              import json, pathlib, sys
+              def fechas(path):
+                  data = json.loads(pathlib.Path(path).read_text(encoding="utf-8"))
+                  out = set()
+                  for dia in data.get("dias") or []:
+                      if not isinstance(dia, dict):
+                          continue
+                      fecha = str(dia.get("fecha") or "")
+                      if fecha and ((dia.get("predicciones") or []) or (dia.get("apuestas") or [])):
+                          out.add(fecha)
+                  return out
+              prev = fechas("memoria_auditoria.json")
+              live = fechas("/tmp/memoria_live.json")
+              lost = prev - live
+              if lost:
+                  print("::error::El dump perdería fechas", ", ".join(sorted(lost)))
+                  sys.exit(1)
+              print(f"Dump OK: {len(prev)} fechas previas, {len(live)} en vivo")
+              PY
+            fi
+          else
+            git switch --orphan backup/memoria
+            git reset
+            find . -mindepth 1 -maxdepth 1 ! -name '.git' -exec rm -rf {} +
+          fi
+
+          cp /tmp/memoria_live.json memoria_auditoria.json
+          cp /tmp/backup_meta.json backup_meta.json
+          git add -f memoria_auditoria.json backup_meta.json
           if git diff --staged --quiet; then
-            echo "Sin cambios en memoria."
+            echo "Sin cambios en el dump."
             exit 0
           fi
-          DIA=$(python3 -c "import json; print(json.load(open('memoria_auditoria.json')).get('dia_actual'))")
-          CAP=$(python3 -c "import json; print(json.load(open('memoria_auditoria.json')).get('capital'))")
-          git commit -m "backup(memoria): dia ${DIA} capital ${CAP}"
-          git push origin main
+          git commit -m "backup(db): dia ${DIA} capital ${CAP}"
+          git push origin backup/memoria

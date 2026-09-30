@@ -23,6 +23,24 @@ jobs:
           echo "RENDER_URL=${url}" >> "$GITHUB_ENV"
           echo "Servicio: ${url}"
 
+      - name: Despertar Render
+        run: |
+          ok=0
+          for i in 1 2 3 4 5 6; do
+            if curl -fsS --retry 2 --retry-all-errors --retry-delay 5 --max-time 40 \
+                "${RENDER_URL}/api/health" >/dev/null; then
+              echo "Health OK intento ${i}"
+              ok=1
+              break
+            fi
+            echo "Intento ${i}: servicio dormido, esperando arranque"
+            sleep 15
+          done
+          if [ "$ok" != "1" ]; then
+            echo "::error::mlb-1 no despertó"
+            exit 1
+          fi
+
       - name: Importar desde backup del repo
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
@@ -31,7 +49,7 @@ jobs:
             echo "::error::Falta CRON_SECRET en GitHub Secrets."
             exit 1
           fi
-          body=$(curl -fsS --max-time 300 \
+          body=$(curl -fsS --retry 2 --retry-all-errors --retry-delay 15 --max-time 300 \
             -X POST \
             -H "X-Cron-Secret: ${CRON_SECRET}" \
             "${RENDER_URL}/api/importar-aprendizaje-repo?secret=${CRON_SECRET}")

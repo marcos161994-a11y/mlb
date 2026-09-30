@@ -9,9 +9,17 @@ import numpy as np
 from ml_predictor import ajustar_pesos_ensemble
 
 def cargar_historial() -> dict:
-    """Carga el historial de predicciones desde memoria_auditoria.json"""
+    """Carga el historial desde la base y, si está vacía, desde el JSON semilla."""
     try:
-        with open('memoria_auditoria.json', 'r', encoding='utf-8') as f:
+        from pathlib import Path
+
+        from memoria_store import abrir
+
+        base = Path(__file__).resolve().parent
+        doc = abrir(base).cargar()
+        if isinstance(doc, dict) and doc.get("dias"):
+            return doc
+        with open(base / "memoria_auditoria.json", "r", encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
         print(f"Error cargando historial: {e}")

@@ -216,10 +216,11 @@ def test_recuperar_wipe_aunque_sea_dia_2(tmp_path, monkeypatch):
     (tmp_path / "disk.json").write_text(json.dumps(disk), encoding="utf-8")
     assert srv._memoria_parece_reinicio(disk) is False
     assert srv._intentar_recuperar_wipe() is True
-    out = json.loads((tmp_path / "disk.json").read_text(encoding="utf-8"))
+    out = srv.cargar_memoria(force=True)
     fechas = {d["fecha"] for d in out["dias"]}
     assert "2026-08-15" in fechas
     assert "2026-08-17" in fechas
+    assert (tmp_path / "memoria_auditoria.json").read_text(encoding="utf-8")
 
 
 def test_guardar_memoria_escribe_backup(tmp_path, monkeypatch):
@@ -243,10 +244,10 @@ def test_guardar_memoria_escribe_backup(tmp_path, monkeypatch):
         ],
     }
     srv.guardar_memoria(memoria)
-    assert (tmp_path / "memoria_auditoria_backup.json").exists()
-    backup = json.loads((tmp_path / "memoria_auditoria_backup.json").read_text(encoding="utf-8"))
+    backup = srv._store().ultimo_snapshot()
     assert backup["capital"] == 95
     assert "2026-08-20" in {d["fecha"] for d in backup["dias"]}
+    assert not (tmp_path / "memoria_auditoria.json").exists()
 
 
 def test_recuperar_wipe_desde_backup_local(tmp_path, monkeypatch):
@@ -284,7 +285,7 @@ def test_recuperar_wipe_desde_backup_local(tmp_path, monkeypatch):
     (tmp_path / "backup.json").write_text(json.dumps(backup), encoding="utf-8")
     (tmp_path / "disk.json").write_text(json.dumps(disk), encoding="utf-8")
     assert srv._intentar_recuperar_wipe() is True
-    out = json.loads((tmp_path / "disk.json").read_text(encoding="utf-8"))
+    out = srv.cargar_memoria(force=True)
     fechas = {d["fecha"] for d in out["dias"]}
     assert "2026-08-15" in fechas
     assert "2026-08-17" in fechas
@@ -309,5 +310,5 @@ def test_recuperar_wipe_main_corrupto_desde_backup(tmp_path, monkeypatch):
     (tmp_path / "backup.json").write_text(json.dumps(backup), encoding="utf-8")
     (tmp_path / "disk.json").write_text("{ corrupto", encoding="utf-8")
     assert srv._intentar_recuperar_wipe() is True
-    out = json.loads((tmp_path / "disk.json").read_text(encoding="utf-8"))
+    out = srv.cargar_memoria(force=True)
     assert "2026-08-14" in {d["fecha"] for d in out["dias"]}

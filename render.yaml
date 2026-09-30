@@ -24,5 +24,12 @@ services:
       # Sin esta variable el servidor rechaza liquidar, bloquear, reiniciar e importar.
       - key: CRON_SECRET
         generateValue: true
+      # Postgres (Neon, Supabase o Render). Sin esta variable el plan free
+      # guarda en SQLite sobre un disco que se borra al reiniciar.
+      # Pega la connection string. Si el host es externo y no trae sslmode,
+      # el servidor añade sslmode=require. La URL interna de Render (host sin
+      # punto, dpg-…) no lleva SSL.
+      - key: DATABASE_URL
+        sync: false
       - key: DATA_DIR
         value: /var/data
