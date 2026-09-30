@@ -1,21 +1,19 @@
-# Sube memoria_auditoria.json del repo a Render (recuperación tras wipe).
-# Fusiona días; no pisa el historial más nuevo del disco.
+# Sube un dump a la base de Render (recuperación tras wipe).
+# Prefiere la rama backup/memoria; si no existe, usa el JSON semilla del repo.
+# Fusiona días; no pisa el historial más nuevo de la base.
 # Manual: Actions → Restore memoria Render → Run workflow
-# (automático al arrancar el servidor + cron + /api/health)
 name: Restore memoria Render
 
 on:
   workflow_dispatch:
 
-# Prioridad: variable de repo RENDER_URL, luego secret RENDER_URL,
-# y si no hay ninguno el servicio vivo mlb-1 (tiene CRON_SECRET).
 env:
   RENDER_URL: ${{ vars.RENDER_URL || secrets.RENDER_URL || 'https://mlb-1-en7i.onrender.com' }}
 
 jobs:
   restore:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 15
     steps:
       - name: Normalizar RENDER_URL
         run: |
@@ -26,7 +24,21 @@ jobs:
 
       - uses: actions/checkout@v4
 
-      - name: Subir memoria a Render (fusionar)
+      # despertar_render.sh pega /api/health con reintentos hasta que mlb-1 responda.
+      - name: Despertar Render
+        run: bash .github/scripts/despertar_render.sh "$RENDER_URL"
+
+      - name: Elegir dump
+        run: |
+          if git ls-remote --exit-code --heads origin backup/memoria >/dev/null 2>&1; then
+            git fetch --depth 1 origin backup/memoria
+            git show FETCH_HEAD:memoria_auditoria.json > memoria_auditoria.json
+            echo "Restore desde la rama backup/memoria"
+          else
+            echo "Todavía no hay rama backup/memoria. Se usa el JSON semilla del repo."
+          fi
+
+      - name: Subir memoria a la base (fusionar)
         env:
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
         run: |
@@ -34,8 +46,8 @@ jobs:
             echo "::error::Falta CRON_SECRET en GitHub Secrets (mismo valor que Render)."
             exit 1
           fi
-          echo "Fusionando memoria_auditoria.json en Render..."
-          curl -fsS --retry 3 --retry-delay 10 --max-time 120 \
+          echo "Fusionando dump en la base de Render..."
+          curl -fsS --retry 3 --retry-delay 10 --max-time 180 \
             -X POST \
             -H "Content-Type: application/json; charset=utf-8" \
             -H "X-Cron-Secret: ${CRON_SECRET}" \
@@ -43,6 +55,6 @@ jobs:
             "${RENDER_URL}/api/subir-memoria?secret=${CRON_SECRET}&modo=fusionar"
           echo
           echo "Verificando..."
-          curl -fsS --max-time 60 "${RENDER_URL}/api/predicciones" \
-            | python3 -c "import json,sys; d=json.load(sys.stdin); print('dias', [(x.get('fecha'), len(x.get('predicciones') or [])) for x in d.get('historial') or []])"
+          curl -fsS --max-time 90 "${RENDER_URL}/api/health" \
+            | python3 -c "import json,sys; d=json.load(sys.stdin); p=d.get('persistencia') or {}; h=d.get('historial') or {}; print('backend', p.get('backend'), 'durable', p.get('durable'), 'dias', h.get('n_dias'), 'aviso', p.get('aviso'))"
           echo

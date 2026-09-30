@@ -389,3 +389,21 @@ def test_workflows_envian_secreto_por_header():
     cron = (root / "cloud-cron.yml").read_text(encoding="utf-8")
     assert "::error::Falta CRON_SECRET" in cron
     assert "api/health" in cron
+    assert "servicio dormido" in cron
+    assert "720" in cron
+    for name in (
+        "cloud-cron.yml",
+        "backup-memoria.yml",
+        "restore-memoria.yml",
+        "importar-aprendizaje.yml",
+        "warmup-render.yml",
+    ):
+        text = (root / name).read_text(encoding="utf-8")
+        assert "https://mlb-1-en7i.onrender.com" in text
+        assert "mlb-u9rd" not in text
+        assert "/api/health" in text
+    assert "git push origin main" not in backup
+    assert "backup/memoria" in backup
+    assert "actions/upload-artifact" in backup
+    assert "despertar_render.sh" in backup
+    assert "despertar_render.sh" in (root / "restore-memoria.yml").read_text(encoding="utf-8")

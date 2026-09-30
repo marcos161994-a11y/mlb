@@ -1,6 +1,11 @@
 # Mantiene Quantum MLB en Render despierto, congela en T-90/T-60/T-30/T-10 y liquida cada 5 min.
-# Primero despierta el servicio (reintentos) y luego llama al congelado, también con reintento.
+# Un solo calentamiento (reintentos a /api/health) y después la llamada con CRON_SECRET.
+# Si esa llamada falla, se vuelve a despertar mlb-1 y se reintenta. No hay un segundo paso de wake.
 # Requiere: secret CRON_SECRET en GitHub (mismo valor que en Render).
+#
+# Este schedule deja el servicio web encendido (~720 h al mes). El plan free
+# de Render da 750 h compartidas entre TODOS los servicios web free. mlb-1
+# solo cabe así si es el único. Suspende cualquier otro servicio web free.
 name: MLB Cloud Cron
 
 on:
@@ -36,11 +41,11 @@ jobs:
               ok=1
               break
             fi
-            echo "Servicio dormido o arrancando; espero 20s"
+            echo "Intento ${i}: servicio dormido, esperando arranque"
             sleep 20
           done
           if [ "$ok" != "1" ]; then
-            echo "::error::mlb-1 no respondió tras el calentamiento"
+            echo "::error::mlb-1 no despertó"
             exit 1
           fi
           python3 - <<'PY'
@@ -70,7 +75,7 @@ jobs:
             echo "::warning::Falta CRON_SECRET — no se verifica odds-status."
             exit 0
           fi
-          body=$(curl -fsS --max-time 90 \
+          body=$(curl -fsS --retry 4 --retry-all-errors --retry-delay 10 --max-time 90 \
             "${RENDER_URL}/api/odds-status" || echo '{"ok":false}')
           echo "$body"
           ok=$(echo "$body" | python3 -c "import json,sys; d=json.load(sys.stdin); print('1' if d.get('ok') else '0')" 2>/dev/null || echo 0)
@@ -87,7 +92,7 @@ jobs:
             exit 1
           fi
           # Header (preferido) y query (servidor anterior al deploy de auth).
-          # Si el free todavía está despertando, se vuelve a calentar y se reintenta.
+          # Si mlb-1 se volvió a dormir, se despierta otra vez y se reintenta la misma llamada.
           ok=0
           for i in 1 2 3; do
             if curl -fsS --retry 2 --retry-all-errors --retry-delay 5 --max-time 90 \

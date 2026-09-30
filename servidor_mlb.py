@@ -90,6 +90,9 @@ MEMORIA_BACKUP_PATH = DATA_DIR / "memoria_auditoria_backup.json"
 _memoria_lock = threading.RLock()
 _memoria_cache: dict | None = None
 _memoria_cache_digest: str | None = None
+_memoria_cache_revision: int | None = None
+_memoria_cache_origen: str | None = None
+_persistencia_cache: dict = {"ts": 0.0, "info": None}
 _wipe_check_ts: float = 0.0
 _WIPE_CHECK_INTERVAL_SEC = 300.0
 _ultimo_ml_train_ts: float = 0.0
@@ -165,9 +168,27 @@ def _escribir_json_atomico(path: Path, obj: Any) -> None:
 
 
 def _invalidar_cache_memoria() -> None:
-    global _memoria_cache, _memoria_cache_digest
+    global _memoria_cache, _memoria_cache_digest, _memoria_cache_revision, _memoria_cache_origen
     _memoria_cache = None
     _memoria_cache_digest = None
+    _memoria_cache_revision = None
+    _memoria_cache_origen = None
+
+
+def _store():
+    """Postgres si hay DATABASE_URL; si no, SQLite bajo DATA_DIR."""
+    from memoria_store import abrir
+
+    return abrir(DATA_DIR)
+
+
+def _recordar_cache(data: dict, *, origen: str | None, revision: int | None, digest: str | None) -> dict:
+    global _memoria_cache, _memoria_cache_digest, _memoria_cache_revision, _memoria_cache_origen
+    _memoria_cache = data
+    _memoria_cache_origen = origen
+    _memoria_cache_revision = revision
+    _memoria_cache_digest = digest
+    return data
 
 
 def _digest_memoria_archivo(path: Path) -> str | None:
@@ -194,42 +215,67 @@ def _cargar_json_memoria(path: Path) -> dict | None:
         return None
 
 
-def _escribir_memoria_backup(final: dict) -> None:
-    """Espejo en disco aparte; nunca pierde días respecto al backup previo."""
+def _respaldar_snapshot(final: dict) -> None:
+    """Copia en la base. En local también deja el snapshot de archivo."""
+    n_fechas = len(_fechas_con_historial(final)) if isinstance(final, dict) else 0
+    keep = 4 if _en_render() else 12
     try:
-        prev = _cargar_json_memoria(MEMORIA_BACKUP_PATH)
-        to_write, _ = _proteger_escritura(prev, final, permitir_wipe=False)
-        _escribir_json_atomico(MEMORIA_BACKUP_PATH, to_write)
+        _store().guardar_snapshot(final, n_fechas=n_fechas, keep=keep)
     except Exception as e:
-        print(f"[GUARDAR] backup: {e}")
+        print(f"[GUARDAR] snapshot db: {e}")
+    # Render free no conserva el disco. Con Postgres la copia ya está en la base.
+    try:
+        from memoria_store import database_url
+
+        if _en_render() or database_url():
+            return
+    except Exception:
+        if _en_render():
+            return
+    try:
+        _escribir_snapshot(DATA_DIR, final, keep=keep)
+    except Exception as e:
+        print(f"[GUARDAR] snapshot: {e}")
 
 
 def _info_memoria_backup() -> dict:
-    info: dict[str, Any] = {
-        "backup_exists": False,
-        "backup_mtime": None,
-        "backup_fechas": 0,
-    }
-    if not MEMORIA_BACKUP_PATH.exists():
-        return info
-    info["backup_exists"] = True
     try:
-        info["backup_mtime"] = MEMORIA_BACKUP_PATH.stat().st_mtime
-        data = _cargar_json_memoria(MEMORIA_BACKUP_PATH)
-        if isinstance(data, dict):
-            info["backup_fechas"] = len(_fechas_con_historial(data))
-            b_ap, b_pr = _contar_historial(data)
-            info["backup_apuestas"] = b_ap
-            info["backup_preds"] = b_pr
+        return _store().info_backup()
+    except Exception as e:
+        print(f"[GUARDAR] backup: {e}")
+        return {
+            "backup_exists": False,
+            "backup_mtime": None,
+            "backup_fechas": 0,
+        }
+
+
+def _documento_en_vivo() -> dict | None:
+    """Documento de la base, o el JSON legado si la base todavía no tiene fila."""
+    try:
+        store = _store()
+        if store.revision() is not None:
+            data = store.cargar()
+            if isinstance(data, dict):
+                return data
+    except Exception as e:
+        print(f"[MEMORIA] lectura: {e}")
+    return _cargar_json_memoria(MEMORIA_PATH)
+
+
+def _hay_memoria_guardada() -> bool:
+    try:
+        if _store().revision() is not None:
+            return True
     except Exception:
         pass
-    return info
+    return MEMORIA_PATH.exists()
 
 
 def _intentar_recuperar_wipe(*, force: bool = False) -> bool:
     """
-    Recupera historial del JSON del repo / snapshots locales si Render wipeó
-    o arrancó un experimento nuevo sin los días anteriores.
+    Recupera historial del JSON del repo / snapshots si la base perdió días.
+    Escribe en la base, no en memoria_auditoria.json del repo.
     """
     global _wipe_check_ts
     if not force and os.environ.get("RENDER"):
@@ -238,11 +284,17 @@ def _intentar_recuperar_wipe(*, force: bool = False) -> bool:
             return False
         _wipe_check_ts = ahora
 
-    disk = _cargar_json_memoria(MEMORIA_PATH)
+    disk = _documento_en_vivo()
     if isinstance(disk, dict) and disk.get("reinicio_manual"):
         return False
 
     candidatos: list[dict] = []
+    try:
+        snap_db = _store().mejor_snapshot()
+    except Exception:
+        snap_db = None
+    if isinstance(snap_db, dict) and _fechas_con_historial(snap_db):
+        candidatos.append(snap_db)
     backup = _cargar_json_memoria(MEMORIA_BACKUP_PATH)
     if isinstance(backup, dict) and _fechas_con_historial(backup):
         candidatos.append(backup)
@@ -275,44 +327,62 @@ def _intentar_recuperar_wipe(*, force: bool = False) -> bool:
             return False
         if _fechas_con_historial(merged) <= _fechas_con_historial(disk) and not wipe_clasico:
             return False
-    elif not MEMORIA_PATH.exists() or disk is None:
+    elif not _hay_memoria_guardada() or disk is None:
         wipe_clasico = True
         dias_perdidos = True
     else:
         return False
 
-    _escribir_json_atomico(MEMORIA_PATH, merged)
     try:
-        _escribir_memoria_backup(merged)
-    except Exception:
-        pass
-    try:
-        _escribir_snapshot(DATA_DIR, merged)
-    except Exception:
-        pass
+        revision = _store().guardar(merged)
+    except Exception as e:
+        print(f"[CLOUD] No se pudo guardar la memoria recuperada: {e}")
+        return False
+    _respaldar_snapshot(merged)
     b_ap, b_pr = _contar_historial(merged)
     print(
-        f"[CLOUD] Memoria recuperada "
+        f"[CLOUD] Memoria recuperada en la base "
         f"(merged {b_ap} apuestas / {b_pr} preds · "
         f"wipe={wipe_clasico} dias_perdidos={dias_perdidos} "
         f"fuentes={len(candidatos)})"
     )
-    _invalidar_cache_memoria()
+    _recordar_cache(merged, origen="db", revision=revision, digest=None)
     return True
 
 
 def _inicializar_datos_persistencia() -> None:
-    """Copia memoria local a DATA_DIR; restaura backup del repo si hubo wipe."""
+    """Siembra la base desde el JSON del repo. No reescribe ese archivo."""
+    try:
+        from migrar_memoria_db import sembrar_desde_archivos
+
+        legacy = MEMORIA_PATH
+        repo_json = BASE_DIR / "memoria_auditoria.json"
+        if legacy.resolve() == repo_json.resolve():
+            legacy = None
+        sembrar_desde_archivos(
+            data_dir=DATA_DIR,
+            json_repo=repo_json,
+            json_legacy=legacy,
+        )
+    except Exception as e:
+        print(f"[CLOUD] No se pudo sembrar la base: {e}")
+    try:
+        from memoria_store import describir_persistencia
+
+        info = describir_persistencia(DATA_DIR)
+        print(
+            f"[PERSISTENCIA] backend={info.get('backend')} "
+            f"durable={info.get('durable')} destino={info.get('destino')} "
+            f"{info.get('aviso') or ''}"
+        )
+    except Exception as e:
+        print(f"[PERSISTENCIA] {e}")
+    _invalidar_cache_memoria()
     if DATA_DIR.resolve() != BASE_DIR.resolve():
-        origen = BASE_DIR / "memoria_auditoria.json"
-        if origen.exists() and not MEMORIA_PATH.exists():
-            try:
-                bundled = json.loads(origen.read_text(encoding="utf-8"))
-                _escribir_json_atomico(MEMORIA_PATH, bundled)
-                print(f"[CLOUD] Memoria copiada a {MEMORIA_PATH}")
-            except Exception as e:
-                print(f"[CLOUD] No se pudo copiar memoria: {e}")
-        else:
+        # La semilla JSON ya entró arriba. El wipe solo hace falta si quedó
+        # un backup de archivo de la versión anterior (el disco de Render no dura).
+        legado = MEMORIA_BACKUP_PATH.exists() or bool(_mejor_snapshot(DATA_DIR))
+        if legado:
             _intentar_recuperar_wipe(force=True)
         for nombre in ("modelo_rf_mlb.pkl", "scaler_rf_mlb.pkl"):
             src = BASE_DIR / nombre
@@ -402,22 +472,56 @@ def cargar_config() -> dict:
 
 
 def cargar_memoria(*, force: bool = False) -> dict:
-    """Carga memoria con cache en RAM (invalidada por hash del archivo en disco)."""
-    global _memoria_cache, _memoria_cache_digest
-    if MEMORIA_PATH.exists():
+    """Carga el documento desde la base (o el JSON legado si la base está vacía).
+
+    La cache se invalida con la revisión de la base, no reescribiendo el JSON
+    del repositorio. Otras piezas (stake, cuotas, panel) siguen recibiendo el dict.
+    """
+    try:
+        store = _store()
+        rev = store.revision()
+    except Exception as e:
+        print(f"[ERROR] No se pudo abrir la base de memoria: {e}")
+        if _memoria_cache is not None:
+            return _memoria_cache
+        rev = None
+        store = None
+
+    if (
+        not force
+        and store is not None
+        and _memoria_cache is not None
+        and _memoria_cache_origen == "db"
+        and rev is not None
+        and rev == _memoria_cache_revision
+    ):
+        return _memoria_cache
+
+    if rev is not None and store is not None:
         try:
-            raw = MEMORIA_PATH.read_bytes()
-            digest = hashlib.md5(raw).hexdigest()
-            if not force and _memoria_cache is not None and digest == _memoria_cache_digest:
-                return _memoria_cache
-            data = json.loads(raw)
-            _memoria_cache = data
-            _memoria_cache_digest = digest
-            return data
-        except json.JSONDecodeError:
-            print(f"[ERROR] {MEMORIA_PATH.name} está corrupto. Se iniciará una nueva memoria.")
+            data = store.cargar()
         except Exception as e:
             print(f"[ERROR] Error inesperado cargando memoria: {e}")
+            if _memoria_cache is not None:
+                return _memoria_cache
+            data = None
+        if isinstance(data, dict):
+            return _recordar_cache(data, origen="db", revision=rev, digest=None)
+
+    if MEMORIA_PATH.exists():
+        digest = _digest_memoria_archivo(MEMORIA_PATH)
+        if (
+            not force
+            and _memoria_cache is not None
+            and _memoria_cache_origen == "archivo"
+            and digest is not None
+            and digest == _memoria_cache_digest
+        ):
+            return _memoria_cache
+        data = _cargar_json_memoria(MEMORIA_PATH)
+        if isinstance(data, dict):
+            return _recordar_cache(data, origen="archivo", revision=None, digest=digest)
+        print(f"[ERROR] {MEMORIA_PATH.name} está corrupto. Se iniciará una nueva memoria.")
 
     cfg = cargar_config()
     nueva = {
@@ -431,9 +535,7 @@ def cargar_memoria(*, force: bool = False) -> dict:
         "ultimo_bloqueo": None,
         "dias": [],
     }
-    _memoria_cache = nueva
-    _memoria_cache_digest = None
-    return nueva
+    return _recordar_cache(nueva, origen=None, revision=None, digest=None)
 
 
 def _memoria_sin_secretos(memoria: dict) -> dict:
@@ -634,11 +736,15 @@ def guardar_memoria(memoria: dict, *, permitir_wipe: bool = False) -> None:
     """
     with _memoria_lock:
         actual: dict | None = None
-        if MEMORIA_PATH.exists():
-            try:
-                actual = cargar_memoria()
-            except Exception:
-                actual = None
+        try:
+            store = _store()
+            if store.revision() is not None:
+                actual = store.cargar()
+        except Exception:
+            store = _store()
+            actual = None
+        if actual is None and MEMORIA_PATH.exists():
+            actual = _cargar_json_memoria(MEMORIA_PATH)
         final, meta = _proteger_escritura(
             actual, memoria, permitir_wipe=permitir_wipe
         )
@@ -648,26 +754,21 @@ def guardar_memoria(memoria: dict, *, permitir_wipe: bool = False) -> None:
                 f"{meta.get('fechas_salvadas')}"
             )
         print(
-            f"[GUARDAR] Guardando memoria. Capital: {float(final.get('capital') or 0):.2f}, "
+            f"[GUARDAR] Guardando memoria en {store.backend}. Capital: {float(final.get('capital') or 0):.2f}, "
             f"Día: {final.get('dia_actual')} · "
             f"fechas={sorted(_fechas_con_historial(final))}"
         )
-        _escribir_json_atomico(MEMORIA_PATH, final)
-        _escribir_memoria_backup(final)
-        try:
-            _escribir_snapshot(DATA_DIR, final, keep=4 if _en_render() else 12)
-        except Exception as e:
-            print(f"[GUARDAR] snapshot: {e}")
+        revision = store.guardar(final)
+        _respaldar_snapshot(final)
         # En Render el panel usa /api/panel-boot; el .js duplica 1–2 MB de RAM.
+        # No se reescribe memoria_auditoria.json: ese archivo queda como semilla.
         if not _en_render():
             js_path = DATA_DIR / "memoria_dashboard.js"
             js_path.write_text(
                 f"const datosMemoria = {json.dumps(_memoria_para_panel(final), ensure_ascii=False)};",
                 encoding="utf-8",
             )
-        global _memoria_cache, _memoria_cache_digest
-        _memoria_cache = final
-        _memoria_cache_digest = _digest_memoria_archivo(MEMORIA_PATH)
+        _recordar_cache(final, origen="db", revision=revision, digest=None)
         if final is not memoria:
             memoria.clear()
             memoria.update(final)
@@ -4593,9 +4694,13 @@ def api_historial_status():
     sello = _resumen_sello(mem)
     snaps = 0
     try:
+        snaps = _store().contar_snapshots()
+    except Exception:
+        pass
+    try:
         from memoria_fusion import listar_snapshots
 
-        snaps = len(listar_snapshots(DATA_DIR))
+        snaps += len(listar_snapshots(DATA_DIR))
     except Exception:
         pass
     return {
@@ -4921,7 +5026,7 @@ def api_reiniciar(confirm: str | None = None):
     cfg = cargar_config()
     try:
         prev = cargar_memoria()
-        _escribir_snapshot(DATA_DIR, prev)
+        _respaldar_snapshot(prev)
     except Exception as e:
         print(f"[REINICIAR] snapshot previo: {e}")
     for f in DATA_DIR.glob("reporte_dia_*.txt"):
@@ -4945,7 +5050,7 @@ def api_reiniciar(confirm: str | None = None):
 
 @app.get("/api/apuestas")
 def api_apuestas():
-    """Historial de apuestas por día (desde memoria_auditoria.json)."""
+    """Historial de apuestas por día (documento de la base)."""
     memoria = cargar_memoria()
     dia = dia_operativo(memoria)
     return {
@@ -5007,6 +5112,28 @@ def _estado_bullpen(cfg: dict) -> dict:
     }
 
 
+def _persistencia_publica() -> dict:
+    """Cache corta: el health check de Render no abre Postgres en cada ping."""
+    ahora = time.monotonic()
+    previa = _persistencia_cache.get("info")
+    if isinstance(previa, dict) and ahora - float(_persistencia_cache.get("ts") or 0) < 30:
+        return previa
+    try:
+        from memoria_store import describir_persistencia
+
+        info = describir_persistencia(DATA_DIR)
+    except Exception as e:
+        info = {
+            "backend": "desconocido",
+            "durable": False,
+            "conectado": False,
+            "aviso": str(e)[:160],
+        }
+    _persistencia_cache["ts"] = ahora
+    _persistencia_cache["info"] = info
+    return info
+
+
 @app.get("/api/health")
 def api_health():
     """Ping para Render + cron externo (mantiene el servicio despierto en plan free).
@@ -5029,6 +5156,7 @@ def api_health():
     return {
         "ok": True,
         "servicio": "quantum-mlb",
+        "persistencia": _persistencia_publica(),
         "rss_mb": rss_mb,
         "capital": mem_h.get("capital"),
         "dia_actual": mem_h.get("dia_actual"),
@@ -5753,7 +5881,7 @@ def api_auto_bloqueo_externo(en_fondo: bool = True):
 
 @app.get("/api/exportar-memoria", dependencies=_auth_cron())
 def api_exportar_memoria():
-    """Descarga memoria_auditoria.json (backup). Exige CRON_SECRET."""
+    """Descarga el documento de la base (backup). Exige CRON_SECRET."""
     memoria = cargar_memoria()
     return memoria
 

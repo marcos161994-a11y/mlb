@@ -41,6 +41,8 @@ def _datos_aislados(tmp_path, monkeypatch):
     data = tmp_path / "data"
     data.mkdir()
     monkeypatch.setenv("DATA_DIR", str(data))
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("MEMORIA_SQLITE_PATH", raising=False)
     monkeypatch.setenv("CLIMA_CACHE_PATH", str(data / "clima_cache.json"))
     monkeypatch.setenv("BULLPEN_CACHE_PATH", str(data / "bullpen_cache.json"))
 
@@ -51,6 +53,8 @@ def _datos_aislados(tmp_path, monkeypatch):
     monkeypatch.setattr(srv, "MEMORIA_BACKUP_PATH", data / "memoria_auditoria_backup.json")
     monkeypatch.setattr(srv, "_JUEGOS_PANEL_CACHE_PATH", data / "juegos_panel_cache.json")
     srv._invalidar_cache_memoria()
+    srv._persistencia_cache["ts"] = 0.0
+    srv._persistencia_cache["info"] = None
 
     import ml_predictor as ml
 

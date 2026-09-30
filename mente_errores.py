@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from mente_integridad import (
+    auditar_backup_documentos,
     auditar_backup_local,
     auditar_integridad_memoria,
     hallazgos_errores_cliente,
@@ -353,16 +354,18 @@ def diagnosticar(
     try:
         from servidor_mlb import (
             BASE_DIR,
-            MEMORIA_PATH,
             _backup_tiene_dias_que_el_disco_perdio,
             _contar_historial,
+            _documento_en_vivo,
             _fechas_con_historial,
+            _hay_memoria_guardada,
         )
 
         origen = BASE_DIR / "memoria_auditoria.json"
-        if origen.exists() and MEMORIA_PATH.exists():
+
+        if origen.exists() and _hay_memoria_guardada():
             bundled = json.loads(origen.read_text(encoding="utf-8"))
-            disk = json.loads(MEMORIA_PATH.read_text(encoding="utf-8"))
+            disk = _documento_en_vivo() or {}
             if not disk.get("reinicio_manual") and _backup_tiene_dias_que_el_disco_perdio(
                 bundled, disk
             ):
@@ -448,9 +451,24 @@ def diagnosticar(
         hallazgos.extend(auditar_integridad_memoria(memoria))
 
     try:
-        from servidor_mlb import BASE_DIR, DATA_DIR, MEMORIA_BACKUP_PATH, MEMORIA_PATH
+        from servidor_mlb import (
+            BASE_DIR,
+            DATA_DIR,
+            MEMORIA_BACKUP_PATH,
+            MEMORIA_PATH,
+            _store,
+            cargar_memoria,
+        )
 
-        hallazgos.extend(auditar_backup_local(MEMORIA_PATH, MEMORIA_BACKUP_PATH))
+        snap = None
+        try:
+            snap = _store().ultimo_snapshot()
+        except Exception:
+            snap = None
+        if isinstance(snap, dict):
+            hallazgos.extend(auditar_backup_documentos(cargar_memoria(), snap))
+        else:
+            hallazgos.extend(auditar_backup_local(MEMORIA_PATH, MEMORIA_BACKUP_PATH))
         panel_path = panel_html_path or (BASE_DIR / "QuantumMLB.html")
         panel_audit = verificar_panel_html(panel_path)
         for h in panel_audit.get("hallazgos") or []:
@@ -684,14 +702,16 @@ def ejecutar_ciclo(
         try:
             from servidor_mlb import (
                 BASE_DIR,
-                MEMORIA_PATH,
                 _backup_tiene_dias_que_el_disco_perdio,
+                _documento_en_vivo,
+                _hay_memoria_guardada,
             )
 
             origen = BASE_DIR / "memoria_auditoria.json"
-            if origen.exists() and MEMORIA_PATH.exists():
+
+            if origen.exists() and _hay_memoria_guardada():
                 bundled = json.loads(origen.read_text(encoding="utf-8"))
-                disk = json.loads(MEMORIA_PATH.read_text(encoding="utf-8"))
+                disk = _documento_en_vivo() or {}
                 if disk.get("reinicio_manual") or not _backup_tiene_dias_que_el_disco_perdio(
                     bundled, disk
                 ):

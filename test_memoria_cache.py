@@ -90,11 +90,16 @@ def test_guardar_memoria_render_compacto_sin_dashboard_js(tmp_path, monkeypatch)
         ],
     }
     srv.guardar_memoria(mem)
-    raw = (tmp_path / "memoria_auditoria.json").read_text(encoding="utf-8")
+    import sqlite3
+
+    raw = sqlite3.connect(tmp_path / "memoria.sqlite").execute(
+        "SELECT documento FROM memoria_documento WHERE id = 1"
+    ).fetchone()[0]
     assert json.loads(raw)["capital"] == 100.68
     assert "\n  " not in raw
+    assert not (tmp_path / "memoria_auditoria.json").exists()
     assert not (tmp_path / "memoria_dashboard.js").exists()
-    backup = json.loads((tmp_path / "memoria_auditoria_backup.json").read_text(encoding="utf-8"))
+    backup = srv._store().ultimo_snapshot()
     assert backup["capital"] == 100.68
 
 
