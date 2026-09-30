@@ -178,7 +178,15 @@ def calcular_resultados(memoria: dict | None) -> dict[str, Any]:
         },
         "mente": _mente(dias_ord, stake_papel),
         "registrados_sin_apuesta": sin_apuesta,
+        "clv": _clv(memoria),
     }
+
+
+def _clv(memoria: dict) -> dict[str, Any]:
+    """CLV de dinero y de picks sin apuesta. Solo lee lo ya guardado."""
+    from clv_mlb import resumen_clv_publico
+
+    return resumen_clv_publico(memoria)
 
 
 def _es_sin_apuesta(apuesta: dict | None) -> bool:
