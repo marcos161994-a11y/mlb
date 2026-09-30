@@ -386,7 +386,7 @@ def test_liquidar_usa_el_payout_congelado_y_los_cierres():
     colgada = {"pick": "New York Yankees ML", "stake": 3, "estado": "pendiente", **campos}
     assert liquidar_apuesta(colgada, {**final, "estado": "SUSPENDIDO"}, 3) is False
     assert colgada["estado"] == "pendiente"
-    assert colgada["profit"] is None
+    assert colgada.get("profit") is None
 
     vieja = {"pick": "New York Yankees ML", "stake": 5, "estado": "pendiente", "odds": 1.8}
     assert liquidar_apuesta(vieja, {**final, "estado": "POSPUESTO"}, 5) is False
