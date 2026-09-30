@@ -202,7 +202,7 @@
         <p class="msg" id="mente-red-msg">Estableciendo uplink con el motor…</p>
         <p class="actions">
             <button type="button" onclick="cargar()">↻ Recalibrar</button>
-            <a class="btn bitacora-btn" id="link-resumen" href="https://mlb-1-en7i.onrender.com/diagrama/resumen">Leer resumen</a>
+            <button type="button" class="btn bitacora-btn" onclick="abrirBitacora()">Bitácora</button>
             <a class="btn btn-gold" href="Mente.url" download="Mente.url">⬇ Icono para el escritorio</a>
         </p>
         <p class="msg">En Windows: pulsa <b>Icono para el escritorio</b> y mueve <b>Mente.url</b> al Desktop.</p>
@@ -483,7 +483,8 @@ async function cargarBitacora() {
 }
 
 function abrirBitacora() {
-    location.href = 'https://mlb-1-en7i.onrender.com/diagrama/resumen';
+    document.getElementById('bitacora-panel').classList.add('abierto');
+    cargarBitacora();
 }
 
 function cerrarBitacora() {

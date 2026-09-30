@@ -7,9 +7,7 @@ queda activa para las predicciones siguientes.
 
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 from skills.humedad_pelota import (
@@ -17,9 +15,6 @@ from skills.humedad_pelota import (
     auditar_humedad,
     clasificar_fallo,
 )
-
-BASE_DIR = Path(__file__).resolve().parent
-REPORTE_PATH = BASE_DIR / "diagrama" / "reporte.json"
 
 
 def _ahora() -> str:
@@ -132,13 +127,6 @@ def _fichas_publicas(memoria: dict | None) -> list[dict[str, Any]]:
             }
         )
     return out
-
-
-def guardar_reporte(memoria: dict | None = None) -> dict[str, Any]:
-    data = reporte_auto_evolucion(memoria)
-    REPORTE_PATH.parent.mkdir(parents=True, exist_ok=True)
-    REPORTE_PATH.write_text(json.dumps(data, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    return data
 
 
 def aplicar_skills(juego: dict, memoria: dict | None = None) -> tuple[bool, str]:
