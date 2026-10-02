@@ -312,3 +312,63 @@ def test_recuperar_wipe_main_corrupto_desde_backup(tmp_path, monkeypatch):
     assert srv._intentar_recuperar_wipe() is True
     out = srv.cargar_memoria(force=True)
     assert "2026-08-14" in {d["fecha"] for d in out["dias"]}
+
+
+def test_wipe_sano_no_fusiona(tmp_path, monkeypatch):
+    """Si el vivo ya tiene las fechas, no se arma otra copia del historial."""
+    monkeypatch.setattr(srv, "BASE_DIR", tmp_path)
+    monkeypatch.setattr(srv, "DATA_DIR", tmp_path)
+    monkeypatch.setattr(srv, "MEMORIA_PATH", tmp_path / "disk.json")
+    monkeypatch.setattr(srv, "MEMORIA_BACKUP_PATH", tmp_path / "backup.json")
+    dia = {
+        "dia": 4,
+        "fecha": "2026-08-15",
+        "predicciones": [
+            {"game_id": "a", "pick": "NYY ML", "resultado": "acierto", "estado": "liquidado"}
+        ],
+        "apuestas": [],
+    }
+    doc = {"capital_inicial": 100, "capital": 92, "dia_actual": 4, "dias": [dia]}
+    (tmp_path / "memoria_auditoria.json").write_text(json.dumps(doc), encoding="utf-8")
+    srv._invalidar_cache_memoria()
+    srv.guardar_memoria(json.loads(json.dumps(doc)))
+
+    def boom(*_a, **_k):
+        raise AssertionError("no debía fusionar un historial que ya está completo")
+
+    monkeypatch.setattr(srv, "_fusionar_memoria", boom)
+    assert srv._intentar_recuperar_wipe(force=True) is False
+
+
+def test_resumen_archivo_no_relee(tmp_path, monkeypatch):
+    path = tmp_path / "hist.json"
+    path.write_text(
+        json.dumps(
+            {
+                "dias": [
+                    {
+                        "fecha": "2026-08-01",
+                        "predicciones": [
+                            {"game_id": "1", "resultado": "acierto", "estado": "liquidado"}
+                        ],
+                        "apuestas": [],
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+    lecturas = {"n": 0}
+    real = srv._cargar_json_memoria
+
+    def wrap(p):
+        lecturas["n"] += 1
+        return real(p)
+
+    monkeypatch.setattr(srv, "_cargar_json_memoria", wrap)
+    primero = srv.resumen_historial_archivo(path)
+    segundo = srv.resumen_historial_archivo(path)
+    assert primero is not None and segundo is not None
+    assert primero[0] == {"2026-08-01"}
+    assert primero[1:] == segundo[1:]
+    assert lecturas["n"] == 1

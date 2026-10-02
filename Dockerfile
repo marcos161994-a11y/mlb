@@ -14,7 +14,8 @@ RUN mkdir -p /var/data
 
 ENV DATA_DIR=/var/data
 ENV PORT=8000
+ENV MALLOC_ARENA_MAX=2
 
 EXPOSE 8000
 
-CMD uvicorn servidor_mlb:app --host 0.0.0.0 --port ${PORT:-8000}
+CMD uvicorn servidor_mlb:app --host 0.0.0.0 --port ${PORT:-8000} --workers 1

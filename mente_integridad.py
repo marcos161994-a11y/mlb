@@ -104,17 +104,10 @@ def auditar_integridad_memoria(memoria: dict | None) -> list[dict[str, Any]]:
     return hallazgos
 
 
-def auditar_backup_documentos(main: dict | None, backup: dict | None) -> list[dict[str, Any]]:
-    """Compara el documento vivo contra un snapshot o backup."""
+def auditar_fechas_backup(f_main: set[str], f_back: set[str]) -> list[dict[str, Any]]:
+    """Mismo aviso que comparar los documentos, pero solo con las fechas."""
     hallazgos: list[dict[str, Any]] = []
-    if not isinstance(main, dict):
-        main = {}
-    if not isinstance(backup, dict):
-        return hallazgos
-
-    f_main = _fechas_con_preds(main)
-    f_back = _fechas_con_preds(backup)
-    perdidas = sorted(f_back - f_main)
+    perdidas = sorted(set(f_back) - set(f_main))
     if perdidas:
         hallazgos.append(
             {
@@ -129,6 +122,15 @@ def auditar_backup_documentos(main: dict | None, backup: dict | None) -> list[di
             }
         )
     return hallazgos
+
+
+def auditar_backup_documentos(main: dict | None, backup: dict | None) -> list[dict[str, Any]]:
+    """Compara el documento vivo contra un snapshot o backup."""
+    if not isinstance(main, dict):
+        main = {}
+    if not isinstance(backup, dict):
+        return []
+    return auditar_fechas_backup(_fechas_con_preds(main), _fechas_con_preds(backup))
 
 
 def auditar_backup_local(

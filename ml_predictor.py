@@ -17,14 +17,24 @@ from pathlib import Path
 _modelo_rf: Optional[RandomForestClassifier] = None
 _scaler: Optional[StandardScaler] = None
 _modelo_xgb = None  # XGBClassifier | None
+_modelo_xgb_cls = None  # clase, o False si no está instalado
 
-try:
-    from xgboost import XGBClassifier
 
-    HAS_XGB = True
-except ImportError:
-    XGBClassifier = None  # type: ignore
-    HAS_XGB = False
+def tiene_xgboost() -> bool:
+    """Importa XGBoost solo la primera vez que un peso lo necesita."""
+    global _modelo_xgb_cls
+    if _modelo_xgb_cls is False:
+        return False
+    if _modelo_xgb_cls is not None:
+        return True
+    try:
+        from xgboost import XGBClassifier
+
+        _modelo_xgb_cls = XGBClassifier
+        return True
+    except ImportError:
+        _modelo_xgb_cls = False
+        return False
 
 BASE_DIR = Path(__file__).resolve().parent
 DATA_DIR = Path(os.environ.get("DATA_DIR", str(BASE_DIR)))
@@ -336,9 +346,10 @@ def entrenar_modelo_xgb(datos_historicos: List[Dict[str, Any]]) -> Any:
     """Entrena XGBoost con el mismo scaler/features que el RF."""
     global _modelo_xgb, _scaler
 
-    if not HAS_XGB or XGBClassifier is None:
+    if not tiene_xgboost():
         print("[ML] XGBoost no instalado — se omite")
         return None
+    XGBClassifier = _modelo_xgb_cls
     if not datos_historicos:
         return None
     if _scaler is None:
@@ -429,7 +440,7 @@ def auto_entrenar_ml(memoria: dict, min_muestras: int = 5) -> dict:
         "accuracy_xgb_train": meta_prev.get("accuracy_xgb_train"),
         "accuracy_xgb_holdout": meta_prev.get("accuracy_xgb_holdout"),
         "ultimo_entreno": meta_prev.get("ultimo_entreno"),
-        "xgb": HAS_XGB,
+        "xgb": bool(meta_prev.get("xgb")),
     }
     if len(datos) < min_muestras:
         meta["mensaje"] = f"Esperando más datos ({len(datos)}/{min_muestras} muestras)"
@@ -448,26 +459,28 @@ def auto_entrenar_ml(memoria: dict, min_muestras: int = 5) -> dict:
         print(f"[ML] {meta['mensaje']}")
         return meta
 
-    xgb_listo = (not HAS_XGB) or _modelo_xgb_path().exists()
+    if os.environ.get("RENDER") and _modelo_path().exists():
+        meta["ok"] = True
+        meta["mensaje"] = "Entreno omitido en Render (anti-OOM); se mantiene el modelo en disco"
+        memoria["ml_meta"] = meta
+        print(f"[ML] {meta['mensaje']}")
+        return meta
+
+    xgb_ok = tiene_xgboost()
+    meta["xgb"] = xgb_ok
+    xgb_listo = (not xgb_ok) or _modelo_xgb_path().exists()
     mismo_historial = (
         meta_prev.get("muestras") == len(datos)
         and meta_prev.get("schema") == FEATURE_SCHEMA_VERSION
         and meta_prev.get("muestras_reales") == n_real
         and meta_prev.get("muestras_sinteticas") == n_sint
-        and meta_prev.get("xgb") == HAS_XGB
+        and meta_prev.get("xgb") == xgb_ok
         and _modelo_path().exists()
         and xgb_listo
     )
     if mismo_historial:
         meta["ok"] = True
         meta["mensaje"] = "Modelo ya entrenado con el historial actual"
-        return meta
-
-    if os.environ.get("RENDER") and _modelo_path().exists():
-        meta["ok"] = True
-        meta["mensaje"] = "Entreno omitido en Render (anti-OOM); se mantiene el modelo en disco"
-        memoria["ml_meta"] = meta
-        print(f"[ML] {meta['mensaje']}")
         return meta
 
     modelo = entrenar_modelo_rf(datos)
@@ -477,7 +490,7 @@ def auto_entrenar_ml(memoria: dict, min_muestras: int = 5) -> dict:
 
     acc_xgb = None
     acc_xgb_h = None
-    if HAS_XGB:
+    if tiene_xgboost():
         xgb = entrenar_modelo_xgb(datos)
         if xgb is not None:
             X = pd.DataFrame(datos)[FEATURE_COLUMNS].fillna(0)
@@ -512,7 +525,7 @@ def auto_entrenar_ml(memoria: dict, min_muestras: int = 5) -> dict:
             "accuracy_xgb_train": round(acc_xgb, 3) if acc_xgb is not None else None,
             "accuracy_xgb_holdout": round(acc_xgb_h, 3) if acc_xgb_h is not None else None,
             "ultimo_entreno": datetime.now().isoformat(),
-            "xgb": HAS_XGB and _modelo_xgb is not None,
+            "xgb": tiene_xgboost() and _modelo_xgb is not None,
             "mensaje": mensaje,
         }
     )
@@ -581,7 +594,7 @@ def cargar_modelo_rf() -> Optional[RandomForestClassifier]:
 def cargar_modelo_xgb() -> Any:
     """Carga XGBoost desde disco."""
     global _modelo_xgb, _scaler
-    if not HAS_XGB:
+    if not tiene_xgboost():
         return None
     if _modelo_xgb is not None:
         return _modelo_xgb
@@ -694,7 +707,7 @@ def predecir_rf(features: Dict[str, Any]) -> Optional[float]:
 def predecir_xgb(features: Dict[str, Any]) -> Optional[float]:
     """Predice probabilidad con XGBoost (0-100)."""
     global _modelo_xgb, _scaler
-    if not HAS_XGB:
+    if not tiene_xgboost():
         return None
     if _modelo_xgb is None:
         cargar_modelo_xgb()
