@@ -24,8 +24,8 @@ from pathlib import Path
 from typing import Any
 
 from mente_integridad import (
-    auditar_backup_documentos,
     auditar_backup_local,
+    auditar_fechas_backup,
     auditar_integridad_memoria,
     hallazgos_errores_cliente,
     verificar_panel_html,
@@ -350,43 +350,41 @@ def diagnosticar(
 
     # La sombra de picks no es un fallo: calcula y loguea, no bloquea dinero.
 
-    # Historial wipeado en Render (días del backup del repo que el disco ya no tiene)
+    # Historial wipeado en Render (días del backup del repo que el disco ya no tiene).
+    # Solo se comparan fechas: el JSON completo no se queda en RAM.
     try:
         from servidor_mlb import (
             BASE_DIR,
-            _backup_tiene_dias_que_el_disco_perdio,
-            _contar_historial,
-            _documento_en_vivo,
-            _fechas_con_historial,
             _hay_memoria_guardada,
+            estado_historial_vivo,
+            resumen_historial_archivo,
         )
 
         origen = BASE_DIR / "memoria_auditoria.json"
 
         if origen.exists() and _hay_memoria_guardada():
-            bundled = json.loads(origen.read_text(encoding="utf-8"))
-            disk = _documento_en_vivo() or {}
-            if not disk.get("reinicio_manual") and _backup_tiene_dias_que_el_disco_perdio(
-                bundled, disk
-            ):
-                b_ap, b_pr = _contar_historial(bundled)
-                perdidas = sorted(_fechas_con_historial(bundled) - _fechas_con_historial(disk))
-                hallazgos.append(
-                    {
-                        "codigo": "historial_wipeado",
-                        "severidad": "alta",
-                        "mensaje": (
-                            "El disco perdió días con predicciones "
-                            f"({', '.join(perdidas[:4])}{'…' if len(perdidas) > 4 else ''}). "
-                            f"Backup tiene {b_pr} preds / {b_ap} apuestas. Restaurando."
-                        )[:180],
-                        "acciones": [
-                            ACCION_RESTAURAR_HISTORIAL,
-                            ACCION_REGISTRAR,
-                            ACCION_NOTIFICAR,
-                        ],
-                    }
-                )
+            resumen = resumen_historial_archivo(origen)
+            fechas_vivo, reinicio = estado_historial_vivo()
+            if resumen and not reinicio:
+                fechas_repo, b_ap, b_pr = resumen
+                perdidas = sorted(fechas_repo - fechas_vivo)
+                if perdidas:
+                    hallazgos.append(
+                        {
+                            "codigo": "historial_wipeado",
+                            "severidad": "alta",
+                            "mensaje": (
+                                "El disco perdió días con predicciones "
+                                f"({', '.join(perdidas[:4])}{'…' if len(perdidas) > 4 else ''}). "
+                                f"Backup tiene {b_pr} preds / {b_ap} apuestas. Restaurando."
+                            )[:180],
+                            "acciones": [
+                                ACCION_RESTAURAR_HISTORIAL,
+                                ACCION_REGISTRAR,
+                                ACCION_NOTIFICAR,
+                            ],
+                        }
+                    )
     except Exception:
         pass
 
@@ -453,20 +451,20 @@ def diagnosticar(
     try:
         from servidor_mlb import (
             BASE_DIR,
-            DATA_DIR,
             MEMORIA_BACKUP_PATH,
             MEMORIA_PATH,
-            _store,
-            cargar_memoria,
+            estado_historial_vivo,
+            fechas_ultimo_snapshot,
         )
 
-        snap = None
+        snap_fechas = None
         try:
-            snap = _store().ultimo_snapshot()
+            snap_fechas = fechas_ultimo_snapshot()
         except Exception:
-            snap = None
-        if isinstance(snap, dict):
-            hallazgos.extend(auditar_backup_documentos(cargar_memoria(), snap))
+            snap_fechas = None
+        if snap_fechas is not None:
+            fechas_vivo, _reinicio = estado_historial_vivo()
+            hallazgos.extend(auditar_fechas_backup(fechas_vivo, snap_fechas))
         else:
             hallazgos.extend(auditar_backup_local(MEMORIA_PATH, MEMORIA_BACKUP_PATH))
         panel_path = panel_html_path or (BASE_DIR / "QuantumMLB.html")
@@ -702,19 +700,18 @@ def ejecutar_ciclo(
         try:
             from servidor_mlb import (
                 BASE_DIR,
-                _backup_tiene_dias_que_el_disco_perdio,
-                _documento_en_vivo,
                 _hay_memoria_guardada,
+                estado_historial_vivo,
+                resumen_historial_archivo,
             )
 
             origen = BASE_DIR / "memoria_auditoria.json"
 
             if origen.exists() and _hay_memoria_guardada():
-                bundled = json.loads(origen.read_text(encoding="utf-8"))
-                disk = _documento_en_vivo() or {}
-                if disk.get("reinicio_manual") or not _backup_tiene_dias_que_el_disco_perdio(
-                    bundled, disk
-                ):
+                resumen = resumen_historial_archivo(origen)
+                fechas_vivo, reinicio = estado_historial_vivo()
+                fechas_repo = resumen[0] if resumen else set()
+                if reinicio or not (fechas_repo - fechas_vivo):
                     hallazgos = [h for h in hallazgos if h.get("codigo") != "historial_wipeado"]
                     for a in aplicadas:
                         if a.get("codigo") == "historial_wipeado":

@@ -18,12 +18,12 @@ try:
         ensemble_prediction,
         extraer_features_ml,
         empaquetar_features_del_pick,
-        HAS_XGB,
+        tiene_xgboost,
     )
     HAS_ML = True
 except ImportError:
     HAS_ML = False
-    HAS_XGB = False
+    tiene_xgboost = lambda: False  # type: ignore
     empaquetar_features_del_pick = None  # type: ignore
     predecir_xgb = None  # type: ignore
 
@@ -679,6 +679,23 @@ def fuerza_lado(
     )
 
 
+def _pesos_sin_ml(cfg: dict) -> bool:
+    """True si RF y XGB pesan 0. Entonces no hace falta cargarlos."""
+    pesos = cfg.get("pesos_ensemble")
+    if not isinstance(pesos, dict):
+        return False
+
+    def num(clave: str) -> float:
+        try:
+            return float(pesos.get(clave) or 0)
+        except (TypeError, ValueError):
+            return 0.0
+
+    if "ml" in pesos and "rf" not in pesos and "xgb" not in pesos:
+        return num("ml") <= 0
+    return num("rf") <= 0 and num("xgb") <= 0 and num("ml") <= 0
+
+
 def prob_logistica(f_away: float, f_home: float) -> tuple[float, float]:
     diff = (f_home - f_away) / 12.0
     p_home = 1.0 / (1.0 + math.exp(-diff))
@@ -1226,11 +1243,17 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
     usar_ml = cfg.get("usar_ml", False) and HAS_ML and features_away and features_home
     if usar_ml:
         try:
-            prob_ml_away = predecir_rf(features_away)
-            prob_ml_home = predecir_rf(features_home)
-            usar_xgb = bool(cfg.get("usar_xgboost", True)) and HAS_XGB
-            prob_xgb_away = predecir_xgb(features_away) if usar_xgb else None
-            prob_xgb_home = predecir_xgb(features_home) if usar_xgb else None
+            # Con peso 0 el ensemble queda igual al estadístico. No se cargan
+            # los bosques: en Render eso suma RAM sin cambiar la apuesta.
+            if _pesos_sin_ml(cfg):
+                prob_ml_away = prob_ml_home = None
+                prob_xgb_away = prob_xgb_home = None
+            else:
+                prob_ml_away = predecir_rf(features_away)
+                prob_ml_home = predecir_rf(features_home)
+                usar_xgb = bool(cfg.get("usar_xgboost", True)) and tiene_xgboost()
+                prob_xgb_away = predecir_xgb(features_away) if usar_xgb else None
+                prob_xgb_home = predecir_xgb(features_home) if usar_xgb else None
             if prob_ml_away is not None and prob_ml_home is not None:
                 s_ml = float(prob_ml_away) + float(prob_ml_home)
                 if s_ml > 0:

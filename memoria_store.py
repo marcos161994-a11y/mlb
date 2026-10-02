@@ -248,6 +248,22 @@ class MemoriaStore:
             "SELECT documento FROM memoria_snapshots ORDER BY id DESC LIMIT 1"
         )
 
+    def id_ultimo_snapshot(self) -> tuple[int, int] | None:
+        """Id y n_fechas del snapshot más nuevo, sin traer el JSON."""
+        return self._id_y_n(
+            "SELECT id, n_fechas FROM memoria_snapshots ORDER BY id DESC LIMIT 1"
+        )
+
+    def id_mejor_snapshot(self) -> tuple[int, int] | None:
+        """Id y n_fechas del snapshot con más días, sin traer el JSON."""
+        return self._id_y_n(
+            """
+            SELECT id, n_fechas FROM memoria_snapshots
+            ORDER BY n_fechas DESC, id DESC
+            LIMIT 1
+            """
+        )
+
     def mejor_snapshot(self) -> dict | None:
         return self._snapshot(
             """
@@ -315,7 +331,7 @@ class MemoriaStore:
                 fila = self._ejecutar(
                     conn,
                     """
-                    SELECT documento, n_fechas, creado_en
+                    SELECT n_fechas, creado_en
                     FROM memoria_snapshots
                     ORDER BY id DESC
                     LIMIT 1
@@ -324,25 +340,23 @@ class MemoriaStore:
         if not fila:
             return info
         info["backup_exists"] = True
-        info["backup_fechas"] = int(fila[1] or 0)
+        info["backup_fechas"] = int(fila[0] or 0)
         try:
             info["backup_mtime"] = datetime.strptime(
-                str(fila[2]), "%Y-%m-%dT%H:%M:%SZ"
+                str(fila[1]), "%Y-%m-%dT%H:%M:%SZ"
             ).replace(tzinfo=timezone.utc).timestamp()
         except (TypeError, ValueError):
             info["backup_mtime"] = None
-        try:
-            from memoria_fusion import contar_historial, fechas_con_historial
-
-            data = json.loads(fila[0])
-            if isinstance(data, dict):
-                info["backup_fechas"] = len(fechas_con_historial(data))
-                apuestas, preds = contar_historial(data)
-                info["backup_apuestas"] = apuestas
-                info["backup_preds"] = preds
-        except Exception:
-            pass
         return info
+
+    def _id_y_n(self, sql: str) -> tuple[int, int] | None:
+        with _LOCK:
+            with self._conexion() as conn:
+                self._asegurar(conn)
+                fila = self._ejecutar(conn, sql).fetchone()
+        if not fila:
+            return None
+        return int(fila[0]), int(fila[1] or 0)
 
     def _snapshot(self, sql: str) -> dict | None:
         with _LOCK:

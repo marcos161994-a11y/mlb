@@ -13,6 +13,31 @@ from sklearn.preprocessing import StandardScaler
 import ml_predictor as ml
 
 PESOS = {"estadistico": 0.40, "rf": 0.25, "xgb": 0.35, "ia": 0.0}
+
+
+def test_pesos_en_cero_dejan_la_probabilidad_estadistica():
+    from modelo_mlb import _pesos_sin_ml
+
+    assert _pesos_sin_ml(
+        {"pesos_ensemble": {"estadistico": 0.40, "rf": 0.0, "xgb": 0.0, "ia": 0.0}}
+    )
+    assert not _pesos_sin_ml(
+        {"pesos_ensemble": {"estadistico": 0.40, "rf": 0.25, "xgb": 0.35, "ia": 0.0}}
+    )
+    assert not _pesos_sin_ml({})
+    assert not _pesos_sin_ml({"pesos_ensemble": {"estadistico": 0.4, "ml": 0.6}})
+    # Sin brazos ML el número que sale es el estadístico, antes de renormalizar.
+    assert ml.ensemble_prediction(
+        55.4,
+        pesos={"estadistico": 0.40, "rf": 0.0, "xgb": 0.0, "ia": 0.0},
+        prob_rf=None,
+        prob_xgb=None,
+    ) == ml.ensemble_prediction(
+        55.4,
+        pesos={"estadistico": 0.40, "rf": 0.0, "xgb": 0.0, "ia": 0.0},
+        prob_rf=80.0,
+        prob_xgb=12.0,
+    )
 RAIZ = Path(__file__).resolve().parent
 
 

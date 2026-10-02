@@ -117,6 +117,22 @@ def _en_render() -> bool:
     return bool(os.environ.get("RENDER"))
 
 
+def _rss_actual_mb() -> float | None:
+    """RAM en uso ahora. ru_maxrss es el pico y no baja aunque se libere."""
+    try:
+        for line in open("/proc/self/status", encoding="utf-8"):
+            if line.startswith("VmRSS:"):
+                return round(int(line.split()[1]) / 1024, 1)
+    except Exception:
+        pass
+    try:
+        import resource
+
+        return round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 1)
+    except Exception:
+        return None
+
+
 def _construir_mente_red_panel(
     cfg: dict,
     memoria: dict,
@@ -266,6 +282,151 @@ def _documento_en_vivo() -> dict | None:
     return _cargar_json_memoria(MEMORIA_PATH)
 
 
+def _memoria_viva() -> dict | None:
+    """El documento que ya está en RAM si la revisión no cambió. Si no, lo lee."""
+    try:
+        store = _store()
+        rev = store.revision()
+    except Exception:
+        return _documento_en_vivo()
+    if (
+        _memoria_cache is not None
+        and _memoria_cache_origen == "db"
+        and rev is not None
+        and rev == _memoria_cache_revision
+    ):
+        return _memoria_cache
+    return _documento_en_vivo()
+
+
+def _liberar_ram() -> None:
+    """Devuelve al sistema las copias grandes que Python ya soltó."""
+    gc.collect()
+    try:
+        import ctypes
+
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except Exception:
+        pass
+
+
+# Fechas de un JSON o de un snapshot, para no volver a parsear ~19 MB en cada cron.
+_resumen_archivo_cache: dict[tuple, tuple[set[str], int, int]] = {}
+_fechas_snap_cache: dict[tuple, set[str]] = {}
+_fechas_lock = threading.Lock()
+
+
+def resumen_historial_archivo(path: Path) -> tuple[set[str], int, int] | None:
+    """(fechas, apuestas liquidadas, preds liquidadas). Cache por tamaño y fecha del archivo."""
+    try:
+        st = path.stat()
+    except OSError:
+        return None
+    key = (str(path.resolve()), int(st.st_mtime_ns), int(st.st_size))
+    with _fechas_lock:
+        cached = _resumen_archivo_cache.get(key)
+        if cached is not None:
+            return set(cached[0]), cached[1], cached[2]
+        data = _cargar_json_memoria(path)
+        if not isinstance(data, dict):
+            return None
+        fechas = _fechas_con_historial(data)
+        apuestas, preds = _contar_historial(data)
+        del data
+        if len(_resumen_archivo_cache) > 16:
+            _resumen_archivo_cache.clear()
+        _resumen_archivo_cache[key] = (set(fechas), apuestas, preds)
+    _liberar_ram()
+    return set(fechas), apuestas, preds
+
+
+def fechas_historial_archivo(path: Path) -> set[str] | None:
+    resumen = resumen_historial_archivo(path)
+    if resumen is None:
+        return None
+    return resumen[0]
+
+
+def estado_historial_vivo() -> tuple[set[str], bool]:
+    """Fechas del documento vivo y si está marcado como reinicio manual."""
+    disk = _memoria_viva()
+    if not isinstance(disk, dict):
+        return set(), False
+    return _fechas_con_historial(disk), bool(disk.get("reinicio_manual"))
+
+
+def _fechas_snapshot_db(cual: str) -> set[str] | None:
+    """Fechas del snapshot, cacheadas por id. No deja el JSON colgado."""
+    try:
+        store = _store()
+        if cual == "mejor":
+            meta = store.id_mejor_snapshot()
+            loader = store.mejor_snapshot
+        else:
+            meta = store.id_ultimo_snapshot()
+            loader = store.ultimo_snapshot
+    except Exception:
+        return None
+    if not meta:
+        return None
+    sid, _n = meta
+    key = (store.backend, store.destino, cual, sid)
+    with _fechas_lock:
+        cached = _fechas_snap_cache.get(key)
+        if cached is not None:
+            return set(cached)
+        data = loader()
+        if not isinstance(data, dict):
+            return None
+        fechas = _fechas_con_historial(data)
+        del data
+        if len(_fechas_snap_cache) > 16:
+            _fechas_snap_cache.clear()
+        _fechas_snap_cache[key] = set(fechas)
+    _liberar_ram()
+    return set(fechas)
+
+
+def fechas_ultimo_snapshot() -> set[str] | None:
+    return _fechas_snapshot_db("ultimo")
+
+
+def _fechas_mejor_snapshot_archivo() -> set[str] | None:
+    """Mejor snapshot de disco, solo el conjunto de fechas."""
+    try:
+        from memoria_fusion import listar_snapshots
+
+        paths = listar_snapshots(DATA_DIR)
+    except Exception:
+        return None
+    if not paths:
+        return None
+    try:
+        firma = tuple(
+            (str(p.resolve()), int(p.stat().st_mtime_ns), int(p.stat().st_size)) for p in paths
+        )
+    except OSError:
+        firma = tuple(str(p) for p in paths)
+    key = ("archivos",) + firma
+    with _fechas_lock:
+        cached = _fechas_snap_cache.get(key)
+        if cached is not None:
+            return set(cached)
+    best: set[str] | None = None
+    best_n = -1
+    for path in paths:
+        fechas = fechas_historial_archivo(path)
+        if not fechas or len(fechas) <= best_n:
+            continue
+        best = fechas
+        best_n = len(fechas)
+    if best is None:
+        return None
+    with _fechas_lock:
+        _fechas_snap_cache[key] = set(best)
+    return set(best)
+
+
 def _hay_memoria_guardada() -> bool:
     try:
         if _store().revision() is not None:
@@ -287,9 +448,35 @@ def _intentar_recuperar_wipe(*, force: bool = False) -> bool:
             return False
         _wipe_check_ts = ahora
 
-    disk = _documento_en_vivo()
+    disk = _memoria_viva()
     if isinstance(disk, dict) and disk.get("reinicio_manual"):
         return False
+
+    # Primero solo las fechas. Si el documento vivo ya las tiene todas,
+    # no se arma la fusión (eso mantenía 3 o 4 copias del historial en RAM).
+    fechas_disk = _fechas_con_historial(disk) if isinstance(disk, dict) else set()
+    wipe_clasico_previo = isinstance(disk, dict) and _memoria_parece_reinicio(disk)
+    fuentes_fechas: list[set[str]] = []
+    fechas_snap = _fechas_snapshot_db("mejor")
+    if fechas_snap:
+        fuentes_fechas.append(fechas_snap)
+    if MEMORIA_BACKUP_PATH.exists():
+        res_bak = resumen_historial_archivo(MEMORIA_BACKUP_PATH)
+        if res_bak and res_bak[0]:
+            fuentes_fechas.append(res_bak[0])
+    origen = BASE_DIR / "memoria_auditoria.json"
+    if origen.exists():
+        res_repo = resumen_historial_archivo(origen)
+        if res_repo and res_repo[0] and (res_repo[1] + res_repo[2]) > 0:
+            fuentes_fechas.append(res_repo[0])
+    fechas_arch = _fechas_mejor_snapshot_archivo()
+    if fechas_arch:
+        fuentes_fechas.append(fechas_arch)
+    if not fuentes_fechas:
+        return False
+    if isinstance(disk, dict) and not wipe_clasico_previo:
+        if not any(fechas - fechas_disk for fechas in fuentes_fechas):
+            return False
 
     candidatos: list[dict] = []
     try:
@@ -301,7 +488,6 @@ def _intentar_recuperar_wipe(*, force: bool = False) -> bool:
     backup = _cargar_json_memoria(MEMORIA_BACKUP_PATH)
     if isinstance(backup, dict) and _fechas_con_historial(backup):
         candidatos.append(backup)
-    origen = BASE_DIR / "memoria_auditoria.json"
     if origen.exists():
         try:
             bundled = json.loads(origen.read_text(encoding="utf-8"))
@@ -327,8 +513,10 @@ def _intentar_recuperar_wipe(*, force: bool = False) -> bool:
         wipe_clasico = _memoria_parece_reinicio(disk)
         dias_perdidos = _backup_tiene_dias_que_el_disco_perdio(merged, disk)
         if not wipe_clasico and not dias_perdidos:
+            _liberar_ram()
             return False
         if _fechas_con_historial(merged) <= _fechas_con_historial(disk) and not wipe_clasico:
+            _liberar_ram()
             return False
     elif not _hay_memoria_guardada() or disk is None:
         wipe_clasico = True
@@ -350,6 +538,7 @@ def _intentar_recuperar_wipe(*, force: bool = False) -> bool:
         f"fuentes={len(candidatos)})"
     )
     _recordar_cache(merged, origen="db", revision=revision, digest=None)
+    _liberar_ram()
     return True
 
 
@@ -811,6 +1000,7 @@ def guardar_memoria(memoria: dict, *, permitir_wipe: bool = False) -> None:
             memoria.update(final)
         if _en_render():
             gc.collect()
+            _liberar_ram()
 
 
 def tz_experimento() -> ZoneInfo:
@@ -5347,11 +5537,12 @@ def api_health():
     hist_fechas = sorted(_fechas_con_historial(mem_h))
     hist_ap, hist_pr = _contar_historial(mem_h)
     cfg_ops = cfg
-    rss_mb: float | None = None
+    rss_mb = _rss_actual_mb()
+    rss_pico_mb: float | None = None
     try:
         import resource
 
-        rss_mb = round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 1)
+        rss_pico_mb = round(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024, 1)
     except Exception:
         pass
     return {
@@ -5359,6 +5550,7 @@ def api_health():
         "servicio": "quantum-mlb",
         "persistencia": _persistencia_publica(),
         "rss_mb": rss_mb,
+        "rss_pico_mb": rss_pico_mb,
         "capital": mem_h.get("capital"),
         "dia_actual": mem_h.get("dia_actual"),
         "dias_totales": mem_h.get("dias_totales"),
@@ -6017,6 +6209,7 @@ def _cron_externo_en_fondo() -> None:
         _cron_externo_activo = False
         try:
             gc.collect()
+            _liberar_ram()
         except Exception:
             pass
 
