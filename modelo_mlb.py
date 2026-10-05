@@ -517,6 +517,20 @@ def obtener_balance_lineup(team_id: int, season: int) -> float:
         return 0.0
 
 
+def _mano_pitcher_conocida(stats: dict[str, Any] | None) -> str | None:
+    """Mano real del abridor. None si el registro es el stub de error o TBD.
+
+    El stub usa 'R' por defecto. Pasarlo como mano conocida ocultaría un
+    zurdo y contaría un descanso de platoon como scratch.
+    """
+    if not isinstance(stats, dict):
+        return None
+    if str(stats.get("metricas_fuente") or "") in ("default", "error"):
+        return None
+    code = str(stats.get("hand") or "").strip().upper()[:1]
+    return code if code in ("L", "R", "S") else None
+
+
 def _normalizar_mano(hand: Any) -> str:
     if isinstance(hand, dict):
         hand = hand.get("code") or "R"
@@ -1119,6 +1133,8 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
                 season=season,
                 pred_congelada=juego.get("_pred_congelada"),
                 min_estrellas_fuera=min_est,
+                pitcher_away_mano=_mano_pitcher_conocida(pa),
+                pitcher_home_mano=_mano_pitcher_conocida(ph),
             )
             f_away = round(f_away + float(scratch_info.get("ajuste_away") or 0.0), 2)
             f_home = round(f_home + float(scratch_info.get("ajuste_home") or 0.0), 2)
@@ -1685,7 +1701,8 @@ def analizar_juego(juego: dict[str, Any], cfg: dict[str, Any], bias_aprendizaje:
             juego["apostable"] = False
             juego["motivo_apuesta"] = ev_valor.get("motivo") or juego.get("motivo_apuesta")
 
-    # El tipo tiene la última palabra: scratch entra, underdog sale.
+    # El tipo tiene la última palabra: scratch entra solo con edge positivo,
+    # underdog sale. Limpio y favorito no se tocan aquí.
     aplicar_decision_tipo(juego, cfg)
 
     juego.pop("_features_away", None)

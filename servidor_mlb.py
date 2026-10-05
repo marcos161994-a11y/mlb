@@ -1475,12 +1475,14 @@ def _aplicar_tipo_sobre(registro: dict, cfg: dict, juego: dict | None = None) ->
         juego["tipo_pick"] = registro.get("tipo_pick")
         juego["filtro_tipo"] = registro.get("filtro_tipo")
         juego["apostable"] = bool(registro.get("apostable"))
-        if ev.get("decision") in ("cortar", "apostar", "sin_cuota"):
+        if ev.get("decision") in ("cortar", "apostar", "sin_cuota", "sin_valor"):
             juego["motivo_apuesta"] = registro.get("motivo_apuesta")
     if ev.get("decision") == "cortar":
         print(f"[FILTRO TIPO] {registro.get('pick')}: underdog cortado")
     elif ev.get("decision") == "apostar":
         print(f"[FILTRO TIPO] {registro.get('pick')}: scratch se apuesta")
+    elif ev.get("decision") == "sin_valor":
+        print(f"[FILTRO TIPO] {registro.get('pick')}: scratch sin valor, no se apuesta")
     return ev
 
 
@@ -1963,6 +1965,17 @@ def estado_desde_status_mlb(status_info: dict | None) -> str:
     return "PROGRAMADO"
 
 
+def _mano_probable(persona: dict | None) -> str | None:
+    """Mano del probable si el schedule ya la trae. None si no viene."""
+    if not isinstance(persona, dict):
+        return None
+    raw = persona.get("pitchHand")
+    if isinstance(raw, dict):
+        raw = raw.get("code") or raw.get("abbreviation") or ""
+    code = str(raw or "").strip().upper()[:1]
+    return code if code in ("L", "R", "S") else None
+
+
 def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False) -> list[dict]:
     memoria = cargar_memoria()
     params = {"sportId": 1, "hydrate": "probablePitcher,lineups,linescore,team,officials"}
@@ -2011,6 +2024,8 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
             lineup_confirmado = bool(lineups_parsed.get("confirmado"))
             pa = away.get("probablePitcher") or {}
             ph = home.get("probablePitcher") or {}
+            mano_away = _mano_probable(pa)
+            mano_home = _mano_probable(ph)
             ls = juego.get("linescore", {}).get("teams", {})
             s_away = _score_equipo(ls.get("away", {}), away)
             s_home = _score_equipo(ls.get("home", {}), home)
@@ -2040,6 +2055,8 @@ def obtener_juegos_fecha(fecha: str | None = None, solo_resultados: bool = False
                 "pitcher_home_id": ph.get("id"),
                 "pitcherAway": pa.get("fullName"),
                 "pitcherHome": ph.get("fullName"),
+                "pitcher_away_mano": mano_away,
+                "pitcher_home_mano": mano_home,
                 "scoreAway": s_away,
                 "home": home_name,
                 "scoreHome": s_home,
@@ -3675,6 +3692,8 @@ def _bloquear_juego_locked(
                 season=int(cfg.get("temporada_mlb") or 2026),
                 pred_congelada=pred_ref,
                 min_estrellas_fuera=int((cfg.get("estrategia") or {}).get("min_estrellas_fuera_lineup", 2)),
+                pitcher_away_mano=juego.get("pitcher_away_mano"),
+                pitcher_home_mano=juego.get("pitcher_home_mano"),
             )
             juego["scratch_lineup"] = scratch
             if pred_existente is not None:

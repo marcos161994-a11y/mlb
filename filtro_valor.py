@@ -2,9 +2,10 @@
 
 El filtro de valor calcula la probabilidad calibrada, el edge contra la cuota
 real y un veredicto apostaría/pasaría. En sombra ese veredicto se guarda y
-no aprueba ni bloquea. El filtro de tipo sí decide: entra todo scratch con
-cuota real, no entra el underdog (`underdog cortado`) y limpio/favorito
-siguen con las reglas de edge que ya tenían.
+no aprueba ni bloquea. El filtro de tipo sí decide: un scratch con cuota real
+entra solo si el edge es positivo (prob. del modelo > implícita de la cuota),
+no entra el underdog (`underdog cortado`) y limpio/favorito siguen con las
+reglas de edge que ya tenían.
 
 Contrato de cuota real (compartido con el trabajo de momios de bc-015ab330,
 que al cerrar este cambio aún no tenía PR):
@@ -266,12 +267,20 @@ def evaluar_valor(registro: dict | None, cfg: dict | None) -> dict[str, Any]:
     return out
 
 
+def _edge_real(prob: float, cuota: float) -> tuple[float, float]:
+    """Edge en puntos y probabilidad implícita. Mismo redondeo que `edge_pct`."""
+    implicita = 100.0 / cuota
+    return round(prob - implicita, 1), round(implicita, 1)
+
+
 def evaluar_tipo(registro: dict | None, cfg: dict | None) -> dict[str, Any]:
     """Veredicto del filtro de tipo. No usa el filtro de valor.
 
-    Scratch con cuota real: apostar. Sin cuota real no se inventa la apuesta.
-    Underdog: no apostar, con el motivo exacto `underdog cortado`.
-    Limpio y favorito_alto: no cambian la decisión que ya trae el pick.
+    Scratch con cuota real y edge positivo: apostar. Edge ≤ 0: no apostar,
+    aunque el modelo no llegue al mínimo de probabilidad. Sin cuota real no
+    se inventa la apuesta. Underdog: no apostar, con el motivo exacto
+    `underdog cortado`. Limpio y favorito_alto: no cambian la decisión que
+    ya trae el pick.
     """
     ft = filtro_tipo_cfg(cfg)
     tipo = _tipo_registro(registro)
@@ -293,7 +302,8 @@ def evaluar_tipo(registro: dict | None, cfg: dict | None) -> dict[str, Any]:
         )
         return out
     if tipo == "scratch" and ft["apostar_scratch"]:
-        if cuota_decimal_real(registro) is None:
+        cuota = cuota_decimal_real(registro)
+        if cuota is None:
             out.update(
                 decision="sin_cuota",
                 cambia_apostable=False,
@@ -307,10 +317,32 @@ def evaluar_tipo(registro: dict | None, cfg: dict | None) -> dict[str, Any]:
                 motivo="Scratch con cuota real, pero el starter lesionado veta el dinero",
             )
             return out
+        try:
+            prob = float((registro or {}).get("probPick") or 0)
+        except (TypeError, ValueError):
+            prob = 0.0
+        edge, implicita = _edge_real(prob, cuota)
+        if edge == 0:
+            edge = 0.0
+        if edge <= 0:
+            out.update(
+                decision="sin_valor",
+                cambia_apostable=False,
+                motivo=(
+                    "Scratch detectado, pero sin valor a este precio "
+                    f"(modelo {prob:.1f}% vs implícita {implicita:.1f}%, "
+                    f"edge {edge:+.1f}): no se apuesta"
+                ),
+                edge=edge,
+                implicita=implicita,
+            )
+            return out
         out.update(
             decision="apostar",
             cambia_apostable=True,
-            motivo="Scratch con cuota real: se apuesta",
+            motivo=f"Scratch con cuota real y edge {edge:+.1f}: se apuesta",
+            edge=edge,
+            implicita=implicita,
         )
         return out
     return out
@@ -333,6 +365,9 @@ def aplicar_decision_tipo(registro: dict | None, cfg: dict | None) -> dict[str, 
         registro["apostable"] = False
         if not registro.get("motivo_apuesta"):
             registro["motivo_apuesta"] = ev.get("motivo")
+    elif cambia is False and ev.get("decision") == "sin_valor":
+        registro["apostable"] = False
+        registro["motivo_apuesta"] = ev.get("motivo") or registro.get("motivo_apuesta")
     return ev
 
 
@@ -341,7 +376,7 @@ def incluir_por_tipo(fila: dict | None, cfg: dict | None) -> bool:
     ev = evaluar_tipo(fila, cfg)
     if not ev.get("filtro_activo"):
         return True
-    return ev.get("decision") not in ("cortar", "sin_cuota")
+    return ev.get("decision") not in ("cortar", "sin_cuota", "sin_valor")
 
 
 def filas_liquidadas(memoria: dict | None) -> list[dict[str, Any]]:
@@ -553,8 +588,9 @@ def backtest_filtro_tipo(memoria: dict, cfg: dict | None = None) -> dict[str, An
     primeros 70% son la ventana que antes entrenaba el calibrador; los
     últimos 30% son el holdout. También se puntúa el libro completo.
     Antes = todos los liquidados con cuota real. Después = scratch con
-    cuota real, sin underdog, y el resto de tipos enteros. No reescribe
-    la memoria. El veredicto de valor se cuenta aparte y no cambia el ROI.
+    cuota real y edge positivo, sin underdog, y el resto de tipos enteros.
+    No reescribe la memoria. El veredicto de valor se cuenta aparte y no
+    cambia el ROI.
     """
     import tempfile
     from pathlib import Path
@@ -642,7 +678,7 @@ def backtest_filtro_tipo(memoria: dict, cfg: dict | None = None) -> dict[str, An
         "metodo_calibracion_sombra": metodo,
         "nota": (
             "Backtest. Antes = todos los picks con cuota real. "
-            "Después = filtro de tipo: todo scratch con cuota real, "
+            "Después = filtro de tipo: scratch con cuota real y edge positivo, "
             "underdog fuera, limpio y favorito_alto se quedan. "
             "El filtro de valor está en sombra y no cambia las apuestas."
         ),
