@@ -13,6 +13,74 @@ import requests
 
 _session = requests.Session()
 _top_hit_cache: dict[tuple[int, int], list[dict[str, Any]]] = {}
+_mano_pitcher_cache: dict[int, str] = {}
+
+
+def _codigo_mano(valor: Any) -> str:
+    """'L', 'R' o 'S'. Vacío si no hay una mano confiable."""
+    if isinstance(valor, dict):
+        valor = valor.get("code") or valor.get("abbreviation") or ""
+    code = str(valor or "").strip().upper()[:1]
+    return code if code in ("L", "R", "S") else ""
+
+
+def es_descanso_platoon(batea: Any, mano_pitcher_rival: Any) -> bool:
+    """Zurdo sentado contra abridor zurdo: descanso de platoon, no scratch.
+
+    El platoon clásico contra un LHP saca al bateador zurdo. Un diestro o un
+    ambidiestro (S) no se sienta por esa mano. Si falta la mano del bateador
+    o la del abridor, no se asume platoon y la ausencia sigue contando.
+    """
+    return _codigo_mano(batea) == "L" and _codigo_mano(mano_pitcher_rival) == "L"
+
+
+def mano_de_pitcher(pitcher_id: int | None, explicita: Any = None) -> str:
+    """Mano del abridor. La explícita manda; si no hay, se consulta StatsAPI.
+
+    Devuelve '' cuando no se puede saber. No inventa diestro por defecto:
+    una mano desconocida no debe borrar un scratch real.
+    """
+    code = _codigo_mano(explicita)
+    if code:
+        return code
+    if not pitcher_id:
+        return ""
+    pid = int(pitcher_id)
+    cached = _mano_pitcher_cache.get(pid)
+    if cached:
+        return cached
+    try:
+        r = _session.get(
+            f"https://statsapi.mlb.com/api/v1/people/{pid}",
+            timeout=8,
+        )
+        r.raise_for_status()
+        people = r.json().get("people") or []
+        person = people[0] if people else {}
+        hand = _codigo_mano(person.get("pitchHand"))
+    except Exception:
+        return ""
+    if hand:
+        _mano_pitcher_cache[pid] = hand
+    return hand
+
+
+def _partir_ausencias(
+    top: list[dict[str, Any]],
+    ids_lineup: set[int],
+    mano_rival: str,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """Separa ausencias reales de descansos de platoon vs LHP."""
+    reales: list[dict[str, Any]] = []
+    platoon: list[dict[str, Any]] = []
+    for jugador in top:
+        if jugador.get("id") in ids_lineup:
+            continue
+        if es_descanso_platoon(jugador.get("batea"), mano_rival):
+            platoon.append(jugador)
+        else:
+            reales.append(jugador)
+    return reales, platoon
 
 
 def _extraer_jugadores_lineup(lineups_api: dict[str, Any] | None, lado: str) -> list[dict[str, Any]]:
@@ -99,7 +167,15 @@ def top_bateadores_equipo(team_id: int, season: int, n: int = 5) -> list[dict[st
                 break
             if pa < 25 and ops <= 0:
                 continue
-            stats_list.append({"id": int(pid), "nombre": nombre, "ops": ops, "pa": pa})
+            stats_list.append(
+                {
+                    "id": int(pid),
+                    "nombre": nombre,
+                    "ops": ops,
+                    "pa": pa,
+                    "batea": _codigo_mano(person.get("batSide")),
+                }
+            )
         stats_list.sort(key=lambda x: (x["ops"], x["pa"]), reverse=True)
         _top_hit_cache[key] = stats_list
         return stats_list[:n]
@@ -120,6 +196,8 @@ def analizar_scratch_lineup(
     season: int,
     pred_congelada: dict[str, Any] | None = None,
     min_estrellas_fuera: int = 2,
+    pitcher_away_mano: str | None = None,
+    pitcher_home_mano: str | None = None,
 ) -> dict[str, Any]:
     """
     Returns flags: scratch_away/home, estrellas_fuera_*, riesgo, ajuste_*, resumen.
@@ -136,6 +214,8 @@ def analizar_scratch_lineup(
         "scratch_home": False,
         "estrellas_fuera_away": [],
         "estrellas_fuera_home": [],
+        "platoon_fuera_away": [],
+        "platoon_fuera_home": [],
         "ajuste_away": 0.0,
         "ajuste_home": 0.0,
         "min_estrellas_fuera": int(min_estrellas_fuera),
@@ -171,22 +251,29 @@ def analizar_scratch_lineup(
         if not pitcher_home_id or (pitcher_home_nombre or "").upper() == "TBD":
             out["scratch_home"] = True
 
-    # Estrellas fuera del lineup
+    # Estrellas fuera del lineup. El lineup visita al abridor rival:
+    # los zurdos del visitante se miden contra el abridor local, y al revés.
     if confirmado and away_id:
-        top = top_bateadores_equipo(int(away_id), season, n=5)
-        ids_lu = {p["id"] for p in away_lu}
-        fuera = [t for t in top if t["id"] not in ids_lu]
-        out["estrellas_fuera_away"] = fuera
-        if len(fuera) >= min_estrellas_fuera:
-            out["ajuste_away"] = -min(3.5, 1.2 * len(fuera))
+        _anotar_ausencias(
+            out,
+            lado="away",
+            top=top_bateadores_equipo(int(away_id), season, n=5),
+            lineup=away_lu,
+            pitcher_rival_id=pitcher_home_id,
+            pitcher_rival_mano=pitcher_home_mano,
+            min_estrellas_fuera=min_estrellas_fuera,
+        )
 
     if confirmado and home_id:
-        top = top_bateadores_equipo(int(home_id), season, n=5)
-        ids_lu = {p["id"] for p in home_lu}
-        fuera = [t for t in top if t["id"] not in ids_lu]
-        out["estrellas_fuera_home"] = fuera
-        if len(fuera) >= min_estrellas_fuera:
-            out["ajuste_home"] = -min(3.5, 1.2 * len(fuera))
+        _anotar_ausencias(
+            out,
+            lado="home",
+            top=top_bateadores_equipo(int(home_id), season, n=5),
+            lineup=home_lu,
+            pitcher_rival_id=pitcher_away_id,
+            pitcher_rival_mano=pitcher_away_mano,
+            min_estrellas_fuera=min_estrellas_fuera,
+        )
 
     alertas = []
     if out["scratch_away"]:
@@ -200,6 +287,14 @@ def analizar_scratch_lineup(
         noms = ", ".join(x["nombre"] for x in out["estrellas_fuera_home"][:3])
         alertas.append(f"Estrellas out local: {noms}")
 
+    notas_platoon = []
+    if out["platoon_fuera_away"]:
+        noms = ", ".join(x.get("nombre") or "?" for x in out["platoon_fuera_away"][:3])
+        notas_platoon.append(f"Platoon visitante vs LHP (no cuenta): {noms}")
+    if out["platoon_fuera_home"]:
+        noms = ", ".join(x.get("nombre") or "?" for x in out["platoon_fuera_home"][:3])
+        notas_platoon.append(f"Platoon local vs LHP (no cuenta): {noms}")
+
     out["alerta"] = " · ".join(alertas)
     out["riesgo"] = bool(
         out["scratch_away"]
@@ -207,8 +302,32 @@ def analizar_scratch_lineup(
         or len(out["estrellas_fuera_away"]) >= min_estrellas_fuera
         or len(out["estrellas_fuera_home"]) >= min_estrellas_fuera
     )
-    out["resumen"] = out["alerta"] or ("Lineup OK" if confirmado else "Lineup pendiente")
+    resumen = out["alerta"] or ("Lineup OK" if confirmado else "Lineup pendiente")
+    if notas_platoon:
+        resumen = f"{resumen} · {' · '.join(notas_platoon)}"
+    out["resumen"] = resumen
     return out
+
+
+def _anotar_ausencias(
+    out: dict[str, Any],
+    *,
+    lado: str,
+    top: list[dict[str, Any]],
+    lineup: list[dict[str, Any]],
+    pitcher_rival_id: int | None,
+    pitcher_rival_mano: str | None,
+    min_estrellas_fuera: int,
+) -> None:
+    ids_lu = {p["id"] for p in lineup if p.get("id")}
+    faltan = any(t.get("id") not in ids_lu for t in top)
+    # Solo se pide la mano si hay alguien fuera: un lineup completo no la necesita.
+    mano_rival = mano_de_pitcher(pitcher_rival_id, pitcher_rival_mano) if faltan else ""
+    reales, platoon = _partir_ausencias(top, ids_lu, mano_rival)
+    out[f"estrellas_fuera_{lado}"] = reales
+    out[f"platoon_fuera_{lado}"] = platoon
+    if len(reales) >= min_estrellas_fuera:
+        out[f"ajuste_{lado}"] = -min(3.5, 1.2 * len(reales))
 
 
 def pick_afectado_por_scratch(

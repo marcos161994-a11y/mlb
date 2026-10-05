@@ -193,12 +193,14 @@ def test_tipo_apuesta_scratch_corta_underdog_y_deja_el_resto():
     assert ev["motivo"] == "underdog cortado"
     assert under["filtro_tipo"]["decision"] == "cortar"
 
+    # 55% vs cuota 2.00 (implícita 50): edge +5, bajo el 58% del filtro normal.
+    # El scratch igual entra porque el edge es positivo.
     scratch = {
         "tipo_pick": "scratch",
         "apostable": False,
-        "probPick": 52.0,
-        "odds": 1.90,
-        "edge": 1.0,
+        "probPick": 55.0,
+        "odds": 2.00,
+        "edge": 5.0,
         "lineas_fuente": "draftkings",
         "scratch_lineup": {"riesgo": True},
         "motivo_apuesta": "Sin valor (mínimo +6% edge)",
@@ -206,6 +208,7 @@ def test_tipo_apuesta_scratch_corta_underdog_y_deja_el_resto():
     aplicar_decision_tipo(scratch, cfg)
     assert scratch["apostable"] is True
     assert scratch["filtro_tipo"]["decision"] == "apostar"
+    assert "se apuesta" in (scratch["motivo_apuesta"] or "")
 
     sin_cuota = {
         "tipo_pick": "scratch",
@@ -257,6 +260,88 @@ def test_tipo_apuesta_scratch_corta_underdog_y_deja_el_resto():
     assert favorito["apostable"] is False
     assert favorito["motivo_apuesta"] == "Sin valor (mínimo +6% edge)"
     assert favorito["filtro_tipo"]["decision"] == "igual"
+
+
+def test_scratch_sin_edge_positivo_no_apuesta():
+    """El scratch no pisa un precio sin valor. Limpio y favorito no cambian."""
+    from lineas_betmgm import american_a_decimal
+
+    cfg = {
+        "estrategia": {
+            "filtro_tipo": {
+                "activo": True,
+                "apostar_scratch": True,
+                "cortar_underdog": True,
+            }
+        }
+    }
+
+    def _scratch(prob: float, odds: float, *, american: int | None = None) -> dict:
+        reg = {
+            "tipo_pick": "scratch",
+            "apostable": True,
+            "pick": "Home ML",
+            "probPick": prob,
+            "odds": odds,
+            "lineas_fuente": "draftkings",
+            "fuente_momio": "draftkings",
+            "scratch_lineup": {"riesgo": True},
+            "motivo_apuesta": "Scratch con cuota real: se apuesta",
+        }
+        if american is not None:
+            reg["odds_american"] = american
+        aplicar_decision_tipo(reg, cfg)
+        return reg
+
+    # Edge positivo bajo el mínimo de 58% / +6: el scratch sí apuesta.
+    con_valor = _scratch(54.0, 2.10)
+    assert con_valor["apostable"] is True
+    assert con_valor["filtro_tipo"]["decision"] == "apostar"
+    assert con_valor["filtro_tipo"]["edge"] > 0
+
+    # Edge cero: no se apuesta.
+    cero = _scratch(50.0, 2.0)
+    assert cero["apostable"] is False
+    assert cero["filtro_tipo"]["decision"] == "sin_valor"
+    assert "sin valor a este precio" in (cero["motivo_apuesta"] or "")
+    assert "no se apuesta" in (cero["motivo_apuesta"] or "")
+
+    # Casos reales en los que el scratch apostó con edge negativo.
+    # 30-sep PHI@ATL: 50.5% y edge ~0 (aquí cuota pareja 1.98, implícita 50.5).
+    atl = _scratch(50.5, 1.98)
+    assert atl["apostable"] is False
+    assert atl["filtro_tipo"]["edge"] <= 0
+
+    # 3-oct CWS@CLE: CLE 51.1% a −149.
+    cle = _scratch(51.1, american_a_decimal(-149), american=-149)
+    assert cle["apostable"] is False
+    assert cle["filtro_tipo"]["edge"] < 0
+    assert "sin valor a este precio" in (cle["motivo_apuesta"] or "")
+
+    # 3-oct SD@MIL: MIL 54.4% a −218.
+    mil_3 = _scratch(54.4, american_a_decimal(-218), american=-218)
+    assert mil_3["apostable"] is False
+    assert mil_3["filtro_tipo"]["edge"] < 0
+
+    # 4-oct SD@MIL: MIL 53.6% a −136 (implícita ~57.6).
+    mil_4 = _scratch(53.6, american_a_decimal(-136), american=-136)
+    assert mil_4["apostable"] is False
+    assert mil_4["filtro_tipo"]["edge"] < 0
+    assert "implícita" in (mil_4["motivo_apuesta"] or "")
+
+    # Un limpio con el mismo precio negativo no lo reescribe el filtro de tipo.
+    limpio = {
+        "tipo_pick": "limpio",
+        "apostable": False,
+        "probPick": 51.1,
+        "odds": american_a_decimal(-149),
+        "lineas_fuente": "draftkings",
+        "motivo_apuesta": "Sin valor (mínimo +6% edge)",
+    }
+    aplicar_decision_tipo(limpio, cfg)
+    assert limpio["apostable"] is False
+    assert limpio["motivo_apuesta"] == "Sin valor (mínimo +6% edge)"
+    assert limpio["filtro_tipo"]["decision"] == "igual"
 
 
 @pytest.fixture
