@@ -56,6 +56,10 @@ curl -fsS https://mlb-1-en7i.onrender.com/api/health
 
 Tiene que decir `"backend": "postgres"`, `"durable": true`, `"conectado": true` y un `historial.n_dias` que no sea menor que el del JSON.
 
+Si `conectado` es false y el error dice `Network is unreachable` contra una dirección `2600:`, Render resolvió IPv6 y no tiene ruta. El pooler (`-pooler`) y el endpoint directo resuelven a las mismas IPs: cambiar uno por el otro no lo arregla. La app pide solo IPv4, conserva el hostname (hace falta para el cifrado) y reintenta sola si Neon despertó el compute. `sslmode=require` se añade cuando el host es externo y la URL no lo trae.
+
+No pongas la clave en el repo. Si después del deploy el error pasa a `password authentication failed`, en Neon abre Connect, copia otra vez la connection string y pégala en Render → mlb-1 → Environment → `DATABASE_URL` → Save. Render redeploya solo. La clave no va a Git.
+
 9. El workflow **Backup memoria Render** baja `/api/exportar-memoria` (con `CRON_SECRET`), sube el artefacto `memoria-db` y lo publica en la rama `backup/memoria`. No empuja a `main`.
 10. **Restore memoria Render** despierta el servicio y fusiona ese dump en la base. Si la rama todavía no existe, usa el JSON del repo.
 

@@ -4,6 +4,8 @@ La app sigue hablando con un documento JSON (el mismo dict que devuelven
 `cargar_memoria` / `guardar_memoria`). Aquí solo cambia el sitio donde vive:
 
 - `DATABASE_URL` → Postgres (Neon, Supabase o Render). Durable.
+  Render no tiene ruta IPv6: la conexión sale por IPv4 (`hostaddr`) y
+  conserva el hostname para el TLS. Si Neon está suspendido, reintenta.
 - Si no hay URL → SQLite en `DATA_DIR/memoria.sqlite`. Sirve en local y en tests.
   En Render el disco del plan free se borra al reiniciar: sin `DATABASE_URL`
   ese SQLite no es durable y `describir_persistencia` lo marca así.
@@ -16,12 +18,16 @@ from __future__ import annotations
 
 import json
 import os
+import re
+import socket
 import sqlite3
 import threading
+import time
 from contextlib import contextmanager
 from datetime import datetime, timezone
+from ipaddress import ip_address
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator
 from urllib.parse import urlparse
 
 
@@ -147,7 +153,7 @@ def describir_persistencia(data_dir: Path) -> dict[str, Any]:
     except Exception as exc:
         info["conectado"] = False
         info["durable"] = False
-        info["error"] = str(exc)[:200]
+        info["error"] = resumen_error_conexion(exc)
     return info
 
 
@@ -406,19 +412,231 @@ class SqliteStore(MemoriaStore):
         return conn
 
 
-class PostgresStore(MemoriaStore):
-    def __init__(self, url: str) -> None:
-        self.url = normalizar_database_url(url)
-        super().__init__(backend="postgres", destino=destino_publico(url))
+# Una conexión nueva por operación. El presupuesto tapa el health check
+# si todas las IPv4 se cuelgan; el caso normal (la primera responde) no espera.
+_CONNECT_TIMEOUT_S = 8
+_REINTENTOS = 3
+_PAUSAS_S = (0.4, 1.2)
+_PRESUPUESTO_S = 18.0
 
-    def _conectar(self) -> Any:
+_SECRET_URL = re.compile(r"://[^\s@/]+@")
+
+
+def _es_ip(host: str) -> bool:
+    try:
+        ip_address(host)
+    except ValueError:
+        return False
+    return True
+
+
+def _es_host_local(host: str) -> bool:
+    nombre = host.lower().strip("[]")
+    return (
+        nombre in {"localhost", "127.0.0.1", "::1"}
+        or nombre.endswith(".internal")
+        or "." not in nombre
+    )
+
+
+def resolver_ipv4(host: str, port: int) -> list[str]:
+    """Solo registros A. flags=0 pide la A aunque la máquina tenga IPv6 a medias."""
+    try:
+        infos = socket.getaddrinfo(
+            host,
+            port,
+            socket.AF_INET,
+            socket.SOCK_STREAM,
+            socket.IPPROTO_TCP,
+            0,
+        )
+    except OSError:
+        return []
+    vistos: list[str] = []
+    for info in infos:
+        addr = info[4][0]
+        if addr and addr not in vistos:
+            vistos.append(addr)
+    return vistos
+
+
+def error_transitorio(exc: BaseException) -> bool:
+    """Neon dormido, red o corte breve. Una clave mal no se reintenta."""
+    texto = str(exc).lower()
+    if any(marca in texto for marca in ("starting up", "shutting down", "resum")):
+        return True
+    permanentes = (
+        "password authentication failed",
+        "authentication failed",
+        "no password supplied",
+        "does not exist",
+        "permission denied",
+        "certificate verify failed",
+        "pg_hba.conf",
+    )
+    if any(marca in texto for marca in permanentes):
+        return False
+    transitorios = (
+        "network is unreachable",
+        "connection refused",
+        "timed out",
+        "timeout",
+        "could not connect",
+        "could not translate host",
+        "failed to resolve",
+        "name or service not known",
+        "temporary failure in name resolution",
+        "server closed the connection",
+        "ssl connection has been closed",
+        "ssl syscall",
+        "cannot connect now",
+        "too many connections",
+        "remaining connection slots",
+        "connection reset",
+        "try again",
+        "temporarily unavailable",
+        "compute",
+    )
+    return any(marca in texto for marca in transitorios)
+
+
+def resumen_error_conexion(exc: BaseException, limite: int = 240) -> str:
+    """Quita la clave y el fallo IPv6, que tapa el error de la IPv4."""
+    texto = _SECRET_URL.sub("://", str(exc))
+    texto = re.sub(r"(?i)\bpassword=\S+", "password=***", texto)
+    utiles: list[str] = []
+    for linea in texto.splitlines():
+        limpia = linea.strip().lstrip("-").strip()
+        if not limpia:
+            continue
+        baja = limpia.lower()
+        if baja.startswith("is the server running"):
+            continue
+        if baja.startswith("multiple connection attempts"):
+            continue
+        if "network is unreachable" in baja:
+            continue
+        utiles.append(limpia)
+    if not utiles:
+        utiles = [ln.strip() for ln in texto.splitlines() if ln.strip()]
+    return (utiles[0] if utiles else "error de conexion")[:limite]
+
+
+def _timeout_restante(reloj: Callable[[], float], deadline: float) -> int:
+    restante = deadline - reloj()
+    if restante < 2:
+        raise TimeoutError("se agotó el tiempo para conectar con Postgres")
+    return max(2, min(_CONNECT_TIMEOUT_S, int(restante)))
+
+
+def _intentar_postgres(
+    url: str,
+    *,
+    resolver: Callable[[str, int], list[str]] | None,
+    conectar: Callable[..., Any],
+    reloj: Callable[[], float],
+    deadline: float,
+) -> Any:
+    """Una ronda. hostaddr IPv4 y el hostname original (SNI / certificado)."""
+    from psycopg.conninfo import conninfo_to_dict, make_conninfo
+
+    limpia = normalizar_database_url(url)
+    try:
+        params = conninfo_to_dict(limpia)
+    except Exception:
+        params = {}
+    host = str(params.get("host") or "").strip()
+    ips: list[str] = []
+    if (
+        host
+        and "," not in host
+        and not params.get("hostaddr")
+        and not _es_host_local(host)
+        and not _es_ip(host)
+    ):
+        puerto = int(str(params.get("port") or "5432").split(",")[0])
+        try:
+            ips = list((resolver or resolver_ipv4)(host, puerto))
+        except Exception:
+            ips = []
+    if not ips:
+        timeout = _timeout_restante(reloj, deadline)
+        # prepare_threshold=None: el pooler de Neon (PgBouncer en modo
+        # transacción) no conserva sentencias preparadas.
+        return conectar(limpia, connect_timeout=timeout, prepare_threshold=None)
+
+    ultimo: BaseException | None = None
+    for ip in ips:
+        timeout = _timeout_restante(reloj, deadline)
+        try:
+            info = make_conninfo(limpia, hostaddr=ip)
+        except Exception:
+            info = limpia
+        try:
+            return conectar(info, connect_timeout=timeout, prepare_threshold=None)
+        except Exception as exc:
+            ultimo = exc
+            if not error_transitorio(exc):
+                raise
+    assert ultimo is not None
+    raise ultimo
+
+
+def conectar_postgres(
+    url: str,
+    *,
+    resolver: Callable[[str, int], list[str]] | None = None,
+    conectar: Callable[..., Any] | None = None,
+    dormir: Callable[[float], None] | None = None,
+    reloj: Callable[[], float] | None = None,
+) -> Any:
+    """Abre Postgres. Reintenta con pausa si el compute de Neon está despertando."""
+    if conectar is None:
         try:
             import psycopg
         except ImportError as exc:
             raise MemoriaStoreError(
                 "Falta psycopg. Instala requirements.txt (psycopg[binary])."
             ) from exc
-        return psycopg.connect(self.url, connect_timeout=15)
+        conectar = psycopg.connect
+    dormir = dormir or time.sleep
+    reloj = reloj or time.monotonic
+    deadline = reloj() + _PRESUPUESTO_S
+    ultimo: BaseException | None = None
+    for intento in range(_REINTENTOS):
+        try:
+            return _intentar_postgres(
+                url,
+                resolver=resolver,
+                conectar=conectar,
+                reloj=reloj,
+                deadline=deadline,
+            )
+        except MemoriaStoreError:
+            raise
+        except Exception as exc:
+            ultimo = exc
+            if not error_transitorio(exc):
+                raise
+            restante = deadline - reloj()
+            if intento + 1 >= _REINTENTOS or restante < 1:
+                raise
+            print(
+                f"[PERSISTENCIA] reintento {intento + 1} "
+                f"tras: {resumen_error_conexion(exc, 120)}"
+            )
+            dormir(min(_PAUSAS_S[intento], restante / 2))
+    assert ultimo is not None
+    raise ultimo
+
+
+class PostgresStore(MemoriaStore):
+    def __init__(self, url: str) -> None:
+        self.url = normalizar_database_url(url)
+        super().__init__(backend="postgres", destino=destino_publico(url))
+
+    def _conectar(self) -> Any:
+        return conectar_postgres(self.url)
 
     def _asegurar(self, conn: Any) -> None:
         # Varias sentencias: psycopg no tiene executescript.

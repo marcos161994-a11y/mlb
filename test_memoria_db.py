@@ -189,3 +189,159 @@ def test_health_informa_persistencia(monkeypatch):
     assert cuerpo["ok"] is True
     assert cuerpo["persistencia"]["backend"] == "sqlite"
     assert cuerpo["persistencia"]["conectado"] is True
+
+
+def test_resolver_ipv4_pide_solo_registros_a(monkeypatch):
+    import socket
+
+    import memoria_store as store
+
+    def fake(host, port, family, socktype, proto, flags):
+        assert host == "ep-flat.neon.tech"
+        assert port == 5432
+        assert family == socket.AF_INET
+        assert flags == 0
+        return [
+            (family, socktype, proto, "", ("18.189.49.143", 5432)),
+            (family, socktype, proto, "", ("18.189.49.143", 5432)),
+            (family, socktype, proto, "", ("3.18.239.121", 5432)),
+        ]
+
+    monkeypatch.setattr(store.socket, "getaddrinfo", fake)
+    assert store.resolver_ipv4("ep-flat.neon.tech", 5432) == [
+        "18.189.49.143",
+        "3.18.239.121",
+    ]
+
+
+def test_conexion_usa_ipv4_y_conserva_el_host_para_tls():
+    from psycopg.conninfo import conninfo_to_dict
+
+    import memoria_store as store
+
+    vistos: list[dict] = []
+
+    def conectar(info, **kwargs):
+        vistos.append({"info": info, **kwargs})
+        return object()
+
+    store.conectar_postgres(
+        "postgres://user:se%20cret%40x@ep-abc-pooler.neon.tech/neondb",
+        resolver=lambda host, port: ["18.189.49.143", "3.18.239.121"],
+        conectar=conectar,
+    )
+    assert len(vistos) == 1
+    params = conninfo_to_dict(vistos[0]["info"])
+    assert params["host"] == "ep-abc-pooler.neon.tech"
+    assert params["hostaddr"] == "18.189.49.143"
+    assert params["sslmode"] == "require"
+    assert params["password"] == "se cret@x"
+    assert vistos[0]["prepare_threshold"] is None
+    assert "2600:" not in params["hostaddr"]
+
+
+def test_reintenta_si_neon_esta_despertando(monkeypatch):
+    import psycopg
+
+    import memoria_store as store
+
+    pausas: list[float] = []
+    llamadas = {"n": 0}
+
+    def conectar(info, **kwargs):
+        llamadas["n"] += 1
+        if llamadas["n"] < 3:
+            raise psycopg.OperationalError("the database system is starting up")
+        return object()
+
+    monkeypatch.setattr(store.time, "sleep", lambda s: pausas.append(s))
+    store.conectar_postgres(
+        "postgresql://user:secret@ep-abc-pooler.neon.tech/neondb?sslmode=require",
+        resolver=lambda host, port: ["18.189.49.143"],
+        conectar=conectar,
+    )
+    assert llamadas["n"] == 3
+    assert pausas == [0.4, 1.2]
+
+
+def test_clave_incorrecta_no_se_reintenta():
+    import psycopg
+
+    import memoria_store as store
+
+    llamadas = {"n": 0}
+
+    def conectar(info, **kwargs):
+        llamadas["n"] += 1
+        raise psycopg.OperationalError(
+            'connection failed: ERROR: password authentication failed for user "u"'
+        )
+
+    with pytest.raises(psycopg.OperationalError):
+        store.conectar_postgres(
+            "postgresql://u:secret@ep-abc.neon.tech/neondb",
+            resolver=lambda host, port: ["18.189.49.143", "3.18.239.121"],
+            conectar=conectar,
+            dormir=lambda s: (_ for _ in ()).throw(AssertionError("no debe esperar")),
+        )
+    assert llamadas["n"] == 1
+
+
+def test_host_interno_no_resuelve_ipv4():
+    import memoria_store as store
+
+    def conectar(info, **kwargs):
+        assert "hostaddr" not in info
+        assert "sslmode" not in info
+        return object()
+
+    def resolver(host, port):
+        raise AssertionError(host)
+
+    store.conectar_postgres(
+        "postgresql://user:secret@dpg-abc-a/mlb",
+        resolver=resolver,
+        conectar=conectar,
+    )
+
+
+def test_health_postgres_conectado_no_filtra_la_clave(tmp_path, monkeypatch):
+    import memoria_store as store
+
+    class Conn:
+        def execute(self, *args, **kwargs):
+            return self
+
+        def close(self):
+            pass
+
+    monkeypatch.setenv(
+        "DATABASE_URL",
+        "postgresql://user:secret@ep-abc-pooler.neon.tech/neondb",
+    )
+    monkeypatch.setattr(store, "conectar_postgres", lambda url, **kwargs: Conn())
+    info = describir_persistencia(tmp_path)
+    assert info["backend"] == "postgres"
+    assert info["conectado"] is True
+    assert info["durable"] is True
+    assert "secret" not in json.dumps(info)
+    assert info["destino"] == "ep-abc-pooler.neon.tech/neondb"
+
+
+def test_error_publico_muestra_la_ipv4_y_oculta_la_clave():
+    import memoria_store as store
+
+    exc = Exception(
+        'connection is bad: connection to server at "2600:1f16::1", port 5432 failed: '
+        "Network is unreachable\n"
+        "\tIs the server running on that host and accepting TCP/IP connections?\n"
+        "Multiple connection attempts failed. All failures were:\n"
+        "- host: 'ep-x.neon.tech', port: None, hostaddr: '18.189.49.143': "
+        'connection failed: ERROR: password authentication failed for user "u" '
+        "password=secret\n"
+        "postgresql://user:secret@ep-x.neon.tech/neondb"
+    )
+    texto = store.resumen_error_conexion(exc)
+    assert "password authentication failed" in texto
+    assert "secret" not in texto
+    assert "2600:" not in texto
