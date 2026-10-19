@@ -27,6 +27,9 @@ services:
       # Pega la connection string. Si el host es externo y no trae sslmode,
       # el servidor añade sslmode=require. La URL interna de Render (host sin
       # punto, dpg-…) no lleva SSL.
+      # Neon publica IPv4 e IPv6. Render no tiene ruta IPv6: el proceso
+      # conecta por IPv4 (hostaddr) y deja el hostname para el TLS. No hace
+      # falta cambiar el pooler por el endpoint directo: resuelven igual.
       - key: DATABASE_URL
         sync: false
       - key: DATA_DIR
