@@ -1,3 +1,7 @@
+# PAUSADO: no se usa la app por ahora. El cron automático está comentado
+# para que este workflow deje de correr solo y deje de mandar correos de fallo.
+# No se borra nada. Para reactivar, descomenta el bloque schedule: (restaura el cron)
+# y fusiona este archivo en main.
 # Vuelca la memoria de la base (Postgres) a un artefacto y a la rama backup/memoria.
 # No commitea memoria_auditoria.json en main: ese archivo queda como semilla
 # hasta que la migración esté verificada.
@@ -6,12 +10,12 @@
 name: Backup memoria Render
 
 on:
-  schedule:
-    # Cada 2 h + 4:00 / 14:00 / 23:30 hora Puerto Rico (UTC-4)
-    - cron: "0 */2 * * *"
-    - cron: "0 8 * * *"
-    - cron: "0 18 * * *"
-    - cron: "30 3 * * *"
+  # schedule:
+  #   # Cada 2 h + 4:00 / 14:00 / 23:30 hora Puerto Rico (UTC-4)
+  #   - cron: "0 */2 * * *"
+  #   - cron: "0 8 * * *"
+  #   - cron: "0 18 * * *"
+  #   - cron: "30 3 * * *"
   workflow_dispatch:
 
 # Prioridad: variable de repo RENDER_URL, luego secret RENDER_URL,
